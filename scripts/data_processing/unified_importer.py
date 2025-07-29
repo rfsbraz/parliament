@@ -21,6 +21,7 @@ Usage:
     python unified_importer.py --file-type biografico  # Import specific types only
     python unified_importer.py --validate-schema       # Check schema mapping coverage
     python unified_importer.py --status                # Show import status summary
+    python unified_importer.py --cleanup               # Backup database and truncate all tables
 """
 
 import os
@@ -36,6 +37,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple, Set
 import re
 import logging
+import shutil
 
 # Configure logging
 logging.basicConfig(
@@ -525,6 +527,65 @@ class UnifiedImporter:
         logger.info("Validating schema coverage...")
         # Implementation for schema validation
         pass
+    
+    def cleanup_database(self):
+        """Create timestamped backup and truncate all tables"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = f"{self.db_path}.backup_{timestamp}"
+        
+        try:
+            # Create backup
+            logger.info(f"Creating database backup: {backup_path}")
+            shutil.copy2(self.db_path, backup_path)
+            logger.info(f"Backup created successfully: {backup_path}")
+            
+            # Get all table names
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Get all user tables (excluding sqlite_* system tables)
+                cursor.execute("""
+                    SELECT name FROM sqlite_master 
+                    WHERE type='table' AND name NOT LIKE 'sqlite_%'
+                    ORDER BY name
+                """)
+                tables = [row[0] for row in cursor.fetchall()]
+                
+                logger.info(f"Found {len(tables)} tables to truncate")
+                
+                # Disable foreign key constraints temporarily
+                cursor.execute("PRAGMA foreign_keys=OFF")
+                
+                # Truncate all tables
+                for table in tables:
+                    try:
+                        cursor.execute(f"DELETE FROM {table}")
+                        logger.info(f"Truncated table: {table}")
+                    except Exception as e:
+                        logger.warning(f"Failed to truncate table {table}: {e}")
+                
+                # Re-enable foreign key constraints
+                cursor.execute("PRAGMA foreign_keys=ON")
+                
+                # Vacuum to reclaim space
+                logger.info("Vacuuming database to reclaim space...")
+                cursor.execute("VACUUM")
+                
+                conn.commit()
+                logger.info("Database cleanup completed successfully")
+                
+                # Show final statistics
+                cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+                table_count = cursor.fetchone()[0]
+                
+                logger.info(f"Database cleaned: {table_count} tables truncated")
+                logger.info(f"Backup available at: {backup_path}")
+                
+        except Exception as e:
+            logger.error(f"Database cleanup failed: {e}")
+            if os.path.exists(backup_path):
+                logger.info(f"Backup file preserved: {backup_path}")
+            raise
 
 
 def main():
@@ -544,6 +605,8 @@ def main():
                        help='Show import status summary')
     parser.add_argument('--strict-mode', action='store_true',
                        help='Exit immediately on any unmapped field, schema warning, or processing error')
+    parser.add_argument('--cleanup', action='store_true',
+                       help='Create timestamped backup and truncate all database tables')
     
     args = parser.parse_args()
     
@@ -553,6 +616,15 @@ def main():
         importer.show_status()
     elif args.validate_schema:
         importer.validate_schema_coverage(args.file_type)
+    elif args.cleanup:
+        # Confirm cleanup action
+        print("WARNING: This will create a backup and truncate ALL database tables!")
+        print(f"Database: {importer.db_path}")
+        confirmation = input("Are you sure you want to continue? (yes/no): ")
+        if confirmation.lower() == 'yes':
+            importer.cleanup_database()
+        else:
+            print("Cleanup cancelled.")
     else:
         # Default behavior: process files from source directories
         importer.process_files(
