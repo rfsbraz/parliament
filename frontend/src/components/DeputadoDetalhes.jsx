@@ -259,40 +259,73 @@ const DeputadoDetalhes = () => {
                 </h3>
                 <div className="prose max-w-none">
                   {(deputado.profissao || deputado.habilitacoes_academicas) ? (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       {deputado.profissao && (
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Profissão</h4>
-                          <p className="text-gray-700">{deputado.profissao}</p>
+                        <div className="relative">
+                          <div className="flex">
+                            <div className="w-1 bg-blue-500 rounded-full mr-4 flex-shrink-0"></div>
+                            <div className="flex-1">
+                              <div className="flex items-center mb-3">
+                                <Briefcase className="h-5 w-5 text-blue-500 mr-2" />
+                                <h4 className="font-semibold text-gray-900">Profissão</h4>
+                              </div>
+                              <p className="text-gray-700 text-base leading-relaxed pl-7">
+                                {deputado.profissao}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       )}
                       
                       {deputado.habilitacoes_academicas && (
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Habilitações Académicas</h4>
-                          <div className="text-gray-700">
-                            {deputado.habilitacoes_academicas.split(';').map((hab, index) => (
-                              <div key={index} className="mb-1">
-                                • {hab.trim()}
+                        <div className="relative">
+                          <div className="flex">
+                            <div className="w-1 bg-green-500 rounded-full mr-4 flex-shrink-0"></div>
+                            <div className="flex-1">
+                              <div className="flex items-center mb-3">
+                                <svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                                </svg>
+                                <h4 className="font-semibold text-gray-900">Habilitações Académicas</h4>
                               </div>
-                            ))}
+                              <div className="text-gray-700 pl-7 space-y-2">
+                                {deputado.habilitacoes_academicas.split(';').map((hab, index) => (
+                                  <div key={index} className="flex items-start">
+                                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                    <span className="text-base leading-relaxed">{hab.trim()}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
                       
                       {deputado.biografia && (
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Biografia</h4>
-                          <div className="text-gray-700 leading-relaxed whitespace-pre-line">
-                            {deputado.biografia}
+                        <div className="relative">
+                          <div className="flex">
+                            <div className="w-1 bg-purple-500 rounded-full mr-4 flex-shrink-0"></div>
+                            <div className="flex-1">
+                              <div className="flex items-center mb-3">
+                                <User className="h-5 w-5 text-purple-500 mr-2" />
+                                <h4 className="font-semibold text-gray-900">Biografia</h4>
+                              </div>
+                              <div className="text-gray-700 text-base leading-relaxed whitespace-pre-line pl-7">
+                                {deputado.biografia}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">Informações biográficas não disponíveis</p>
-                      <p className="text-sm text-gray-400 mt-2">
+                    <div className="text-center py-12">
+                      <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <User className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <p className="text-gray-500 text-lg font-medium mb-2">Informações biográficas não disponíveis</p>
+                      <p className="text-sm text-gray-400">
                         Dados biográficos não foram fornecidos para este deputado
                       </p>
                     </div>
