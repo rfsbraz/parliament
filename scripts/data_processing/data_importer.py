@@ -1421,6 +1421,16 @@ def verificar_dados_corrigidos():
     cursor.execute("SELECT AVG(taxa_assiduidade) FROM metricas_deputados WHERE taxa_assiduidade > 0")
     avg_attendance = cursor.fetchone()[0]
     
+    # Verificar dados biográficos
+    cursor.execute("SELECT COUNT(*) FROM deputados WHERE profissao IS NOT NULL AND profissao != ''")
+    with_profession = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM deputados WHERE habilitacoes_academicas IS NOT NULL AND habilitacoes_academicas != ''")
+    with_education = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM deputados")
+    total_deputies = cursor.fetchone()[0]
+    
     print(f"DADOS FINAIS:")
     print(f"  Iniciativas legislativas: {total_iniciativas}")
     print(f"  Autores de iniciativas: {total_autores}")
@@ -1430,6 +1440,9 @@ def verificar_dados_corrigidos():
     print(f"  Metricas de assiduidade: {total_metricas}")
     if avg_attendance:
         print(f"  Taxa media de assiduidade: {avg_attendance:.1f}%")
+    print(f"  Deputados total: {total_deputies}")
+    print(f"  Deputados com profissao: {with_profession}")
+    print(f"  Deputados com habilitacoes: {with_education}")
     
     # Mostrar algumas iniciativas por legislatura
     print(f"\nINICIATIVAS POR LEGISLATURA:")
@@ -1445,6 +1458,100 @@ def verificar_dados_corrigidos():
         print(f"  {row[0]}: {row[1]} iniciativas")
     
     conn.close()
+
+def corrigir_importacao_dados_biograficos():
+    """Importar dados biográficos dos deputados"""
+    
+    print("CORRIGINDO IMPORTACAO DE DADOS BIOGRAFICOS...")
+    
+    db_path = 'parlamento.db'
+    base_path = "parliament_data_final"
+    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    total_updated = 0
+    
+    # Buscar todos os arquivos de dados biográficos
+    pattern = f"{base_path}/RegistoBiografico/**/*.xml"
+    arquivos = glob.glob(pattern, recursive=True)
+    
+    print(f"Encontrados {len(arquivos)} arquivos de dados biograficos")
+    
+    for i, arquivo in enumerate(arquivos):
+        print(f"[{i+1}/{len(arquivos)}] Processando: {os.path.basename(arquivo)}")
+        
+        try:
+            with open(arquivo, 'rb') as f:
+                content = clean_xml_content(f.read())
+            
+            root = ET.fromstring(content.decode('utf-8'))
+            
+            # Processar registros biográficos usando a estrutura XML real  
+            for record in root.findall('.//DadosRegistoBiografico'):
+                try:
+                    # Extrair campos do registro biográfico
+                    cad_id_elem = record.find('CadId')
+                    nome_completo_elem = record.find('CadNomeCompleto')
+                    data_nascimento_elem = record.find('CadDtNascimento')
+                    sexo_elem = record.find('CadSexo')
+                    profissao_elem = record.find('CadProfissao')
+                    
+                    id_cadastro = safe_int(cad_id_elem.text) if cad_id_elem is not None else None
+                    nome_completo = nome_completo_elem.text if nome_completo_elem is not None else None
+                    data_nascimento = data_nascimento_elem.text if data_nascimento_elem is not None else None
+                    sexo = sexo_elem.text if sexo_elem is not None else None
+                    profissao = profissao_elem.text if profissao_elem is not None else None
+                    
+                    # Processar habilitações acadêmicas
+                    habilitacoes_list = []
+                    habilitacoes_elem = record.find('CadHabilitacoes')
+                    if habilitacoes_elem is not None:
+                        for hab in habilitacoes_elem.findall('DadosHabilitacoes'):
+                            hab_des = hab.find('HabDes')
+                            if hab_des is not None and hab_des.text:
+                                habilitacoes_list.append(hab_des.text)
+                    
+                    habilitacoes_academicas = '; '.join(habilitacoes_list) if habilitacoes_list else None
+                    
+                    if id_cadastro:
+                        # Verificar se o deputado existe
+                        cursor.execute("SELECT id FROM deputados WHERE id_cadastro = ?", (id_cadastro,))
+                        deputado_result = cursor.fetchone()
+                        
+                        if deputado_result:
+                            # Atualizar informações biográficas
+                            cursor.execute("""
+                            UPDATE deputados 
+                            SET nome_completo = COALESCE(?, nome_completo),
+                                profissao = COALESCE(?, profissao),
+                                habilitacoes_academicas = COALESCE(?, habilitacoes_academicas),
+                                updated_at = ?
+                            WHERE id_cadastro = ?
+                            """, (
+                                nome_completo,
+                                profissao,
+                                habilitacoes_academicas,
+                                datetime.now(),
+                                id_cadastro
+                            ))
+                            
+                            if cursor.rowcount > 0:
+                                total_updated += 1
+                
+                except Exception as e:
+                    print(f"  Erro ao processar registro biografico individual: {str(e)}")
+                    continue
+        
+        except Exception as e:
+            print(f"  Erro ao processar arquivo {arquivo}: {str(e)}")
+            continue
+    
+    conn.commit()
+    conn.close()
+    
+    print(f"CORRECAO DADOS BIOGRAFICOS CONCLUIDA:")
+    print(f"  Deputados atualizados: {total_updated}")
 
 def main():
     """Função principal"""
@@ -1465,6 +1572,10 @@ def main():
     
     # Calcular assiduidade dos deputados
     calcular_assiduidade_deputados()
+    print()
+    
+    # Importar dados biográficos
+    corrigir_importacao_dados_biograficos()
     print()
     
     # Verificar dados
