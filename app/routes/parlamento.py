@@ -217,13 +217,22 @@ def get_deputado_detalhes(deputado_id):
         
         # Contar intervenções na legislatura específica (join with intervencoes_deputados)
         if leg_id:
+            # Convert numeric legislatura to Roman numeral for interventions query
+            roman_map = {
+                '17': 'XVII', '16': 'XVI', '15': 'XV', '14': 'XIV', '13': 'XIII',
+                '12': 'XII', '11': 'XI', '10': 'X', '9': 'IX', '8': 'VIII',
+                '7': 'VII', '6': 'VI', '5': 'V', '4': 'IV', '3': 'III',
+                '2': 'II', '1': 'I', '0': 'CONSTITUINTE'
+            }
+            legislatura_roman = roman_map.get(legislatura, legislatura)
+            
             cursor.execute('''
                 SELECT COUNT(*) 
                 FROM intervencoes i
                 JOIN intervencoes_deputados id ON i.id = id.intervencao_id
                 JOIN deputados d ON id.id_cadastro = d.id_cadastro
                 WHERE d.id = ? AND i.legislatura_numero = ?
-            ''', (deputado_id, legislatura))
+            ''', (deputado_id, legislatura_roman))
             total_intervencoes = cursor.fetchone()[0]
         else:
             total_intervencoes = 0
@@ -271,13 +280,104 @@ def get_deputado_detalhes(deputado_id):
         
         conn.close()
         
+        # TODO: Implement proper cross-legislatura deputy linking system
+        # Current limitation: Using name-based linking because deputado_id changes every legislatura
+        # Future enhancement: Use birth date, naturalidade, or create person-linking table
+        # This is a temporary solution until we have better unique identifiers
+        
+        # Calculate meaningful mandate statistics across all legislaturas (name-based linking)
+        mandatos_query = """
+        SELECT 
+            COUNT(DISTINCT l.numero) as legislaturas_servidas,
+            GROUP_CONCAT(DISTINCT l.numero ORDER BY l.numero) as legislaturas_list,
+            GROUP_CONCAT(m.data_inicio || '|' || COALESCE(m.data_fim, DATE('now'))) as mandate_periods
+        FROM deputados d 
+        JOIN mandatos m ON d.id = m.deputado_id 
+        JOIN legislaturas l ON m.legislatura_id = l.id
+        WHERE d.nome_completo = (SELECT nome_completo FROM deputados WHERE id = ?)
+        """
+        cursor = sqlite3.connect(os.path.join(os.path.dirname(__file__), '..', '..', 'parlamento.db')).cursor()
+        cursor.execute(mandatos_query, (deputado_id,))
+        mandato_stats = cursor.fetchone()
+        cursor.close()
+        
+        if mandato_stats and mandato_stats[0]:
+            legislaturas_servidas = mandato_stats[0]
+            legislaturas_list = mandato_stats[1]
+            mandate_periods = mandato_stats[2]
+            
+            # Calculate years of service by summing individual mandate periods
+            anos_servico = 0.0
+            if mandate_periods:
+                from datetime import datetime
+                periods = mandate_periods.split(',')
+                for period in periods:
+                    if '|' in period:
+                        start_str, end_str = period.split('|')
+                        try:
+                            start_date = datetime.strptime(start_str, '%Y-%m-%d')
+                            end_date = datetime.strptime(end_str, '%Y-%m-%d')
+                            period_years = (end_date - start_date).days / 365.25
+                            anos_servico += period_years
+                        except ValueError:
+                            continue
+                anos_servico = round(anos_servico, 1)
+        else:
+            legislaturas_servidas = 0
+            anos_servico = 0.0
+            legislaturas_list = None
+
+        # Get detailed information about all mandates for this person
+        mandatos_detalhados_query = """
+        SELECT DISTINCT
+            d.id as deputado_id,
+            l.numero as legislatura_numero,
+            l.designacao as legislatura_nome,
+            l.data_inicio,
+            l.data_fim,
+            m.data_inicio as mandato_inicio,
+            m.data_fim as mandato_fim,
+            COALESCE(p.sigla, 'N/A') as partido_sigla,
+            COALESCE(p.nome, 'Partido não disponível') as partido_nome,
+            COALESCE(ce.designacao, 'Círculo não disponível') as circulo
+        FROM deputados d 
+        JOIN mandatos m ON d.id = m.deputado_id 
+        JOIN legislaturas l ON m.legislatura_id = l.id
+        LEFT JOIN partidos p ON m.partido_id = p.id
+        LEFT JOIN circulos_eleitorais ce ON m.circulo_id = ce.id
+        WHERE d.nome_completo = (SELECT nome_completo FROM deputados WHERE id = ?)
+        ORDER BY l.numero DESC
+        """
+        cursor = sqlite3.connect(os.path.join(os.path.dirname(__file__), '..', '..', 'parlamento.db')).cursor()
+        cursor.execute(mandatos_detalhados_query, (deputado_id,))
+        mandatos_detalhados = []
+        for row in cursor.fetchall():
+            mandatos_detalhados.append({
+                'deputado_id': row[0],
+                'legislatura_numero': row[1],
+                'legislatura_nome': row[2],
+                'legislatura_inicio': row[3],
+                'legislatura_fim': row[4],
+                'mandato_inicio': row[5],
+                'mandato_fim': row[6],
+                'partido_sigla': row[7],
+                'partido_nome': row[8],
+                'circulo': row[9],
+                'is_current': row[1] == int(legislatura)
+            })
+        cursor.close()
+
         deputado_dict['estatisticas'] = {
             'total_intervencoes': total_intervencoes,
             'total_iniciativas': total_iniciativas,
             'total_votacoes': total_votacoes_participadas,
             'taxa_assiduidade': taxa_assiduidade,
-            'total_mandatos': db.session.query(Mandato).filter_by(deputado_id=deputado_id).count()
+            'total_mandatos': legislaturas_servidas,  # Total legislaturas served
+            'anos_servico': anos_servico,  # Years of parliamentary service
+            'legislaturas_servidas': legislaturas_list  # List of legislatura numbers served
         }
+        
+        deputado_dict['mandatos_historico'] = mandatos_detalhados
         
         return jsonify(deputado_dict)
         
@@ -293,7 +393,11 @@ def get_deputado_atividades(deputado_id):
         legislatura = request.args.get('legislatura', '17', type=str)
         
         # Get legislatura_id for filtering
-        leg = db.session.query(Legislatura).filter_by(numero=legislatura).first()
+        try:
+            leg_numero = int(legislatura)
+            leg = db.session.query(Legislatura).filter_by(numero=leg_numero).first()
+        except ValueError:
+            leg = db.session.query(Legislatura).filter_by(numero=legislatura).first()
         if not leg:
             return jsonify({
                 'intervencoes': [],
@@ -318,9 +422,11 @@ def get_deputado_atividades(deputado_id):
             LIMIT 20
         """
         
-        # Fetch recent votes (uses deputado.id)
+        # Fetch recent votes with detailed information (uses deputado.id)
         votos_query = """
-            SELECT v.objeto_votacao, v.data_votacao, v.resultado, vi.voto, vi.justificacao
+            SELECT v.objeto_votacao, v.data_votacao, v.resultado, vi.voto, vi.justificacao,
+                   v.votos_favor, v.votos_contra, v.abstencoes, v.ausencias, 
+                   v.numero_votacao, v.id, v.iniciativa_id, v.tipo_votacao
             FROM votacoes v
             JOIN votos_individuais vi ON v.id = vi.votacao_id
             WHERE vi.deputado_id = ? AND v.legislatura_id = ?
@@ -391,7 +497,7 @@ def get_deputado_atividades(deputado_id):
             }
             intervencoes.append(intervencao)
         
-        # Get initiatives (use deputado.id)
+        # Get initiatives (use deputado.id via autores_iniciativas)
         cursor.execute(iniciativas_query, (deputado_id, leg.id))
         iniciativas = []
         for row in cursor.fetchall():
@@ -419,16 +525,60 @@ def get_deputado_atividades(deputado_id):
                 }
             })
         
-        # Get votes (use deputado.id)
+        # Get votes with detailed information (use deputado.id with correct legislatura_id)
         cursor.execute(votos_query, (deputado_id, leg.id))
         votacoes = []
         for row in cursor.fetchall():
+            # Extract vote data
+            objeto_votacao = row[0]
+            data_votacao = row[1]
+            resultado = row[2]
+            voto_deputado = row[3]
+            justificacao = row[4]
+            votos_favor = row[5]
+            votos_contra = row[6]
+            abstencoes = row[7]
+            ausencias = row[8]
+            numero_votacao = row[9]
+            votacao_id = row[10]
+            iniciativa_id = row[11]
+            tipo_votacao = row[12]
+            
+            # Construct voting URLs
+            voting_urls = {}
+            
+            # Archive voting results URL (Parliament voting archive)
+            if data_votacao and numero_votacao:
+                data_formatted = data_votacao.replace('-', '_')
+                voting_urls['arquivo'] = f"https://www.parlamento.pt/ArquivoDocumentacao/Paginas/Arquivodevotacoes.aspx?data={data_formatted}"
+            
+            # Initiative URL if linked to an initiative
+            if iniciativa_id:
+                cursor.execute("SELECT id_externo_ini, url_oficial FROM iniciativas_legislativas WHERE id = ?", (iniciativa_id,))
+                ini_row = cursor.fetchone()
+                if ini_row and ini_row[0]:
+                    voting_urls['iniciativa'] = ini_row[1] or f"https://www.parlamento.pt/ActividadeParlamentar/Paginas/DetalheIniciativa.aspx?BID={ini_row[0]}"
+            
+            # Parliament voting page (general)
+            voting_urls['votacoes'] = "https://www.parlamento.pt/ActividadeParlamentar/Paginas/votacoes.aspx"
+            
             votacoes.append({
-                'objeto_votacao': row[0],
-                'data_votacao': row[1],
-                'resultado': row[2],
-                'voto_deputado': row[3],
-                'justificacao': row[4]
+                'objeto_votacao': objeto_votacao,
+                'data_votacao': data_votacao,
+                'resultado': resultado,
+                'voto_deputado': voto_deputado,
+                'justificacao': justificacao,
+                'vote_counts': {
+                    'favor': votos_favor,
+                    'contra': votos_contra,
+                    'abstencoes': abstencoes,
+                    'ausencias': ausencias,
+                    'total': (votos_favor or 0) + (votos_contra or 0) + (abstencoes or 0) + (ausencias or 0)
+                },
+                'numero_votacao': numero_votacao,
+                'tipo_votacao': tipo_votacao,
+                'urls': voting_urls,
+                'votacao_id': votacao_id
             })
         
         conn.close()

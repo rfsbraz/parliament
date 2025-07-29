@@ -3,6 +3,11 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail, Shield, AlertTriangle, Heart, Users } from 'lucide-react';
 import { useLegislatura } from '../contexts/LegislaturaContext';
 
+// TODO: Deputy mandate linking limitation
+// Current system uses name-based linking to connect same person across legislaturas
+// This is a temporary solution because deputado_id changes every legislative period
+// Future enhancement: Implement proper unique person identifiers or create person-linking table
+
 const DeputadoDetalhes = () => {
   const { deputadoId, legislatura: urlLegislatura } = useParams();
   const navigate = useNavigate();
@@ -40,7 +45,7 @@ const DeputadoDetalhes = () => {
   // Get active tab from URL hash, default to 'biografia'
   const getActiveTabFromUrl = () => {
     const hash = location.hash.replace('#', '');
-    const validTabs = ['biografia', 'intervencoes', 'iniciativas', 'votacoes', 'conflitos-interesse'];
+    const validTabs = ['biografia', 'intervencoes', 'iniciativas', 'votacoes', 'mandatos-anteriores', 'conflitos-interesse'];
     return validTabs.includes(hash) ? hash : 'biografia';
   };
 
@@ -158,6 +163,7 @@ const DeputadoDetalhes = () => {
     { id: 'intervencoes', label: 'Intervenções', icon: MessageSquare },
     { id: 'iniciativas', label: 'Iniciativas', icon: FileText },
     { id: 'votacoes', label: 'Votações', icon: Vote },
+    { id: 'mandatos-anteriores', label: 'Mandatos Anteriores', icon: Calendar },
     { id: 'conflitos-interesse', label: 'Conflitos de Interesse', icon: Shield }
   ];
 
@@ -314,9 +320,23 @@ const DeputadoDetalhes = () => {
               <Calendar className="h-8 w-8 text-orange-600" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Mandatos</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {deputado.estatisticas.total_mandatos}
-                </p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-bold text-gray-900">
+                    {deputado.estatisticas.total_mandatos}
+                  </p>
+                  {deputado.estatisticas.legislaturas_servidas && (
+                    <span className="text-xs px-2 py-1 bg-orange-50 text-orange-700 rounded-full">
+                      {deputado.estatisticas.legislaturas_servidas.includes(',') 
+                        ? `Legs. ${deputado.estatisticas.legislaturas_servidas}`
+                        : `Leg. ${deputado.estatisticas.legislaturas_servidas}`}
+                    </span>
+                  )}
+                </div>
+                {deputado.estatisticas.anos_servico > 0 && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    {deputado.estatisticas.anos_servico} anos de serviço
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1081,13 +1101,136 @@ const DeputadoDetalhes = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
                   Histórico de Votações
                 </h3>
-                <div className="text-center py-8">
-                  <Vote className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Dados de votações não disponíveis</p>
-                  <p className="text-sm text-gray-400 mt-2">
-                    Esta funcionalidade será implementada em futuras versões
-                  </p>
-                </div>
+                {atividades?.votacoes && atividades.votacoes.length > 0 ? (
+                  <div className="space-y-4">
+                    {atividades.votacoes.map((votacao, index) => (
+                      <div key={index} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <p className="text-gray-900 font-medium leading-relaxed mb-2">
+                              {votacao.objeto_votacao}
+                            </p>
+                            <div className="flex items-center gap-4 text-sm text-gray-600">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4" />
+                                {new Date(votacao.data_votacao).toLocaleDateString('pt-PT')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-gray-700">Voto:</span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                votacao.voto_deputado === 'favor' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : votacao.voto_deputado === 'contra'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {votacao.voto_deputado === 'favor' ? 'A Favor' : 
+                                 votacao.voto_deputado === 'contra' ? 'Contra' : 
+                                 'Abstenção'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-gray-700">Resultado:</span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                votacao.resultado === 'aprovada' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {votacao.resultado === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {votacao.urls && (
+                            <div className="flex items-center gap-2">
+                              {votacao.urls.iniciativa && (
+                                <a 
+                                  href={votacao.urls.iniciativa} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
+                                >
+                                  Ver Iniciativa
+                                </a>
+                              )}
+                              <a 
+                                href={votacao.urls.arquivo || votacao.urls.votacoes} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs px-2 py-1 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                              >
+                                Arquivo de Votações
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {votacao.vote_counts && (
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-gray-700">Totais da Votação:</span>
+                              <span className="text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-200">
+                                ⚠️ Dados de template
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-6 text-sm">
+                              <div className="flex items-center gap-1">
+                                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                <span className="font-medium text-gray-700">A Favor:</span>
+                                <span className="text-gray-600">{votacao.vote_counts.favor || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                <span className="font-medium text-gray-700">Contra:</span>
+                                <span className="text-gray-600">{votacao.vote_counts.contra || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
+                                <span className="font-medium text-gray-700">Abstenções:</span>
+                                <span className="text-gray-600">{votacao.vote_counts.abstencoes || 0}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                                <span className="font-medium text-gray-700">Ausências:</span>
+                                <span className="text-gray-600">{votacao.vote_counts.ausencias || 0}</span>
+                              </div>
+                              {votacao.vote_counts.total > 0 && (
+                                <div className="ml-auto text-xs text-gray-500">
+                                  Total: {votacao.vote_counts.total}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {votacao.justificacao && (
+                          <div className="mt-4 pt-4 border-t border-gray-100">
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Justificação:</span> {votacao.justificacao}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Vote className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500">
+                      Este deputado ainda não participou em votações nesta legislatura
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      As votações aparecerão aqui conforme forem registradas
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1270,6 +1413,106 @@ const DeputadoDetalhes = () => {
                     </p>
                     <p className="text-sm text-gray-400">
                       As informações sobre conflitos de interesse não foram encontradas para este deputado
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'mandatos-anteriores' && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Mandatos Anteriores
+                  </h3>
+                </div>
+
+                {deputado.mandatos_historico && deputado.mandatos_historico.length > 0 ? (
+                  <div className="space-y-4">
+                    {deputado.mandatos_historico.map((mandato, index) => (
+                      <div 
+                        key={index}
+                        className={`bg-white rounded-lg border p-6 hover:shadow-md transition-shadow ${
+                          mandato.is_current ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <h4 className="text-lg font-semibold text-gray-900">
+                                {mandato.legislatura_nome}
+                              </h4>
+                              {mandato.is_current && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  Atual
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 mb-4">
+                              <div className="flex items-center">
+                                <Calendar className="h-4 w-4 mr-2" />
+                                <span>
+                                  {new Date(mandato.mandato_inicio).toLocaleDateString('pt-PT')} - {' '}
+                                  {mandato.mandato_fim 
+                                    ? new Date(mandato.mandato_fim).toLocaleDateString('pt-PT')
+                                    : 'Presente'
+                                  }
+                                </span>
+                              </div>
+                              
+                              <div className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-2" />
+                                <span>{mandato.circulo}</span>
+                              </div>
+                              
+                              <div className="flex items-center">
+                                <Briefcase className="h-4 w-4 mr-2" />
+                                <span>{mandato.partido_sigla}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col gap-2">
+                            {!mandato.is_current && (
+                              <Link
+                                to={`/deputados/${mandato.deputado_id}/${mandato.legislatura_numero}`}
+                                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                              >
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Ver Perfil
+                              </Link>
+                            )}
+                            
+                            <button
+                              onClick={() => {
+                                selectLegislatura({ numero: mandato.legislatura_numero, designacao: mandato.legislatura_nome });
+                                navigate(`/deputados/${mandato.deputado_id}/${mandato.legislatura_numero}`);
+                              }}
+                              className={`inline-flex items-center px-3 py-2 border shadow-sm text-sm font-medium rounded-md transition-colors ${
+                                mandato.is_current
+                                  ? 'border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100'
+                                  : 'border-orange-300 text-orange-700 bg-orange-50 hover:bg-orange-100'
+                              }`}
+                            >
+                              <Calendar className="h-4 w-4 mr-2" />
+                              {mandato.is_current ? 'Legislatura Atual' : 'Ir para Esta Legislatura'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                      <Calendar className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 text-lg font-medium mb-2">
+                      Apenas um mandato registrado
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      Este deputado só tem registro de mandato na legislatura atual
                     </p>
                   </div>
                 )}

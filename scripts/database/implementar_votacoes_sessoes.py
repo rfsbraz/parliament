@@ -273,6 +273,13 @@ class ImplementadorVotacoesSessoes:
             sessao_result = cursor.fetchone()
             sessao_id = sessao_result[0] if sessao_result else None
             
+            # TODO: Fix hardcoded voting totals - implement actual vote counting
+            # Currently using synthetic/template data instead of calculating from votos_individuais table
+            # Need to either:
+            # 1. Import real voting data from Parliament XML sources, or 
+            # 2. Calculate totals dynamically from votos_individuais records
+            # These hardcoded values (always 20 contra, ~150 favor) appear across all votes
+            
             # Simular resultado de votação baseado no tipo e número de autores
             if tipo in ['J', 'C', 'F']:  # Projetos de lei, códigos, etc.
                 # Votações mais competitivas
