@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { ExternalLink } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import DeputadosPage from './components/DeputadosPage'
 import DeputadoDetalhes from './components/DeputadoDetalhes'
@@ -61,6 +62,38 @@ function App() {
               <Route path="/analises" element={<AnalysisPageSimple />} />
             </Routes>
           </main>
+
+          {/* Footer */}
+          <footer className="bg-white border-t border-gray-200 mt-auto">
+            <div className="container mx-auto px-4 py-6">
+              <div className="text-center text-sm text-gray-600">
+                <p className="mb-2">
+                  Dados do Parlamento por
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-blue-600">
+                  <a 
+                    href="https://www.parlamento.pt/Cidadania/paginas/dadosabertos.aspx" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center hover:text-blue-800 transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    Dados Abertos do Parlamento
+                  </a>
+                  <span className="hidden sm:inline text-gray-400">•</span>
+                  <a 
+                    href="https://av.parlamento.pt/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center hover:text-blue-800 transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    Canal Parlamento
+                  </a>
+                </div>
+              </div>
+            </div>
+          </footer>
         </div>
       </Router>
     </LegislaturaProvider>
