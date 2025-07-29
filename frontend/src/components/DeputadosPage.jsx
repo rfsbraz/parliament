@@ -147,7 +147,7 @@ const DeputadosPage = () => {
                   )}
                 </div>
                 <Link
-                  to={`/deputados/${deputado.id}`}
+                  to={`/deputados/${deputado.id}/${selectedLegislatura?.numero || '17'}`}
                   className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors"
                 >
                   Ver Detalhes

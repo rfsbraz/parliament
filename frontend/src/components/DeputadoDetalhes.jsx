@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail, Shield, AlertTriangle, Heart, Users } from 'lucide-react';
+import { useLegislatura } from '../contexts/LegislaturaContext';
 
 const DeputadoDetalhes = () => {
-  const { deputadoId } = useParams();
+  const { deputadoId, legislatura: urlLegislatura } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { selectedLegislatura, selectLegislatura } = useLegislatura();
   
   const [deputado, setDeputado] = useState(null);
   const [atividades, setAtividades] = useState(null);
@@ -14,6 +16,14 @@ const DeputadoDetalhes = () => {
   const [error, setError] = useState(null);
   const [interventionTypeFilter, setInterventionTypeFilter] = useState('');
   const [interventionSort, setInterventionSort] = useState('recent');
+  
+  // Determine which legislatura to use: URL parameter takes precedence over context
+  const currentLegislatura = urlLegislatura || (selectedLegislatura ? selectedLegislatura.numero.toString() : '17');
+  
+  // Helper function to generate deputy URLs with legislatura
+  const getDeputadoUrl = (deputadoId, legislatura = currentLegislatura) => {
+    return `/deputados/${deputadoId}/${legislatura}`;
+  };
 
   // Get active tab from URL hash, default to 'biografia'
   const getActiveTabFromUrl = () => {
@@ -60,7 +70,7 @@ const DeputadoDetalhes = () => {
         setLoading(true);
         
         // Buscar detalhes do deputado
-        const deputadoResponse = await fetch(`/api/deputados/${deputadoId}/detalhes`);
+        const deputadoResponse = await fetch(`/api/deputados/${deputadoId}/detalhes?legislatura=${currentLegislatura}`);
         if (!deputadoResponse.ok) {
           throw new Error('Erro ao carregar dados do deputado');
         }
@@ -68,7 +78,7 @@ const DeputadoDetalhes = () => {
         setDeputado(deputadoData);
 
         // Buscar atividades do deputado
-        const atividadesResponse = await fetch(`/api/deputados/${deputadoId}/atividades`);
+        const atividadesResponse = await fetch(`/api/deputados/${deputadoId}/atividades?legislatura=${currentLegislatura}`);
         if (!atividadesResponse.ok) {
           throw new Error('Erro ao carregar atividades do deputado');
         }
@@ -77,7 +87,7 @@ const DeputadoDetalhes = () => {
 
         // Buscar conflitos de interesse do deputado
         try {
-          const conflitosResponse = await fetch(`/api/deputados/${deputadoId}/conflitos-interesse`);
+          const conflitosResponse = await fetch(`/api/deputados/${deputadoId}/conflitos-interesse?legislatura=${currentLegislatura}`);
           if (conflitosResponse.ok) {
             const conflitosData = await conflitosResponse.json();
             setConflitosInteresse(conflitosData);
@@ -97,7 +107,7 @@ const DeputadoDetalhes = () => {
     if (deputadoId) {
       fetchDados();
     }
-  }, [deputadoId]);
+  }, [deputadoId, currentLegislatura]);
 
   if (loading) {
     return (
@@ -205,12 +215,14 @@ const DeputadoDetalhes = () => {
                 </div>
 
                 {/* Partido */}
-                <Link 
-                  to={`/partidos/${deputado.partido.sigla}`}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
-                >
-                  {deputado.partido.sigla} - {deputado.partido.nome}
-                </Link>
+                {deputado.partido && (
+                  <Link 
+                    to={`/partidos/${deputado.partido.sigla}`}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
+                  >
+                    {deputado.partido.sigla} - {deputado.partido.nome}
+                  </Link>
+                )}
               </div>
 
               {/* Status and Actions */}
@@ -951,7 +963,7 @@ const DeputadoDetalhes = () => {
                                   {conflitosInteresse.spouse_deputy ? (
                                     <div className="space-y-2">
                                       <Link
-                                        to={`/deputados/${conflitosInteresse.spouse_deputy.id}`}
+                                        to={getDeputadoUrl(conflitosInteresse.spouse_deputy.id)}
                                         className="text-blue-600 hover:text-blue-800 font-medium transition-colors block"
                                       >
                                         {conflitosInteresse.spouse_name}

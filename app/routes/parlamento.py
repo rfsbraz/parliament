@@ -1111,6 +1111,40 @@ def get_deputado_biografia(deputado_id):
         import traceback
         return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
 
+@parlamento_bp.route('/deputados/by-name/<string:nome_completo>', methods=['GET'])
+def get_deputado_by_name(nome_completo):
+    """Encontra um deputado por nome em uma legislatura específica"""
+    try:
+        legislatura = request.args.get('legislatura', '17', type=str)
+        
+        # Get legislatura record
+        leg = db.session.query(Legislatura).filter_by(numero=legislatura).first()
+        if not leg:
+            return jsonify({'error': 'Legislatura não encontrada'}), 404
+        
+        # Find deputy by name in the specified legislatura
+        deputado = db.session.query(Deputado).join(
+            Mandato, Deputado.id == Mandato.deputado_id
+        ).join(
+            Legislatura, Mandato.legislatura_id == Legislatura.id
+        ).filter(
+            Deputado.nome_completo.ilike(f'%{nome_completo}%'),
+            Legislatura.numero == legislatura
+        ).first()
+        
+        if not deputado:
+            return jsonify({'error': 'Deputado não encontrado nesta legislatura'}), 404
+        
+        return jsonify({
+            'id': deputado.id,
+            'nome_completo': deputado.nome_completo,
+            'nome': deputado.nome,
+            'legislatura': legislatura
+        })
+        
+    except Exception as e:
+        return log_and_return_error(e, '/api/deputados/by-name/<nome>')
+
 @parlamento_bp.route('/deputados/<int:deputado_id>/conflitos-interesse', methods=['GET'])
 def get_deputado_conflitos_interesse(deputado_id):
     """Retorna dados de conflitos de interesse de um deputado"""
@@ -1142,63 +1176,47 @@ def get_deputado_conflitos_interesse(deputado_id):
         spouse_name = conflicts_result[4]
         spouse_deputy = None
         
-        # Check if spouse is also a deputy
+        # Check if spouse is also a deputy in the current legislatura
         if spouse_name:
-            # Clean up spouse name for better matching
-            spouse_name_clean = spouse_name.strip()
-            
-            # Only try exact matches to avoid false positives
-            # Try exact match with full name (case insensitive)
-            spouse_deputy_query = db.session.query(Deputado).filter(
-                func.lower(Deputado.nome_completo) == func.lower(spouse_name_clean)
-            ).first()
-            
-            # If no exact match, try exact match with short name
-            if not spouse_deputy_query:
-                spouse_deputy_query = db.session.query(Deputado).filter(
-                    func.lower(Deputado.nome) == func.lower(spouse_name_clean)
-                ).first()
-            
-            # Only if we have at least 3 name parts, try very strict matching
-            # This requires first name + at least one middle name + last name to match
-            if not spouse_deputy_query and len(spouse_name_clean.split()) >= 3:
-                name_parts = spouse_name_clean.split()
-                first_name = name_parts[0].lower()
-                second_name = name_parts[1].lower() if len(name_parts) > 1 else ""
-                last_name = name_parts[-1].lower()
+            # Get legislatura record
+            leg = db.session.query(Legislatura).filter_by(numero=legislatura).first()
+            if leg:
+                spouse_name_clean = spouse_name.strip()
                 
-                # Ultra-strict matching: first name, second name, AND last name must all match
-                # This significantly reduces false positives
-                if len(second_name) > 2:  # Only match meaningful second names (not "de", "da", etc.)
-                    spouse_deputy_query = db.session.query(Deputado).filter(
-                        and_(
-                            func.lower(Deputado.nome_completo).like(f'{first_name} %'),     # First name at start
-                            func.lower(Deputado.nome_completo).like(f'% {second_name} %'), # Second name as whole word
-                            func.lower(Deputado.nome_completo).like(f'% {last_name}%')     # Last name as whole word
-                        )
+                # Find spouse deputy by name in the current legislatura
+                spouse_deputy_query = db.session.query(Deputado).join(
+                    Mandato, Deputado.id == Mandato.deputado_id
+                ).join(
+                    Legislatura, Mandato.legislatura_id == Legislatura.id
+                ).filter(
+                    func.lower(Deputado.nome_completo) == func.lower(spouse_name_clean),
+                    Legislatura.numero == legislatura
+                ).first()
+                
+                # If no exact match with full name, try with short name
+                if not spouse_deputy_query:
+                    spouse_deputy_query = db.session.query(Deputado).join(
+                        Mandato, Deputado.id == Mandato.deputado_id
+                    ).join(
+                        Legislatura, Mandato.legislatura_id == Legislatura.id
+                    ).filter(
+                        func.lower(Deputado.nome) == func.lower(spouse_name_clean),
+                        Legislatura.numero == legislatura
+                    ).first()
+                
+                if spouse_deputy_query:
+                    # Get party information for the spouse in the current legislatura
+                    spouse_mandato = db.session.query(Mandato).join(Partido).filter(
+                        Mandato.deputado_id == spouse_deputy_query.id,
+                        Mandato.legislatura_id == leg.id
                     ).first()
                     
-                    # Alternative: first name + second name at start, last name at end
-                    if not spouse_deputy_query:
-                        spouse_deputy_query = db.session.query(Deputado).filter(
-                            and_(
-                                func.lower(Deputado.nome_completo).like(f'{first_name} {second_name} %'),
-                                func.lower(Deputado.nome_completo).like(f'% {last_name}%')
-                            )
-                        ).first()
-            
-            if spouse_deputy_query:
-                # Get party information for the spouse
-                spouse_mandato = db.session.query(Mandato).join(Partido).filter(
-                    Mandato.deputado_id == spouse_deputy_query.id
-                ).first()
-                
-                spouse_deputy = {
-                    'id': spouse_deputy_query.id,
-                    'nome': spouse_deputy_query.nome,
-                    'nome_completo': spouse_deputy_query.nome_completo,
-                    'partido_sigla': spouse_mandato.partido.sigla if spouse_mandato else 'Sem partido'
-                }
+                    spouse_deputy = {
+                        'id': spouse_deputy_query.id,
+                        'nome': spouse_deputy_query.nome,
+                        'nome_completo': spouse_deputy_query.nome_completo,
+                        'partido_sigla': spouse_mandato.partido.sigla if spouse_mandato else 'Sem partido'
+                    }
 
         conflitos = {
             'record_id': conflicts_result[0],

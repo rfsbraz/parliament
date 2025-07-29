@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Users, MapPin, User } from 'lucide-react';
+import { useLegislatura } from '../contexts/LegislaturaContext';
 
 const PartidoDetalhes = () => {
   const { partidoId } = useParams();
+  const { selectedLegislatura } = useLegislatura();
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchDados = async () => {
+      if (!selectedLegislatura) return;
+      
       try {
         setLoading(true);
-        const response = await fetch(`/api/partidos/${partidoId}/deputados`);
+        const response = await fetch(`/api/partidos/${partidoId}/deputados?legislatura=${selectedLegislatura.numero}`);
         if (!response.ok) {
           throw new Error('Erro ao carregar dados do partido');
         }
@@ -25,10 +29,10 @@ const PartidoDetalhes = () => {
       }
     };
 
-    if (partidoId) {
+    if (partidoId && selectedLegislatura) {
       fetchDados();
     }
-  }, [partidoId]);
+  }, [partidoId, selectedLegislatura]);
 
   if (loading) {
     return (
@@ -166,7 +170,7 @@ const PartidoDetalhes = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <Link 
-                          to={`/deputados/${deputado.id}`}
+                          to={`/deputados/${deputado.id}/${selectedLegislatura?.numero || '17'}`}
                           className="text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
                         >
                           {deputado.nome}
@@ -199,7 +203,7 @@ const PartidoDetalhes = () => {
                     </div>
                     
                     <Link 
-                      to={`/deputados/${deputado.id}`}
+                      to={`/deputados/${deputado.id}/${selectedLegislatura?.numero || '17'}`}
                       className="text-blue-600 hover:text-blue-800 font-medium"
                     >
                       Ver Detalhes →
