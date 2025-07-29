@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail } from 'lucide-react';
+import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail, Shield, AlertTriangle, Heart, Users } from 'lucide-react';
 
 const DeputadoDetalhes = () => {
   const { deputadoId } = useParams();
@@ -9,6 +9,7 @@ const DeputadoDetalhes = () => {
   
   const [deputado, setDeputado] = useState(null);
   const [atividades, setAtividades] = useState(null);
+  const [conflitosInteresse, setConflitosInteresse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [interventionTypeFilter, setInterventionTypeFilter] = useState('');
@@ -17,7 +18,7 @@ const DeputadoDetalhes = () => {
   // Get active tab from URL hash, default to 'biografia'
   const getActiveTabFromUrl = () => {
     const hash = location.hash.replace('#', '');
-    const validTabs = ['biografia', 'intervencoes', 'iniciativas', 'votacoes'];
+    const validTabs = ['biografia', 'intervencoes', 'iniciativas', 'votacoes', 'conflitos-interesse'];
     return validTabs.includes(hash) ? hash : 'biografia';
   };
 
@@ -73,6 +74,18 @@ const DeputadoDetalhes = () => {
         }
         const atividadesData = await atividadesResponse.json();
         setAtividades(atividadesData);
+
+        // Buscar conflitos de interesse do deputado
+        try {
+          const conflitosResponse = await fetch(`/api/deputados/${deputadoId}/conflitos-interesse`);
+          if (conflitosResponse.ok) {
+            const conflitosData = await conflitosResponse.json();
+            setConflitosInteresse(conflitosData);
+          }
+        } catch (conflitosErr) {
+          // Conflitos de interesse são opcionais, não interromper o carregamento
+          console.warn('Dados de conflitos de interesse não disponíveis:', conflitosErr);
+        }
         
       } catch (err) {
         setError(err.message);
@@ -122,7 +135,8 @@ const DeputadoDetalhes = () => {
     { id: 'biografia', label: 'Biografia', icon: User },
     { id: 'intervencoes', label: 'Intervenções', icon: MessageSquare },
     { id: 'iniciativas', label: 'Iniciativas', icon: FileText },
-    { id: 'votacoes', label: 'Votações', icon: Vote }
+    { id: 'votacoes', label: 'Votações', icon: Vote },
+    { id: 'conflitos-interesse', label: 'Conflitos de Interesse', icon: Shield }
   ];
 
   return (
@@ -804,6 +818,191 @@ const DeputadoDetalhes = () => {
                     Esta funcionalidade será implementada em futuras versões
                   </p>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'conflitos-interesse' && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Conflitos de Interesse
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Declaração de conflitos de interesse conforme exigido por lei
+                    </p>
+                  </div>
+                </div>
+
+                {conflitosInteresse ? (
+                  <div className="space-y-6">
+                    {/* Status Card */}
+                    <div className={`rounded-lg border-2 p-6 ${
+                      conflitosInteresse.has_conflict_potential 
+                        ? 'bg-amber-50 border-amber-200' 
+                        : 'bg-green-50 border-green-200'
+                    }`}>
+                      <div className="flex items-start">
+                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                          conflitosInteresse.has_conflict_potential 
+                            ? 'bg-amber-100' 
+                            : 'bg-green-100'
+                        }`}>
+                          {conflitosInteresse.has_conflict_potential ? (
+                            <AlertTriangle className="h-5 w-5 text-amber-600" />
+                          ) : (
+                            <Shield className="h-5 w-5 text-green-600" />
+                          )}
+                        </div>
+                        <div className="ml-4 flex-1">
+                          <h4 className={`text-lg font-semibold ${
+                            conflitosInteresse.has_conflict_potential 
+                              ? 'text-amber-900' 
+                              : 'text-green-900'
+                          }`}>
+                            {conflitosInteresse.exclusivity_description}
+                          </h4>
+                          <p className={`text-sm mt-1 ${
+                            conflitosInteresse.has_conflict_potential 
+                              ? 'text-amber-700' 
+                              : 'text-green-700'
+                          }`}>
+                            {conflitosInteresse.has_conflict_potential 
+                              ? 'Deputado exerce atividades não exclusivas que podem gerar conflitos de interesse'
+                              : 'Deputado exerce mandato em regime de exclusividade'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Personal Information */}
+                    <div className="bg-white rounded-lg border shadow-sm">
+                      <div className="px-6 py-4 border-b border-gray-200">
+                        <h4 className="text-lg font-medium text-gray-900 flex items-center">
+                          <User className="h-5 w-5 text-blue-600 mr-2" />
+                          Informações Pessoais
+                        </h4>
+                      </div>
+                      <div className="px-6 py-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                              Nome Completo
+                            </label>
+                            <p className="text-gray-900 font-medium mt-1">
+                              {conflitosInteresse.full_name}
+                            </p>
+                          </div>
+                          
+                          {conflitosInteresse.dgf_number && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                                Número DGF
+                              </label>
+                              <p className="text-gray-900 mt-1">
+                                {conflitosInteresse.dgf_number}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Marital Status and Regime */}
+                    {(conflitosInteresse.marital_status || conflitosInteresse.matrimonial_regime || conflitosInteresse.spouse_name) && (
+                      <div className="bg-white rounded-lg border shadow-sm">
+                        <div className="px-6 py-4 border-b border-gray-200">
+                          <h4 className="text-lg font-medium text-gray-900 flex items-center">
+                            <Heart className="h-5 w-5 text-pink-600 mr-2" />
+                            Estado Civil e Regime Matrimonial
+                          </h4>
+                        </div>
+                        <div className="px-6 py-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {conflitosInteresse.marital_status && (
+                              <div>
+                                <label className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                                  Estado Civil
+                                </label>
+                                <p className="text-gray-900 mt-1">
+                                  {conflitosInteresse.marital_status}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {conflitosInteresse.matrimonial_regime && (
+                              <div>
+                                <label className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                                  Regime Matrimonial
+                                </label>
+                                <p className="text-gray-900 mt-1">
+                                  {conflitosInteresse.matrimonial_regime}
+                                </p>
+                              </div>
+                            )}
+                            
+                            {conflitosInteresse.spouse_name && (
+                              <div className="md:col-span-2 lg:col-span-1">
+                                <label className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                                  Nome do Cônjuge
+                                </label>
+                                <div className="mt-1">
+                                  {conflitosInteresse.spouse_deputy ? (
+                                    <div className="space-y-2">
+                                      <Link
+                                        to={`/deputados/${conflitosInteresse.spouse_deputy.id}`}
+                                        className="text-blue-600 hover:text-blue-800 font-medium transition-colors block"
+                                      >
+                                        {conflitosInteresse.spouse_name}
+                                      </Link>
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        <Users className="h-3 w-3 mr-1" />
+                                        Também Deputado/a ({conflitosInteresse.spouse_deputy.partido_sigla})
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <p className="text-gray-900 font-medium">
+                                      {conflitosInteresse.spouse_name}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Transparency Note */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex">
+                        <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <div className="ml-3">
+                          <h5 className="text-sm font-medium text-blue-900">
+                            Transparência e Integridade
+                          </h5>
+                          <p className="text-sm text-blue-700 mt-1">
+                            Esta informação é disponibilizada em cumprimento das obrigações de transparência 
+                            dos deputados, conforme estabelecido na legislação parlamentar portuguesa.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                      <Shield className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 text-lg font-medium mb-2">
+                      Dados de conflitos de interesse não disponíveis
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      As informações sobre conflitos de interesse não foram encontradas para este deputado
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

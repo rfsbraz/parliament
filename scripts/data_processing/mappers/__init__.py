@@ -10,11 +10,13 @@ from .base_mapper import SchemaMapper, SchemaError
 from .registo_biografico import RegistoBiograficoMapper
 from .iniciativas import InitiativasMapper
 from .intervencoes import IntervencoesMapper
+from .registo_interesses import RegistoInteressesMapper
 
 __all__ = [
     'SchemaMapper',
     'SchemaError', 
     'RegistoBiograficoMapper',
     'InitiativasMapper',
-    'IntervencoesMapper'
+    'IntervencoesMapper',
+    'RegistoInteressesMapper'
 ]

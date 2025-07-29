@@ -1118,17 +1118,20 @@ def get_deputado_conflitos_interesse(deputado_id):
         # Get the deputado to find their full name for matching
         deputado = Deputado.query.get_or_404(deputado_id)
         
-        # Connect to parliament_data.db for conflicts of interest data
-        parliament_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'parliament_data.db')
+        # Connect to parlamento.db for conflicts of interest data
+        parliament_db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'parlamento.db')
         conn = sqlite3.connect(parliament_db_path)
         cursor = conn.cursor()
         
-        # Get conflicts of interest record - match by full name
+        # Get the current legislatura from request
+        legislatura = request.args.get('legislatura', '17', type=str)
+        
+        # Get conflicts of interest record - match by full name and legislatura
         cursor.execute("""
-            SELECT record_id, full_name, marital_status, spouse_name, matrimonial_regime, exclusivity, dgf_number
+            SELECT record_id, legislatura, full_name, marital_status, spouse_name, matrimonial_regime, exclusivity, dgf_number
             FROM conflicts_of_interest 
-            WHERE full_name LIKE ? OR full_name LIKE ?
-        """, (f"%{deputado.nome_completo}%", f"%{deputado.nome}%"))
+            WHERE (full_name LIKE ? OR full_name LIKE ?) AND legislatura = ?
+        """, (f"%{deputado.nome_completo}%", f"%{deputado.nome}%", legislatura))
         
         conflicts_result = cursor.fetchone()
         conn.close()
@@ -1136,7 +1139,7 @@ def get_deputado_conflitos_interesse(deputado_id):
         if not conflicts_result:
             return jsonify({'error': 'Dados de conflitos de interesse não encontrados'}), 404
         
-        spouse_name = conflicts_result[3]
+        spouse_name = conflicts_result[4]
         spouse_deputy = None
         
         # Check if spouse is also a deputy
@@ -1199,15 +1202,16 @@ def get_deputado_conflitos_interesse(deputado_id):
 
         conflitos = {
             'record_id': conflicts_result[0],
-            'full_name': conflicts_result[1],
-            'marital_status': conflicts_result[2],
+            'legislatura': conflicts_result[1],
+            'full_name': conflicts_result[2],
+            'marital_status': conflicts_result[3],
             'spouse_name': spouse_name,
             'spouse_deputy': spouse_deputy,
-            'matrimonial_regime': conflicts_result[4],
-            'exclusivity': conflicts_result[5],
-            'dgf_number': conflicts_result[6],
-            'has_conflict_potential': conflicts_result[5] == 'N',  # Non-exclusive indicates potential conflicts
-            'exclusivity_description': 'Exercício exclusivo' if conflicts_result[5] == 'S' else 'Exercício não exclusivo (possíveis conflitos)'
+            'matrimonial_regime': conflicts_result[5],
+            'exclusivity': conflicts_result[6],
+            'dgf_number': conflicts_result[7],
+            'has_conflict_potential': conflicts_result[6] == 'N',  # Non-exclusive indicates potential conflicts
+            'exclusivity_description': 'Exercício exclusivo' if conflicts_result[6] == 'S' else 'Exercício não exclusivo (possíveis conflitos)'
         }
         
         return jsonify(conflitos)
