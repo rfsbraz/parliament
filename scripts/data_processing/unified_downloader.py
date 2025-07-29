@@ -125,8 +125,11 @@ def download_file(url, filename, folder_path, overwrite, headers, indent_level=1
         file_type = 'XML'
         mode = 'w'
         content_attr = 'text'
-    elif filename.endswith('_json.txt'):
-        safe_filename_str = safe_filename(filename.replace('_json.txt', '.json'))
+    elif filename.endswith('_json.txt') or filename.endswith('.json.txt'):
+        if filename.endswith('_json.txt'):
+            safe_filename_str = safe_filename(filename.replace('_json.txt', '.json'))
+        else:
+            safe_filename_str = safe_filename(filename.replace('.json.txt', '.json'))
         if not safe_filename_str.endswith('.json'):
             safe_filename_str += '.json'
         file_type = 'JSON'
@@ -186,7 +189,7 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
     
     # Check if it's a downloadable file first
     if ('.' in level_name and 
-        (level_name.endswith('.xml') or level_name.endswith('_json.txt') or 
+        (level_name.endswith('.xml') or level_name.endswith('_json.txt') or level_name.endswith('.json.txt') or
          level_name.endswith('.pdf') or level_name.endswith('.xsd'))):
         return download_file(url, level_name, folder_path, overwrite, headers, len(indent))
     
@@ -195,7 +198,7 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
         clean_url = url.split('?')[0].split('#')[0]
         url_filename = clean_url.split('/')[-1] if '/' in clean_url else ''
         
-        if (url_filename.endswith('.xml') or url_filename.endswith('_json.txt') or 
+        if (url_filename.endswith('.xml') or url_filename.endswith('_json.txt') or url_filename.endswith('.json.txt') or
             url_filename.endswith('.pdf') or url_filename.endswith('.xsd')):
             print(f"{indent}URL points to file: {url_filename}")
             return download_file(url, url_filename, folder_path, overwrite, headers, len(indent))
