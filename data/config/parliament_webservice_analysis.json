@@ -1,0 +1,612 @@
+{
+  "Deputados": {
+    "service_name": "Deputados",
+    "base_url": "https://www.parlamento.pt/WebServices/Deputados.asmx",
+    "operations": [
+      {
+        "name": "Troubleshoot issues with Microsoft SharePoint Foundation.",
+        "endpoint": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')",
+        "full_url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')"
+      },
+      {
+        "name": "Go back to site",
+        "endpoint": "/",
+        "full_url": "https://www.parlamento.pt/"
+      }
+    ],
+    "total_operations": 2,
+    "raw_content_length": 17050,
+    "operation_results": {
+      "Troubleshoot issues with Microsoft SharePoint Foundation.": {
+        "base_result": {
+          "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')",
+          "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')\"",
+          "success": false
+        },
+        "parameter_tests": [
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?leg=XVII",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?leg=XVII\"",
+            "success": false,
+            "parameters": {
+              "leg": "XVII"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?legislatura=XVII",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?legislatura=XVII\"",
+            "success": false,
+            "parameters": {
+              "legislatura": "XVII"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?id=1",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?id=1\"",
+            "success": false,
+            "parameters": {
+              "id": "1"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?numero=17",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?numero=17\"",
+            "success": false,
+            "parameters": {
+              "numero": "17"
+            }
+          }
+        ]
+      },
+      "Go back to site": {
+        "base_result": {
+          "url": "https://www.parlamento.pt/",
+          "status_code": 200,
+          "content_type": "text/html; charset=utf-8",
+          "content_length": 370646,
+          "success": true,
+          "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+          "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D..."
+        },
+        "parameter_tests": [
+          {
+            "url": "https://www.parlamento.pt/?leg=XVII",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370677,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "leg": "XVII"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?legislatura=XVII",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370701,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "legislatura": "XVII"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?id=1",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 118827,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "id": "1"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?numero=17",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370680,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "numero": "17"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Iniciativas": {
+    "service_name": "Iniciativas",
+    "base_url": "https://www.parlamento.pt/WebServices/Iniciativas.asmx",
+    "operations": [
+      {
+        "name": "Troubleshoot issues with Microsoft SharePoint Foundation.",
+        "endpoint": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')",
+        "full_url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')"
+      },
+      {
+        "name": "Go back to site",
+        "endpoint": "/",
+        "full_url": "https://www.parlamento.pt/"
+      }
+    ],
+    "total_operations": 2,
+    "raw_content_length": 17054,
+    "operation_results": {
+      "Troubleshoot issues with Microsoft SharePoint Foundation.": {
+        "base_result": {
+          "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')",
+          "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')\"",
+          "success": false
+        },
+        "parameter_tests": [
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?leg=XVII",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?leg=XVII\"",
+            "success": false,
+            "parameters": {
+              "leg": "XVII"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?legislatura=XVII",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?legislatura=XVII\"",
+            "success": false,
+            "parameters": {
+              "legislatura": "XVII"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?id=1",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?id=1\"",
+            "success": false,
+            "parameters": {
+              "id": "1"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?numero=17",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?numero=17\"",
+            "success": false,
+            "parameters": {
+              "numero": "17"
+            }
+          }
+        ]
+      },
+      "Go back to site": {
+        "base_result": {
+          "url": "https://www.parlamento.pt/",
+          "status_code": 200,
+          "content_type": "text/html; charset=utf-8",
+          "content_length": 370646,
+          "success": true,
+          "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+          "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D..."
+        },
+        "parameter_tests": [
+          {
+            "url": "https://www.parlamento.pt/?leg=XVII",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370677,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "leg": "XVII"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?legislatura=XVII",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370701,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "legislatura": "XVII"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?id=1",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 118827,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "id": "1"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?numero=17",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370680,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "numero": "17"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Intervencoes": {
+    "service_name": "Intervencoes",
+    "base_url": "https://www.parlamento.pt/WebServices/Intervencoes.asmx",
+    "operations": [
+      {
+        "name": "Troubleshoot issues with Microsoft SharePoint Foundation.",
+        "endpoint": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')",
+        "full_url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')"
+      },
+      {
+        "name": "Go back to site",
+        "endpoint": "/",
+        "full_url": "https://www.parlamento.pt/"
+      }
+    ],
+    "total_operations": 2,
+    "raw_content_length": 17056,
+    "operation_results": {
+      "Troubleshoot issues with Microsoft SharePoint Foundation.": {
+        "base_result": {
+          "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')",
+          "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')\"",
+          "success": false
+        },
+        "parameter_tests": [
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?leg=XVII",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?leg=XVII\"",
+            "success": false,
+            "parameters": {
+              "leg": "XVII"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?legislatura=XVII",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?legislatura=XVII\"",
+            "success": false,
+            "parameters": {
+              "legislatura": "XVII"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?id=1",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?id=1\"",
+            "success": false,
+            "parameters": {
+              "id": "1"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?numero=17",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?numero=17\"",
+            "success": false,
+            "parameters": {
+              "numero": "17"
+            }
+          }
+        ]
+      },
+      "Go back to site": {
+        "base_result": {
+          "url": "https://www.parlamento.pt/",
+          "status_code": 200,
+          "content_type": "text/html; charset=utf-8",
+          "content_length": 370646,
+          "success": true,
+          "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+          "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D..."
+        },
+        "parameter_tests": [
+          {
+            "url": "https://www.parlamento.pt/?leg=XVII",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370677,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "leg": "XVII"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?legislatura=XVII",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370701,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "legislatura": "XVII"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?id=1",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 118827,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "id": "1"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?numero=17",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370680,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "numero": "17"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Votacoes": {
+    "service_name": "Votacoes",
+    "base_url": "https://www.parlamento.pt/WebServices/Votacoes.asmx",
+    "operations": [
+      {
+        "name": "Troubleshoot issues with Microsoft SharePoint Foundation.",
+        "endpoint": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')",
+        "full_url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')"
+      },
+      {
+        "name": "Go back to site",
+        "endpoint": "/",
+        "full_url": "https://www.parlamento.pt/"
+      }
+    ],
+    "total_operations": 2,
+    "raw_content_length": 17048,
+    "operation_results": {
+      "Troubleshoot issues with Microsoft SharePoint Foundation.": {
+        "base_result": {
+          "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')",
+          "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')\"",
+          "success": false
+        },
+        "parameter_tests": [
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?leg=XVII",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?leg=XVII\"",
+            "success": false,
+            "parameters": {
+              "leg": "XVII"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?legislatura=XVII",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?legislatura=XVII\"",
+            "success": false,
+            "parameters": {
+              "legislatura": "XVII"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?id=1",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?id=1\"",
+            "success": false,
+            "parameters": {
+              "id": "1"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?numero=17",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?numero=17\"",
+            "success": false,
+            "parameters": {
+              "numero": "17"
+            }
+          }
+        ]
+      },
+      "Go back to site": {
+        "base_result": {
+          "url": "https://www.parlamento.pt/",
+          "status_code": 200,
+          "content_type": "text/html; charset=utf-8",
+          "content_length": 370646,
+          "success": true,
+          "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+          "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D..."
+        },
+        "parameter_tests": [
+          {
+            "url": "https://www.parlamento.pt/?leg=XVII",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370677,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "leg": "XVII"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?legislatura=XVII",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370701,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "legislatura": "XVII"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?id=1",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 118827,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "id": "1"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?numero=17",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370680,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "numero": "17"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "Agenda": {
+    "service_name": "Agenda",
+    "base_url": "https://www.parlamento.pt/WebServices/Agenda.asmx",
+    "operations": [
+      {
+        "name": "Troubleshoot issues with Microsoft SharePoint Foundation.",
+        "endpoint": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')",
+        "full_url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')"
+      },
+      {
+        "name": "Go back to site",
+        "endpoint": "/",
+        "full_url": "https://www.parlamento.pt/"
+      }
+    ],
+    "total_operations": 2,
+    "raw_content_length": 17044,
+    "operation_results": {
+      "Troubleshoot issues with Microsoft SharePoint Foundation.": {
+        "base_result": {
+          "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')",
+          "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')\"",
+          "success": false
+        },
+        "parameter_tests": [
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?leg=XVII",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?leg=XVII\"",
+            "success": false,
+            "parameters": {
+              "leg": "XVII"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?legislatura=XVII",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?legislatura=XVII\"",
+            "success": false,
+            "parameters": {
+              "legislatura": "XVII"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?id=1",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?id=1\"",
+            "success": false,
+            "parameters": {
+              "id": "1"
+            }
+          },
+          {
+            "url": "javascript:HelpWindowKey('WSSEndUser_troubleshooting')?numero=17",
+            "error": "No connection adapters were found for \"javascript:HelpWindowKey('WSSEndUser_troubleshooting')?numero=17\"",
+            "success": false,
+            "parameters": {
+              "numero": "17"
+            }
+          }
+        ]
+      },
+      "Go back to site": {
+        "base_result": {
+          "url": "https://www.parlamento.pt/",
+          "status_code": 200,
+          "content_type": "text/html; charset=utf-8",
+          "content_length": 370646,
+          "success": true,
+          "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+          "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D..."
+        },
+        "parameter_tests": [
+          {
+            "url": "https://www.parlamento.pt/?leg=XVII",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370677,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "leg": "XVII"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?legislatura=XVII",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370701,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "legislatura": "XVII"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?id=1",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 118827,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "id": "1"
+            }
+          },
+          {
+            "url": "https://www.parlamento.pt/?numero=17",
+            "status_code": 200,
+            "content_type": "text/html; charset=utf-8",
+            "content_length": 370680,
+            "success": true,
+            "xml_parse_error": "not well-formed (invalid token): line 6, column 14",
+            "preview": "\r\n<!DOCTYPE html>\r\n<html dir=\"ltr\" lang=\"pt-PT\">\r\n    <head>\r\n<!-- Google tag (gtag.js) -->\r\n<script async src=https://www.googletagmanager.com/gtag/js?id=G-1633H87R68></script>\r\n<script>\r\n  window.dataLayer = window.dataLayer || [];\r\n  function gtag(){dataLayer.push(arguments);}\r\n  gtag('js', new D...",
+            "parameters": {
+              "numero": "17"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,2819 @@
+{
+  "timestamp": "2025-07-28T13:07:04.331697",
+  "total_arquivos": 466,
+  "arquivos_processados": [
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\CONSTITUINTE\\InformacaoBaseConstituinte.xml_20250728_120503.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:20.893141"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\CONSTITUINTE\\InformacaoBaseConstituinte.xml_20250728_120603.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:21.102756"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\I\\InformacaoBaseI.xml_20250728_120458.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:21.357292"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\I\\InformacaoBaseI.xml_20250728_120559.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:21.555987"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\I\\InformacaoBaseIA.xml_20250728_120459.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:21.556991"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\I\\InformacaoBaseIA.xml_20250728_120600.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:21.558494"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\I\\InformacaoBaseIB.xml_20250728_120500.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:21.559058"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\I\\InformacaoBaseIB.xml_20250728_120602.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:21.559582"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\II\\InformacaoBaseII.xml_20250728_120455.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:21.798644"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\II\\InformacaoBaseII.xml_20250728_120557.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:22.009425"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\III\\InformacaoBaseIII.xml_20250728_120452.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:22.246546"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\III\\InformacaoBaseIII.xml_20250728_120555.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:22.472216"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\IV\\InformacaoBaseIV.xml_20250728_120449.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:22.720182"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\IV\\InformacaoBaseIV.xml_20250728_120554.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:22.951693"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\IX\\InformacaoBaseIX.xml_20250728_120436.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:23.192177"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\IX\\InformacaoBaseIX.xml_20250728_120545.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:23.392441"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\V\\InformacaoBaseV.xml_20250728_120446.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:23.644161"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\V\\InformacaoBaseV.xml_20250728_120552.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:23.864206"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\VI\\InformacaoBaseVI.xml_20250728_120443.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:24.089586"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\VI\\InformacaoBaseVI.xml_20250728_120550.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:24.282933"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\VII\\InformacaoBaseVII.xml_20250728_120441.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:24.403289"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\VII\\InformacaoBaseVII.xml_20250728_120549.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:24.523275"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\VIII\\InformacaoBaseVIII.xml_20250728_120438.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:24.747086"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\VIII\\InformacaoBaseVIII.xml_20250728_120547.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:24.955000"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\X\\InformacaoBaseX.xml_20250728_120433.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:25.197168"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\X\\InformacaoBaseX.xml_20250728_120544.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:25.398572"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XI\\InformacaoBaseXI.xml_20250728_120430.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:25.637367"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XI\\InformacaoBaseXI.xml_20250728_120542.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:26.123274"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XII\\InformacaoBaseXII.xml_20250728_120428.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:26.331140"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XII\\InformacaoBaseXII.xml_20250728_120540.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:26.520127"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XIII\\InformacaoBaseXIII.xml_20250728_120425.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:26.773408"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XIII\\InformacaoBaseXIII.xml_20250728_120539.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:26.961933"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XIV\\InformacaoBaseXIV.xml_20250728_120423.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:27.183736"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XIV\\InformacaoBaseXIV.xml_20250728_120537.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:27.366825"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XV\\InformacaoBaseXV.xml_20250728_120420.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:27.574104"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XV\\InformacaoBaseXV.xml_20250728_120535.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:27.767925"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XVI\\InformacaoBaseXVI.xml_20250728_120418.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:27.975730"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XVI\\InformacaoBaseXVI.xml_20250728_120534.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:28.169033"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XVII\\InformacaoBaseXVII.xml_20250728_120415.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:28.366859"
+    },
+    {
+      "arquivo": "parliament_data_final/InformacaoBase\\XVII\\InformacaoBaseXVII.xml_20250728_120532.xml",
+      "categoria": "InformacaoBase",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:28.560307"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\II\\IniciativasII.xml_20250728_121002.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:28.605759"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\III\\IniciativasIII.xml_20250728_120958.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:28.690035"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\IV\\IniciativasIV.xml_20250728_120953.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:28.783007"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\IX\\IniciativasIX.xml_20250728_120859.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:29.056612"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\V\\IniciativasV.xml_20250728_120948.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:29.858811"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\VI\\IniciativasVI.xml_20250728_120926.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:30.068804"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\VII\\IniciativasVII.xml_20250728_120918.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:30.510480"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\VII\\IniciativasVII.xml_20250728_120919.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:30.949124"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\VIII\\IniciativasVIII.xml_20250728_120906.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:31.155094"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\X\\IniciativasX.xml_20250728_120849.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:31.602503"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XI\\IniciativasXI.xml_20250728_120835.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:31.880460"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XI\\IniciativasXI.xml_20250728_120836.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:32.145769"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XII\\IniciativasXII.xml_20250728_120825.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:32.854255"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XIII\\IniciativasXIII.xml_20250728_120803.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:33.877777"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XIII\\IniciativasXIII.xml_20250728_120805.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:34.859217"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XIV\\IniciativasXIV.xml_20250728_120656.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:35.545714"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XIV\\IniciativasXIV.xml_20250728_120657.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:36.281045"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XV\\IniciativasXV.xml_20250728_120623.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:36.968154"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XV\\IniciativasXV.xml_20250728_120637.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:37.610606"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XVI\\IniciativasXVI.xml_20250728_120533.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:38.039344"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XVI\\IniciativasXVI.xml_20250728_120622.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:38.469956"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XVII\\IniciativasXVII.xml_20250728_120510.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:38.498306"
+    },
+    {
+      "arquivo": "parliament_data_final/Iniciativas\\XVII\\IniciativasXVII.xml_20250728_120608.xml",
+      "categoria": "Iniciativas",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:38.523313"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\II\\IntervencoesII.xml_20250728_121202.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:38.692414"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\II\\IntervencoesII.xml_20250728_121203.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:38.863271"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\IV\\IntervencoesIV.xml_20250728_121200.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:39.119349"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\IX\\IntervencoesIX.xml_20250728_121120.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:39.722775"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\IX\\IntervencoesIX.xml_20250728_121122.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:40.434044"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\V\\IntervencoesV.xml_20250728_121156.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:41.465319"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\VI\\IntervencoesVI.xml_20250728_121145.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:42.089804"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\VI\\IntervencoesVI.xml_20250728_121149.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:42.781385"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\VII\\IntervencoesVII.xml_20250728_121137.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:43.592687"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\VII\\IntervencoesVII.xml_20250728_121145.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:44.474959"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\VIII\\IntervencoesVIII.xml_20250728_121126.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:45.107670"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\VIII\\IntervencoesVIII.xml_20250728_121139.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:46.010719"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\X\\IntervencoesX.xml_20250728_121113.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:46.964697"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\XI\\IntervencoesXI.xml_20250728_121105.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:47.584768"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\XII\\IntervencoesXII.xml_20250728_121059.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:48.744050"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\XII\\IntervencoesXII.xml_20250728_121100.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:50.399912"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\XIII\\IntervencoesXIII.xml_20250728_121046.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:51.697250"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\XIII\\IntervencoesXIII.xml_20250728_121047.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:53.104951"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\XIV\\IntervencoesXIV.xml_20250728_121036.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:54.177525"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\XV\\IntervencoesXV.xml_20250728_121028.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:55.138797"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\XVI\\IntervencoesXVI.xml_20250728_121020.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:55.814194"
+    },
+    {
+      "arquivo": "parliament_data_final/Intervencoes\\XVII\\IntervencoesXVII.xml_20250728_121014.xml",
+      "categoria": "Intervencoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:56.043065"
+    },
+    {
+      "arquivo": "parliament_data_final/BoletimInformativo\\XV\\AgendaParlamentar.xml_20250728_115556.xml",
+      "categoria": "BoletimInformativo",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:56.187364"
+    },
+    {
+      "arquivo": "parliament_data_final/BoletimInformativo\\XV\\AgendaParlamentar.xml_20250728_115914.xml",
+      "categoria": "BoletimInformativo",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:56.328219"
+    },
+    {
+      "arquivo": "parliament_data_final/BoletimInformativo\\XVI\\AgendaParlamentar.xml_20250728_115554.xml",
+      "categoria": "BoletimInformativo",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:56.463956"
+    },
+    {
+      "arquivo": "parliament_data_final/BoletimInformativo\\XVI\\AgendaParlamentar.xml_20250728_115912.xml",
+      "categoria": "BoletimInformativo",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:56.623321"
+    },
+    {
+      "arquivo": "parliament_data_final/BoletimInformativo\\XVII\\AgendaParlamentar.xml_20250728_115550.xml",
+      "categoria": "BoletimInformativo",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:56.774274"
+    },
+    {
+      "arquivo": "parliament_data_final/BoletimInformativo\\XVII\\AgendaParlamentar.xml_20250728_115911.xml",
+      "categoria": "BoletimInformativo",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:56.914294"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\CONSTITUINTE\\OrgaoComposicaoConstituinte.xml_20250728_120053.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:56.919355"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\CONSTITUINTE\\OrgaoComposicaoConstituinte.xml_20250728_120335.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:56.921859"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\I\\OrgaoComposicaoI.xml_20250728_120025.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.076900"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\I\\OrgaoComposicaoI.xml_20250728_120322.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.216817"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\I\\OrgaoComposicaoIA.xml_20250728_120042.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.404600"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\I\\OrgaoComposicaoIA.xml_20250728_120327.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.595044"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\I\\OrgaoComposicaoIB.xml_20250728_120047.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.636510"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\I\\OrgaoComposicaoIB.xml_20250728_120330.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.675595"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\I\\OrgaoComposicaoII.xml_20250728_120048.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.682218"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\I\\OrgaoComposicaoII.xml_20250728_120331.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.689229"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\I\\OrgaoComposicaoIII.xml_20250728_120050.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.696866"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\I\\OrgaoComposicaoIII.xml_20250728_120333.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.702990"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\II\\OrgaoComposicaoII.xml_20250728_120022.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.710003"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\II\\OrgaoComposicaoII.xml_20250728_120319.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.716100"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\III\\OrgaoComposicaoIII.xml_20250728_120018.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.723107"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\III\\OrgaoComposicaoIII.xml_20250728_120317.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.729168"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\IV\\OrgaoComposicaoIV.xml_20250728_120005.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.734288"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\IV\\OrgaoComposicaoIV.xml_20250728_120314.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.738795"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\IX\\OrgaoComposicaoIX.xml_20250728_115938.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:57.873093"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\IX\\OrgaoComposicaoIX.xml_20250728_120251.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:58.000806"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\V\\OrgaoComposicaoV.xml_20250728_120002.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:58.006820"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\V\\OrgaoComposicaoV.xml_20250728_120311.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:58.012370"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\VI\\OrgaoComposicaoVI.xml_20250728_115959.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:58.196244"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\VI\\OrgaoComposicaoVI.xml_20250728_120308.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:58.391827"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\VII\\OrgaoComposicaoVII.xml_20250728_115951.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:58.582267"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\VII\\OrgaoComposicaoVII.xml_20250728_120302.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:58.767925"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\VIII\\OrgaoComposicaoVIII.xml_20250728_115944.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:58.882968"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\VIII\\OrgaoComposicaoVIII.xml_20250728_120256.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:59.004387"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\X\\OrgaoComposicaoX.xml_20250728_115933.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:59.400494"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\X\\OrgaoComposicaoX.xml_20250728_120245.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:06:59.781465"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XI\\OrgaoComposicaoXI.xml_20250728_115923.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:00.034497"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XI\\OrgaoComposicaoXI.xml_20250728_120237.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:00.293282"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XII\\OrgaoComposicaoXII.xml_20250728_115919.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:00.726410"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XII\\OrgaoComposicaoXII.xml_20250728_120231.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:01.168346"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XIII\\OrgaoComposicaoXIII.xml_20250728_115910.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:01.537516"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XIII\\OrgaoComposicaoXIII.xml_20250728_120223.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:02.089122"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XIV\\OrgaoComposicaoXIV.xml_20250728_115902.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:02.351830"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XIV\\OrgaoComposicaoXIV.xml_20250728_120215.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:02.613316"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XV\\OrgaoComposicaoXV.xml_20250728_115856.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:02.853615"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XV\\OrgaoComposicaoXV.xml_20250728_120210.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:03.246105"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XVI\\OrgaoComposicaoXVI.xml_20250728_115851.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:03.493281"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XVI\\OrgaoComposicaoXVI.xml_20250728_120205.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:03.703469"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XVII\\OrgaoComposicaoXVII.xml_20250728_115847.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:03.860467"
+    },
+    {
+      "arquivo": "parliament_data_final/ComposicaoOrgaos\\XVII\\OrgaoComposicaoXVII.xml_20250728_120200.xml",
+      "categoria": "ComposicaoOrgaos",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.020244"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\IX\\PeticoesIX.xml_20250728_121434.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.030441"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\IX\\PeticoesIX.xml_20250728_121435.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.037602"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\VI\\PeticoesVI.xml_20250728_121443.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.050377"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\VII\\PeticoesVII.xml_20250728_121440.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.057441"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\VII\\PeticoesVII.xml_20250728_121441.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.064555"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\VIII\\PeticoesVIII.xml_20250728_121437.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.069559"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\VIII\\PeticoesVIII.xml_20250728_121438.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.075760"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\X\\PeticoesX.xml_20250728_121432.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.107255"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\XI\\PeticoesXI.xml_20250728_121428.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.123213"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\XI\\PeticoesXI.xml_20250728_121430.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.139055"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\XII\\PeticoesXII.xml_20250728_121426.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.197954"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\XIII\\PeticoesXIII.xml_20250728_121422.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.249204"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\XIV\\PeticoesXIV.xml_20250728_121418.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.277947"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\XV\\PeticoesXV.xml_20250728_121415.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.299341"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\XVI\\PeticoesXVI.xml_20250728_121411.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.308896"
+    },
+    {
+      "arquivo": "parliament_data_final/Peticoes\\XVII\\PeticoesXVII.xml_20250728_121409.xml",
+      "categoria": "Peticoes",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\II\\AtividadesII.xml_20250728_115649.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\II\\AtividadesII.xml_20250728_120010.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\III\\AtividadesIII.xml_20250728_115647.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\III\\AtividadesIII.xml_20250728_120004.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\IV\\AtividadesIV.xml_20250728_115644.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\IV\\AtividadesIV.xml_20250728_120000.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\IX\\AtividadesIX.xml_20250728_115631.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\IX\\AtividadesIX.xml_20250728_115945.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\V\\AtividadesV.xml_20250728_115642.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\V\\AtividadesV.xml_20250728_115957.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\VI\\AtividadesVI.xml_20250728_115639.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\VI\\AtividadesVI.xml_20250728_115953.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\VII\\AtividadesVII.xml_20250728_115636.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\VII\\AtividadesVII.xml_20250728_115951.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\VIII\\AtividadesVIII.xml_20250728_115633.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.310398"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\VIII\\AtividadesVIII.xml_20250728_115948.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\X\\AtividadesX.xml_20250728_115628.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\X\\AtividadesX.xml_20250728_115943.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XI\\AtividadesXI.xml_20250728_115624.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XI\\AtividadesXI.xml_20250728_115940.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XII\\AtividadesXII.xml_20250728_115621.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XII\\AtividadesXII.xml_20250728_115937.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XIII\\AtividadesXIII.xml_20250728_115618.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XIII\\AtividadesXIII.xml_20250728_115934.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XIV\\AtividadesXIV.xml_20250728_115614.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XIV\\AtividadesXIV.xml_20250728_115930.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XV\\AtividadesXV.xml_20250728_115611.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XV\\AtividadesXV.xml_20250728_115926.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XVI\\AtividadesXVI.xml_20250728_115607.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XVI\\AtividadesXVI.xml_20250728_115923.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XVII\\AtividadesXVII.xml_20250728_115604.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividades\\XVII\\AtividadesXVII.xml_20250728_115920.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\CONSTITUINTE\\AtividadeDeputadoConstituinte.xml_20250728_115840.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\CONSTITUINTE\\AtividadeDeputadoConstituinte.xml_20250728_120153.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\I\\AtividadeDeputadoI.xml_20250728_115831.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\I\\AtividadeDeputadoI.xml_20250728_120144.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\I\\AtividadeDeputadoIA.xml_20250728_115805.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.311402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\I\\AtividadeDeputadoIA.xml_20250728_120125.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.312402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\I\\AtividadeDeputadoIB.xml_20250728_115807.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.312402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\I\\AtividadeDeputadoIB.xml_20250728_120127.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.312402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\I\\AtividadeDeputadoII.xml_20250728_115833.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.312402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\I\\AtividadeDeputadoII.xml_20250728_120147.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.312402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\I\\AtividadeDeputadoIII.xml_20250728_115836.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.312402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\I\\AtividadeDeputadoIII.xml_20250728_120149.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.312402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\II\\AtividadeDeputadoII.xml_20250728_115802.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.312402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\II\\AtividadeDeputadoII.xml_20250728_120122.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.312402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\III\\AtividadeDeputadoIII.xml_20250728_115800.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.312402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\III\\AtividadeDeputadoIII.xml_20250728_120119.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.312402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\IV\\AtividadeDeputadoIV.xml_20250728_115757.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.312402"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\IV\\AtividadeDeputadoIV.xml_20250728_120116.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313403"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\IX\\AtividadeDeputadoIX.xml_20250728_115743.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313403"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\IX\\AtividadeDeputadoIX.xml_20250728_120102.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313403"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\V\\AtividadeDeputadoV.xml_20250728_115754.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313403"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\V\\AtividadeDeputadoV.xml_20250728_120113.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313403"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\VI\\AtividadeDeputadoVI.xml_20250728_115751.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313403"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\VI\\AtividadeDeputadoVI.xml_20250728_120110.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313403"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\VII\\AtividadeDeputadoVII.xml_20250728_115749.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313403"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\VII\\AtividadeDeputadoVII.xml_20250728_120107.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313403"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\VIII\\AtividadeDeputadoVIII.xml_20250728_115746.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313403"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\VIII\\AtividadeDeputadoVIII.xml_20250728_120105.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313403"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\X\\AtividadeDeputadoX.xml_20250728_115740.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\X\\AtividadeDeputadoX.xml_20250728_120059.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XI\\AtividadeDeputadoXI.xml_20250728_115737.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XI\\AtividadeDeputadoXI.xml_20250728_120056.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XII\\AtividadeDeputadoXII.xml_20250728_115734.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XII\\AtividadeDeputadoXII.xml_20250728_120053.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XIII\\AtividadeDeputadoXIII.xml_20250728_115728.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XIII\\AtividadeDeputadoXIII.xml_20250728_120048.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XIV\\AtividadeDeputadoXIV.xml_20250728_115719.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XIV\\AtividadeDeputadoXIV.xml_20250728_120040.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XV\\AtividadeDeputadoXV.xml_20250728_115713.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XV\\AtividadeDeputadoXV.xml_20250728_120034.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XVI\\AtividadeDeputadoXVI.xml_20250728_115705.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XVI\\AtividadeDeputadoXVI.xml_20250728_120027.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XVII\\AtividadeDeputadoXVII.xml_20250728_115656.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\atividadeDeputado\\XVII\\AtividadeDeputadoXVII.xml_20250728_120020.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\IX\\CooperacaoIX.xml_20250728_120120.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\IX\\CooperacaoIX.xml_20250728_120351.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\VI\\CooperacaoVI.xml_20250728_120129.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\VI\\CooperacaoVI.xml_20250728_120355.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\VII\\CooperacaoVII.xml_20250728_120126.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\VII\\CooperacaoVII.xml_20250728_120354.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.313905"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\VIII\\CooperacaoVIII.xml_20250728_120123.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\VIII\\CooperacaoVIII.xml_20250728_120352.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\X\\CooperacaoX.xml_20250728_120117.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\X\\CooperacaoX.xml_20250728_120349.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\XI\\CooperacaoXI.xml_20250728_120114.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\XI\\CooperacaoXI.xml_20250728_120347.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\XII\\CooperacaoXII.xml_20250728_120112.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\XII\\CooperacaoXII.xml_20250728_120346.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\XIII\\CooperacaoXIII.xml_20250728_120109.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\XIII\\CooperacaoXIII.xml_20250728_120344.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\XIV\\CooperacaoXIV.xml_20250728_120106.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\XIV\\CooperacaoXIV.xml_20250728_120343.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\XV\\CooperacaoXV.xml_20250728_120103.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\XV\\CooperacaoXV.xml_20250728_120341.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\XVI\\CooperacaoXVI.xml_20250728_120101.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\CooperacaoParlamentar\\XVI\\CooperacaoXVI.xml_20250728_120339.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\IX\\DelegacaoEventualIX.xml_20250728_120158.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.314909"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\IX\\DelegacaoEventualIX.xml_20250728_120412.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\X\\DelegacaoEventualX.xml_20250728_120155.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\X\\DelegacaoEventualX.xml_20250728_120410.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XI\\DelegacaoEventualXI.xml_20250728_120152.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XI\\DelegacaoEventualXI.xml_20250728_120409.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XII\\DelegacaoEventualXII.xml_20250728_120150.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XII\\DelegacaoEventualXII.xml_20250728_120407.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XIII\\DelegacaoEventualXIII.xml_20250728_120147.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XIII\\DelegacaoEventualXIII.xml_20250728_120405.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XIV\\DelegacaoEventualXIV.xml_20250728_120144.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XIV\\DelegacaoEventualXIV.xml_20250728_120404.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XV\\DelegacaoEventualXV.xml_20250728_120141.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XV\\DelegacaoEventualXV.xml_20250728_120402.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XVI\\DelegacaoEventualXVI.xml_20250728_120138.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XVI\\DelegacaoEventualXVI.xml_20250728_120401.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XVII\\DelegacaoEventualXVII.xml_20250728_120136.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesEventuais\\XVII\\DelegacaoEventualXVII.xml_20250728_120359.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\IX\\DelegacaoPermanenteIX.xml_20250728_120231.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\IX\\DelegacaoPermanenteIX.xml_20250728_120428.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\X\\DelegacaoPermanenteX.xml_20250728_120228.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.315910"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\X\\DelegacaoPermanenteX.xml_20250728_120427.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XI\\DelegacaoPermanenteXI.xml_20250728_120224.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XI\\DelegacaoPermanenteXI.xml_20250728_120425.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XII\\DelegacaoPermanenteXII.xml_20250728_120221.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XII\\DelegacaoPermanenteXII.xml_20250728_120423.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XIII\\DelegacaoPermanenteXIII.xml_20250728_120217.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XIII\\DelegacaoPermanenteXIII.xml_20250728_120422.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XIV\\DelegacaoPermanenteXIV.xml_20250728_120214.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XIV\\DelegacaoPermanenteXIV.xml_20250728_120420.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XV\\DelegacaoPermanenteXV.xml_20250728_120211.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XV\\DelegacaoPermanenteXV.xml_20250728_120419.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XVI\\DelegacaoPermanenteXVI.xml_20250728_120208.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XVI\\DelegacaoPermanenteXVI.xml_20250728_120417.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XVII\\DelegacaoPermanenteXVII.xml_20250728_120205.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DelegacoesPermanentes\\XVII\\DelegacaoPermanenteXVII.xml_20250728_120416.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\II\\DiplomasII.xml_20250728_120333.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\II\\DiplomasII.xml_20250728_120505.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\III\\DiplomasIII.xml_20250728_120331.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\III\\DiplomasIII.xml_20250728_120503.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\IV\\DiplomasIV.xml_20250728_120328.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\IV\\DiplomasIV.xml_20250728_120502.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\IX\\DiplomasIX.xml_20250728_120314.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\IX\\DiplomasIX.xml_20250728_120453.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\V\\DiplomasV.xml_20250728_120325.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\V\\DiplomasV.xml_20250728_120500.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\VI\\DiplomasVI.xml_20250728_120322.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\VI\\DiplomasVI.xml_20250728_120458.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\VII\\DiplomasVII.xml_20250728_120319.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\VII\\DiplomasVII.xml_20250728_120456.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\VIII\\DiplomasVIII.xml_20250728_120317.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.316982"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\VIII\\DiplomasVIII.xml_20250728_120455.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\X\\DiplomasX.xml_20250728_120310.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\X\\DiplomasX.xml_20250728_120451.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XI\\DiplomasXI.xml_20250728_120307.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XI\\DiplomasXI.xml_20250728_120449.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XII\\DiplomasXII.xml_20250728_120304.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XII\\DiplomasXII.xml_20250728_120447.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XIII\\DiplomasXIII.xml_20250728_120300.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XIII\\DiplomasXIII.xml_20250728_120444.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XIV\\DiplomasXIV.xml_20250728_120254.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XIV\\DiplomasXIV.xml_20250728_120441.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XV\\DiplomasXV.xml_20250728_120250.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XV\\DiplomasXV.xml_20250728_120439.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XVI\\DiplomasXVI.xml_20250728_120246.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XVI\\DiplomasXVI.xml_20250728_120437.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XVII\\DiplomasXVII.xml_20250728_120242.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.318484"
+    },
+    {
+      "arquivo": "parliament_data_final\\DiplomasAprovados\\XVII\\DiplomasXVII.xml_20250728_120435.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\IX\\GrupoDeAmizadeIX.xml_20250728_120400.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\IX\\GrupoDeAmizadeIX.xml_20250728_120522.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\V\\GrupoDeAmizadeV.xml_20250728_120410.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\V\\GrupoDeAmizadeV.xml_20250728_120528.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\VI\\GrupoDeAmizadeVI.xml_20250728_120407.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\VI\\GrupoDeAmizadeVI.xml_20250728_120527.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\VII\\GrupoDeAmizadeVII.xml_20250728_120404.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\VII\\GrupoDeAmizadeVII.xml_20250728_120525.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\VIII\\GrupoDeAmizadeVIII.xml_20250728_120402.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\VIII\\GrupoDeAmizadeVIII.xml_20250728_120524.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\X\\GrupoDeAmizadeX.xml_20250728_120357.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\X\\GrupoDeAmizadeX.xml_20250728_120521.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XI\\GrupoDeAmizadeXI.xml_20250728_120355.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XI\\GrupoDeAmizadeXI.xml_20250728_120519.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XII\\GrupoDeAmizadeXII.xml_20250728_120352.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XII\\GrupoDeAmizadeXII.xml_20250728_120517.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XIII\\GrupoDeAmizadeXIII.xml_20250728_120350.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XIII\\GrupoDeAmizadeXIII.xml_20250728_120516.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.319488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XIV\\GrupoDeAmizadeXIV.xml_20250728_120347.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XIV\\GrupoDeAmizadeXIV.xml_20250728_120514.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XV\\GrupoDeAmizadeXV.xml_20250728_120344.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XV\\GrupoDeAmizadeXV.xml_20250728_120512.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XVI\\GrupoDeAmizadeXVI.xml_20250728_120342.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XVI\\GrupoDeAmizadeXVI.xml_20250728_120511.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XVII\\GrupoDeAmizadeXVII.xml_20250728_120339.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\GPA\\XVII\\GrupoDeAmizadeXVII.xml_20250728_120509.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\X\\OE2006Or.xml_20250728_121341.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\X\\OE2007Or.xml_20250728_121347.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\X\\OE2008Or.xml_20250728_121351.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\X\\OE2009Al.xml_20250728_121358.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\X\\OE2009Or.xml_20250728_121356.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\X\\OEPropostasAlteracao2004Or.xml_20250728_121339.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\X\\OEPropostasAlteracao2006Ap.xml_20250728_121345.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\X\\OEPropostasAlteracao2006Or.xml_20250728_121343.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\X\\OEPropostasAlteracao2007Or.xml_20250728_121349.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\X\\OEPropostasAlteracao2008Or.xml_20250728_121354.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.320488"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\X\\OEPropostasAlteracao2009Al.xml_20250728_121403.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.321505"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\X\\OEPropostasAlteracao2009Or.xml_20250728_121401.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.321505"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XI\\OE2010Or.xml_20250728_121329.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.321505"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XI\\OE2011Or.xml_20250728_121334.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.321505"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XI\\OEPropostasAlteracao2010Or.xml_20250728_121332.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.321505"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XI\\OEPropostasAlteracao2011Or.xml_20250728_121337.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.321505"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XII\\OE2012Or.xml_20250728_121309.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.321505"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XII\\OE2013Or.xml_20250728_121314.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.321505"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XII\\OE2014Or.xml_20250728_121319.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.321505"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XII\\OE2015Or.xml_20250728_121323.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.321505"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XII\\OEPropostasAlteracao2012Or.xml_20250728_121311.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.321505"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XII\\OEPropostasAlteracao2013Or.xml_20250728_121316.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XII\\OEPropostasAlteracao2014Or.xml_20250728_121321.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XII\\OEPropostasAlteracao2015Or.xml_20250728_121326.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIII\\OE2016Or.xml_20250728_121249.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIII\\OE2017Or.xml_20250728_121253.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIII\\OE2018Or.xml_20250728_121257.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIII\\OE2018Or.xml_20250728_121258.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIII\\OE2019Or.xml_20250728_121302.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIII\\OEPropostasAlteracao2016Or.xml_20250728_121250.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIII\\OEPropostasAlteracao2017Or.xml_20250728_121255.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIII\\OEPropostasAlteracao2018Or.xml_20250728_121300.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIII\\OEPropostasAlteracao2019Or.xml_20250728_121305.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIV\\OE2020Or.xml_20250728_121236.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIV\\OE2021Or.xml_20250728_121241.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIV\\OEPropostasAlteracao2020Or.xml_20250728_121239.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIV\\OEPropostasAlteracao2021Or.xml_20250728_121244.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XIV\\OEPropostasAlteracao2022Or.xml_20250728_121245.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XV\\OE2022Or.xml_20250728_121217.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XV\\OE2023Or.xml_20250728_121223.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XV\\OE2024Or.xml_20250728_121229.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XV\\OEPropostasAlteracao2022Or.xml_20250728_121220.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XV\\OEPropostasAlteracao2023Or.xml_20250728_121226.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XV\\OEPropostasAlteracao2024Or.xml_20250728_121232.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XVI\\OE2025Or.xml_20250728_121210.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\OE\\XVI\\OEPropostasAlteracao2025Or.xml_20250728_121214.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\IX\\RequerimentosIX.xml_20250728_121659.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\VI\\RequerimentosVI.xml_20250728_121720.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\VII\\RequerimentosVII.xml_20250728_121715.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\VIII\\RequerimentosVIII.xml_20250728_121708.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\X\\RequerimentosX.xml_20250728_121651.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\X\\RequerimentosX.xml_20250728_121652.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\XI\\RequerimentosXI.xml_20250728_121631.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\XI\\RequerimentosXI.xml_20250728_121632.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\XII\\RequerimentosXII.xml_20250728_121610.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\XII\\RequerimentosXII.xml_20250728_121611.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\XIV\\RequerimentosXIV.xml_20250728_121509.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.322051"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\XV\\RequerimentosXV.xml_20250728_121458.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.323559"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\XV\\RequerimentosXV.xml_20250728_121459.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.323559"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\XVI\\RequerimentosXVI.xml_20250728_121453.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.323559"
+    },
+    {
+      "arquivo": "parliament_data_final\\PerguntasRequerimentos\\XVII\\RequerimentosXVII.xml_20250728_121449.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\CONSTITUINTE\\RegistoBiograficoConstituinte.xml_20250728_121855.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\CONSTITUINTE\\RegistoBiograficoConstituinte.xml_20250728_121857.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\CONSTITUINTE\\RegistoInteressesConstituinte.xml_20250728_121858.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\I\\RegistoBiograficoI.xml_20250728_121845.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\I\\RegistoBiograficoIA.xml_20250728_121846.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\I\\RegistoBiograficoIB.xml_20250728_121848.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\I\\RegistoBiograficoII.xml_20250728_121850.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\I\\RegistoBiograficoIII.xml_20250728_121852.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\I\\RegistoInteressesI.xml_20250728_121843.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\II\\RegistoBiograficoII.xml_20250728_121839.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\II\\RegistoBiograficoII.xml_20250728_121840.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\II\\RegistoInteressesII.xml_20250728_121838.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\III\\RegistoBiograficoIII.xml_20250728_121835.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\III\\RegistoInteressesIII.xml_20250728_121833.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\IV\\RegistoBiograficoIV.xml_20250728_121829.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\IV\\RegistoInteressesIV.xml_20250728_121827.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\IX\\RegistoBiograficoIX.xml_20250728_121806.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\IX\\RegistoInteressesIX.xml_20250728_121804.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\V\\RegistoBiograficoV.xml_20250728_121823.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\V\\RegistoInteressesV.xml_20250728_121825.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\VI\\RegistoBiograficoVI.xml_20250728_121818.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\VI\\RegistoInteressesVI.xml_20250728_121819.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\VII\\RegistoBiograficoVII.xml_20250728_121815.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\VII\\RegistoInteressesVII.xml_20250728_121813.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.324095"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\VIII\\RegistoBiograficoVIII.xml_20250728_121810.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\VIII\\RegistoInteressesVIII.xml_20250728_121809.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\X\\RegistoBiograficoX.xml_20250728_121801.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\X\\RegistoInteressesX.xml_20250728_121759.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\X\\RegistoInteressesX.xml_20250728_121800.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XI\\RegistoBiograficoXI.xml_20250728_121755.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XI\\RegistoInteressesXI.xml_20250728_121757.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XII\\RegistoBiograficoXII.xml_20250728_121752.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XII\\RegistoInteressesXII.xml_20250728_121750.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XIII\\RegistoBiograficoXIII.xml_20250728_121746.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XIII\\RegistoInteressesXIII.xml_20250728_121748.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XIV\\RegistoBiograficoXIV.xml_20250728_121743.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XIV\\RegistoInteressesXIV.xml_20250728_121741.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XV\\RegistoBiograficoXV.xml_20250728_121738.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XV\\RegistoInteressesXV.xml_20250728_121736.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XVI\\RegistoBiograficoXVI.xml_20250728_121733.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XVI\\RegistoInteressesXVI.xml_20250728_121731.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XVII\\RegistoBiograficoXVII.xml_20250728_121729.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\RegistoBiografico\\XVII\\RegistoInteressesXVII.xml_20250728_121727.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.325099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\IX\\ReuniaoNacionalIX.xml_20250728_121939.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\IX\\ReunioesVisitasIX.xml_20250728_121937.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\X\\ReuniaoNacionalX.xml_20250728_121935.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\X\\ReunioesVisitasX.xml_20250728_121933.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XI\\ReuniaoNacionalXI.xml_20250728_121930.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XI\\ReunioesVisitasXI.xml_20250728_121929.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XII\\ReuniaoNacionalXII.xml_20250728_121926.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XII\\ReunioesVisitasXII.xml_20250728_121924.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XIII\\ReuniaoNacionalXIII.xml_20250728_121921.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XIII\\ReuniaoNacionalXIII.xml_20250728_121922.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XIII\\ReunioesVisitasXIII.xml_20250728_121919.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XIII\\ReunioesVisitasXIII.xml_20250728_121920.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XIV\\ReuniaoNacionalXIV.xml_20250728_121916.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XIV\\ReunioesVisitasXIV.xml_20250728_121915.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.326099"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XV\\ReuniaoNacionalXV.xml_20250728_121912.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.327141"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XV\\ReunioesVisitasXV.xml_20250728_121911.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.327141"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XVI\\ReuniaoNacionalXVI.xml_20250728_121908.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.327141"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XVI\\ReunioesVisitasXVI.xml_20250728_121907.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.327141"
+    },
+    {
+      "arquivo": "parliament_data_final\\ReunioesVisitas\\XVII\\ReunioesVisitasXVII.xml_20250728_121904.xml",
+      "categoria": "outros",
+      "sucesso": true,
+      "timestamp": "2025-07-28T13:07:04.327141"
+    }
+  ],
+  "estatisticas": {
+    "partidos": 252,
+    "circulos_eleitorais": 768,
+    "deputados": 12060,
+    "mandatos": 12046,
+    "informacao_base_files": 40,
+    "iniciativas_files": 23,
+    "intervencoes": 204109,
+    "intervencoes_files": 22,
+    "agenda": 56,
+    "agenda_files": 6,
+    "composicao_files": 44,
+    "membros_comissoes": 536,
+    "peticoes_files": 16,
+    "arquivos_genericos": 315
+  },
+  "erros": []
+}
