@@ -334,14 +334,19 @@ def get_deputado_atividades(deputado_id):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # Get interventions (join with intervencoes_deputados and get video data)
+        # Get interventions with comprehensive data
         intervencoes_query = """
-            SELECT i.tipo_intervencao, i.data_reuniao_plenaria, i.sumario, i.resumo, i.fase_sessao, 
-                   av.url_video, av.thumbnail_url, av.assunto, av.duracao
+            SELECT 
+                i.tipo_intervencao, i.data_reuniao_plenaria, i.sumario, i.resumo, 
+                i.fase_sessao, i.sessao_numero, i.qualidade, i.atividade_id, i.id_debate,
+                av.url_video, av.thumbnail_url, av.assunto, av.duracao,
+                p.pub_numero, p.pub_tipo, p.pub_data, p.paginas, p.url_diario,
+                p.pub_legislatura, p.pub_serie_legislatura
             FROM intervencoes i
             JOIN intervencoes_deputados id ON i.id = id.intervencao_id
             JOIN deputados d ON id.id_cadastro = d.id_cadastro
             LEFT JOIN intervencoes_audiovisual av ON i.id = av.intervencao_id
+            LEFT JOIN intervencoes_publicacoes p ON i.id = p.intervencao_id
             WHERE d.id = ? AND i.legislatura_numero = ?
             ORDER BY i.data_reuniao_plenaria DESC
             LIMIT 20
@@ -359,17 +364,31 @@ def get_deputado_atividades(deputado_id):
         cursor.execute(intervencoes_query, (deputado_id, legislatura_roman))
         intervencoes = []
         for row in cursor.fetchall():
-            intervencoes.append({
+            intervencao = {
                 'tipo': row[0],
                 'data': row[1],
                 'sumario': row[2],
                 'resumo': row[3],
                 'fase_sessao': row[4],
-                'url_video': row[5],
-                'thumbnail_url': row[6],
-                'assunto': row[7],
-                'duracao_video': row[8]
-            })
+                'sessao_numero': row[5],
+                'qualidade': row[6],
+                'atividade_id': row[7],
+                'id_debate': row[8],
+                'url_video': row[9],
+                'thumbnail_url': row[10],
+                'assunto': row[11],
+                'duracao_video': row[12],
+                'publicacao': {
+                    'pub_numero': row[13],
+                    'pub_tipo': row[14],
+                    'pub_data': row[15],
+                    'paginas': row[16],
+                    'url_diario': row[17],
+                    'pub_legislatura': row[18],
+                    'pub_serie_legislatura': row[19]
+                } if row[13] or row[17] else None
+            }
+            intervencoes.append(intervencao)
         
         # Get initiatives (use deputado.id)
         cursor.execute(iniciativas_query, (deputado_id, leg.id))

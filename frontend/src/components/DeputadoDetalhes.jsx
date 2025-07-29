@@ -9,6 +9,8 @@ const DeputadoDetalhes = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('resumo');
+  const [interventionTypeFilter, setInterventionTypeFilter] = useState('');
+  const [interventionSort, setInterventionSort] = useState('recent');
 
   useEffect(() => {
     const fetchDados = async () => {
@@ -448,114 +450,249 @@ const DeputadoDetalhes = () => {
 
             {activeTab === 'intervencoes' && (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Intervenções Parlamentares
-                </h3>
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Intervenções Parlamentares
+                    </h3>
+                    {atividades && atividades.intervencoes.length > 0 && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        {(() => {
+                          let filtered = atividades.intervencoes;
+                          if (interventionTypeFilter) {
+                            filtered = filtered.filter(i => i.tipo?.includes(interventionTypeFilter));
+                          }
+                          const total = atividades.intervencoes.length;
+                          return filtered.length === total 
+                            ? `${total} intervenções`
+                            : `${filtered.length} de ${total} intervenções`;
+                        })()}
+                      </p>
+                    )}
+                  </div>
+                  {atividades && atividades.intervencoes.length > 0 && (
+                    <div className="flex gap-3">
+                      <select 
+                        value={interventionTypeFilter}
+                        onChange={(e) => setInterventionTypeFilter(e.target.value)}
+                        className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Todos os tipos</option>
+                        <option value="Interpelação">Interpelação à mesa</option>
+                        <option value="Pedido">Pedido de esclarecimento</option>
+                        <option value="Declaração">Declaração política</option>
+                        <option value="Pergunta">Pergunta</option>
+                      </select>
+                      <select 
+                        value={interventionSort}
+                        onChange={(e) => setInterventionSort(e.target.value)}
+                        className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="recent">Mais recentes</option>
+                        <option value="oldest">Mais antigas</option>
+                        <option value="session">Por sessão</option>
+                        <option value="type">Por tipo</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
                 {atividades && atividades.intervencoes.length > 0 ? (
                   <div className="space-y-6">
-                    {(atividades.intervencoes || []).map((intervencao, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                        <div className="flex gap-4">
-                          {/* Video Thumbnail */}
-                          {intervencao.url_video && intervencao.thumbnail_url ? (
-                            <div className="relative flex-shrink-0">
-                              <div className="w-32 h-20 rounded-lg overflow-hidden bg-gray-100 relative group cursor-pointer"
-                                   onClick={() => window.open(intervencao.url_video, '_blank')}>
-                                <img 
-                                  src={intervencao.thumbnail_url}
-                                  alt="Video thumbnail"
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTI4IDgwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjgwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik01NCA0MEw3NCA1MEw1NCA2MFY0MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
-                                  }}
-                                />
-                                {/* Play Button Overlay */}
-                                <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <div className="bg-white bg-opacity-90 rounded-full p-2">
-                                    <Play className="h-6 w-6 text-gray-900 ml-1" />
+                    {(() => {
+                      // Filter interventions
+                      let filteredInterventions = atividades.intervencoes || [];
+                      
+                      if (interventionTypeFilter) {
+                        filteredInterventions = filteredInterventions.filter(intervencao => 
+                          intervencao.tipo?.includes(interventionTypeFilter)
+                        );
+                      }
+                      
+                      // Sort interventions
+                      filteredInterventions = [...filteredInterventions].sort((a, b) => {
+                        switch (interventionSort) {
+                          case 'oldest':
+                            return new Date(a.data) - new Date(b.data);
+                          case 'session':
+                            return (a.sessao_numero || 0) - (b.sessao_numero || 0);
+                          case 'type':
+                            return (a.tipo || '').localeCompare(b.tipo || '');
+                          case 'recent':
+                          default:
+                            return new Date(b.data) - new Date(a.data);
+                        }
+                      });
+                      
+                      // Helper functions
+                      const getTipoColor = (tipo) => {
+                        if (tipo?.includes('Interpelação')) return 'bg-blue-100 text-blue-800 border-blue-200';
+                        if (tipo?.includes('Declaração')) return 'bg-green-100 text-green-800 border-green-200';
+                        if (tipo?.includes('Pedido')) return 'bg-orange-100 text-orange-800 border-orange-200';
+                        if (tipo?.includes('Pergunta')) return 'bg-purple-100 text-purple-800 border-purple-200';
+                        return 'bg-gray-100 text-gray-800 border-gray-200';
+                      };
+
+                      const getQualidadeColor = (qualidade) => {
+                        if (qualidade === 'Deputado') return 'bg-blue-50 text-blue-700 border-blue-200';
+                        if (qualidade === 'P.A.R.') return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                        return 'bg-gray-50 text-gray-700 border-gray-200';
+                      };
+                      
+                      return filteredInterventions.map((intervencao, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
+                          {/* Context badges */}
+                          <div className="flex gap-2 mb-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getTipoColor(intervencao.tipo)}`}>
+                              {intervencao.tipo}
+                            </span>
+                            {intervencao.qualidade && (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getQualidadeColor(intervencao.qualidade)}`}>
+                                {intervencao.qualidade}
+                              </span>
+                            )}
+                            {intervencao.sessao_numero && (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full border border-gray-200">
+                                Sessão {intervencao.sessao_numero}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex gap-4">
+                            {/* Video Thumbnail */}
+                            {intervencao.url_video && intervencao.thumbnail_url ? (
+                              <div className="relative flex-shrink-0">
+                                <div className="w-36 h-22 rounded-lg overflow-hidden bg-gray-100 relative group cursor-pointer shadow-sm"
+                                     onClick={() => window.open(intervencao.url_video, '_blank')}>
+                                  <img 
+                                    src={intervencao.thumbnail_url}
+                                    alt="Video thumbnail"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTQ0IiBoZWlnaHQ9IjkwIiB2aWV3Qm94PSIwIDAgMTQ0IDkwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTQ0IiBoZWlnaHQ9IjkwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik02MCA0NUw4NCA1N0w2MCA2OVY0NVoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
+                                    }}
+                                  />
+                                  {/* Play Button Overlay */}
+                                  <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="bg-white bg-opacity-95 rounded-full p-2 shadow-lg">
+                                      <Play className="h-6 w-6 text-gray-900 ml-1" />
+                                    </div>
                                   </div>
+                                  {/* Duration Badge */}
+                                  {intervencao.duracao_video && (
+                                    <div className="absolute bottom-1 right-1 bg-black bg-opacity-80 text-white text-xs px-2 py-1 rounded shadow">
+                                      <Clock className="h-3 w-3 inline mr-1" />
+                                      {intervencao.duracao_video}
+                                    </div>
+                                  )}
                                 </div>
-                                {/* Duration Badge */}
-                                {intervencao.duracao_video && (
-                                  <div className="absolute bottom-1 right-1 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
-                                    {intervencao.duracao_video}
-                                  </div>
-                                )}
                               </div>
-                            </div>
-                          ) : intervencao.url_video ? (
-                            // Video without thumbnail
-                            <div className="relative flex-shrink-0">
-                              <div className="w-32 h-20 rounded-lg overflow-hidden bg-gradient-to-br from-blue-100 to-blue-200 relative group cursor-pointer flex items-center justify-center"
-                                   onClick={() => window.open(intervencao.url_video, '_blank')}>
-                                <Play className="h-8 w-8 text-blue-600" />
-                                <div className="absolute inset-0 bg-blue-600 bg-opacity-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            ) : intervencao.url_video ? (
+                              // Video without thumbnail
+                              <div className="relative flex-shrink-0">
+                                <div className="w-36 h-22 rounded-lg overflow-hidden bg-gradient-to-br from-blue-100 to-blue-200 relative group cursor-pointer flex items-center justify-center shadow-sm border border-blue-200"
+                                     onClick={() => window.open(intervencao.url_video, '_blank')}>
+                                  <Play className="h-8 w-8 text-blue-600" />
+                                  <div className="absolute inset-0 bg-blue-600 bg-opacity-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                </div>
                               </div>
-                            </div>
-                          ) : null}
-                          
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-gray-900 text-lg mb-1">{intervencao.tipo}</h4>
+                            ) : null}
+                            
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              {/* Header with date and action buttons */}
+                              <div className="flex items-start justify-between mb-3">
                                 <div className="flex items-center gap-3 text-sm text-gray-500">
                                   <div className="flex items-center">
                                     <Calendar className="h-4 w-4 mr-1" />
-                                    {intervencao.data}
+                                    {new Date(intervencao.data).toLocaleDateString('pt-PT')}
                                   </div>
                                 </div>
+                                
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                                  {intervencao.url_video && (
+                                    <button
+                                      onClick={() => window.open(intervencao.url_video, '_blank')}
+                                      className="inline-flex items-center px-3 py-1.5 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors shadow-sm whitespace-nowrap"
+                                    >
+                                      <Play className="h-4 w-4 mr-1" />
+                                      Ver Vídeo
+                                    </button>
+                                  )}
+                                  {intervencao.publicacao?.url_diario && (
+                                    <button
+                                      onClick={() => window.open(intervencao.publicacao.url_diario, '_blank')}
+                                      className="inline-flex items-center px-3 py-1.5 border border-amber-300 text-sm font-medium rounded-md text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors shadow-sm whitespace-nowrap"
+                                    >
+                                      <ExternalLink className="h-4 w-4 mr-1" />
+                                      {intervencao.publicacao.pub_numero ? `DR ${intervencao.publicacao.pub_numero}` : 'Diário'}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
+
+                              {/* Subject/Title - separate line for long titles */}
+                              {intervencao.assunto && (
+                                <div className="mb-3">
+                                  <h4 className="text-gray-800 font-medium text-sm leading-5 line-clamp-2">
+                                    {intervencao.assunto}
+                                  </h4>
+                                </div>
+                              )}
                               
-                              {/* Action Buttons */}
-                              <div className="flex items-center gap-2 ml-4">
-                                {intervencao.url_video && (
-                                  <button
-                                    onClick={() => window.open(intervencao.url_video, '_blank')}
-                                    className="inline-flex items-center px-3 py-1.5 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
-                                  >
-                                    <Play className="h-4 w-4 mr-1" />
-                                    Ver Vídeo
-                                  </button>
-                                )}
-                                {intervencao.url_diario && (
-                                  <button
-                                    onClick={() => window.open(intervencao.url_diario, '_blank')}
-                                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                                  >
-                                    <ExternalLink className="h-4 w-4 mr-1" />
-                                    Diário
-                                  </button>
-                                )}
-                              </div>
+                              {/* Summary */}
+                              {intervencao.resumo && (
+                                <p className="text-gray-700 text-sm leading-relaxed mb-3 line-clamp-3">
+                                  {intervencao.resumo}
+                                </p>
+                              )}
+                              
+                              {/* Additional Info */}
+                              {(intervencao.sumario || intervencao.fase_sessao) && (
+                                <div className="mt-3 pt-3 border-t border-gray-100">
+                                  {intervencao.sumario && (
+                                    <p className="text-sm text-gray-600 mb-2">
+                                      <span className="font-medium text-gray-700">Sumário:</span> {intervencao.sumario}
+                                    </p>
+                                  )}
+                                  <div className="flex gap-2 flex-wrap">
+                                    {intervencao.fase_sessao && (
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                        {intervencao.fase_sessao}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Publication metadata */}
+                              {intervencao.publicacao && (
+                                <div className="mt-3 pt-3 border-t border-gray-100">
+                                  <div className="flex gap-4 text-xs text-gray-500">
+                                    {intervencao.publicacao.pub_tipo && (
+                                      <span className="flex items-center">
+                                        📰 {intervencao.publicacao.pub_tipo}
+                                      </span>
+                                    )}
+                                    {intervencao.publicacao.pub_data && (
+                                      <span className="flex items-center">
+                                        📅 Pub: {new Date(intervencao.publicacao.pub_data).toLocaleDateString('pt-PT')}
+                                      </span>
+                                    )}
+                                    {intervencao.publicacao.paginas && (
+                                      <span className="flex items-center">
+                                        📄 Pág. {intervencao.publicacao.paginas}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            
-                            {/* Summary */}
-                            {intervencao.resumo && (
-                              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
-                                {intervencao.resumo}
-                              </p>
-                            )}
-                            
-                            {/* Additional Info */}
-                            {(intervencao.sumario || intervencao.fase_sessao) && (
-                              <div className="mt-3 pt-3 border-t border-gray-100">
-                                {intervencao.sumario && (
-                                  <p className="text-sm text-gray-600 mb-2">
-                                    <span className="font-medium">Sumário:</span> {intervencao.sumario}
-                                  </p>
-                                )}
-                                {intervencao.fase_sessao && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                    {intervencao.fase_sessao}
-                                  </span>
-                                )}
-                              </div>
-                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ));
+                    })()}
                   </div>
                 ) : (
                   <div className="text-center py-12">
