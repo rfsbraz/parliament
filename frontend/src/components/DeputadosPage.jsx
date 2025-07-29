@@ -112,12 +112,26 @@ const DeputadosPage = () => {
           >
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
-                <CardTitle className="text-lg">
-                  {deputado.nome_parlamentar || deputado.nome_completo}
-                </CardTitle>
-                <CardDescription>
-                  {deputado.partido?.sigla} • {deputado.circulo}
-                </CardDescription>
+                <div className="flex items-center space-x-4">
+                  {deputado.picture_url && (
+                    <img
+                      src={deputado.picture_url}
+                      alt={deputado.nome}
+                      className="w-16 h-16 rounded-full object-cover bg-gray-200"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  )}
+                  <div className="flex-1">
+                    <CardTitle className="text-lg">
+                      {deputado.nome_parlamentar || deputado.nome_completo || deputado.nome}
+                    </CardTitle>
+                    <CardDescription>
+                      {deputado.partido?.sigla} • {deputado.circulo}
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 text-sm text-gray-600 mb-4">

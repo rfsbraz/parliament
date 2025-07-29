@@ -97,6 +97,12 @@ class Deputado(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    def get_picture_url(self):
+        """Generate the official parliament picture URL for this deputy"""
+        if self.id_cadastro:
+            return f"https://app.parlamento.pt/webutils/getimage.aspx?id={self.id_cadastro}&type=deputado"
+        return None
+    
     def to_dict(self):
         return {
             'id': self.id,
@@ -109,6 +115,7 @@ class Deputado(db.Model):
             'habilitacoes_academicas': self.habilitacoes_academicas,
             'biografia': self.biografia,
             'foto_url': self.foto_url,
+            'picture_url': self.get_picture_url(),
             'email': self.email,
             'telefone': self.telefone,
             'gabinete': self.gabinete,

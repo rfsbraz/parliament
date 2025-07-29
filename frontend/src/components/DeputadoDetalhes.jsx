@@ -108,7 +108,18 @@ const DeputadoDetalhes = () => {
             <div className="flex items-start space-x-6">
               {/* Avatar */}
               <div className="flex-shrink-0">
-                <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center">
+                {deputado.picture_url ? (
+                  <img
+                    src={deputado.picture_url}
+                    alt={deputado.nome}
+                    className="h-24 w-24 rounded-full object-cover bg-gray-200 border-2 border-gray-200"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center" style={{ display: deputado.picture_url ? 'none' : 'flex' }}>
                   <User className="h-12 w-12 text-blue-600" />
                 </div>
               </div>
