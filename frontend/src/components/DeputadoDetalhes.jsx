@@ -16,6 +16,7 @@ const DeputadoDetalhes = () => {
   const [error, setError] = useState(null);
   const [interventionTypeFilter, setInterventionTypeFilter] = useState('');
   const [interventionSort, setInterventionSort] = useState('recent');
+  const [expandedInitiatives, setExpandedInitiatives] = useState(new Set());
   
   // Determine which legislatura to use: URL parameter takes precedence over context
   const currentLegislatura = urlLegislatura || (selectedLegislatura ? selectedLegislatura.numero.toString() : '17');
@@ -23,6 +24,17 @@ const DeputadoDetalhes = () => {
   // Helper function to generate deputy URLs with legislatura
   const getDeputadoUrl = (deputadoId, legislatura = currentLegislatura) => {
     return `/deputados/${deputadoId}/${legislatura}`;
+  };
+
+  // Toggle initiative details expansion
+  const toggleInitiativeDetails = (index) => {
+    const newExpanded = new Set(expandedInitiatives);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedInitiatives(newExpanded);
   };
 
   // Get active tab from URL hash, default to 'biografia'
@@ -791,27 +803,273 @@ const DeputadoDetalhes = () => {
 
             {activeTab === 'iniciativas' && (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Iniciativas Legislativas
-                </h3>
-                {atividades && atividades.iniciativas.length > 0 ? (
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Iniciativas Legislativas
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Projetos de lei e resoluções apresentados pelo deputado
+                    </p>
+                  </div>
+                  {atividades && atividades.iniciativas && atividades.iniciativas.length > 0 && (
+                    <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                      {atividades.iniciativas.length} iniciativas
+                    </div>
+                  )}
+                </div>
+                
+                {atividades && atividades.iniciativas && atividades.iniciativas.length > 0 ? (
                   <div className="space-y-4">
-                    {(atividades.iniciativas || []).map((iniciativa, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-gray-900">{iniciativa.titulo}</h4>
-                          <span className="text-sm text-gray-500">{iniciativa.data}</span>
+                    {atividades.iniciativas.map((iniciativa, index) => {
+                      // Helper function to get type styling
+                      const getTypeStyle = (tipo) => {
+                        switch (tipo) {
+                          case 'J':
+                            return 'bg-blue-100 text-blue-800 border-blue-200';
+                          case 'R':
+                            return 'bg-green-100 text-green-800 border-green-200';
+                          case 'P':
+                            return 'bg-purple-100 text-purple-800 border-purple-200';
+                          case 'D':
+                            return 'bg-orange-100 text-orange-800 border-orange-200';
+                          default:
+                            return 'bg-gray-100 text-gray-800 border-gray-200';
+                        }
+                      };
+
+                      // Helper function to get status styling
+                      const getStatusStyle = (estado) => {
+                        if (!estado) return null;
+                        switch (estado?.toLowerCase()) {
+                          case 'aprovado':
+                            return 'bg-green-50 text-green-700 border-green-200';
+                          case 'rejeitado':
+                            return 'bg-red-50 text-red-700 border-red-200';
+                          case 'em votação':
+                            return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+                          case 'retirado':
+                            return 'bg-gray-50 text-gray-700 border-gray-200';
+                          default:
+                            return 'bg-blue-50 text-blue-700 border-blue-200';
+                        }
+                      };
+
+                      return (
+                        <div key={index} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 hover:border-gray-300">
+                          {/* Header with type and date */}
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getTypeStyle(iniciativa.tipo)}`}>
+                                {iniciativa.tipo_descricao || iniciativa.tipo}
+                              </span>
+                              {iniciativa.estado && (
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusStyle(iniciativa.estado)}`}>
+                                  {iniciativa.estado}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-500 flex items-center flex-shrink-0 ml-4">
+                              <Calendar className="h-4 w-4 mr-1" />
+                              {new Date(iniciativa.data_apresentacao || iniciativa.data).toLocaleDateString('pt-PT')}
+                            </div>
+                          </div>
+
+                          {/* Title */}
+                          <h4 className="font-semibold text-gray-900 mb-3 text-lg leading-tight">
+                            {iniciativa.titulo}
+                          </h4>
+
+                          {/* Details */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4 text-sm text-gray-600">
+                              <div className="flex items-center">
+                                <FileText className="h-4 w-4 mr-1" />
+                                <span>Tipo: {iniciativa.tipo}</span>
+                              </div>
+                              {iniciativa.resultado && (
+                                <div className="flex items-center">
+                                  <Activity className="h-4 w-4 mr-1" />
+                                  <span>Resultado: {iniciativa.resultado}</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Action button */}
+                            <button 
+                              onClick={() => toggleInitiativeDetails(index)}
+                              className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center transition-colors"
+                            >
+                              {expandedInitiatives.has(index) ? 'Ocultar detalhes' : 'Ver detalhes'}
+                              <svg 
+                                className={`h-4 w-4 ml-1 transition-transform duration-200 ${
+                                  expandedInitiatives.has(index) ? 'rotate-90' : ''
+                                }`} 
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </div>
+
+                          {/* Progress indicator based on status */}
+                          {iniciativa.estado && (
+                            <div className="mt-4 pt-4 border-t border-gray-100">
+                              <div className="flex items-center text-xs text-gray-500">
+                                <div className="flex-1 bg-gray-200 rounded-full h-1 mr-3">
+                                  <div 
+                                    className={`h-1 rounded-full transition-all duration-300 ${
+                                      iniciativa.estado?.toLowerCase() === 'aprovado' ? 'bg-green-500 w-full' :
+                                      iniciativa.estado?.toLowerCase() === 'rejeitado' ? 'bg-red-500 w-full' :
+                                      iniciativa.estado?.toLowerCase() === 'em votação' ? 'bg-yellow-500 w-3/4' :
+                                      'bg-blue-500 w-1/2'
+                                    }`}
+                                  />
+                                </div>
+                                <span className="text-xs font-medium">
+                                  {iniciativa.estado || 'Em análise'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Expandable Details Section */}
+                          {expandedInitiatives.has(index) && (
+                            <div className="mt-4 pt-4 border-t border-gray-100 animate-fadeIn">
+                              <h5 className="font-semibold text-gray-900 mb-3">Detalhes da Iniciativa</h5>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                {/* Left Column */}
+                                <div className="space-y-3">
+                                  <div>
+                                    <span className="font-medium text-gray-700">Tipo:</span>
+                                    <p className="text-gray-600 mt-1">
+                                      {iniciativa.tipo_descricao} ({iniciativa.tipo})
+                                    </p>
+                                  </div>
+                                  
+                                  <div>
+                                    <span className="font-medium text-gray-700">Data de Apresentação:</span>
+                                    <p className="text-gray-600 mt-1">
+                                      {new Date(iniciativa.data_apresentacao || iniciativa.data).toLocaleDateString('pt-PT', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                      })}
+                                    </p>
+                                  </div>
+
+                                  {iniciativa.estado && (
+                                    <div>
+                                      <span className="font-medium text-gray-700">Estado Atual:</span>
+                                      <p className="text-gray-600 mt-1">{iniciativa.estado}</p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Right Column */}
+                                <div className="space-y-3">
+                                  {iniciativa.resultado && (
+                                    <div>
+                                      <span className="font-medium text-gray-700">Resultado:</span>
+                                      <p className="text-gray-600 mt-1">{iniciativa.resultado}</p>
+                                    </div>
+                                  )}
+                                  
+                                  <div>
+                                    <span className="font-medium text-gray-700">Categoria:</span>
+                                    <p className="text-gray-600 mt-1">
+                                      {iniciativa.tipo === 'J' ? 'Projeto de Lei' :
+                                       iniciativa.tipo === 'R' ? 'Projeto de Resolução' :
+                                       iniciativa.tipo === 'P' ? 'Proposta' :
+                                       iniciativa.tipo === 'D' ? 'Decreto' :
+                                       'Iniciativa Legislativa'}
+                                    </p>
+                                  </div>
+                                  
+                                  <div>
+                                    <span className="font-medium text-gray-700">Status:</span>
+                                    <p className="text-gray-600 mt-1">
+                                      {iniciativa.estado ? 
+                                        `Em fase: ${iniciativa.estado}` : 
+                                        'Em análise nas comissões competentes'
+                                      }
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Full Title Section */}
+                              <div className="mt-4 pt-4 border-t border-gray-50">
+                                <span className="font-medium text-gray-700">Título Completo:</span>
+                                <p className="text-gray-600 mt-2 leading-relaxed">
+                                  {iniciativa.titulo}
+                                </p>
+                              </div>
+
+                              {/* Additional Actions */}
+                              <div className="mt-4 pt-4 border-t border-gray-50">
+                                <div className="flex gap-2 flex-wrap">
+                                  <button 
+                                    onClick={() => {
+                                      // Use direct Parliament URL if available, fallback to search
+                                      const url = iniciativa.urls?.documento || 
+                                        `https://www.parlamento.pt/site/search/Pages/pesquisa.aspx?sq=${encodeURIComponent(iniciativa.titulo)}`;
+                                      window.open(url, '_blank');
+                                    }}
+                                    className="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full hover:bg-blue-100 transition-colors"
+                                  >
+                                    📄 Ver Documento
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      // Use direct debates URL if available, fallback to search
+                                      const url = iniciativa.urls?.debates || 
+                                        `https://www.parlamento.pt/ActividadeParlamentar/Paginas/DetalhePerguntaRequerimento.aspx?txt=${encodeURIComponent(iniciativa.titulo)}`;
+                                      window.open(url, '_blank');
+                                    }}
+                                    className="text-xs bg-gray-50 text-gray-700 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                                  >
+                                    📊 Histórico de Votações
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      // Use direct official URL if available, fallback to search
+                                      const url = iniciativa.urls?.oficial || 
+                                        `https://www.parlamento.pt/ActividadeParlamentar/Paginas/Iniciativas.aspx?txt=${encodeURIComponent(iniciativa.titulo)}`;
+                                      window.open(url, '_blank');
+                                    }}
+                                    className="text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-full hover:bg-green-100 transition-colors"
+                                  >
+                                    🔗 Link Oficial
+                                  </button>
+                                </div>
+                                <p className="text-xs text-gray-400 mt-2">
+                                  {iniciativa.urls?.documento || iniciativa.urls?.debates || iniciativa.urls?.oficial ? 
+                                    '🔗 Links diretos para documentos oficiais do Parlamento' :
+                                    'ℹ️ Links direcionam para pesquisa no site oficial do Parlamento'
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-gray-600 text-sm">{iniciativa.tipo}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">Nenhuma iniciativa registada</p>
-                    <p className="text-sm text-gray-400 mt-2">
-                      Os dados de iniciativas serão carregados em futuras atualizações
+                  <div className="text-center py-12">
+                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                      <FileText className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 text-lg font-medium mb-2">
+                      Nenhuma iniciativa registada
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      Este deputado ainda não apresentou iniciativas legislativas nesta legislatura
                     </p>
                   </div>
                 )}

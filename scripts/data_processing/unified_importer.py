@@ -49,7 +49,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-from mappers import SchemaMapper, SchemaError, RegistoBiograficoMapper, InitiativasMapper, IntervencoesMapper, RegistoInteressesMapper
+from mappers import SchemaMapper, SchemaError, RegistoBiograficoMapper, InitiativasMapper, IntervencoesMapper, RegistoInteressesMapper, AtividadeDeputadosMapper
 
 
 class FileTypeResolver:
@@ -179,6 +179,7 @@ class UnifiedImporter:
             'iniciativas': InitiativasMapper,
             'intervencoes': IntervencoesMapper,
             'registo_interesses': RegistoInteressesMapper,
+            'atividade_deputados': AtividadeDeputadosMapper,
         }
     
     def init_database(self):

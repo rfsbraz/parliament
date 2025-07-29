@@ -309,7 +309,8 @@ def get_deputado_atividades(deputado_id):
         # Fetch initiatives (uses id_cadastro via autores_iniciativas)
         # Only proceed if deputado has id_cadastro
         iniciativas_query = """
-            SELECT i.titulo, i.data_apresentacao, i.tipo, i.tipo_descricao, i.estado, i.resultado
+            SELECT i.titulo, i.data_apresentacao, i.tipo, i.tipo_descricao, i.estado, i.resultado,
+                   i.id_externo_ini, i.url_documento, i.url_debates, i.url_oficial, i.numero
             FROM iniciativas_legislativas i
             JOIN autores_iniciativas a ON i.id = a.iniciativa_id
             WHERE a.deputado_id = ? AND i.legislatura_id = ?
@@ -394,13 +395,28 @@ def get_deputado_atividades(deputado_id):
         cursor.execute(iniciativas_query, (deputado_id, leg.id))
         iniciativas = []
         for row in cursor.fetchall():
+            # Generate fallback URLs if database URLs are empty
+            id_externo_ini = row[6]
+            numero = row[10]
+            
+            url_documento = row[7] or (f"https://www.parlamento.pt/ActividadeParlamentar/Paginas/DetalheIniciativa.aspx?BID={id_externo_ini}" if id_externo_ini else None)
+            url_debates = row[8] or (f"https://debates.parlamento.pt/catalogo/serie1?q={numero}&tipo=iniciativa&lg=XVII" if numero else None)
+            url_oficial = row[9] or (f"https://www.parlamento.pt/ActividadeParlamentar/Paginas/DetalhePerguntaRequerimento.aspx?BID={id_externo_ini}" if id_externo_ini else None)
+            
             iniciativas.append({
                 'titulo': row[0],
                 'data_apresentacao': row[1],
                 'tipo': row[2],
                 'tipo_descricao': row[3],
                 'estado': row[4],
-                'resultado': row[5]
+                'resultado': row[5],
+                'id_externo_ini': id_externo_ini,
+                'numero': numero,
+                'urls': {
+                    'documento': url_documento,
+                    'debates': url_debates,
+                    'oficial': url_oficial
+                }
             })
         
         # Get votes (use deputado.id)

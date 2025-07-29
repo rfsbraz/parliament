@@ -11,6 +11,7 @@ from .registo_biografico import RegistoBiograficoMapper
 from .iniciativas import InitiativasMapper
 from .intervencoes import IntervencoesMapper
 from .registo_interesses import RegistoInteressesMapper
+from .atividade_deputados import AtividadeDeputadosMapper
 
 __all__ = [
     'SchemaMapper',
@@ -18,5 +19,6 @@ __all__ = [
     'RegistoBiograficoMapper',
     'InitiativasMapper',
     'IntervencoesMapper',
-    'RegistoInteressesMapper'
+    'RegistoInteressesMapper',
+    'AtividadeDeputadosMapper'
 ]
