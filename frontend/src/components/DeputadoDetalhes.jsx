@@ -254,12 +254,68 @@ const DeputadoDetalhes = () => {
           <div className="p-6">
             {activeTab === 'resumo' && (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Biografia
-                </h3>
                 <div className="prose max-w-none">
-                  {(deputado.profissao || deputado.habilitacoes_academicas) ? (
+                  {(deputado.nome_completo || deputado.data_nascimento || deputado.naturalidade || deputado.profissao || deputado.habilitacoes_academicas || (deputado.atividades_orgaos && deputado.atividades_orgaos.length > 0)) ? (
                     <div className="space-y-6">
+                      {/* Personal Information Section */}
+                      {deputado.nome_completo && (
+                        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-6">
+                          <div className="flex items-center mb-4">
+                            <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center mr-3">
+                              <User className="h-5 w-5 text-white" />
+                            </div>
+                            <h4 className="text-lg font-semibold text-gray-900">Informações Pessoais</h4>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-3">
+                              <div>
+                                <span className="text-sm font-medium text-indigo-600 uppercase tracking-wide">Nome Completo</span>
+                                <p className="text-gray-900 font-medium">{deputado.nome_completo}</p>
+                              </div>
+                              {deputado.naturalidade && (
+                                <div>
+                                  <span className="text-sm font-medium text-indigo-600 uppercase tracking-wide">Naturalidade</span>
+                                  <p className="text-gray-900">{deputado.naturalidade}</p>
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-3">
+                              {deputado.data_nascimento && (
+                                <div>
+                                  <span className="text-sm font-medium text-indigo-600 uppercase tracking-wide">Data de Nascimento</span>
+                                  <p className="text-gray-900">
+                                    {new Date(deputado.data_nascimento).toLocaleDateString('pt-PT')}
+                                    {(() => {
+                                      const birthDate = new Date(deputado.data_nascimento);
+                                      const today = new Date();
+                                      const age = today.getFullYear() - birthDate.getFullYear() - 
+                                        (today.getMonth() < birthDate.getMonth() || 
+                                         (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate()) ? 1 : 0);
+                                      return age > 0 ? ` ` : '';
+                                    })()}
+                                    {(() => {
+                                      const birthDate = new Date(deputado.data_nascimento);
+                                      const today = new Date();
+                                      const age = today.getFullYear() - birthDate.getFullYear() - 
+                                        (today.getMonth() < birthDate.getMonth() || 
+                                         (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate()) ? 1 : 0);
+                                      return age > 0 ? <span className="text-sm text-gray-600">({age} anos)</span> : null;
+                                    })()}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Biografia Header - only show if there are other sections */}
+                      {(deputado.profissao || deputado.habilitacoes_academicas || deputado.biografia || (deputado.atividades_orgaos && deputado.atividades_orgaos.length > 0)) && (
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 mt-8">
+                          Biografia
+                        </h3>
+                      )}
+                      
                       {deputado.profissao && (
                         <div className="relative">
                           <div className="flex">
@@ -313,6 +369,62 @@ const DeputadoDetalhes = () => {
                               </div>
                               <div className="text-gray-700 text-base leading-relaxed whitespace-pre-line pl-7">
                                 {deputado.biografia}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {deputado.atividades_orgaos && deputado.atividades_orgaos.length > 0 && (
+                        <div className="relative">
+                          <div className="flex">
+                            <div className="w-1 bg-orange-500 rounded-full mr-4 flex-shrink-0"></div>
+                            <div className="flex-1">
+                              <div className="flex items-center mb-3">
+                                <svg className="h-5 w-5 text-orange-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <h4 className="font-semibold text-gray-900">Atividade em Órgãos Parlamentares</h4>
+                              </div>
+                              <div className="space-y-3 pl-7">
+                                {deputado.atividades_orgaos.map((orgao, index) => (
+                                  <div key={index} className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <div className="flex items-center mb-2">
+                                          <h5 className="font-medium text-gray-900">
+                                            {orgao.nome}
+                                            {orgao.sigla && (
+                                              <span className="ml-2 text-sm text-orange-600 font-normal">({orgao.sigla})</span>
+                                            )}
+                                          </h5>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-3 text-sm">
+                                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                            orgao.titular 
+                                              ? 'bg-green-100 text-green-800' 
+                                              : 'bg-yellow-100 text-yellow-800'
+                                          }`}>
+                                            {orgao.tipo_membro}
+                                          </span>
+                                          {orgao.cargo !== 'membro' && (
+                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                              {orgao.cargo === 'presidente' ? 'Presidente' :
+                                               orgao.cargo === 'vice_presidente' ? 'Vice-Presidente' :
+                                               orgao.cargo === 'secretario' ? 'Secretário' : 
+                                               orgao.cargo}
+                                            </span>
+                                          )}
+                                          {orgao.observacoes && (
+                                            <span className="text-gray-500">
+                                              {orgao.observacoes}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           </div>

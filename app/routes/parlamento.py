@@ -169,12 +169,41 @@ def get_deputado_detalhes(deputado_id):
         leg = db.session.query(Legislatura).filter_by(numero=legislatura).first()
         leg_id = leg.id if leg else None
         
-        # Calcular estatísticas reais filtradas por legislatura
+        # Get committee memberships (organ activities) for this deputy
+        comissoes_query = """
+        SELECT c.nome, c.sigla, mc.cargo, mc.titular, c.tipo, 
+               CASE WHEN mc.titular = 1 THEN 'Efetivo' ELSE 'Suplente' END as tipo_membro,
+               mc.observacoes, c.id as comissao_id
+        FROM membros_comissoes mc
+        JOIN comissoes c ON mc.comissao_id = c.id
+        WHERE mc.deputado_id = ?
+        ORDER BY c.nome
+        """
+        
         import sqlite3
         import os
         db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'parlamento.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+        
+        cursor.execute(comissoes_query, (deputado_id,))
+        comissoes_data = cursor.fetchall()
+        
+        # Format committee data
+        deputado_dict['atividades_orgaos'] = []
+        for comissao_row in comissoes_data:
+            deputado_dict['atividades_orgaos'].append({
+                'nome': comissao_row[0],
+                'sigla': comissao_row[1],
+                'cargo': comissao_row[2],
+                'titular': bool(comissao_row[3]),
+                'tipo': comissao_row[4],
+                'tipo_membro': comissao_row[5],
+                'observacoes': comissao_row[6],
+                'comissao_id': comissao_row[7]
+            })
+        
+        # Calcular estatísticas reais filtradas por legislatura
         
         # Contar intervenções na legislatura específica (usa deputado.id)
         if leg_id:

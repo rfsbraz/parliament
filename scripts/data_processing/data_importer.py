@@ -1464,8 +1464,8 @@ def corrigir_importacao_dados_biograficos():
     
     print("CORRIGINDO IMPORTACAO DE DADOS BIOGRAFICOS...")
     
-    db_path = 'parlamento.db'
-    base_path = "parliament_data_final"
+    db_path = '../../parlamento.db'
+    base_path = "../../data/raw/downloads"
     
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -1473,7 +1473,7 @@ def corrigir_importacao_dados_biograficos():
     total_updated = 0
     
     # Buscar todos os arquivos de dados biográficos
-    pattern = f"{base_path}/RegistoBiografico/**/*.xml"
+    pattern = f"{base_path}/RegistoBiográfico/**/*.xml"
     arquivos = glob.glob(pattern, recursive=True)
     
     print(f"Encontrados {len(arquivos)} arquivos de dados biograficos")
@@ -1514,6 +1514,36 @@ def corrigir_importacao_dados_biograficos():
                     
                     habilitacoes_academicas = '; '.join(habilitacoes_list) if habilitacoes_list else None
                     
+                    # Processar atividades em órgãos (CadActividadeOrgaos)
+                    organ_activities = []
+                    atividade_orgaos_elem = record.find('CadActividadeOrgaos')
+                    if atividade_orgaos_elem is not None:
+                        for atividade in atividade_orgaos_elem.findall('.//pt_ar_wsgode_objectos_DadosOrgaos'):
+                            org_data = {}
+                            
+                            # Extrair dados do órgão
+                            org_id_elem = atividade.find('orgId')
+                            org_des_elem = atividade.find('orgDes')
+                            org_sigla_elem = atividade.find('orgSigla')
+                            leg_des_elem = atividade.find('legDes')
+                            tim_des_elem = atividade.find('timDes')
+                            
+                            if org_id_elem is not None and org_des_elem is not None:
+                                org_data = {
+                                    'org_id': safe_int(org_id_elem.text),
+                                    'org_nome': org_des_elem.text,
+                                    'org_sigla': org_sigla_elem.text if org_sigla_elem is not None else None,
+                                    'legislatura': leg_des_elem.text if leg_des_elem is not None else None,
+                                    'tipo_membro': tim_des_elem.text if tim_des_elem is not None else 'Efetivo'
+                                }
+                                
+                                # Extrair cargo se existir
+                                cargo_elem = atividade.find('.//pt_ar_wsgode_objectos_DadosCargosOrgao/tiaDes')
+                                if cargo_elem is not None:
+                                    org_data['cargo_codigo'] = cargo_elem.text
+                                
+                                organ_activities.append(org_data)
+                    
                     if id_cadastro:
                         # Verificar se o deputado existe
                         cursor.execute("SELECT id FROM deputados WHERE id_cadastro = ?", (id_cadastro,))
@@ -1524,12 +1554,14 @@ def corrigir_importacao_dados_biograficos():
                             cursor.execute("""
                             UPDATE deputados 
                             SET nome_completo = COALESCE(?, nome_completo),
+                                data_nascimento = COALESCE(?, data_nascimento),
                                 profissao = COALESCE(?, profissao),
                                 habilitacoes_academicas = COALESCE(?, habilitacoes_academicas),
                                 updated_at = ?
                             WHERE id_cadastro = ?
                             """, (
                                 nome_completo,
+                                parse_date(data_nascimento) if data_nascimento else None,
                                 profissao,
                                 habilitacoes_academicas,
                                 datetime.now(),
@@ -1538,6 +1570,87 @@ def corrigir_importacao_dados_biograficos():
                             
                             if cursor.rowcount > 0:
                                 total_updated += 1
+                                
+                                # Processar atividades em órgãos para este deputado
+                                if organ_activities:
+                                    deputado_id = deputado_result[0]
+                                    
+                                    for org_activity in organ_activities:
+                                        try:
+                                            # Buscar ou criar legislatura
+                                            legislatura_numero = None
+                                            if org_activity.get('legislatura'):
+                                                try:
+                                                    legislatura_numero = safe_int(org_activity['legislatura'].replace('XVII', '17').replace('XVI', '16').replace('XV', '15'))
+                                                except:
+                                                    legislatura_numero = None
+                                            
+                                            legislatura_id = None
+                                            if legislatura_numero:
+                                                cursor.execute("SELECT id FROM legislaturas WHERE numero = ?", (legislatura_numero,))
+                                                leg_result = cursor.fetchone()
+                                                if leg_result:
+                                                    legislatura_id = leg_result[0]
+                                            
+                                            # Buscar ou criar comissão/órgão
+                                            comissao_id = None
+                                            if org_activity.get('org_id') and org_activity.get('org_nome'):
+                                                cursor.execute("SELECT id FROM comissoes WHERE id_externo = ?", (org_activity['org_id'],))
+                                                com_result = cursor.fetchone()
+                                                
+                                                if com_result:
+                                                    comissao_id = com_result[0]
+                                                else:
+                                                    # Criar nova comissão se não existir
+                                                    cursor.execute("""
+                                                    INSERT INTO comissoes (id_externo, legislatura_id, nome, sigla, tipo, ativa)
+                                                    VALUES (?, ?, ?, ?, 'permanente', TRUE)
+                                                    """, (
+                                                        org_activity['org_id'],
+                                                        legislatura_id,
+                                                        org_activity['org_nome'],
+                                                        org_activity.get('org_sigla')
+                                                    ))
+                                                    comissao_id = cursor.lastrowid
+                                            
+                                            # Inserir ou atualizar membro da comissão
+                                            if comissao_id and deputado_id:
+                                                # Mapear tipo de membro para boolean titular
+                                                titular = org_activity.get('tipo_membro', 'Efetivo').lower() == 'efetivo'
+                                                
+                                                # Mapear código de cargo para texto
+                                                cargo = 'membro'  # default
+                                                cargo_codigo = org_activity.get('cargo_codigo', '')
+                                                if 'CGP' in cargo_codigo.upper():
+                                                    cargo = 'presidente'
+                                                elif 'VCGP' in cargo_codigo.upper():
+                                                    cargo = 'vice_presidente'
+                                                elif 'SCGP' in cargo_codigo.upper():
+                                                    cargo = 'secretario'
+                                                
+                                                # Verificar se já existe este membro
+                                                cursor.execute("""
+                                                SELECT id FROM membros_comissoes 
+                                                WHERE comissao_id = ? AND deputado_id = ? AND titular = ?
+                                                """, (comissao_id, deputado_id, titular))
+                                                
+                                                member_result = cursor.fetchone()
+                                                if not member_result:
+                                                    cursor.execute("""
+                                                    INSERT INTO membros_comissoes (comissao_id, deputado_id, cargo, titular, data_inicio, observacoes)
+                                                    VALUES (?, ?, ?, ?, ?, ?)
+                                                    """, (
+                                                        comissao_id,
+                                                        deputado_id,
+                                                        cargo,
+                                                        titular,
+                                                        datetime.now().date(),
+                                                        f"Legislatura {org_activity.get('legislatura', 'N/A')}"
+                                                    ))
+                                        
+                                        except Exception as org_error:
+                                            print(f"    Erro ao processar atividade em órgão: {str(org_error)}")
+                                            continue
                 
                 except Exception as e:
                     print(f"  Erro ao processar registro biografico individual: {str(e)}")
