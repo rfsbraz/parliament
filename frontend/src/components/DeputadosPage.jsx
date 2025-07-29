@@ -125,7 +125,7 @@ const DeputadosPage = () => {
                   )}
                   <div className="flex-1">
                     <CardTitle className="text-lg">
-                      {deputado.nome_parlamentar || deputado.nome_completo || deputado.nome}
+                      {deputado.nome || deputado.nome_completo}
                     </CardTitle>
                     <CardDescription>
                       {deputado.partido?.sigla} • {deputado.circulo}
