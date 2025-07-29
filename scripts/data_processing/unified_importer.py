@@ -49,7 +49,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-from mappers import SchemaMapper, SchemaError, RegistoBiograficoMapper, InitiativasMapper, IntervencoesMapper, RegistoInteressesMapper, AtividadeDeputadosMapper
+from mappers import SchemaMapper, SchemaError, RegistoBiograficoMapper, InitiativasMapper, IntervencoesMapper, RegistoInteressesMapper, AtividadeDeputadosMapper, AgendaParlamentarMapper, AtividadesMapper, ComposicaoOrgaosMapper, CooperacaoMapper, DelegacaoEventualMapper, DelegacaoPermanenteMapper, PeticoesMapper, PerguntasRequerimentosMapper, DiplomasAprovadosMapper
 
 
 class FileTypeResolver:
@@ -110,6 +110,45 @@ class FileTypeResolver:
         'perguntas_requerimentos': [
             r'PerguntasRequerimentos.*\.xml',
             r'.*[/\\]Perguntas e Requerimentos[/\\].*\.xml'
+        ],
+        'diplomas_aprovados': [
+            r'Diplomas.*\.xml',
+            r'.*[/\\]Diplomas Aprovados[/\\].*\.xml',
+            r'.*_Diplomas.*\.xml',
+            r'.*Diplomas.*\.xml\.xml'
+        ],
+        'orcamento_estado': [
+            r'OE.*\.xml',
+            r'OEPropostasAlteracao.*\.xml',
+            r'.*[/\\]Orçamento do Estado[/\\].*\.xml',
+            r'.*OE.*\.xml\.xml',
+            r'.*OEPropostasAlteracao.*\.xml\.xml'
+        ],
+        'informacao_base': [
+            r'InformacaoBase.*\.xml',
+            r'.*[/\\]Informação base[/\\].*\.xml',
+            r'.*[/\\]Informao base[/\\].*\.xml',
+            r'.*InformacaoBase.*\.xml\.xml'
+        ],
+        'reunioes_visitas': [
+            r'Reunioes.*\.xml',
+            r'ReuniaoNacional.*\.xml',
+            r'.*[/\\]Reuniões _ Visitas[/\\].*\.xml',
+            r'.*[/\\]Reunies _ Visitas[/\\].*\.xml',
+            r'.*Reunioe.*\.xml\.xml',
+            r'.*ReuniaoNacional.*\.xml\.xml'
+        ],
+        'grupos_amizade': [
+            r'GrupoDeAmizade.*\.xml',
+            r'.*[/\\]Grupos Parlamentares de Amizade[/\\].*\.xml',
+            r'.*GrupoDeAmizade.*\.xml\.xml'
+        ],
+        'diario_assembleia': [
+            r'Número_.*\.xml',
+            r'.*[/\\]Dirioda Assembleia da República[/\\].*\.xml',
+            r'.*[/\\]Dirioda Assembleia da Repblica[/\\].*\.xml',
+            r'.*_Nmero_.*\.xml',
+            r'.*Nmero_.*\.xml\.xml'
         ]
     }
     
@@ -180,6 +219,15 @@ class UnifiedImporter:
             'intervencoes': IntervencoesMapper,
             'registo_interesses': RegistoInteressesMapper,
             'atividade_deputados': AtividadeDeputadosMapper,
+            'agenda_parlamentar': AgendaParlamentarMapper,
+            'atividades': AtividadesMapper,
+            'composicao_orgaos': ComposicaoOrgaosMapper,
+            'cooperacao': CooperacaoMapper,
+            'delegacao_eventual': DelegacaoEventualMapper,
+            'delegacao_permanente': DelegacaoPermanenteMapper,
+            'peticoes': PeticoesMapper,
+            'perguntas_requerimentos': PerguntasRequerimentosMapper,
+            'diplomas_aprovados': DiplomasAprovadosMapper,
         }
     
     def init_database(self):
@@ -209,9 +257,11 @@ class UnifiedImporter:
             logger.error(f"Error calculating hash for {file_path}: {e}")
             return ""
     
-    def process_files(self, file_type_filter: str = None, limit: int = None, force_reimport: bool = False, legislatura_filter: str = None):
+    def process_files(self, file_type_filter: str = None, limit: int = None, force_reimport: bool = False, legislatura_filter: str = None, strict_mode: bool = False):
         """Process files directly from source directories"""
         logger.info("Starting file processing...")
+        if strict_mode:
+            logger.warning("STRICT MODE ENABLED: Will exit on first unmapped field, schema warning, or processing error")
         if legislatura_filter:
             logger.info(f"Filtering for Legislatura: {legislatura_filter}")
         total_files = 0
@@ -234,9 +284,14 @@ class UnifiedImporter:
                             total_files += 1
                             
                             # Check if we should process this file
-                            if self._should_process_file(cursor, file_path, file_type_filter, force_reimport, legislatura_filter):
-                                if self._process_file(cursor, file_path):
+                            if self._should_process_file(cursor, file_path, file_type_filter, force_reimport, legislatura_filter, strict_mode):
+                                success = self._process_file(cursor, file_path, strict_mode)
+                                if success:
                                     processed_files += 1
+                                elif strict_mode:
+                                    logger.error(f"STRICT MODE: Exiting due to processing error in {file_path}")
+                                    conn.commit()
+                                    sys.exit(1)
                                 
                                 if processed_files % 10 == 0:
                                     logger.info(f"Processed {processed_files} files so far...")
@@ -251,7 +306,7 @@ class UnifiedImporter:
         
         logger.info(f"Processing complete: {total_files} files found, {processed_files} processed")
     
-    def _should_process_file(self, cursor, file_path: str, file_type_filter: str = None, force_reimport: bool = False, legislatura_filter: str = None) -> bool:
+    def _should_process_file(self, cursor, file_path: str, file_type_filter: str = None, force_reimport: bool = False, legislatura_filter: str = None, strict_mode: bool = False) -> bool:
         """Check if file should be processed"""
         # Check file type filter
         file_type = self.file_type_resolver.resolve_file_type(file_path)
@@ -287,8 +342,14 @@ class UnifiedImporter:
         
         # Check if we have a mapper for this file type
         if file_type not in self.schema_mappers:
-            logger.debug(f"No mapper for file type: {file_type}")
-            return False
+            error_msg = f"No mapper for file type: {file_type}"
+            if strict_mode:
+                logger.error(f"STRICT MODE: {error_msg} in {file_path}")
+                logger.error("Available mappers: " + ", ".join(self.schema_mappers.keys()))
+                sys.exit(1)
+            else:
+                logger.debug(error_msg)
+                return False
         
         # If force reimport, always process
         if force_reimport:
@@ -306,7 +367,7 @@ class UnifiedImporter:
         
         return cursor.fetchone() is None
     
-    def _process_file(self, cursor, file_path: str) -> bool:
+    def _process_file(self, cursor, file_path: str, strict_mode: bool = False) -> bool:
         """Process a single file"""
         try:
             # Determine file type
@@ -356,6 +417,9 @@ class UnifiedImporter:
                     WHERE file_path = ? AND file_hash = ?
                 """, (datetime.now().isoformat(), error_msg, file_path, file_hash))
                 logger.error(f"Failed to parse XML {file_path}: {error_msg}")
+                if strict_mode:
+                    logger.error(f"STRICT MODE: Exiting due to XML parsing error in {file_path}")
+                    sys.exit(1)
                 return False
             
             # Commit the status update before processing to avoid locks
@@ -370,7 +434,7 @@ class UnifiedImporter:
                     mapper_conn.execute("PRAGMA busy_timeout=30000")
                     
                     mapper = mapper_class(mapper_conn)
-                    results = mapper.validate_and_map(xml_root, file_info)
+                    results = mapper.validate_and_map(xml_root, file_info, strict_mode)
                     
                     # Commit mapper changes
                     mapper_conn.commit()
@@ -401,11 +465,18 @@ class UnifiedImporter:
                 """, (datetime.now().isoformat(), error_msg, file_path, file_hash))
                 
                 logger.error(f"Failed to process {file_path}: {error_msg}")
+                if strict_mode:
+                    logger.error(f"STRICT MODE: Exiting due to processing error in {file_path}")
+                    logger.error(f"Error details: {traceback.format_exc()}")
+                    sys.exit(1)
                 return False
                     
         except Exception as e:
             logger.error(f"Unexpected error processing {file_path}: {e}")
             traceback.print_exc()
+            if strict_mode:
+                logger.error(f"STRICT MODE: Exiting due to unexpected error in {file_path}")
+                sys.exit(1)
             return False
 
     
@@ -471,6 +542,8 @@ def main():
                        help='Validate schema mapping coverage')
     parser.add_argument('--status', action='store_true',
                        help='Show import status summary')
+    parser.add_argument('--strict-mode', action='store_true',
+                       help='Exit immediately on any unmapped field, schema warning, or processing error')
     
     args = parser.parse_args()
     
@@ -486,7 +559,8 @@ def main():
             file_type_filter=args.file_type, 
             limit=args.limit, 
             force_reimport=args.force_reimport,
-            legislatura_filter=args.legislatura
+            legislatura_filter=args.legislatura,
+            strict_mode=args.strict_mode
         )
 
 

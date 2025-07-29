@@ -12,6 +12,15 @@ from .iniciativas import InitiativasMapper
 from .intervencoes import IntervencoesMapper
 from .registo_interesses import RegistoInteressesMapper
 from .atividade_deputados import AtividadeDeputadosMapper
+from .agenda_parlamentar import AgendaParlamentarMapper
+from .atividades import AtividadesMapper
+from .composicao_orgaos import ComposicaoOrgaosMapper
+from .cooperacao import CooperacaoMapper
+from .delegacao_eventual import DelegacaoEventualMapper
+from .delegacao_permanente import DelegacaoPermanenteMapper
+from .peticoes import PeticoesMapper
+from .perguntas_requerimentos import PerguntasRequerimentosMapper
+from .diplomas_aprovados import DiplomasAprovadosMapper
 
 __all__ = [
     'SchemaMapper',
@@ -20,5 +29,14 @@ __all__ = [
     'InitiativasMapper',
     'IntervencoesMapper',
     'RegistoInteressesMapper',
-    'AtividadeDeputadosMapper'
+    'AtividadeDeputadosMapper',
+    'AgendaParlamentarMapper',
+    'AtividadesMapper',
+    'ComposicaoOrgaosMapper',
+    'CooperacaoMapper',
+    'DelegacaoEventualMapper',
+    'DelegacaoPermanenteMapper',
+    'PeticoesMapper',
+    'PerguntasRequerimentosMapper',
+    'DiplomasAprovadosMapper'
 ]
