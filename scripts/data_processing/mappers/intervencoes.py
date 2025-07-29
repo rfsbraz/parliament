@@ -14,7 +14,7 @@ import time
 import sqlite3
 from typing import Dict, Optional, Set
 import logging
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, parse_qs, urlencode
 
 from .base_mapper import SchemaMapper, SchemaError
 
@@ -117,32 +117,35 @@ class IntervencoesMapper(SchemaMapper):
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict) -> Dict:
         """Map parliamentary interventions to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
+        file_path = file_info['file_path']
+        filename = os.path.basename(file_path)
         
         unmapped_fields = self.check_schema_coverage(xml_root)
         if unmapped_fields:
             raise SchemaError(f"Unmapped fields found: {', '.join(unmapped_fields)}")
         
         # Extract legislatura from filename
-        filename = os.path.basename(file_info['file_path'])
         leg_match = re.search(r'Intervencoes(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)\.xml', filename)
         legislatura_sigla = leg_match.group(1) if leg_match else 'XVII'
         legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
         
+        logger.info(f"Processing interventions from {filename} (Legislatura {legislatura_sigla})")
+        
         for intervencao in xml_root.findall('.//DadosPesquisaIntervencoesOut'):
             try:
-                success = self._process_intervencao_record(intervencao, legislatura_id)
+                success = self._process_intervencao_record(intervencao, legislatura_id, filename)
                 results['records_processed'] += 1
                 if success:
                     results['records_imported'] += 1
             except Exception as e:
-                error_msg = f"Intervention processing error: {str(e)}"
+                error_msg = f"Intervention processing error in {filename}: {str(e)}"
                 logger.error(error_msg)
                 results['errors'].append(error_msg)
                 results['records_processed'] += 1
         
         return results
     
-    def _process_intervencao_record(self, intervencao: ET.Element, legislatura_id: int) -> bool:
+    def _process_intervencao_record(self, intervencao: ET.Element, legislatura_id: int, filename: str = None) -> bool:
         """Process individual intervention record with proper normalized storage"""
         try:
             # Extract basic fields
@@ -204,7 +207,7 @@ class IntervencoesMapper(SchemaMapper):
                 self._process_iniciativas(intervencao, intervention_id)
                 
                 # Process audiovisual data
-                self._process_audiovisual(intervencao, intervention_id)
+                self._process_audiovisual(intervencao, intervention_id, filename)
                 
                 return True
                 
@@ -360,7 +363,7 @@ class IntervencoesMapper(SchemaMapper):
                         fase_elem.text if fase_elem is not None else None
                     ))
     
-    def _process_audiovisual(self, intervencao: ET.Element, intervention_id: int):
+    def _process_audiovisual(self, intervencao: ET.Element, intervention_id: int, filename: str = None):
         """Process audiovisual data with thumbnail extraction"""
         video_url = None
         thumbnail_url = None
@@ -395,12 +398,24 @@ class IntervencoesMapper(SchemaMapper):
                     if tipo_elem is not None:
                         tipo_intervencao = tipo_elem.text
         
-        # Extract thumbnail if video URL exists
+        # Extract thumbnail if video URL exists (handles 404 fallback internally)
+        thumbnail_url = None
+        original_video_url = video_url
         if video_url:
             time.sleep(0.5)  # Small delay between requests
-            thumbnail_url = self._extract_thumbnail_url(video_url)
-            
-            # Store audiovisual data
+            result = self._extract_thumbnail_url_with_fallback(video_url, filename)
+            if result:
+                thumbnail_url, final_video_url = result
+                # If the URL was cleaned during thumbnail extraction, use the cleaned version
+                if final_video_url != original_video_url:
+                    video_url = final_video_url
+                    file_info = f" (from {filename})" if filename else ""
+                    logger.info(f"Updated video URL to working version: {video_url}{file_info}")
+            else:
+                thumbnail_url = None
+        
+        # Store audiovisual data
+        if video_url or duracao or assunto or tipo_intervencao:
             self.cursor.execute("""
                 INSERT INTO intervencoes_audiovisual 
                 (intervencao_id, url_video, thumbnail_url, duracao, assunto, tipo_intervencao)
@@ -454,43 +469,101 @@ class IntervencoesMapper(SchemaMapper):
             logger.warning(f"Could not parse date '{date_str}': {e}")
             return date_str
     
-    def _extract_thumbnail_url(self, video_url: str) -> Optional[str]:
-        """Extract thumbnail URL from video page HTML"""
+    def _extract_thumbnail_url_with_fallback(self, video_url: str, filename: str = None) -> Optional[tuple]:
+        """Extract thumbnail URL from video page HTML with 404 fallback
+        Returns: (thumbnail_url, final_video_url) or None if failed"""
         if not video_url:
             return None
+        
+        file_info = f" (from {filename})" if filename else ""
             
-        try:
-            # Add timeout and headers to avoid blocking
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
-            
-            response = requests.get(video_url, headers=headers, timeout=10)
-            response.raise_for_status()
-            
-            # Search for the thumbnail URL pattern in HTML
-            html_content = response.text
-            
-            # Pattern: <img loading="lazy" class="meeting-intervention-image" src="/api/v1/videos/Plenary/X/X/X/thumbnail/X" />
-            thumbnail_pattern = r'class="meeting-intervention-image"\s+src="([^"]*thumbnail/\d+)"'
-            match = re.search(thumbnail_pattern, html_content)
-            
-            if match:
-                thumbnail_path = match.group(1)
-                # Convert relative URL to absolute URL using video URL domain
-                parsed_video_url = urlparse(video_url)
-                base_url = f"{parsed_video_url.scheme}://{parsed_video_url.netloc}"
-                thumbnail_url = urljoin(base_url, thumbnail_path)
+        def try_url(url: str) -> Optional[str]:
+            """Try to extract thumbnail from a specific URL"""
+            try:
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
                 
-                logger.debug(f"Extracted thumbnail URL: {thumbnail_url}")
-                return thumbnail_url
-            else:
-                logger.debug(f"No thumbnail found in video page: {video_url}")
+                response = requests.get(url, headers=headers, timeout=10)
+                response.raise_for_status()
+                
+                # Search for the thumbnail URL pattern in HTML
+                html_content = response.text
+                
+                # Pattern: <img loading="lazy" class="meeting-intervention-image" src="/api/v1/videos/Plenary/X/X/X/thumbnail/X" />
+                thumbnail_pattern = r'class="meeting-intervention-image"\s+src="([^"]*thumbnail/\d+)"'
+                match = re.search(thumbnail_pattern, html_content)
+                
+                if match:
+                    thumbnail_path = match.group(1)
+                    # Convert relative URL to absolute URL using video URL domain
+                    parsed_video_url = urlparse(url)
+                    base_url = f"{parsed_video_url.scheme}://{parsed_video_url.netloc}"
+                    thumbnail_url = urljoin(base_url, thumbnail_path)
+                    
+                    logger.debug(f"Extracted thumbnail URL: {thumbnail_url}")
+                    return thumbnail_url
+                else:
+                    logger.debug(f"No thumbnail found in video page: {url}")
+                    return None
+                    
+            except requests.HTTPError as e:
+                if e.response.status_code == 404:
+                    logger.debug(f"404 error for URL: {url}{file_info}")
+                    return None
+                else:
+                    logger.warning(f"HTTP error fetching video page {url}: {e}{file_info}")
+                    return None
+            except requests.RequestException as e:
+                logger.warning(f"Failed to fetch video page {url}: {e}{file_info}")
                 return None
+            except Exception as e:
+                logger.error(f"Error extracting thumbnail from {url}: {e}{file_info}")
+                return None
+        
+        # Try the original URL first
+        thumbnail_url = try_url(video_url)
+        if thumbnail_url:
+            return (thumbnail_url, video_url)
+        
+        # If original URL failed with 404 and has timestamps, try cleaning them
+        if ('tI=' in video_url or 'drc=' in video_url):
+            try:
+                parsed_url = urlparse(video_url)
+                query_params = parse_qs(parsed_url.query)
                 
-        except requests.RequestException as e:
-            logger.warning(f"Failed to fetch video page {video_url}: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Error extracting thumbnail from {video_url}: {e}")
-            return None
+                # Remove time-related parameters
+                if 'tI' in query_params:
+                    del query_params['tI']
+                if 'drc' in query_params:
+                    del query_params['drc']
+                
+                # Reconstruct URL without time parameters
+                new_query = urlencode(query_params, doseq=True)
+                cleaned_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
+                if new_query:
+                    cleaned_url += f"?{new_query}"
+                
+                logger.info(f"Retrying thumbnail extraction without timestamps: {cleaned_url}{file_info}")
+                cleaned_thumbnail = try_url(cleaned_url)
+                if cleaned_thumbnail:
+                    return (cleaned_thumbnail, cleaned_url)
+                
+            except Exception as e:
+                logger.warning(f"Could not clean timestamps from video URL {video_url}: {e}{file_info}")
+        
+        return None
+    
+    def _construct_direct_video_url(self, legislatura_num: int, sessao_num: int, atividade_id: int, intervencao_id: int) -> str:
+        """Construct direct video URL using the pattern: /videos/Plenary/{leg}/{session}/{activity}/{intervention}"""
+        return f"https://av.parlamento.pt/videos/Plenary/{legislatura_num}/{sessao_num}/{atividade_id}/{intervencao_id}"
+    
+    def _roman_to_number(self, roman: str) -> Optional[int]:
+        """Convert roman numeral to number"""
+        roman_map = {
+            'XVII': 17, 'XVI': 16, 'XV': 15, 'XIV': 14, 'XIII': 13,
+            'XII': 12, 'XI': 11, 'X': 10, 'IX': 9, 'VIII': 8,
+            'VII': 7, 'VI': 6, 'V': 5, 'IV': 4, 'III': 3,
+            'II': 2, 'I': 1, 'CONSTITUINTE': 0
+        }
+        return roman_map.get(roman.upper(), None)

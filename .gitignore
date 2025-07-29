@@ -96,3 +96,5 @@ Thumbs.db
 
 # Claude Code
 .claude/
+parlamento.db-shm
+parlamento.db-wal

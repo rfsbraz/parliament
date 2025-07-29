@@ -207,9 +207,11 @@ class UnifiedImporter:
             logger.error(f"Error calculating hash for {file_path}: {e}")
             return ""
     
-    def process_files(self, file_type_filter: str = None, limit: int = None, force_reimport: bool = False):
+    def process_files(self, file_type_filter: str = None, limit: int = None, force_reimport: bool = False, legislatura_filter: str = None):
         """Process files directly from source directories"""
         logger.info("Starting file processing...")
+        if legislatura_filter:
+            logger.info(f"Filtering for Legislatura: {legislatura_filter}")
         total_files = 0
         processed_files = 0
         
@@ -230,7 +232,7 @@ class UnifiedImporter:
                             total_files += 1
                             
                             # Check if we should process this file
-                            if self._should_process_file(cursor, file_path, file_type_filter, force_reimport):
+                            if self._should_process_file(cursor, file_path, file_type_filter, force_reimport, legislatura_filter):
                                 if self._process_file(cursor, file_path):
                                     processed_files += 1
                                 
@@ -247,7 +249,7 @@ class UnifiedImporter:
         
         logger.info(f"Processing complete: {total_files} files found, {processed_files} processed")
     
-    def _should_process_file(self, cursor, file_path: str, file_type_filter: str = None, force_reimport: bool = False) -> bool:
+    def _should_process_file(self, cursor, file_path: str, file_type_filter: str = None, force_reimport: bool = False, legislatura_filter: str = None) -> bool:
         """Check if file should be processed"""
         # Check file type filter
         file_type = self.file_type_resolver.resolve_file_type(file_path)
@@ -256,6 +258,30 @@ class UnifiedImporter:
         
         if file_type_filter and file_type != file_type_filter:
             return False
+        
+        # Check legislatura filter
+        if legislatura_filter:
+            legislatura = self.file_type_resolver.extract_legislatura(file_path)
+            if not legislatura:
+                # If we can't extract legislatura, skip the file
+                return False
+            
+            # Convert roman numerals to numbers for comparison
+            if legislatura_filter.upper() in ['XVII', 'XVI', 'XV', 'XIV', 'XIII', 'XII', 'XI', 'X', 'IX', 'VIII', 'VII', 'VI', 'V', 'IV', 'III', 'II', 'I', 'CONSTITUINTE']:
+                # User provided roman numeral
+                if legislatura != legislatura_filter.upper():
+                    return False
+            else:
+                # User provided number, convert legislatura to number for comparison
+                roman_to_num = {
+                    'XVII': '17', 'XVI': '16', 'XV': '15', 'XIV': '14', 'XIII': '13',
+                    'XII': '12', 'XI': '11', 'X': '10', 'IX': '9', 'VIII': '8',
+                    'VII': '7', 'VI': '6', 'V': '5', 'IV': '4', 'III': '3',
+                    'II': '2', 'I': '1', 'CONSTITUINTE': '0'
+                }
+                leg_num = roman_to_num.get(legislatura, legislatura)
+                if leg_num != legislatura_filter:
+                    return False
         
         # Check if we have a mapper for this file type
         if file_type not in self.schema_mappers:
@@ -435,6 +461,8 @@ def main():
                        help='Force reimport of all files (ignore SHA1)')
     parser.add_argument('--file-type', type=str,
                        help='Import only specific file type')
+    parser.add_argument('--legislatura', type=str,
+                       help='Import only specific legislatura (e.g., "XVII", "17", "X", "10")')
     parser.add_argument('--limit', type=int,
                        help='Limit number of files to process')
     parser.add_argument('--validate-schema', action='store_true',
@@ -455,7 +483,8 @@ def main():
         importer.process_files(
             file_type_filter=args.file_type, 
             limit=args.limit, 
-            force_reimport=args.force_reimport
+            force_reimport=args.force_reimport,
+            legislatura_filter=args.legislatura
         )
 
 

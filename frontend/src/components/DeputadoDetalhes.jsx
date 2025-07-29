@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare } from 'lucide-react';
+import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink } from 'lucide-react';
 
 const DeputadoDetalhes = () => {
   const { deputadoId } = useParams();
@@ -452,22 +452,116 @@ const DeputadoDetalhes = () => {
                   Intervenções Parlamentares
                 </h3>
                 {atividades && atividades.intervencoes.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {(atividades.intervencoes || []).map((intervencao, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-gray-900">{intervencao.tipo}</h4>
-                          <span className="text-sm text-gray-500">{intervencao.data}</span>
+                      <div key={index} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                        <div className="flex gap-4">
+                          {/* Video Thumbnail */}
+                          {intervencao.url_video && intervencao.thumbnail_url ? (
+                            <div className="relative flex-shrink-0">
+                              <div className="w-32 h-20 rounded-lg overflow-hidden bg-gray-100 relative group cursor-pointer"
+                                   onClick={() => window.open(intervencao.url_video, '_blank')}>
+                                <img 
+                                  src={intervencao.thumbnail_url}
+                                  alt="Video thumbnail"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjgwIiB2aWV3Qm94PSIwIDAgMTI4IDgwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjgwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik01NCA0MEw3NCA1MEw1NCA2MFY0MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
+                                  }}
+                                />
+                                {/* Play Button Overlay */}
+                                <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div className="bg-white bg-opacity-90 rounded-full p-2">
+                                    <Play className="h-6 w-6 text-gray-900 ml-1" />
+                                  </div>
+                                </div>
+                                {/* Duration Badge */}
+                                {intervencao.duracao_video && (
+                                  <div className="absolute bottom-1 right-1 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
+                                    {intervencao.duracao_video}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : intervencao.url_video ? (
+                            // Video without thumbnail
+                            <div className="relative flex-shrink-0">
+                              <div className="w-32 h-20 rounded-lg overflow-hidden bg-gradient-to-br from-blue-100 to-blue-200 relative group cursor-pointer flex items-center justify-center"
+                                   onClick={() => window.open(intervencao.url_video, '_blank')}>
+                                <Play className="h-8 w-8 text-blue-600" />
+                                <div className="absolute inset-0 bg-blue-600 bg-opacity-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                              </div>
+                            </div>
+                          ) : null}
+                          
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900 text-lg mb-1">{intervencao.tipo}</h4>
+                                <div className="flex items-center gap-3 text-sm text-gray-500">
+                                  <div className="flex items-center">
+                                    <Calendar className="h-4 w-4 mr-1" />
+                                    {intervencao.data}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Action Buttons */}
+                              <div className="flex items-center gap-2 ml-4">
+                                {intervencao.url_video && (
+                                  <button
+                                    onClick={() => window.open(intervencao.url_video, '_blank')}
+                                    className="inline-flex items-center px-3 py-1.5 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                                  >
+                                    <Play className="h-4 w-4 mr-1" />
+                                    Ver Vídeo
+                                  </button>
+                                )}
+                                {intervencao.url_diario && (
+                                  <button
+                                    onClick={() => window.open(intervencao.url_diario, '_blank')}
+                                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                                  >
+                                    <ExternalLink className="h-4 w-4 mr-1" />
+                                    Diário
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Summary */}
+                            {intervencao.resumo && (
+                              <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
+                                {intervencao.resumo}
+                              </p>
+                            )}
+                            
+                            {/* Additional Info */}
+                            {(intervencao.sumario || intervencao.fase_sessao) && (
+                              <div className="mt-3 pt-3 border-t border-gray-100">
+                                {intervencao.sumario && (
+                                  <p className="text-sm text-gray-600 mb-2">
+                                    <span className="font-medium">Sumário:</span> {intervencao.sumario}
+                                  </p>
+                                )}
+                                {intervencao.fase_sessao && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    {intervencao.fase_sessao}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-gray-600 text-sm">{intervencao.resumo}</p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
+                  <div className="text-center py-12">
                     <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">Nenhuma intervenção registada</p>
-                    <p className="text-sm text-gray-400 mt-2">
+                    <p className="text-gray-500 text-lg font-medium mb-2">Nenhuma intervenção registada</p>
+                    <p className="text-sm text-gray-400">
                       Os dados de intervenções serão carregados em futuras atualizações
                     </p>
                   </div>
