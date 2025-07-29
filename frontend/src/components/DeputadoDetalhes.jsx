@@ -247,30 +247,37 @@ const DeputadoDetalhes = () => {
               <div className="flex-shrink-0">
                 <div className="flex flex-col items-end space-y-3">
                   {/* Status Badge */}
-                  {deputado.mandato.ativo ? (
+                  {deputado.career_info?.is_currently_active ? (
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
                       <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
-                      Mandato Ativo
+                      Ativo
+                    </span>
+                  ) : deputado.career_info?.latest_completed_mandate ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
+                      Último mandato: {deputado.career_info.latest_completed_mandate.legislatura} ({deputado.career_info.latest_completed_mandate.periodo})
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
                       <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
-                      Mandato Inativo
+                      Status Indisponível
                     </span>
                   )}
                   
-                  {/* Email Button */}
-                  <button
-                    onClick={() => {
-                      const emailUrl = `https://www.parlamento.pt/DeputadoGP/Paginas/EmailDeputado.aspx?BID=${deputado.id_cadastro}`;
-                      window.open(emailUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-                    }}
-                    className="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors shadow-sm"
-                    title="Enviar email através do site oficial do Parlamento"
-                  >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Enviar e-mail
-                  </button>
+                  {/* Email Button - Only show for active deputies */}
+                  {deputado.career_info?.is_currently_active && (
+                    <button
+                      onClick={() => {
+                        const emailUrl = `https://www.parlamento.pt/DeputadoGP/Paginas/EmailDeputado.aspx?BID=${deputado.id_cadastro}`;
+                        window.open(emailUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                      }}
+                      className="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors shadow-sm"
+                      title="Enviar email através do site oficial do Parlamento"
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Enviar e-mail
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

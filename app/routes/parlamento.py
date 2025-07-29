@@ -41,67 +41,145 @@ def test_db():
 
 @parlamento_bp.route('/deputados', methods=['GET'])
 def get_deputados():
-    """Retorna lista paginada de deputados com filtros opcionais"""
+    """
+    Retorna lista de deputados únicos agrupados por pessoa, mostrando o mandato mais recente.
+    Inclui filtros para busca e apenas deputados ativos.
+    """
     try:
+        from app.utils import (
+            group_deputies_by_person, 
+            get_most_recent_mandate, 
+            enhance_deputy_with_career_info
+        )
+        
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         search = request.args.get('search', '', type=str)
-        legislatura = request.args.get('legislatura', '17', type=str)
+        active_only = request.args.get('active_only', 'false', type=str).lower() == 'true'
         
-        # Handle both string and integer numero values
-        try:
-            legislatura_num = int(legislatura)
-            leg_filter = Legislatura.numero == legislatura_num
-        except ValueError:
-            leg_filter = Legislatura.numero == legislatura
+        # Query ALL deputies across ALL legislaturas with comprehensive data
+        query = """
+        SELECT DISTINCT
+            d.id as deputado_id,
+            d.nome,
+            d.nome_completo,
+            d.data_nascimento,
+            d.profissao,
+            d.foto_url,
+            d.ativo,
+            l.numero as legislatura_numero,
+            l.designacao as legislatura_nome,
+            l.ativa as legislatura_ativa,
+            p.sigla as partido_sigla,
+            p.nome as partido_nome,
+            ce.designacao as circulo,
+            m.data_inicio as mandato_inicio,
+            m.data_fim as mandato_fim,
+            m.ativo as mandato_ativo
+        FROM deputados d
+        JOIN mandatos m ON d.id = m.deputado_id
+        JOIN legislaturas l ON m.legislatura_id = l.id
+        LEFT JOIN partidos p ON m.partido_id = p.id
+        LEFT JOIN circulos_eleitorais ce ON m.circulo_id = ce.id
+        WHERE d.ativo = 1
+        ORDER BY d.nome_completo, l.numero DESC
+        """
         
-        # Query deputados with mandatos for the specified legislatura
-        query = db.session.query(Deputado).join(
-            Mandato, Deputado.id == Mandato.deputado_id
-        ).join(
-            Legislatura, Mandato.legislatura_id == Legislatura.id
-        ).filter(
-            leg_filter,
-            Deputado.ativo == True
-        )
+        import sqlite3
+        import os
+        db_path = os.path.join(os.path.dirname(__file__), '..', '..', 'parlamento.db')
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(query)
         
-        # Apply search filter if exists
+        # Process raw data into deputy records
+        all_deputies = []
+        for row in cursor.fetchall():
+            deputy_record = {
+                'deputado_id': row[0],
+                'nome': row[1],
+                'nome_completo': row[2],
+                'data_nascimento': row[3],
+                'profissao': row[4],
+                'foto_url': row[5],
+                'ativo': row[6],
+                'legislatura_numero': row[7],
+                'legislatura_nome': row[8],
+                'legislatura_ativa': row[9],
+                'partido_sigla': row[10] or 'N/A',
+                'partido_nome': row[11] or 'Partido não disponível',
+                'circulo': row[12] or 'Círculo não disponível',
+                'mandato_inicio': row[13],
+                'mandato_fim': row[14],
+                'mandato_ativo': row[15]
+            }
+            all_deputies.append(deputy_record)
+        
+        cursor.close()
+        conn.close()
+        
+        # Group deputies by unique person
+        grouped_deputies = group_deputies_by_person(all_deputies)
+        
+        # Get most recent mandate for each person and enhance with career info
+        unique_deputies = []
+        for unique_key, deputy_records in grouped_deputies.items():
+            most_recent = get_most_recent_mandate(deputy_records)
+            if most_recent:
+                enhanced_deputy = enhance_deputy_with_career_info(most_recent, deputy_records)
+                
+                # Apply active filter if requested
+                if active_only:
+                    # Check if person has any active mandate (current legislatura)
+                    has_active_mandate = any(
+                        record.get('legislatura_ativa') or record.get('mandato_ativo') 
+                        for record in deputy_records
+                    )
+                    if not has_active_mandate:
+                        continue
+                
+                unique_deputies.append(enhanced_deputy)
+        
+        # Apply search filter
         if search:
-            query = query.filter(
-                or_(
-                    Deputado.nome_completo.contains(search),
-                    Deputado.nome.contains(search)
-                )
-            )
+            search_lower = search.lower()
+            unique_deputies = [
+                deputy for deputy in unique_deputies
+                if search_lower in deputy.get('nome_completo', '').lower() or
+                   search_lower in deputy.get('nome', '').lower() or
+                   search_lower in deputy.get('partido_sigla', '').lower()
+            ]
         
-        # Order by name
-        query = query.order_by(Deputado.nome)
+        # Sort by name
+        unique_deputies.sort(key=lambda x: x.get('nome_completo', '').lower())
         
-        # Pagination
-        deputados_paginated = query.paginate(
-            page=page, 
-            per_page=per_page, 
-            error_out=False
-        )
-        
-        # Build response
-        deputados_data = []
-        for deputado in deputados_paginated.items:
-            deputados_data.append(deputado.to_dict())
+        # Manual pagination
+        total = len(unique_deputies)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_deputies = unique_deputies[start_idx:end_idx]
         
         return jsonify({
-            'deputados': deputados_data,
+            'deputados': paginated_deputies,
             'pagination': {
-                'total': deputados_paginated.total,
-                'pages': deputados_paginated.pages,
+                'total': total,
+                'pages': (total + per_page - 1) // per_page,
                 'current_page': page,
                 'per_page': per_page,
-                'has_next': deputados_paginated.has_next,
-                'has_prev': deputados_paginated.has_prev
+                'has_next': end_idx < total,
+                'has_prev': page > 1
+            },
+            'filters': {
+                'active_only': active_only,
+                'search': search,
+                'total_unique_persons': len(grouped_deputies),
+                'total_deputy_records': len(all_deputies)
             }
         })
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return log_and_return_error(e, '/api/deputados')
 
 
@@ -363,7 +441,7 @@ def get_deputado_detalhes(deputado_id):
                 'partido_sigla': row[7],
                 'partido_nome': row[8],
                 'circulo': row[9],
-                'is_current': row[1] == int(legislatura)
+                'is_current': str(row[1]) == str(legislatura)
             })
         cursor.close()
 
@@ -378,6 +456,61 @@ def get_deputado_detalhes(deputado_id):
         }
         
         deputado_dict['mandatos_historico'] = mandatos_detalhados
+        
+        # Add career information with proper active status
+        # Query all records for this person across all legislaturas to determine current status
+        career_query = """
+        SELECT DISTINCT d.id, d.nome_completo, d.data_nascimento, d.profissao, d.foto_url, d.ativo,
+               l.numero as legislatura_numero, l.designacao as legislatura_nome, l.ativa as legislatura_ativa,
+               p.sigla as partido_sigla, p.nome as partido_nome, ce.designacao as circulo,
+               m.data_inicio as mandato_inicio, m.data_fim as mandato_fim, m.ativo as mandato_ativo
+        FROM deputados d 
+        JOIN mandatos m ON d.id = m.deputado_id 
+        JOIN legislaturas l ON m.legislatura_id = l.id
+        LEFT JOIN partidos p ON m.partido_id = p.id
+        LEFT JOIN circulos_eleitorais ce ON m.circulo_id = ce.id
+        WHERE d.nome_completo = (SELECT nome_completo FROM deputados WHERE id = ?)
+        ORDER BY d.nome_completo, l.numero DESC
+        """
+        cursor = sqlite3.connect(os.path.join(os.path.dirname(__file__), '..', '..', 'parlamento.db')).cursor()
+        cursor.execute(career_query, (deputado_id,))
+        all_records_for_person = []
+        
+        for row in cursor.fetchall():
+            deputy_record = {
+                'deputado_id': row[0],
+                'nome_completo': row[1],
+                'data_nascimento': row[2],
+                'profissao': row[3],
+                'foto_url': row[4],
+                'ativo': row[5],
+                'legislatura_numero': row[6],
+                'legislatura_nome': row[7],
+                'legislatura_ativa': row[8],
+                'partido_sigla': row[9] or 'N/A',
+                'partido_nome': row[10] or 'Partido não disponível',
+                'circulo': row[11] or 'Círculo não disponível',
+                'mandato_inicio': row[12],
+                'mandato_fim': row[13],
+                'mandato_ativo': row[14]
+            }
+            all_records_for_person.append(deputy_record)
+        
+        cursor.close()
+        
+        # Use deputy linking utility to enhance with career info
+        from app.utils import enhance_deputy_with_career_info
+        enhanced_deputy = enhance_deputy_with_career_info(
+            all_records_for_person[0] if all_records_for_person else {}, 
+            all_records_for_person
+        )
+        
+        # Add career info to response
+        deputado_dict['career_info'] = enhanced_deputy.get('career_info', {})
+        
+        # Update mandate active status to use career info
+        if deputado_dict.get('mandato'):
+            deputado_dict['mandato']['ativo'] = enhanced_deputy.get('career_info', {}).get('is_currently_active', False)
         
         return jsonify(deputado_dict)
         

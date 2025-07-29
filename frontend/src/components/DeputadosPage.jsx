@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Search, Filter, MapPin, Briefcase, ArrowRight } from 'lucide-react';
+import { User, Search, Filter, MapPin, Briefcase, ArrowRight, Calendar, Users } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useLegislatura } from '../contexts/LegislaturaContext';
@@ -12,23 +12,21 @@ const DeputadosPage = () => {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState(null)
+  const [filters, setFilters] = useState(null)
+  const [activeOnly, setActiveOnly] = useState(false)
   const { selectedLegislatura } = useLegislatura()
 
   useEffect(() => {
-    if (selectedLegislatura) {
-      fetchDeputados()
-    }
-  }, [page, search, selectedLegislatura])
+    fetchDeputados()
+  }, [page, search, activeOnly])
 
   const fetchDeputados = async () => {
-    if (!selectedLegislatura) return
-    
     try {
       setLoading(true)
       const params = new URLSearchParams({
         page: page.toString(),
         per_page: '20',
-        legislatura: selectedLegislatura.numero.toString()
+        active_only: activeOnly.toString()
       })
       
       if (search) {
@@ -39,6 +37,7 @@ const DeputadosPage = () => {
       const data = await response.json()
       setDeputados(data.deputados || [])
       setPagination(data.pagination)
+      setFilters(data.filters)
     } catch (error) {
       console.error('Erro ao carregar deputados:', error)
     } finally {
@@ -73,31 +72,59 @@ const DeputadosPage = () => {
       {/* Header */}
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Deputados
+          Deputados Únicos
         </h1>
         <p className="text-gray-600">
-          {pagination ? `${pagination.total} deputados` : 'Carregando...'}
+          {filters ? (
+            <>
+              {pagination?.total || 0} pessoas únicas • {filters.total_deputy_records} registos totais
+              {activeOnly && <span className="text-blue-600 font-medium"> • Apenas Ativos</span>}
+            </>
+          ) : 'Carregando...'}
         </p>
       </div>
 
-      {/* Search */}
+      {/* Search and Filters */}
       <Card>
         <CardContent className="pt-6">
-          <form onSubmit={handleSearch} className="flex space-x-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Pesquisar por nome..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+          <div className="space-y-4">
+            <form onSubmit={handleSearch} className="flex space-x-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Pesquisar por nome ou partido..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Pesquisando...' : 'Pesquisar'}
+              </Button>
+            </form>
+            
+            {/* Filter Toggle */}
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={activeOnly}
+                  onChange={(e) => {
+                    setActiveOnly(e.target.checked);
+                    setPage(1);
+                  }}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Apenas deputados ativos
+                </span>
+              </label>
+              <div className="text-xs text-gray-500">
+                {activeOnly ? 'Mostrando apenas deputados com mandatos ativos' : 'Mostrando todos os deputados da história parlamentar'}
+              </div>
             </div>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Pesquisando...' : 'Pesquisar'}
-            </Button>
-          </form>
+          </div>
         </CardContent>
       </Card>
 
@@ -105,7 +132,7 @@ const DeputadosPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {(deputados || []).map((deputado, index) => (
           <motion.div
-            key={deputado.id}
+            key={`${deputado.deputado_id}-${index}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
@@ -113,9 +140,9 @@ const DeputadosPage = () => {
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-center space-x-4">
-                  {deputado.picture_url && (
+                  {deputado.foto_url && (
                     <img
-                      src={deputado.picture_url}
+                      src={deputado.foto_url}
                       alt={deputado.nome}
                       className="w-16 h-16 rounded-full object-cover bg-gray-200"
                       onError={(e) => {
@@ -127,8 +154,23 @@ const DeputadosPage = () => {
                     <CardTitle className="text-lg">
                       {deputado.nome || deputado.nome_completo}
                     </CardTitle>
-                    <CardDescription>
-                      {deputado.partido?.sigla} • {deputado.circulo}
+                    <CardDescription className="flex items-center gap-2 flex-wrap">
+                      <span>{deputado.partido_sigla} • {deputado.circulo}</span>
+                      {deputado.career_info?.is_currently_active ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Ativo
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          Inativo
+                        </span>
+                      )}
+                      {deputado.career_info?.is_multi_term && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {deputado.career_info.total_mandates} mandatos
+                        </span>
+                      )}
                     </CardDescription>
                   </div>
                 </div>
@@ -140,14 +182,26 @@ const DeputadosPage = () => {
                       <strong>Profissão:</strong> {deputado.profissao}
                     </div>
                   )}
-                  {deputado.partido && (
-                    <div>
-                      <strong>Partido:</strong> {deputado.partido.nome}
+                  <div>
+                    {deputado.career_info?.is_currently_active ? (
+                      <><strong>Mandato Atual:</strong> {deputado.legislatura_nome}</>
+                    ) : deputado.career_info?.latest_completed_mandate ? (
+                      <><strong>Último mandato:</strong> {deputado.career_info.latest_completed_mandate.legislatura} ({deputado.career_info.latest_completed_mandate.periodo})</>
+                    ) : (
+                      <><strong>Mandato:</strong> {deputado.legislatura_nome}</>
+                    )}
+                  </div>
+                  {deputado.career_info?.is_multi_term && (
+                    <div className="text-xs text-blue-600">
+                      <strong>Carreira:</strong> {deputado.career_info.first_mandate}-{deputado.career_info.latest_mandate}
+                      {deputado.career_info.parties_served.length > 1 && (
+                        <span> • Vários partidos</span>
+                      )}
                     </div>
                   )}
                 </div>
                 <Link
-                  to={`/deputados/${deputado.id}/${selectedLegislatura?.numero || '17'}`}
+                  to={`/deputados/${deputado.deputado_id}/${deputado.legislatura_numero}`}
                   className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors"
                 >
                   Ver Detalhes
