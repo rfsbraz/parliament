@@ -625,10 +625,15 @@ def get_estatisticas():
     try:
         legislatura = request.args.get('legislatura', '17', type=str)
         
-        # Totais baseados na legislatura especificada
-        total_deputados = db.session.query(func.count(func.distinct(Mandato.deputado_id))).join(
+        # Totais baseados na legislatura especificada - count unique active deputies
+        total_deputados = db.session.query(func.count(func.distinct(Deputado.id))).join(
+            Mandato, Deputado.id == Mandato.deputado_id
+        ).join(
             Legislatura, Mandato.legislatura_id == Legislatura.id
-        ).filter(Legislatura.numero == legislatura).scalar()
+        ).filter(
+            Legislatura.numero == legislatura,
+            Deputado.ativo == True
+        ).scalar()
         
         total_partidos = db.session.query(func.count(func.distinct(Mandato.partido_id))).join(
             Legislatura, Mandato.legislatura_id == Legislatura.id
@@ -644,10 +649,13 @@ def get_estatisticas():
         
         # Distribuição por partidos para a legislatura especificada
         distribuicao_partidos = db.session.query(
+            Partido.id,
             Partido.sigla,
             Partido.designacao_completa.label('nome'),
             func.count(Mandato.id).label('deputados')
-        ).outerjoin(Mandato).outerjoin(Legislatura, Mandato.legislatura_id == Legislatura.id).filter(
+        ).outerjoin(Mandato, Partido.id == Mandato.partido_id).outerjoin(
+            Legislatura, Mandato.legislatura_id == Legislatura.id
+        ).filter(
             Legislatura.numero == legislatura
         ).group_by(Partido.id).order_by(desc('deputados')).all()
         
@@ -676,6 +684,7 @@ def get_estatisticas():
             },
             'distribuicao_partidos': [
                 {
+                    'id': p.id,
                     'sigla': p.sigla,
                     'nome': p.nome,
                     'deputados': p.deputados

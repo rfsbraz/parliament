@@ -163,10 +163,29 @@ const PartidoDetalhes = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0">
-                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <User className="h-5 w-5 text-blue-600" />
-                        </div>
+                      <div className="flex-shrink-0 relative">
+                        {deputado.picture_url ? (
+                          <div className="h-12 w-12 relative group">
+                            <img
+                              src={deputado.picture_url}
+                              alt={deputado.nome}
+                              className="h-12 w-12 rounded-full object-cover bg-gray-200 ring-2 ring-white shadow-sm group-hover:ring-blue-300 transition-all duration-200"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
+                            />
+                            <div 
+                              className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center ring-2 ring-white shadow-sm hidden"
+                            >
+                              <User className="h-6 w-6 text-blue-600" />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center ring-2 ring-white shadow-sm hover:ring-blue-300 transition-all duration-200">
+                            <User className="h-6 w-6 text-blue-600" />
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <Link 

@@ -10,20 +10,23 @@ import PartidoDetalhes from './components/PartidoDetalhes'
 import AgendaPage from './components/AgendaPage'
 import AnalysisPageSimple from './components/AnalysisPageSimple'
 import Navigation from './components/Navigation'
-import { LegislaturaProvider } from './contexts/LegislaturaContext'
+import { LegislaturaProvider, useLegislatura } from './contexts/LegislaturaContext'
 import './App.css'
 
-function App() {
+const AppContent = () => {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
+  const { selectedLegislatura } = useLegislatura()
 
   useEffect(() => {
-    fetchStats()
-  }, [])
+    if (selectedLegislatura) {
+      fetchStats()
+    }
+  }, [selectedLegislatura])
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/estatisticas')
+      const response = await fetch(`/api/estatisticas?legislatura=${selectedLegislatura.numero}`)
       const data = await response.json()
       setStats(data)
     } catch (error) {
@@ -46,23 +49,22 @@ function App() {
   }
 
   return (
-    <LegislaturaProvider>
-      <Router>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-          <Navigation />
-          
-          <main className="container mx-auto px-4 py-8">
-            <Routes>
-              <Route path="/" element={<Dashboard stats={stats} />} />
-              <Route path="/deputados" element={<DeputadosPage />} />
-              <Route path="/deputados/:deputadoId" element={<DeputadoDetalhes />} />
-              <Route path="/deputados/:deputadoId/:legislatura" element={<DeputadoDetalhes />} />
-              <Route path="/partidos" element={<PartidosPage />} />
-              <Route path="/partidos/:partidoId" element={<PartidoDetalhes />} />
-              <Route path="/agenda" element={<AgendaPage />} />
-              <Route path="/analises" element={<AnalysisPageSimple />} />
-            </Routes>
-          </main>
+    <Router>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <Navigation />
+        
+        <main className="container mx-auto px-4 py-8">
+          <Routes>
+            <Route path="/" element={<Dashboard stats={stats} />} />
+            <Route path="/deputados" element={<DeputadosPage />} />
+            <Route path="/deputados/:deputadoId" element={<DeputadoDetalhes />} />
+            <Route path="/deputados/:deputadoId/:legislatura" element={<DeputadoDetalhes />} />
+            <Route path="/partidos" element={<PartidosPage />} />
+            <Route path="/partidos/:partidoId" element={<PartidoDetalhes />} />
+            <Route path="/agenda" element={<AgendaPage />} />
+            <Route path="/analises" element={<AnalysisPageSimple />} />
+          </Routes>
+        </main>
 
           {/* Footer */}
           <footer className="bg-white border-t border-gray-200 mt-auto">
@@ -97,6 +99,13 @@ function App() {
           </footer>
         </div>
       </Router>
+  )
+}
+
+function App() {
+  return (
+    <LegislaturaProvider>
+      <AppContent />
     </LegislaturaProvider>
   )
 }
