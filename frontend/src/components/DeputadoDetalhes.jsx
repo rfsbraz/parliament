@@ -76,7 +76,7 @@ const DeputadoDetalhes = () => {
   }
 
   const tabs = [
-    { id: 'resumo', label: 'Resumo', icon: User },
+    { id: 'resumo', label: 'Biografia', icon: User },
     { id: 'intervencoes', label: 'Intervenções', icon: MessageSquare },
     { id: 'iniciativas', label: 'Iniciativas', icon: FileText },
     { id: 'votacoes', label: 'Votações', icon: Vote }
@@ -255,28 +255,48 @@ const DeputadoDetalhes = () => {
             {activeTab === 'resumo' && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Resumo da Atividade Parlamentar
+                  Biografia
                 </h3>
                 <div className="prose max-w-none">
-                  <p className="text-gray-600 mb-4">
-                    {deputado.nome} é deputado eleito pelo círculo de {deputado.circulo}, 
-                    representando o partido {deputado.partido.nome} ({deputado.partido.sigla}).
-                  </p>
-                  
-                  {deputado.profissao && (
-                    <p className="text-gray-600 mb-4">
-                      Profissionalmente, atua na área de {deputado.profissao.toLowerCase()}.
-                    </p>
+                  {(deputado.profissao || deputado.habilitacoes_academicas) ? (
+                    <div className="space-y-4">
+                      {deputado.profissao && (
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-2">Profissão</h4>
+                          <p className="text-gray-700">{deputado.profissao}</p>
+                        </div>
+                      )}
+                      
+                      {deputado.habilitacoes_academicas && (
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-2">Habilitações Académicas</h4>
+                          <div className="text-gray-700">
+                            {deputado.habilitacoes_academicas.split(';').map((hab, index) => (
+                              <div key={index} className="mb-1">
+                                • {hab.trim()}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {deputado.biografia && (
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-2">Biografia</h4>
+                          <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+                            {deputado.biografia}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Informações biográficas não disponíveis</p>
+                      <p className="text-sm text-gray-400 mt-2">
+                        Dados biográficos não foram fornecidos para este deputado
+                      </p>
+                    </div>
                   )}
-                  
-                  <div className="bg-gray-50 rounded-lg p-4 mt-6">
-                    <h4 className="font-semibold text-gray-900 mb-2">Informações do Mandato</h4>
-                    <ul className="text-sm text-gray-600 space-y-1">
-                      <li>• Início do mandato: {new Date(deputado.mandato.inicio).toLocaleDateString('pt-PT')}</li>
-                      <li>• Status: {deputado.mandato.ativo ? 'Ativo' : 'Inativo'}</li>
-                      <li>• ID Cadastro: {deputado.id_cadastro}</li>
-                    </ul>
-                  </div>
                 </div>
               </div>
             )}
