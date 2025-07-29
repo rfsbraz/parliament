@@ -1,16 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink } from 'lucide-react';
 
 const DeputadoDetalhes = () => {
   const { deputadoId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
   const [deputado, setDeputado] = useState(null);
   const [atividades, setAtividades] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('resumo');
   const [interventionTypeFilter, setInterventionTypeFilter] = useState('');
   const [interventionSort, setInterventionSort] = useState('recent');
+
+  // Get active tab from URL hash, default to 'biografia'
+  const getActiveTabFromUrl = () => {
+    const hash = location.hash.replace('#', '');
+    const validTabs = ['biografia', 'intervencoes', 'iniciativas', 'votacoes'];
+    return validTabs.includes(hash) ? hash : 'biografia';
+  };
+
+  const [activeTab, setActiveTab] = useState(getActiveTabFromUrl());
+
+  // Sync activeTab with URL hash changes
+  useEffect(() => {
+    const handleHashChange = () => {
+      setActiveTab(getActiveTabFromUrl());
+    };
+
+    // Listen for hash changes (browser back/forward)
+    window.addEventListener('hashchange', handleHashChange);
+    
+    // Update tab when location changes
+    setActiveTab(getActiveTabFromUrl());
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, [location.hash]);
+
+  // Handle tab change with URL update
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    navigate(`#${tabId}`, { replace: true });
+  };
+
+  // Set default tab in URL if no hash is present
+  useEffect(() => {
+    if (!location.hash) {
+      navigate('#biografia', { replace: true });
+    }
+  }, [navigate, location.hash]);
 
   useEffect(() => {
     const fetchDados = async () => {
@@ -78,7 +119,7 @@ const DeputadoDetalhes = () => {
   }
 
   const tabs = [
-    { id: 'resumo', label: 'Biografia', icon: User },
+    { id: 'biografia', label: 'Biografia', icon: User },
     { id: 'intervencoes', label: 'Intervenções', icon: MessageSquare },
     { id: 'iniciativas', label: 'Iniciativas', icon: FileText },
     { id: 'votacoes', label: 'Votações', icon: Vote }
@@ -237,7 +278,7 @@ const DeputadoDetalhes = () => {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => handleTabChange(tab.id)}
                     className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                       activeTab === tab.id
                         ? 'border-blue-500 text-blue-600'
@@ -254,7 +295,7 @@ const DeputadoDetalhes = () => {
 
           {/* Tab Content */}
           <div className="p-6">
-            {activeTab === 'resumo' && (
+            {activeTab === 'biografia' && (
               <div>
                 <div className="prose max-w-none">
                   {(deputado.nome_completo || deputado.data_nascimento || deputado.naturalidade || deputado.profissao || deputado.habilitacoes_academicas || (deputado.atividades_orgaos && deputado.atividades_orgaos.length > 0)) ? (
