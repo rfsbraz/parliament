@@ -6,6 +6,23 @@ import os
 
 parlamento_bp = Blueprint('parlamento', __name__)
 
+def log_and_return_error(e, endpoint_info="", status_code=500):
+    """Helper function to log errors to console and return JSON error response"""
+    import traceback
+    error_msg = f'Error in {endpoint_info}: {str(e)}'
+    traceback_msg = f'Traceback: {traceback.format_exc()}'
+    
+    # Print to console directly
+    print(f"\n{'='*50}")
+    print(error_msg)
+    print(traceback_msg)
+    print('='*50)
+    
+    return jsonify({
+        'error': str(e),
+        'traceback': traceback.format_exc()
+    }), status_code
+
 @parlamento_bp.route('/test', methods=['GET'])
 def test_db():
     """Endpoint de teste para verificar conexão com DB"""
@@ -20,12 +37,7 @@ def test_db():
             'partidos': count_partidos
         })
     except Exception as e:
-        import traceback
-        return jsonify({
-            'status': 'error',
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 500
+        return log_and_return_error(e, '/api/test')
 
 @parlamento_bp.route('/deputados', methods=['GET'])
 def get_deputados():
@@ -90,9 +102,7 @@ def get_deputados():
         })
         
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+        return log_and_return_error(e, '/api/deputados')
 
 
 @parlamento_bp.route('/deputados/<int:deputado_id>', methods=['GET'])
@@ -102,7 +112,7 @@ def get_deputado(deputado_id):
         deputado = Deputado.query.get_or_404(deputado_id)
         return jsonify(deputado.to_dict())
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return log_and_return_error(e, '/api/deputados/<id>')
 
 @parlamento_bp.route('/deputados/<int:deputado_id>/detalhes', methods=['GET'])
 def get_deputado_detalhes(deputado_id):
@@ -205,9 +215,15 @@ def get_deputado_detalhes(deputado_id):
         
         # Calcular estatísticas reais filtradas por legislatura
         
-        # Contar intervenções na legislatura específica (usa deputado.id)
+        # Contar intervenções na legislatura específica (join with intervencoes_deputados)
         if leg_id:
-            cursor.execute('SELECT COUNT(*) FROM intervencoes WHERE deputado_id = ? AND legislatura_id = ?', (deputado_id, leg_id))
+            cursor.execute('''
+                SELECT COUNT(*) 
+                FROM intervencoes i
+                JOIN intervencoes_deputados id ON i.id = id.intervencao_id
+                JOIN deputados d ON id.id_cadastro = d.id_cadastro
+                WHERE d.id = ? AND i.legislatura_numero = ?
+            ''', (deputado_id, legislatura))
             total_intervencoes = cursor.fetchone()[0]
         else:
             total_intervencoes = 0
@@ -266,11 +282,7 @@ def get_deputado_detalhes(deputado_id):
         return jsonify(deputado_dict)
         
     except Exception as e:
-        import traceback
-        return jsonify({
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 500
+        return log_and_return_error(e, '/api/deputados/<id>/detalhes')
 
 @parlamento_bp.route('/deputados/<int:deputado_id>/atividades', methods=['GET'])
 def get_deputado_atividades(deputado_id):
@@ -322,17 +334,29 @@ def get_deputado_atividades(deputado_id):
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # Get interventions (use deputado.id) - updated to include video data
+        # Get interventions (join with intervencoes_deputados and get video data)
         intervencoes_query = """
-            SELECT tipo_intervencao, data_intervencao, sumario, resumo, fase_sessao, 
-                   url_video, thumbnail_url, assunto, duracao_video
-            FROM intervencoes 
-            WHERE deputado_id = ? AND legislatura_id = ?
-            ORDER BY data_intervencao DESC
+            SELECT i.tipo_intervencao, i.data_reuniao_plenaria, i.sumario, i.resumo, i.fase_sessao, 
+                   av.url_video, av.thumbnail_url, av.assunto, av.duracao
+            FROM intervencoes i
+            JOIN intervencoes_deputados id ON i.id = id.intervencao_id
+            JOIN deputados d ON id.id_cadastro = d.id_cadastro
+            LEFT JOIN intervencoes_audiovisual av ON i.id = av.intervencao_id
+            WHERE d.id = ? AND i.legislatura_numero = ?
+            ORDER BY i.data_reuniao_plenaria DESC
             LIMIT 20
         """
         
-        cursor.execute(intervencoes_query, (deputado_id, leg.id))
+        # Convert numeric legislatura to Roman numeral for interventions query
+        roman_map = {
+            '17': 'XVII', '16': 'XVI', '15': 'XV', '14': 'XIV', '13': 'XIII',
+            '12': 'XII', '11': 'XI', '10': 'X', '9': 'IX', '8': 'VIII',
+            '7': 'VII', '6': 'VI', '5': 'V', '4': 'IV', '3': 'III',
+            '2': 'II', '1': 'I', '0': 'CONSTITUINTE'
+        }
+        legislatura_roman = roman_map.get(legislatura, legislatura)
+        
+        cursor.execute(intervencoes_query, (deputado_id, legislatura_roman))
         intervencoes = []
         for row in cursor.fetchall():
             intervencoes.append({
@@ -381,7 +405,7 @@ def get_deputado_atividades(deputado_id):
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return log_and_return_error(e, '/api/deputados/<id>/atividades')
 
 
 @parlamento_bp.route('/partidos/<int:partido_id>', methods=['GET'])
@@ -391,7 +415,7 @@ def get_partido(partido_id):
         partido = Partido.query.get_or_404(partido_id)
         return jsonify(partido.to_dict())
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return log_and_return_error(e, '/api/partidos/<id>')
 
 @parlamento_bp.route('/partidos/<int:partido_id>/deputados', methods=['GET'])
 def get_partido_deputados(partido_id):
@@ -430,11 +454,7 @@ def get_partido_deputados(partido_id):
         })
         
     except Exception as e:
-        import traceback
-        return jsonify({
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 500
+        return log_and_return_error(e, '/api/partidos/<id>/deputados')
 
 @parlamento_bp.route('/partidos/<int:partido_id>/votacoes', methods=['GET'])
 def get_partido_votacoes(partido_id):
@@ -551,8 +571,7 @@ def get_partido_votacoes(partido_id):
         })
         
     except Exception as e:
-        import traceback
-        return jsonify({'error': str(e), 'traceback': traceback.format_exc()}), 500
+        return log_and_return_error(e, '/api/partidos/<id>/votacoes')
 
 @parlamento_bp.route('/circulos', methods=['GET'])
 def get_circulos():
@@ -579,7 +598,7 @@ def get_circulos():
         return jsonify(result)
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return log_and_return_error(e, '/api/circulos')
 
 @parlamento_bp.route('/estatisticas', methods=['GET'])
 def get_estatisticas():
