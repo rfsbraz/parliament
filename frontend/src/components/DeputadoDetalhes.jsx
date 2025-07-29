@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink } from 'lucide-react';
+import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail } from 'lucide-react';
 
 const DeputadoDetalhes = () => {
   const { deputadoId } = useParams();
@@ -199,19 +199,35 @@ const DeputadoDetalhes = () => {
                 </Link>
               </div>
 
-              {/* Status */}
+              {/* Status and Actions */}
               <div className="flex-shrink-0">
-                {deputado.mandato.ativo ? (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                    <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
-                    Mandato Ativo
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
-                    Mandato Inativo
-                  </span>
-                )}
+                <div className="flex flex-col items-end space-y-3">
+                  {/* Status Badge */}
+                  {deputado.mandato.ativo ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                      <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+                      Mandato Ativo
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
+                      Mandato Inativo
+                    </span>
+                  )}
+                  
+                  {/* Email Button */}
+                  <button
+                    onClick={() => {
+                      const emailUrl = `https://www.parlamento.pt/DeputadoGP/Paginas/EmailDeputado.aspx?BID=${deputado.id_cadastro}`;
+                      window.open(emailUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+                    }}
+                    className="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors shadow-sm"
+                    title="Enviar email através do site oficial do Parlamento"
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Enviar e-mail
+                  </button>
+                </div>
               </div>
             </div>
           </div>
