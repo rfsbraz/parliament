@@ -9,8 +9,12 @@ Handles deputy interventions in parliament sessions and maps them to the databas
 import xml.etree.ElementTree as ET
 import os
 import re
+import requests
+import time
+import sqlite3
 from typing import Dict, Optional, Set
 import logging
+from urllib.parse import urljoin, urlparse
 
 from .base_mapper import SchemaMapper, SchemaError
 
@@ -22,9 +26,92 @@ class IntervencoesMapper(SchemaMapper):
     
     def get_expected_fields(self) -> Set[str]:
         return {
+            # Root elements
             'ArrayOfDadosPesquisaIntervencoesOut', 'DadosPesquisaIntervencoesOut',
-            'Id', 'DataReuniaoPlenaria', 'TipoIntervencao', 'Resumo', 'Deputados',
-            'DadosDeputado', 'DepId', 'DepNome', 'VideoAudio', 'VideoUrl'
+            
+            # Main intervention fields
+            'Id', 'DataReuniaoPlenaria', 'TipoIntervencao', 'Resumo', 'Sumario',
+            'Legislatura', 'Sessao', 'Qualidade', 'FaseSessao', 'FaseDebate',
+            'IdDebate', 'Debate', 'ActividadeId',
+            
+            # Deputy fields (both old and new structures)
+            'Deputados', 'DadosDeputado', 'DepId', 'DepNome', 'idCadastro', 'nome', 'GP',
+            
+            # Government members
+            'MembrosGoverno', 'governo', 'cargo',
+            
+            # Guests
+            'Convidados',
+            
+            # Publication fields
+            'Publicacao', 'pt_gov_ar_objectos_PublicacoesOut', 'pubdt', 'pubLeg', 
+            'pubNr', 'pubSL', 'pubTipo', 'pubTp', 'idInt', 'URLDiario', 'pag', 'string',
+            
+            # Related activities
+            'ActividadesRelacionadas', 'id', 'tipo',
+            
+            # Initiatives
+            'Iniciativas', 'pt_gov_ar_objectos_intervencoes_IniciativasOut', 'fase',
+            
+            # Audiovisual (old and new)
+            'VideoAudio', 'VideoUrl', 'DadosAudiovisual', 
+            'pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut',
+            'duracao', 'assunto', 'url', 'tipoIntervencao',
+            
+            # Additional field paths from all legislatura files
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno.nome',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut.fase',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Convidados.cargo',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.IdDebate',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno.governo',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Id',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DataReuniaoPlenaria',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Sumario',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.TipoIntervencao',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadesRelacionadas.id',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados.GP',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadeId',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut.tipo',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Legislatura',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Convidados',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Sessao',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Qualidade',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados.idCadastro',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.FaseSessao',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Convidados.nome',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Resumo',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadesRelacionadas.tipo',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados.nome',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idInt',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadesRelacionadas',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Debate',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno.cargo',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut.id',
+            
+            # Additional fields from other legislaturas
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.FaseDebate',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.tipoIntervencao',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.duracao',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.assunto',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.url'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict) -> Dict:
@@ -56,60 +143,276 @@ class IntervencoesMapper(SchemaMapper):
         return results
     
     def _process_intervencao_record(self, intervencao: ET.Element, legislatura_id: int) -> bool:
-        """Process individual intervention record"""
+        """Process individual intervention record with proper normalized storage"""
         try:
+            # Extract basic fields
             id_elem = intervencao.find('Id')
-            data_elem = intervencao.find('DataReuniaoPlenaria')
+            legislatura_elem = intervencao.find('Legislatura')
+            sessao_elem = intervencao.find('Sessao')
             tipo_elem = intervencao.find('TipoIntervencao')
+            data_elem = intervencao.find('DataReuniaoPlenaria')
+            qualidade_elem = intervencao.find('Qualidade')
+            fase_sessao_elem = intervencao.find('FaseSessao')
+            sumario_elem = intervencao.find('Sumario')
             resumo_elem = intervencao.find('Resumo')
+            atividade_id_elem = intervencao.find('ActividadeId')
+            id_debate_elem = intervencao.find('IdDebate')
             
-            # Extract deputy ID from nested Deputados element
-            deputados_elem = intervencao.find('Deputados')
-            deputado_cad_id = None
-            if deputados_elem is not None:
-                deputado_elem = deputados_elem.find('DadosDeputado')
-                if deputado_elem is not None:
-                    dep_id_elem = deputado_elem.find('DepId')
-                    if dep_id_elem is not None:
-                        deputado_cad_id = self._safe_int(dep_id_elem.text)
+            if id_elem is None or data_elem is None:
+                return False
             
-            # Extract video URL if available
-            video_elem = intervencao.find('VideoAudio')
-            video_url = None
-            if video_elem is not None:
-                video_url_elem = video_elem.find('VideoUrl')
-                if video_url_elem is not None:
-                    video_url = video_url_elem.text
-            
-            if id_elem is not None and data_elem is not None:
-                # Get deputy ID
-                deputado_id = None
-                if deputado_cad_id:
-                    self.cursor.execute("SELECT id FROM deputados WHERE id_cadastro = ?", (deputado_cad_id,))
-                    dep_result = self.cursor.fetchone()
-                    if dep_result:
-                        deputado_id = dep_result[0]
-                
+            # Start a transaction for this intervention
+            try:
+                # Insert main intervention record
                 self.cursor.execute("""
-                INSERT OR REPLACE INTO intervencoes 
-                (id_externo, deputado_id, legislatura_id, data_intervencao, tipo, resumo, video_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT OR REPLACE INTO intervencoes 
+                    (id_externo, legislatura_numero, sessao_numero, tipo_intervencao, data_reuniao_plenaria,
+                     qualidade, fase_sessao, sumario, resumo, atividade_id, id_debate)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     self._safe_int(id_elem.text),
-                    deputado_id,
-                    legislatura_id,
-                    self._parse_date(data_elem.text),
+                    legislatura_elem.text if legislatura_elem is not None else None,
+                    sessao_elem.text if sessao_elem is not None else None,
                     tipo_elem.text if tipo_elem is not None else None,
+                    self._parse_date(data_elem.text),
+                    qualidade_elem.text if qualidade_elem is not None else None,
+                    fase_sessao_elem.text if fase_sessao_elem is not None else None,
+                    sumario_elem.text if sumario_elem is not None else None,
                     resumo_elem.text if resumo_elem is not None else None,
-                    video_url
+                    self._safe_int(atividade_id_elem.text) if atividade_id_elem is not None else None,
+                    self._safe_int(id_debate_elem.text) if id_debate_elem is not None else None
                 ))
+                
+                intervention_id = self.cursor.lastrowid
+                
+                # Process publication data
+                self._process_publicacao(intervencao, intervention_id)
+                
+                # Process deputy data
+                self._process_deputados(intervencao, intervention_id)
+                
+                # Process government members
+                self._process_membros_governo(intervencao, intervention_id)
+                
+                # Process invited guests
+                self._process_convidados(intervencao, intervention_id)
+                
+                # Process related activities
+                self._process_atividades_relacionadas(intervencao, intervention_id)
+                
+                # Process initiatives
+                self._process_iniciativas(intervencao, intervention_id)
+                
+                # Process audiovisual data
+                self._process_audiovisual(intervencao, intervention_id)
+                
                 return True
-            
-            return False
+                
+            except sqlite3.Error as db_error:
+                logger.error(f"Database error processing intervention {id_elem.text if id_elem is not None else 'unknown'}: {db_error}")
+                # Don't rollback here - let the caller handle it
+                raise
             
         except Exception as e:
             logger.error(f"Error processing intervention: {e}")
             return False
+    
+    def _process_publicacao(self, intervencao: ET.Element, intervention_id: int):
+        """Process publication data"""
+        publicacao_elem = intervencao.find('Publicacao')
+        if publicacao_elem is not None:
+            pub_dados_elem = publicacao_elem.find('pt_gov_ar_objectos_PublicacoesOut')
+            if pub_dados_elem is not None:
+                # Extract publication fields
+                pub_numero = pub_dados_elem.find('pubNr')
+                pub_tipo = pub_dados_elem.find('pubTipo')
+                pub_tp = pub_dados_elem.find('pubTp')
+                pub_leg = pub_dados_elem.find('pubLeg')
+                pub_sl = pub_dados_elem.find('pubSL')
+                pub_data = pub_dados_elem.find('pubdt')
+                pag_elem = pub_dados_elem.find('pag')
+                id_interno = pub_dados_elem.find('idInt')
+                url_diario = pub_dados_elem.find('URLDiario')
+                
+                # Handle page numbers (can be nested)
+                paginas = None
+                if pag_elem is not None:
+                    string_elem = pag_elem.find('string')
+                    if string_elem is not None:
+                        paginas = string_elem.text
+                    else:
+                        paginas = pag_elem.text
+                
+                self.cursor.execute("""
+                    INSERT INTO intervencoes_publicacoes 
+                    (intervencao_id, pub_numero, pub_tipo, pub_tp, pub_legislatura, pub_serie_legislatura,
+                     pub_data, paginas, id_interno, url_diario)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    intervention_id,
+                    pub_numero.text if pub_numero is not None else None,
+                    pub_tipo.text if pub_tipo is not None else None,
+                    pub_tp.text if pub_tp is not None else None,
+                    pub_leg.text if pub_leg is not None else None,
+                    pub_sl.text if pub_sl is not None else None,
+                    self._parse_date(pub_data.text) if pub_data is not None else None,
+                    paginas,
+                    self._safe_int(id_interno.text) if id_interno is not None else None,
+                    url_diario.text if url_diario is not None else None
+                ))
+    
+    def _process_deputados(self, intervencao: ET.Element, intervention_id: int):
+        """Process deputy data"""
+        deputados_elem = intervencao.find('Deputados')
+        if deputados_elem is not None:
+            # Check if there's actual deputy data (not empty)
+            id_cadastro_elem = deputados_elem.find('idCadastro')
+            nome_elem = deputados_elem.find('nome')
+            gp_elem = deputados_elem.find('GP')
+            
+            if id_cadastro_elem is not None or nome_elem is not None:
+                self.cursor.execute("""
+                    INSERT INTO intervencoes_deputados 
+                    (intervencao_id, id_cadastro, nome, grupo_parlamentar)
+                    VALUES (?, ?, ?, ?)
+                """, (
+                    intervention_id,
+                    self._safe_int(id_cadastro_elem.text) if id_cadastro_elem is not None else None,
+                    nome_elem.text if nome_elem is not None else None,
+                    gp_elem.text if gp_elem is not None else None
+                ))
+    
+    def _process_membros_governo(self, intervencao: ET.Element, intervention_id: int):
+        """Process government members data"""
+        membros_elem = intervencao.find('MembrosGoverno')
+        if membros_elem is not None:
+            nome_elem = membros_elem.find('nome')
+            cargo_elem = membros_elem.find('cargo')
+            governo_elem = membros_elem.find('governo')
+            
+            if nome_elem is not None or cargo_elem is not None:
+                self.cursor.execute("""
+                    INSERT INTO intervencoes_membros_governo 
+                    (intervencao_id, nome, cargo, governo)
+                    VALUES (?, ?, ?, ?)
+                """, (
+                    intervention_id,
+                    nome_elem.text if nome_elem is not None else None,
+                    cargo_elem.text if cargo_elem is not None else None,
+                    governo_elem.text if governo_elem is not None else None
+                ))
+    
+    def _process_convidados(self, intervencao: ET.Element, intervention_id: int):
+        """Process invited guests data"""
+        convidados_elem = intervencao.find('Convidados')
+        if convidados_elem is not None:
+            nome_elem = convidados_elem.find('nome')
+            cargo_elem = convidados_elem.find('cargo')
+            
+            if nome_elem is not None or cargo_elem is not None:
+                self.cursor.execute("""
+                    INSERT INTO intervencoes_convidados 
+                    (intervencao_id, nome, cargo)
+                    VALUES (?, ?, ?)
+                """, (
+                    intervention_id,
+                    nome_elem.text if nome_elem is not None else None,
+                    cargo_elem.text if cargo_elem is not None else None
+                ))
+    
+    def _process_atividades_relacionadas(self, intervencao: ET.Element, intervention_id: int):
+        """Process related activities data"""
+        atividades_elem = intervencao.find('ActividadesRelacionadas')
+        if atividades_elem is not None:
+            id_elem = atividades_elem.find('id')
+            tipo_elem = atividades_elem.find('tipo')
+            
+            if id_elem is not None or tipo_elem is not None:
+                self.cursor.execute("""
+                    INSERT INTO intervencoes_atividades_relacionadas 
+                    (intervencao_id, atividade_id, tipo)
+                    VALUES (?, ?, ?)
+                """, (
+                    intervention_id,
+                    self._safe_int(id_elem.text) if id_elem is not None else None,
+                    tipo_elem.text if tipo_elem is not None else None
+                ))
+    
+    def _process_iniciativas(self, intervencao: ET.Element, intervention_id: int):
+        """Process initiatives data"""
+        iniciativas_elem = intervencao.find('Iniciativas')
+        if iniciativas_elem is not None:
+            init_dados_elem = iniciativas_elem.find('pt_gov_ar_objectos_intervencoes_IniciativasOut')
+            if init_dados_elem is not None:
+                id_elem = init_dados_elem.find('id')
+                tipo_elem = init_dados_elem.find('tipo')
+                fase_elem = init_dados_elem.find('fase')
+                
+                if id_elem is not None or tipo_elem is not None:
+                    self.cursor.execute("""
+                        INSERT INTO intervencoes_iniciativas 
+                        (intervencao_id, iniciativa_id, tipo, fase)
+                        VALUES (?, ?, ?, ?)
+                    """, (
+                        intervention_id,
+                        self._safe_int(id_elem.text) if id_elem is not None else None,
+                        tipo_elem.text if tipo_elem is not None else None,
+                        fase_elem.text if fase_elem is not None else None
+                    ))
+    
+    def _process_audiovisual(self, intervencao: ET.Element, intervention_id: int):
+        """Process audiovisual data with thumbnail extraction"""
+        video_url = None
+        thumbnail_url = None
+        duracao = None
+        assunto = None
+        tipo_intervencao = None
+        
+        # Try old VideoAudio structure
+        video_elem = intervencao.find('VideoAudio')
+        if video_elem is not None:
+            video_url_elem = video_elem.find('VideoUrl')
+            if video_url_elem is not None:
+                video_url = video_url_elem.text
+        
+        # Try new DadosAudiovisual structure
+        if not video_url:
+            audiovisual_elem = intervencao.find('DadosAudiovisual')
+            if audiovisual_elem is not None:
+                dados_elem = audiovisual_elem.find('pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut')
+                if dados_elem is not None:
+                    url_elem = dados_elem.find('url')
+                    duracao_elem = dados_elem.find('duracao')
+                    assunto_elem = dados_elem.find('assunto')
+                    tipo_elem = dados_elem.find('tipoIntervencao')
+                    
+                    if url_elem is not None:
+                        video_url = url_elem.text
+                    if duracao_elem is not None:
+                        duracao = duracao_elem.text
+                    if assunto_elem is not None:
+                        assunto = assunto_elem.text
+                    if tipo_elem is not None:
+                        tipo_intervencao = tipo_elem.text
+        
+        # Extract thumbnail if video URL exists
+        if video_url:
+            time.sleep(0.5)  # Small delay between requests
+            thumbnail_url = self._extract_thumbnail_url(video_url)
+            
+            # Store audiovisual data
+            self.cursor.execute("""
+                INSERT INTO intervencoes_audiovisual 
+                (intervencao_id, url_video, thumbnail_url, duracao, assunto, tipo_intervencao)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                intervention_id,
+                video_url,
+                thumbnail_url,
+                duracao,
+                assunto,
+                tipo_intervencao
+            ))
     
     def _get_or_create_legislatura(self, sigla: str) -> int:
         """Get or create legislatura from sigla"""
@@ -150,3 +453,44 @@ class IntervencoesMapper(SchemaMapper):
         except Exception as e:
             logger.warning(f"Could not parse date '{date_str}': {e}")
             return date_str
+    
+    def _extract_thumbnail_url(self, video_url: str) -> Optional[str]:
+        """Extract thumbnail URL from video page HTML"""
+        if not video_url:
+            return None
+            
+        try:
+            # Add timeout and headers to avoid blocking
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            
+            response = requests.get(video_url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            # Search for the thumbnail URL pattern in HTML
+            html_content = response.text
+            
+            # Pattern: <img loading="lazy" class="meeting-intervention-image" src="/api/v1/videos/Plenary/X/X/X/thumbnail/X" />
+            thumbnail_pattern = r'class="meeting-intervention-image"\s+src="([^"]*thumbnail/\d+)"'
+            match = re.search(thumbnail_pattern, html_content)
+            
+            if match:
+                thumbnail_path = match.group(1)
+                # Convert relative URL to absolute URL using video URL domain
+                parsed_video_url = urlparse(video_url)
+                base_url = f"{parsed_video_url.scheme}://{parsed_video_url.netloc}"
+                thumbnail_url = urljoin(base_url, thumbnail_path)
+                
+                logger.debug(f"Extracted thumbnail URL: {thumbnail_url}")
+                return thumbnail_url
+            else:
+                logger.debug(f"No thumbnail found in video page: {video_url}")
+                return None
+                
+        except requests.RequestException as e:
+            logger.warning(f"Failed to fetch video page {video_url}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Error extracting thumbnail from {video_url}: {e}")
+            return None

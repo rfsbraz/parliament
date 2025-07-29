@@ -162,11 +162,13 @@ class FileTypeResolver:
 class UnifiedImporter:
     """Main importer class that orchestrates the entire import process"""
     
-    def __init__(self, db_path: str = "../../parlamento.db"):
-        self.db_path = db_path
+    def __init__(self, db_path: str = None):
+        # Get script directory and resolve paths
+        script_dir = Path(__file__).parent
+        self.db_path = db_path or str((script_dir / "../../parlamento.db").resolve())
         self.data_roots = [
-            "../../data/raw/downloads",
-            "../../data/raw/parliament_data"
+            str((script_dir / "../../data/raw/downloads").resolve()),
+            str((script_dir / "../../data/raw/parliament_data").resolve())
         ]
         self.file_type_resolver = FileTypeResolver()
         self.init_database()
@@ -182,13 +184,16 @@ class UnifiedImporter:
         """Initialize database with import_status table"""
         with sqlite3.connect(self.db_path) as conn:
             # Read and execute the migration
-            migration_path = Path("../../database/migrations/create_import_status.sql")
+            script_dir = Path(__file__).parent
+            migration_path = script_dir / "../../database/migrations/create_import_status.sql"
+            migration_path = migration_path.resolve()
+            
             if migration_path.exists():
                 with open(migration_path, 'r', encoding='utf-8') as f:
                     conn.executescript(f.read())
                 logger.info("Import status table initialized")
             else:
-                logger.error("Migration file not found")
+                logger.error(f"Migration file not found at: {migration_path}")
     
     def calculate_file_hash(self, file_path: str) -> str:
         """Calculate SHA1 hash of file content"""
@@ -202,11 +207,11 @@ class UnifiedImporter:
             logger.error(f"Error calculating hash for {file_path}: {e}")
             return ""
     
-    def scan_all_files(self):
-        """Discover and queue all files for processing"""
-        logger.info("Starting file discovery...")
+    def process_files(self, file_type_filter: str = None, limit: int = None, force_reimport: bool = False):
+        """Process files directly from source directories"""
+        logger.info("Starting file processing...")
         total_files = 0
-        queued_files = 0
+        processed_files = 0
         
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -216,7 +221,7 @@ class UnifiedImporter:
                     logger.warning(f"Data root not found: {data_root}")
                     continue
                 
-                logger.info(f"Scanning data root: {data_root}")
+                logger.info(f"Processing files from: {data_root}")
                 
                 for root, dirs, files in os.walk(data_root):
                     for file in files:
@@ -224,19 +229,44 @@ class UnifiedImporter:
                             file_path = os.path.join(root, file)
                             total_files += 1
                             
-                            if self._should_queue_file(cursor, file_path):
-                                self._queue_file(cursor, file_path)
-                                queued_files += 1
+                            # Check if we should process this file
+                            if self._should_process_file(cursor, file_path, file_type_filter, force_reimport):
+                                if self._process_file(cursor, file_path):
+                                    processed_files += 1
                                 
-                                if queued_files % 100 == 0:
-                                    logger.info(f"Queued {queued_files} files so far...")
+                                if processed_files % 10 == 0:
+                                    logger.info(f"Processed {processed_files} files so far...")
+                                
+                                # Check limit
+                                if limit and processed_files >= limit:
+                                    logger.info(f"Reached limit of {limit} files")
+                                    conn.commit()
+                                    return
             
             conn.commit()
         
-        logger.info(f"File discovery complete: {total_files} files found, {queued_files} queued for processing")
+        logger.info(f"Processing complete: {total_files} files found, {processed_files} processed")
     
-    def _should_queue_file(self, cursor, file_path: str) -> bool:
-        """Check if file should be queued (not already processed with same hash)"""
+    def _should_process_file(self, cursor, file_path: str, file_type_filter: str = None, force_reimport: bool = False) -> bool:
+        """Check if file should be processed"""
+        # Check file type filter
+        file_type = self.file_type_resolver.resolve_file_type(file_path)
+        if not file_type:
+            return False
+        
+        if file_type_filter and file_type != file_type_filter:
+            return False
+        
+        # Check if we have a mapper for this file type
+        if file_type not in self.schema_mappers:
+            logger.debug(f"No mapper for file type: {file_type}")
+            return False
+        
+        # If force reimport, always process
+        if force_reimport:
+            return True
+        
+        # Check if already processed with same hash
         file_hash = self.calculate_file_hash(file_path)
         if not file_hash:
             return False
@@ -248,179 +278,108 @@ class UnifiedImporter:
         
         return cursor.fetchone() is None
     
-    def _queue_file(self, cursor, file_path: str):
-        """Queue file for processing"""
-        file_hash = self.calculate_file_hash(file_path)
-        file_name = os.path.basename(file_path)
-        file_type = self.file_type_resolver.resolve_file_type(file_path)
-        legislatura = self.file_type_resolver.extract_legislatura(file_path)
-        
-        # Determine category from file type
-        category = file_type.replace('_', ' ').title() if file_type else 'Unknown'
-        
+    def _process_file(self, cursor, file_path: str) -> bool:
+        """Process a single file"""
         try:
+            # Determine file type
+            file_type = self.file_type_resolver.resolve_file_type(file_path)
+            if not file_type or file_type not in self.schema_mappers:
+                logger.warning(f"No mapper available for file type '{file_type}': {file_path}")
+                return False
+            
+            # Calculate file hash and size
+            file_hash = self.calculate_file_hash(file_path)
+            file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
+            
+            # Update import status to processing
             cursor.execute("""
                 INSERT OR REPLACE INTO import_status 
-                (file_url, file_path, file_name, file_type, category, legislatura, 
-                 file_hash, file_size, status, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+                (file_url, file_path, file_name, file_type, category, file_hash, file_size, status, processing_started_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'processing', ?, ?, ?)
             """, (
                 file_path,  # Using file_path as URL for local files
                 file_path,
-                file_name,
-                file_type or 'unknown',
-                category,
-                legislatura,
+                os.path.basename(file_path),
+                file_type,
+                file_type.replace('_', ' ').title(),
                 file_hash,
-                os.path.getsize(file_path),
-                datetime.now(),
-                datetime.now()
+                file_size,
+                datetime.now().isoformat(),
+                datetime.now().isoformat(),
+                datetime.now().isoformat()
             ))
-        except Exception as e:
-            logger.error(f"Error queuing file {file_path}: {e}")
-    
-    def import_pending_files(self, file_type_filter: Optional[str] = None, limit: Optional[int] = None):
-        """Import all pending files"""
-        logger.info("Starting import of pending files...")
-        
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
             
-            # Build query
-            query = "SELECT * FROM import_status WHERE status = 'pending'"
-            params = []
+            # Process the file
+            mapper_class = self.schema_mappers[file_type]
             
-            if file_type_filter:
-                query += " AND file_type LIKE ?"
-                params.append(f"%{file_type_filter}%")
-            
-            if limit:
-                query += " LIMIT ?"
-                params.append(limit)
-            
-            cursor.execute(query, params)
-            pending_files = cursor.fetchall()
-        
-        if not pending_files:
-            logger.info("No pending files found")
-            return
-        
-        logger.info(f"Found {len(pending_files)} pending files to process")
-        
-        processed = 0
-        successful = 0
-        
-        for file_record in pending_files:
+            # Parse XML first
             try:
-                success = self._process_single_file(file_record)
-                if success:
-                    successful += 1
-                processed += 1
-                
-                if processed % 10 == 0:
-                    logger.info(f"Processed {processed}/{len(pending_files)} files, {successful} successful")
+                xml_root = ET.parse(file_path).getroot()
+                file_info = {
+                    'file_path': file_path,
+                    'file_type': file_type,
+                    'file_hash': file_hash
+                }
+            except Exception as e:
+                error_msg = f"XML parsing error: {str(e)}"
+                cursor.execute("""
+                    UPDATE import_status 
+                    SET status = 'failed', processing_completed_at = ?, error_message = ?
+                    WHERE file_path = ? AND file_hash = ?
+                """, (datetime.now().isoformat(), error_msg, file_path, file_hash))
+                logger.error(f"Failed to parse XML {file_path}: {error_msg}")
+                return False
+            
+            # Commit the status update before processing to avoid locks
+            cursor.connection.commit()
+            
+            # Create database connection for the mapper with proper isolation
+            try:
+                with sqlite3.connect(self.db_path, timeout=30.0) as mapper_conn:
+                    # Enable WAL mode for better concurrency
+                    mapper_conn.execute("PRAGMA journal_mode=WAL")
+                    mapper_conn.execute("PRAGMA synchronous=NORMAL")
+                    mapper_conn.execute("PRAGMA busy_timeout=30000")
+                    
+                    mapper = mapper_class(mapper_conn)
+                    results = mapper.validate_and_map(xml_root, file_info)
+                    
+                    # Commit mapper changes
+                    mapper_conn.commit()
+                    
+                    # Update status to completed
+                    cursor.execute("""
+                        UPDATE import_status 
+                        SET status = 'completed', processing_completed_at = ?, 
+                            records_imported = ?, error_message = ?
+                        WHERE file_path = ? AND file_hash = ?
+                    """, (
+                        datetime.now().isoformat(),
+                        results.get('records_imported', 0),
+                        '; '.join(results.get('errors', [])) if results.get('errors') else None,
+                        file_path, file_hash
+                    ))
+                    
+                    logger.info(f"Successfully processed {file_path}: {results.get('records_imported', 0)} records imported")
+                    return True
                     
             except Exception as e:
-                logger.error(f"Error processing file {file_record[2]}: {e}")
-                processed += 1
-        
-        logger.info(f"Import complete: {processed} processed, {successful} successful")
-    
-    def _process_single_file(self, file_record: Tuple) -> bool:
-        """Process a single file"""
-        file_id = file_record[0]
-        file_path = file_record[2]
-        file_type = file_record[4]
-        
-        logger.info(f"Processing {file_type}: {os.path.basename(file_path)}")
-        
-        # Skip files we don't have mappers for yet
-        if file_type not in self.schema_mappers:
-            logger.warning(f"No schema mapper found for file type: {file_type}")
-            self._update_file_status(file_id, 'failed', f"No mapper for type: {file_type}")
-            return False
-        
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                # Update status to processing
-                self._update_file_status(file_id, 'processing', processing_started_at=datetime.now())
+                # Update status to failed
+                error_msg = f"Processing error: {str(e)}"
+                cursor.execute("""
+                    UPDATE import_status 
+                    SET status = 'failed', processing_completed_at = ?, error_message = ?
+                    WHERE file_path = ? AND file_hash = ?
+                """, (datetime.now().isoformat(), error_msg, file_path, file_hash))
                 
-                # Load and parse XML
-                with open(file_path, 'rb') as f:
-                    content = f.read()
-                
-                # Remove BOM if present
-                if content.startswith(b'\\xef\\xbb\\xbf'):
-                    content = content[3:]
-                
-                xml_root = ET.fromstring(content.decode('utf-8'))
-                
-                # Get appropriate schema mapper
-                mapper_class = self.schema_mappers[file_type]
-                mapper = mapper_class(conn)
-                
-                # Process file with schema validation
-                file_info = {
-                    'file_id': file_id,
-                    'file_path': file_path,
-                    'file_type': file_type
-                }
-                
-                results = mapper.validate_and_map(xml_root, file_info)
-                
-                # Update status to completed
-                self._update_file_status(
-                    file_id, 'completed', 
-                    records_imported=results['records_imported'],
-                    processing_completed_at=datetime.now()
-                )
-                
-                logger.info(f"Successfully processed {results['records_imported']} records")
-                return True
-                
-        except SchemaError as e:
-            logger.error(f"Schema validation failed: {e}")
-            self._update_file_status(file_id, 'schema_mismatch', str(e))
-            return False
-            
+                logger.error(f"Failed to process {file_path}: {error_msg}")
+                return False
+                    
         except Exception as e:
-            logger.error(f"Processing failed: {e}")
-            self._update_file_status(file_id, 'failed', str(e))
+            logger.error(f"Unexpected error processing {file_path}: {e}")
+            traceback.print_exc()
             return False
-    
-    def _update_file_status(self, file_id: int, status: str, error_message: str = None, 
-                           records_imported: int = 0, processing_started_at: datetime = None,
-                           processing_completed_at: datetime = None):
-        """Update file processing status"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            
-            update_fields = ["status = ?"]
-            params = [status]
-            
-            if error_message:
-                update_fields.append("error_message = ?")  
-                params.append(error_message)
-            
-            if records_imported > 0:
-                update_fields.append("records_imported = ?")
-                params.append(records_imported)
-            
-            if processing_started_at:
-                update_fields.append("processing_started_at = ?")
-                params.append(processing_started_at)
-            
-            if processing_completed_at:
-                update_fields.append("processing_completed_at = ?")
-                params.append(processing_completed_at)
-            
-            update_fields.append("updated_at = ?")
-            params.append(datetime.now())
-            params.append(file_id)
-            
-            query = f"UPDATE import_status SET {', '.join(update_fields)} WHERE id = ?"
-            cursor.execute(query, params)
-            conn.commit()
+
     
     def show_status(self):
         """Show import status summary"""
@@ -472,10 +431,6 @@ class UnifiedImporter:
 def main():
     """Main CLI interface"""
     parser = argparse.ArgumentParser(description='Unified Parliament Data Importer')
-    parser.add_argument('--scan-all', action='store_true', 
-                       help='Discover and queue all files for processing')
-    parser.add_argument('--import-pending', action='store_true',
-                       help='Import all pending files')
     parser.add_argument('--force-reimport', action='store_true',
                        help='Force reimport of all files (ignore SHA1)')
     parser.add_argument('--file-type', type=str,
@@ -491,16 +446,17 @@ def main():
     
     importer = UnifiedImporter()
     
-    if args.scan_all:
-        importer.scan_all_files()
-    elif args.import_pending:
-        importer.import_pending_files(file_type_filter=args.file_type, limit=args.limit)
-    elif args.status:
+    if args.status:
         importer.show_status()
     elif args.validate_schema:
         importer.validate_schema_coverage(args.file_type)
     else:
-        parser.print_help()
+        # Default behavior: process files from source directories
+        importer.process_files(
+            file_type_filter=args.file_type, 
+            limit=args.limit, 
+            force_reimport=args.force_reimport
+        )
 
 
 if __name__ == "__main__":
