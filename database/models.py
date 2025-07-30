@@ -2558,3 +2558,43 @@ class IntervencaoAudiovisual(Base):
     created_at = Column(DateTime, default=func.now())
     
     intervencao = relationship("IntervencaoParlamentar", back_populates="audiovisuais")
+
+
+# =====================================================
+# ORÇAMENTO E CONTAS DE GERÊNCIA
+# =====================================================
+
+class OrcamentoContasGerencia(Base):
+    __tablename__ = 'orcamento_contas_gerencia'
+    
+    id = Column(Integer, primary_key=True)
+    entry_id = Column(Integer, nullable=False)  # id field from XML
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core fields
+    tipo = Column(String(100), nullable=False)  # "Orçamento da A.R." or "Conta Gerência"
+    tp = Column(String(10), nullable=False)  # "OAR" or "CGE" 
+    titulo = Column(Text, nullable=False)  # Full title/description
+    ano = Column(Integer, nullable=False)  # Year
+    leg = Column(String(20), nullable=False)  # Legislature code (V, XI, etc.)
+    sl = Column(Integer, nullable=False)  # Session number
+    
+    # Optional date fields
+    dt_aprovacao_ca = Column(Date)  # dtAprovacaoCA - approval date
+    dt_agendamento = Column(Date)  # dtAgendamento - scheduling date
+    
+    # Timestamps
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    legislatura = relationship("Legislatura")
+    
+    # Indexes for performance
+    __table_args__ = (
+        Index('idx_orcamento_gerencia_entry_id', 'entry_id'),
+        Index('idx_orcamento_gerencia_legislatura', 'legislatura_id'),
+        Index('idx_orcamento_gerencia_tipo', 'tipo'),
+        Index('idx_orcamento_gerencia_ano', 'ano'),
+        UniqueConstraint('entry_id', 'legislatura_id', name='uq_orcamento_gerencia_entry_leg'),
+    )

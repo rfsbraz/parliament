@@ -24,7 +24,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 from database.models import (
     AtividadeParlamentar, AtividadeParlamentarPublicacao, AtividadeParlamentarVotacao,
     AtividadeParlamentarEleito, AtividadeParlamentarConvidado, DebateParlamentar,
-    RelatorioParlamentar, Legislatura
+    RelatorioParlamentar, Legislatura, OrcamentoContasGerencia
 )
 
 logger = logging.getLogger(__name__)
@@ -325,7 +325,20 @@ class AtividadesMapper(SchemaMapper):
             'Atividades.Audiencias.DadosAudienciasComissaoOut.Concedida',
             'Atividades.Audiencias.DadosAudienciasComissaoOut.TipoAudiencia',
             'Atividades.Audiencias.DadosAudienciasComissaoOut.Entidades',
-            'Atividades.Audiencias.DadosAudienciasComissaoOut.Observacoes'
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.Observacoes',
+            
+            # Orçamento e Contas de Gerência section
+            'Atividades.OrcamentoContasGerencia',
+            'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut', 
+            'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.id',
+            'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.tipo',
+            'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.tp',
+            'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.titulo',
+            'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.ano',
+            'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.leg',
+            'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.SL',
+            'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.dtAprovacaoCA',
+            'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.dtAgendamento'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -416,6 +429,32 @@ class AtividadesMapper(SchemaMapper):
                         self.session.rollback()
                         if strict_mode:
                             logger.error(f"STRICT MODE: Exiting due to report processing exception")
+                            raise
+            
+            # Process OrcamentoContasGerencia section
+            orcamento_gerencia = xml_root.find('.//OrcamentoContasGerencia')
+            if orcamento_gerencia is not None:
+                for entry in orcamento_gerencia.findall('.//pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut'):
+                    try:
+                        success = self._process_orcamento_gerencia(entry, legislatura)
+                        results['records_processed'] += 1
+                        if success:
+                            results['records_imported'] += 1
+                        else:
+                            error_msg = f"Failed to process budget/account record"
+                            logger.error(error_msg)
+                            results['errors'].append(error_msg)
+                            if strict_mode:
+                                logger.error(f"STRICT MODE: Exiting due to data validation failure in budget/account processing")
+                                raise ValueError(f"STRICT MODE: Budget/account processing failed - {error_msg}")
+                    except Exception as e:
+                        error_msg = f"Budget/account processing error: {str(e)}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                        results['records_processed'] += 1
+                        self.session.rollback()
+                        if strict_mode:
+                            logger.error(f"STRICT MODE: Exiting due to budget/account processing exception")
                             raise
             
             # Commit all changes
@@ -956,6 +995,82 @@ class AtividadesMapper(SchemaMapper):
                         honra=honra
                     )
                     self.session.add(convidado_record)
+    
+    def _process_orcamento_gerencia(self, entry: ET.Element, legislatura: Legislatura) -> bool:
+        """Process budget and account management entry"""
+        try:
+            # First check if this is an empty/placeholder record
+            has_content = any(
+                child.text and child.text.strip() 
+                for child in entry.iter() 
+                if child != entry  # Don't count the parent element itself
+            )
+            
+            if not has_content:
+                logger.debug("Skipping empty budget/account record (no content found)")
+                return True  # Successfully skip empty records
+            
+            # Extract required fields
+            entry_id = self._get_int_value(entry, 'id')
+            tipo = self._get_text_value(entry, 'tipo')
+            tp = self._get_text_value(entry, 'tp')
+            titulo = self._get_text_value(entry, 'titulo')
+            ano = self._get_int_value(entry, 'ano')
+            leg = self._get_text_value(entry, 'leg')
+            sl = self._get_int_value(entry, 'SL')
+            
+            # Validate required fields
+            if not entry_id:
+                logger.warning(f"DATA VALIDATION FAILURE: Missing required budget/account field - id")
+                return False
+            
+            if not titulo:
+                logger.warning(f"DATA VALIDATION FAILURE: Missing required budget/account field - titulo")
+                return False
+            
+            if not ano:
+                logger.warning(f"DATA VALIDATION FAILURE: Missing required budget/account field - ano")
+                return False
+            
+            # Extract optional date fields
+            dt_aprovacao_str = self._get_text_value(entry, 'dtAprovacaoCA')
+            dt_agendamento_str = self._get_text_value(entry, 'dtAgendamento')
+            
+            dt_aprovacao = self._parse_date(dt_aprovacao_str) if dt_aprovacao_str else None
+            dt_agendamento = self._parse_date(dt_agendamento_str) if dt_agendamento_str else None
+            
+            # Check if record already exists
+            existing = self.session.query(OrcamentoContasGerencia).filter_by(
+                entry_id=entry_id,
+                legislatura_id=legislatura.id
+            ).first()
+            
+            if existing:
+                logger.debug(f"Budget/account entry {entry_id} already exists, skipping")
+                return True
+            
+            # Create new budget/account record
+            orcamento_obj = OrcamentoContasGerencia(
+                entry_id=entry_id,
+                tipo=tipo or 'Unknown',
+                tp=tp or 'UNK',
+                titulo=titulo,
+                ano=ano,
+                leg=leg or legislatura.numero,
+                sl=sl or 1,
+                dt_aprovacao_ca=dt_aprovacao,
+                dt_agendamento=dt_agendamento,
+                legislatura_id=legislatura.id
+            )
+            self.session.add(orcamento_obj)
+            
+            logger.debug(f"Processed budget/account entry: {entry_id} - {titulo[:50]}...")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing budget/account entry: {e}")
+            self.session.rollback()
+            return False
     
     def _get_int_value(self, parent: ET.Element, tag_name: str) -> Optional[int]:
         """Get integer value from XML element"""
