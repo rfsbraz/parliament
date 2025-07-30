@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Users, MapPin, User, BarChart3, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Users, MapPin, User, BarChart3, TrendingUp, UserCheck } from 'lucide-react';
 import PartyVotingAnalytics from './PartyVotingAnalytics';
+import PartyDemographics from './PartyDemographics';
 
 const PartidoDetalhes = () => {
   const { partidoId } = useParams();
@@ -14,7 +15,7 @@ const PartidoDetalhes = () => {
   // Get active tab from URL hash, default to 'deputados'
   const getActiveTabFromUrl = () => {
     const hash = location.hash.replace('#', '');
-    const validTabs = ['deputados', 'analytics'];
+    const validTabs = ['deputados', 'analytics', 'demografia'];
     return validTabs.includes(hash) ? hash : 'deputados';
   };
 
@@ -195,6 +196,7 @@ const PartidoDetalhes = () => {
             <nav className="flex space-x-8 px-6">
               {[
                 { id: 'deputados', label: 'Deputados', icon: Users },
+                { id: 'demografia', label: 'Demografia', icon: UserCheck },
                 { id: 'analytics', label: 'Análise Política', icon: BarChart3 }
               ].map((tab) => {
                 const Icon = tab.icon;
@@ -353,6 +355,14 @@ const PartidoDetalhes = () => {
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'demografia' && (
+              <PartyDemographics 
+                partidoId={partidoId}
+                dadosDemograficos={dados.demografia}
+                partidoInfo={dados.partido}
+              />
             )}
 
             {activeTab === 'analytics' && (
