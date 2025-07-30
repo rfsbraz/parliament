@@ -740,38 +740,128 @@ def get_partido(partido_id):
 
 @parlamento_bp.route('/partidos/<int:partido_id>/deputados', methods=['GET'])
 def get_partido_deputados(partido_id):
-    """Retorna detalhes de um partido com seus deputados"""
+    """Retorna detalhes de um partido com todos seus deputados (todas as legislaturas)"""
     try:
-        legislatura = request.args.get('legislatura', '17', type=str)
+        from app.utils import (
+            group_deputies_by_person, 
+            get_most_recent_mandate, 
+            enhance_deputy_with_career_info
+        )
         
         # Buscar o partido
         partido = Partido.query.get_or_404(partido_id)
         
-        # Buscar deputados do partido com mandatos na legislatura especificada
-        deputados_query = db.session.query(Deputado, Mandato, CirculoEleitoral).join(
-            Mandato, Deputado.id == Mandato.deputado_id
-        ).join(
-            CirculoEleitoral, Mandato.circulo_id == CirculoEleitoral.id
-        ).join(
-            Legislatura, Mandato.legislatura_id == Legislatura.id
-        ).filter(
-            Mandato.partido_id == partido_id,
-            Legislatura.numero == legislatura
-        ).order_by(Deputado.nome_completo)
+        # Get database connection for raw SQL query (similar to deputy search)
+        conn = db.engine.raw_connection()
+        cursor = conn.cursor()
+        
+        # Get all deputies who have ever had mandates with this party (using same query structure as deputy search)
+        query = """
+        SELECT DISTINCT d.id, d.id_cadastro, d.nome_completo, d.data_nascimento, d.profissao, d.foto_url, d.ativo,
+               l.numero as legislatura_numero, l.designacao as legislatura_nome, l.ativa as legislatura_ativa,
+               p.sigla as partido_sigla, p.nome as partido_nome, ce.designacao as circulo,
+               m.data_inicio as mandato_inicio, m.data_fim as mandato_fim, m.ativo as mandato_ativo
+        FROM deputados d 
+        JOIN mandatos m ON d.id = m.deputado_id 
+        JOIN legislaturas l ON m.legislatura_id = l.id
+        LEFT JOIN partidos p ON m.partido_id = p.id
+        LEFT JOIN circulos_eleitorais ce ON m.circulo_id = ce.id
+        WHERE p.id = ?
+        ORDER BY d.nome_completo, l.numero DESC
+        """
+        
+        cursor.execute(query, (partido_id,))
+        raw_results = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        # Convert to list of dictionaries (matching the exact query column order)
+        all_deputy_records = []
+        for row in raw_results:
+            deputy_dict = {
+                'id': row[0],                      # d.id
+                'id_cadastro': row[1],             # d.id_cadastro
+                'nome_completo': row[2],           # d.nome_completo  
+                'data_nascimento': row[3],         # d.data_nascimento
+                'profissao': row[4],               # d.profissao
+                'foto_url': row[5],                # d.foto_url
+                'ativo': row[6],                   # d.ativo
+                'legislatura_numero': row[7],      # l.numero
+                'legislatura_nome': row[8],        # l.designacao
+                'legislatura_ativa': bool(row[9]) if row[9] is not None else False,  # l.ativa
+                'partido_sigla': row[10],          # p.sigla
+                'partido_nome': row[11],           # p.nome
+                'circulo': row[12],                # ce.designacao
+                'mandato_inicio': row[13],         # m.data_inicio
+                'mandato_fim': row[14],            # m.data_fim
+                'mandato_ativo': bool(row[15]) if row[15] is not None else False     # m.ativo
+            }
+            all_deputy_records.append(deputy_dict)
+        
+        # Group deputies by person using the same logic as deputy search
+        grouped_deputies = group_deputies_by_person(all_deputy_records)
         
         deputados_data = []
-        for deputado, mandato, circulo in deputados_query.all():
-            deputado_dict = deputado.to_dict()
-            deputado_dict['circulo'] = circulo.designacao
-            # Calculate if mandate is truly active (no end date and marked as active)
-            # Explicitly convert to boolean to handle SQLAlchemy types
-            deputado_dict['mandato_ativo'] = bool(mandato.ativo) and (mandato.data_fim is None)
-            deputados_data.append(deputado_dict)
+        active_mandates = 0
+        
+        for unique_key, deputy_records in grouped_deputies.items():
+            most_recent = get_most_recent_mandate(deputy_records)
+            if most_recent:
+                enhanced_deputy = enhance_deputy_with_career_info(most_recent, deputy_records)
+                
+                # Format for frontend
+                deputado_dict = {
+                    'id': enhanced_deputy['id'],
+                    'nome': enhanced_deputy['nome_completo'],  # Frontend expects 'nome'
+                    'nome_completo': enhanced_deputy['nome_completo'],
+                    'data_nascimento': enhanced_deputy.get('data_nascimento'),
+                    'profissao': enhanced_deputy.get('profissao'),
+                    'picture_url': f"https://app.parlamento.pt/webutils/getimage.aspx?id={enhanced_deputy['id_cadastro']}&type=deputado" if enhanced_deputy.get('id_cadastro') else enhanced_deputy.get('foto_url'),
+                    'circulo': enhanced_deputy.get('circulo'),
+                    'ultima_legislatura': enhanced_deputy.get('legislatura_numero'),
+                    'mandato_ativo': enhanced_deputy.get('career_info', {}).get('is_currently_active', False)
+                }
+                
+                if deputado_dict['mandato_ativo']:
+                    active_mandates += 1
+                
+                deputados_data.append(deputado_dict)
+        
+        # Sort by active status first (active first), then by name  
+        deputados_data.sort(key=lambda x: (not x['mandato_ativo'], x['nome_completo'].lower()))
+        
+        # Calculate historical statistics
+        all_legislaturas = set()
+        all_circles = set()
+        earliest_legislatura = float('inf')
+        latest_legislatura = 0
+        
+        for deputy_records in grouped_deputies.values():
+            for record in deputy_records:
+                leg_num = record.get('legislatura_numero')
+                if leg_num:
+                    leg_num = int(leg_num)
+                    all_legislaturas.add(leg_num)
+                    earliest_legislatura = min(earliest_legislatura, leg_num)
+                    latest_legislatura = max(latest_legislatura, leg_num)
+                
+                if record.get('circulo'):
+                    all_circles.add(record.get('circulo'))
         
         return jsonify({
             'partido': partido.to_dict(),
             'deputados': deputados_data,
-            'total': len(deputados_data)
+            'total': len(deputados_data),
+            'mandatos_ativos': active_mandates,
+            'historico': {
+                'legislaturas_representadas': sorted(list(all_legislaturas)),
+                'total_legislaturas': len(all_legislaturas),
+                'circulos_representados': sorted(list(all_circles)),
+                'total_circulos': len(all_circles),
+                'primeira_legislatura': earliest_legislatura if earliest_legislatura != float('inf') else None,
+                'ultima_legislatura': latest_legislatura if latest_legislatura > 0 else None,
+                'periodo_atividade': f"{earliest_legislatura}ª-{latest_legislatura}ª Legislatura" if earliest_legislatura != float('inf') and latest_legislatura > 0 else None
+            }
         })
         
     except Exception as e:

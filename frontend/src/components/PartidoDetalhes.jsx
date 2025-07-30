@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Users, MapPin, User, BarChart3, TrendingUp } from 'lucide-react';
-import { useLegislatura } from '../contexts/LegislaturaContext';
 import PartyVotingAnalytics from './PartyVotingAnalytics';
 
 const PartidoDetalhes = () => {
   const { partidoId } = useParams();
-  const { selectedLegislatura } = useLegislatura();
   const navigate = useNavigate();
   const location = useLocation();
   const [dados, setDados] = useState(null);
@@ -51,11 +49,10 @@ const PartidoDetalhes = () => {
 
   useEffect(() => {
     const fetchDados = async () => {
-      if (!selectedLegislatura) return;
-      
       try {
         setLoading(true);
-        const response = await fetch(`/api/partidos/${partidoId}/deputados?legislatura=${selectedLegislatura.numero}`);
+        // Fetch all party deputies from all periods (no legislatura filter)
+        const response = await fetch(`/api/partidos/${partidoId}/deputados`);
         if (!response.ok) {
           throw new Error('Erro ao carregar dados do partido');
         }
@@ -68,10 +65,10 @@ const PartidoDetalhes = () => {
       }
     };
 
-    if (partidoId && selectedLegislatura) {
+    if (partidoId) {
       fetchDados();
     }
-  }, [partidoId, selectedLegislatura]);
+  }, [partidoId]);
 
   if (loading) {
     return (
@@ -143,6 +140,9 @@ const PartidoDetalhes = () => {
                   </span>
                   <span className="ml-1">deputados</span>
                 </div>
+                <div className="text-sm text-gray-500">
+                  {dados.mandatos_ativos} mandatos ativos
+                </div>
               </div>
             </div>
 
@@ -152,8 +152,9 @@ const PartidoDetalhes = () => {
                 <div className="flex items-center">
                   <Users className="h-8 w-8 text-blue-600" />
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-blue-600">Total Deputados</p>
+                    <p className="text-sm font-medium text-blue-600">Total Histórico</p>
                     <p className="text-2xl font-bold text-blue-900">{dados.total}</p>
+                    <p className="text-xs text-blue-600">todas as legislaturas</p>
                   </div>
                 </div>
               </div>
@@ -162,10 +163,11 @@ const PartidoDetalhes = () => {
                 <div className="flex items-center">
                   <MapPin className="h-8 w-8 text-green-600" />
                   <div className="ml-3">
-                    <p className="text-sm font-medium text-green-600">Círculos Representados</p>
+                    <p className="text-sm font-medium text-green-600">Círculos Históricos</p>
                     <p className="text-2xl font-bold text-green-900">
-                      {new Set(dados.deputados.map(d => d.circulo)).size}
+                      {dados.historico?.total_circulos || new Set(dados.deputados.map(d => d.circulo)).size}
                     </p>
+                    <p className="text-xs text-green-600">distritos eleitorais</p>
                   </div>
                 </div>
               </div>
@@ -176,8 +178,9 @@ const PartidoDetalhes = () => {
                   <div className="ml-3">
                     <p className="text-sm font-medium text-purple-600">Mandatos Ativos</p>
                     <p className="text-2xl font-bold text-purple-900">
-                      {dados.deputados.filter(d => d.mandato_ativo).length}
+                      {dados.mandatos_ativos}
                     </p>
+                    <p className="text-xs text-purple-600">legislatura atual</p>
                   </div>
                 </div>
               </div>
@@ -222,8 +225,24 @@ const PartidoDetalhes = () => {
                     Deputados do {dados.partido.sigla}
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Lista completa dos {dados.total} deputados eleitos por este partido
+                    Histórico completo de {dados.total} deputados que representaram o {dados.partido.sigla} ao longo de todas as legislaturas. 
+                    {dados.mandatos_ativos} deputados têm mandatos ativos na legislatura atual.
                   </p>
+                  {dados.historico && (
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center space-x-6 text-xs text-blue-700">
+                        <span>
+                          <span className="font-medium">Período:</span> {dados.historico.periodo_atividade || 'N/A'}
+                        </span>
+                        <span>
+                          <span className="font-medium">Legislaturas:</span> {dados.historico.total_legislaturas || 0}
+                        </span>
+                        <span>
+                          <span className="font-medium">Círculos:</span> {dados.historico.total_circulos || 0}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="divide-y divide-gray-200">
@@ -258,7 +277,7 @@ const PartidoDetalhes = () => {
                             </div>
                             <div className="flex-1 min-w-0">
                               <Link 
-                                to={`/deputados/${deputado.id}/${selectedLegislatura?.numero || '17'}`}
+                                to={`/deputados/${deputado.id}/${deputado.ultima_legislatura || '17'}`}
                                 className="text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
                               >
                                 {deputado.nome}
@@ -279,6 +298,15 @@ const PartidoDetalhes = () => {
                           </div>
                           
                           <div className="flex items-center">
+                            <span className="text-xs text-gray-400">
+                              {deputado.mandato_ativo ? 
+                                `Leg. ${deputado.ultima_legislatura} (atual)` : 
+                                `Última: Leg. ${deputado.ultima_legislatura}`
+                              }
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center">
                             {deputado.mandato_ativo ? (
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 Ativo
@@ -291,7 +319,7 @@ const PartidoDetalhes = () => {
                           </div>
                           
                           <Link 
-                            to={`/deputados/${deputado.id}/${selectedLegislatura?.numero || '17'}`}
+                            to={`/deputados/${deputado.id}/${deputado.ultima_legislatura || '17'}`}
                             className="text-blue-600 hover:text-blue-800 font-medium"
                           >
                             Ver Detalhes →
@@ -330,7 +358,7 @@ const PartidoDetalhes = () => {
             {activeTab === 'analytics' && (
               <PartyVotingAnalytics 
                 partidoId={partidoId} 
-                legislatura={selectedLegislatura?.numero || '17'} 
+                legislatura="17"
               />
             )}
           </div>

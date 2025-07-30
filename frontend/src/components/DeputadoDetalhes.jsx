@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail, Shield, AlertTriangle, Heart, Users } from 'lucide-react';
-import { useLegislatura } from '../contexts/LegislaturaContext';
 import VotingAnalytics from './VotingAnalytics';
 
 // TODO: Deputy mandate linking limitation
@@ -13,7 +12,6 @@ const DeputadoDetalhes = () => {
   const { deputadoId, legislatura: urlLegislatura } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { selectedLegislatura, selectLegislatura } = useLegislatura();
   
   const [deputado, setDeputado] = useState(null);
   const [atividades, setAtividades] = useState(null);
@@ -24,8 +22,8 @@ const DeputadoDetalhes = () => {
   const [interventionSort, setInterventionSort] = useState('recent');
   const [expandedInitiatives, setExpandedInitiatives] = useState(new Set());
   
-  // Determine which legislatura to use: URL parameter takes precedence over context
-  const currentLegislatura = urlLegislatura || (selectedLegislatura ? selectedLegislatura.numero.toString() : '17');
+  // Use URL parameter or default to current legislatura (17)
+  const currentLegislatura = urlLegislatura || '17';
   
   // Helper function to generate deputy URLs with legislatura
   const getDeputadoUrl = (deputadoId, legislatura = currentLegislatura) => {

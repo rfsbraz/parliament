@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { User, Search, Filter, MapPin, Briefcase, ArrowRight, Calendar, Users } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useLegislatura } from '../contexts/LegislaturaContext';
 
 const DeputadosPage = () => {
   const [deputados, setDeputados] = useState([])
@@ -14,7 +13,6 @@ const DeputadosPage = () => {
   const [pagination, setPagination] = useState(null)
   const [filters, setFilters] = useState(null)
   const [activeOnly, setActiveOnly] = useState(false)
-  const { selectedLegislatura } = useLegislatura()
 
   useEffect(() => {
     fetchDeputados()

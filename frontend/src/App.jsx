@@ -8,25 +8,21 @@ import DeputadoDetalhes from './components/DeputadoDetalhes'
 import PartidosPage from './components/PartidosPage'
 import PartidoDetalhes from './components/PartidoDetalhes'
 import AgendaPage from './components/AgendaPage'
-import AnalysisPageSimple from './components/AnalysisPageSimple'
 import Navigation from './components/Navigation'
-import { LegislaturaProvider, useLegislatura } from './contexts/LegislaturaContext'
 import './App.css'
 
 const AppContent = () => {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
-  const { selectedLegislatura } = useLegislatura()
 
   useEffect(() => {
-    if (selectedLegislatura) {
-      fetchStats()
-    }
-  }, [selectedLegislatura])
+    fetchStats()
+  }, [])
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`/api/estatisticas?legislatura=${selectedLegislatura.numero}`)
+      // Get overall statistics instead of per-legislatura
+      const response = await fetch('/api/estatisticas')
       const data = await response.json()
       setStats(data)
     } catch (error) {
@@ -62,7 +58,6 @@ const AppContent = () => {
             <Route path="/partidos" element={<PartidosPage />} />
             <Route path="/partidos/:partidoId" element={<PartidoDetalhes />} />
             <Route path="/agenda" element={<AgendaPage />} />
-            <Route path="/analises" element={<AnalysisPageSimple />} />
           </Routes>
         </main>
 
@@ -103,11 +98,7 @@ const AppContent = () => {
 }
 
 function App() {
-  return (
-    <LegislaturaProvider>
-      <AppContent />
-    </LegislaturaProvider>
-  )
+  return <AppContent />
 }
 
 export default App

@@ -2,28 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Users, TrendingUp, BarChart3, ArrowRight, Building } from 'lucide-react';
-import { useLegislatura } from '../contexts/LegislaturaContext';
 
 const PartidosPage = () => {
   const [partidos, setPartidos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { selectedLegislatura } = useLegislatura();
 
   useEffect(() => {
-    if (selectedLegislatura) {
-      fetchPartidos();
-    }
-  }, [selectedLegislatura]);
+    fetchPartidos();
+  }, []);
 
   const fetchPartidos = async () => {
-    if (!selectedLegislatura) return;
-    
     try {
-      const params = new URLSearchParams({
-        legislatura: selectedLegislatura.numero.toString()
-      });
-      
-      const response = await fetch(`/api/partidos?${params}`);
+      // Fetch all parties without legislatura filter
+      const response = await fetch('/api/partidos');
       const data = await response.json();
       setPartidos(data.partidos || []);
     } catch (error) {
@@ -70,7 +61,7 @@ const PartidosPage = () => {
           Partidos Políticos
         </h1>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-          Explore a composição partidária do Parlamento Português na {selectedLegislatura?.designacao || 'legislatura selecionada'}
+          Explore o panorama completo dos partidos políticos no Parlamento Português ao longo da história
         </p>
       </motion.div>
 

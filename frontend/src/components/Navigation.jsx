@@ -1,39 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Users, Building, Calendar, BarChart3, Menu, X, ChevronDown } from 'lucide-react';
-import { useLegislatura } from '../contexts/LegislaturaContext';
+import { Home, Users, Building, Calendar, Menu, X } from 'lucide-react';
 
-// Navigation component with legislatura dropdown
+// Navigation component
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const location = useLocation();
-  const { selectedLegislatura, legislaturas, selectLegislatura, loading } = useLegislatura();
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: Home },
     { path: '/deputados', label: 'Deputados', icon: Users },
     { path: '/partidos', label: 'Partidos', icon: Building },
     { path: '/agenda', label: 'Agenda', icon: Calendar },
-    { path: '/analises', label: 'Análises', icon: BarChart3 },
   ];
 
   const isActive = (path) => location.pathname === path;
-
-  // Close dropdown when clicking outside  
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownOpen && !event.target.closest('.legislatura-dropdown')) {
-        setDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [dropdownOpen]);
 
   return (
     <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
@@ -73,63 +55,6 @@ const Navigation = () => {
                 </Link>
               );
             })}
-          </div>
-
-          {/* Legislatura Dropdown */}
-          <div className="hidden md:flex items-center space-x-4">
-            <div className="relative legislatura-dropdown">
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                disabled={loading || !selectedLegislatura}
-                className="flex items-center space-x-2 px-3 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                <span className="text-sm font-medium text-gray-700">
-                  {loading ? 'Carregando...' : selectedLegislatura?.designacao || 'Selecionar Legislatura'}
-                </span>
-                <ChevronDown className="w-4 h-4 text-gray-500" />
-              </button>
-
-              {dropdownOpen && !loading && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
-                >
-                  <div className="py-1 max-h-64 overflow-y-auto">
-                    {legislaturas.map((legislatura) => (
-                      <button
-                        key={legislatura.id}
-                        onClick={() => {
-                          selectLegislatura(legislatura);
-                          setDropdownOpen(false);
-                        }}
-                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 transition-colors ${
-                          selectedLegislatura?.id === legislatura.id
-                            ? 'bg-blue-50 text-blue-700 font-medium'
-                            : 'text-gray-700'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span>{legislatura.designacao}</span>
-                          {legislatura.ativa && (
-                            <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                              Ativa
-                            </span>
-                          )}
-                        </div>
-                        {legislatura.data_inicio && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {new Date(legislatura.data_inicio).getFullYear()}
-                            {legislatura.data_fim && ` - ${new Date(legislatura.data_fim).getFullYear()}`}
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </div>
           </div>
 
           {/* Mobile menu button */}
