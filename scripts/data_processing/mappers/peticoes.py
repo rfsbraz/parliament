@@ -22,14 +22,31 @@ import re
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
+
+# Import our models
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from database.models import (
+    PeticaoParlamentar, PeticaoPublicacao, PeticaoComissao, PeticaoRelator,
+    PeticaoRelatorioFinal, PeticaoDocumento, PeticaoIntervencao, PeticaoOrador,
+    PeticaoOradorPublicacao, Legislatura
+)
 
 logger = logging.getLogger(__name__)
 
 
 class PeticoesMapper(SchemaMapper):
     """Comprehensive schema mapper for parliamentary petition files"""
+    
+    def __init__(self, db_path: str = None):
+        super().__init__(db_path)
+        self.engine = create_engine(f'sqlite:///{self.db_path}')
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
     
     def get_expected_fields(self) -> Set[str]:
         # Complete field list from XML analysis
@@ -68,27 +85,38 @@ class PeticoesMapper(SchemaMapper):
         """Map parliamentary petitions with complete structure to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
-        # Validate schema coverage with strict mode support
-        self.validate_schema_coverage(xml_root, file_info, strict_mode)
-        
-        # Extract legislatura from filename or XML
-        legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
-        legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
-        
-        # Process petitions
-        for petition in xml_root.findall('.//PeticaoOut'):
-            try:
-                success = self._process_petition_complete(petition, legislatura_id)
-                results['records_processed'] += 1
-                if success:
-                    results['records_imported'] += 1
-            except Exception as e:
-                error_msg = f"Petition processing error: {str(e)}"
-                logger.error(error_msg)
-                results['errors'].append(error_msg)
-                results['records_processed'] += 1
-        
-        return results
+        try:
+            # Validate schema coverage with strict mode support
+            self.validate_schema_coverage(xml_root, file_info, strict_mode)
+            
+            # Extract legislatura from filename or XML
+            legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+            legislatura = self._get_or_create_legislatura(legislatura_sigla)
+            
+            # Process petitions
+            for petition in xml_root.findall('.//PeticaoOut'):
+                try:
+                    success = self._process_petition_complete(petition, legislatura)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"Petition processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
+                    self.session.rollback()
+            
+            # Commit all changes
+            self.session.commit()
+            return results
+            
+        except Exception as e:
+            error_msg = f"Critical error processing petitions: {str(e)}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
+            self.session.rollback()
+            return results
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
@@ -115,7 +143,7 @@ class PeticoesMapper(SchemaMapper):
         # Default to XVII
         return 'XVII'
     
-    def _process_petition_complete(self, petition: ET.Element, legislatura_id: int) -> bool:
+    def _process_petition_complete(self, petition: ET.Element, legislatura: Legislatura) -> bool:
         """Process complete petition with all structures"""
         try:
             # Extract core petition data
@@ -135,26 +163,50 @@ class PeticoesMapper(SchemaMapper):
                 logger.warning("Missing required fields: pet_id or pet_assunto")
                 return False
             
-            # Insert or update main petition record
-            self.cursor.execute("""
-                INSERT OR REPLACE INTO peticoes_detalhadas (
-                    pet_id, pet_nr, pet_leg, pet_sel, pet_assunto, pet_situacao,
-                    pet_nr_assinaturas, pet_data_entrada, pet_atividade_id, 
-                    pet_autor, data_debate, legislatura_id, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                pet_id, pet_nr, pet_leg, pet_sel, pet_assunto, pet_situacao,
-                pet_nr_assinaturas, pet_data_entrada, pet_atividade_id,
-                pet_autor, data_debate, legislatura_id, datetime.now().isoformat()
-            ))
+            # Check if petition already exists
+            existing = None
+            if pet_id:
+                existing = self.session.query(PeticaoParlamentar).filter_by(pet_id=pet_id).first()
             
-            peticao_db_id = self.cursor.lastrowid or self._get_peticao_db_id(pet_id)
+            if existing:
+                # Update existing petition
+                existing.pet_nr = pet_nr
+                existing.pet_leg = pet_leg
+                existing.pet_sel = pet_sel
+                existing.pet_assunto = pet_assunto
+                existing.pet_situacao = pet_situacao
+                existing.pet_nr_assinaturas = pet_nr_assinaturas
+                existing.pet_data_entrada = pet_data_entrada
+                existing.pet_atividade_id = pet_atividade_id
+                existing.pet_autor = pet_autor
+                existing.data_debate = data_debate
+                existing.legislatura_id = legislatura.id
+                existing.updated_at = datetime.now()
+            else:
+                # Create new petition record
+                existing = PeticaoParlamentar(
+                    pet_id=pet_id,
+                    pet_nr=pet_nr,
+                    pet_leg=pet_leg,
+                    pet_sel=pet_sel,
+                    pet_assunto=pet_assunto,
+                    pet_situacao=pet_situacao,
+                    pet_nr_assinaturas=pet_nr_assinaturas,
+                    pet_data_entrada=pet_data_entrada,
+                    pet_atividade_id=pet_atividade_id,
+                    pet_autor=pet_autor,
+                    data_debate=data_debate,
+                    legislatura_id=legislatura.id,
+                    updated_at=datetime.now()
+                )
+                self.session.add(existing)
+                self.session.flush()  # Get the ID
             
             # Process all related structures
-            self._process_publicacoes(petition, peticao_db_id)
-            self._process_dados_comissao(petition, peticao_db_id)
-            self._process_documentos(petition, peticao_db_id)
-            self._process_intervencoes(petition, peticao_db_id)
+            self._process_publicacoes(petition, existing)
+            self._process_dados_comissao(petition, existing)
+            self._process_documentos(petition, existing)
+            self._process_intervencoes(petition, existing)
             
             return True
             
@@ -168,24 +220,25 @@ class PeticoesMapper(SchemaMapper):
         result = self.cursor.fetchone()
         return result[0] if result else None
     
-    def _process_publicacoes(self, petition: ET.Element, peticao_db_id: int):
+    def _process_publicacoes(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
         """Process all publication types for petition"""
         # Clear existing publications
-        self.cursor.execute("DELETE FROM peticoes_publicacoes WHERE peticao_id = ?", (peticao_db_id,))
+        for publicacao in peticao_obj.publicacoes:
+            self.session.delete(publicacao)
         
         # PublicacaoPeticao
         pub_peticao = petition.find('PublicacaoPeticao')
         if pub_peticao is not None:
             for pub in pub_peticao.findall('pt_gov_ar_objectos_PublicacoesOut'):
-                self._insert_publicacao(peticao_db_id, pub, 'PublicacaoPeticao')
+                self._insert_publicacao(peticao_obj, pub, 'PublicacaoPeticao')
         
         # PublicacaoDebate
         pub_debate = petition.find('PublicacaoDebate')
         if pub_debate is not None:
             for pub in pub_debate.findall('pt_gov_ar_objectos_PublicacoesOut'):
-                self._insert_publicacao(peticao_db_id, pub, 'PublicacaoDebate')
+                self._insert_publicacao(peticao_obj, pub, 'PublicacaoDebate')
     
-    def _insert_publicacao(self, peticao_id: int, pub: ET.Element, tipo: str):
+    def _insert_publicacao(self, peticao_obj: PeticaoParlamentar, pub: ET.Element, tipo: str):
         """Insert publication data"""
         pub_nr = self._get_int_value(pub, 'pubNr')
         pub_tipo = self._get_text_value(pub, 'pubTipo')
@@ -204,17 +257,26 @@ class PeticoesMapper(SchemaMapper):
             if string_elems:
                 pag_text = ', '.join([s.text for s in string_elems if s.text])
         
-        self.cursor.execute("""
-            INSERT INTO peticoes_publicacoes (
-                peticao_id, tipo, pub_nr, pub_tipo, pub_tp, pub_leg, pub_sl,
-                pub_dt, pag, id_pag, url_diario
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (peticao_id, tipo, pub_nr, pub_tipo, pub_tp, pub_leg, pub_sl, pub_dt, pag_text, id_pag, url_diario))
+        publicacao = PeticaoPublicacao(
+            peticao_id=peticao_obj.id,
+            tipo=tipo,
+            pub_nr=pub_nr,
+            pub_tipo=pub_tipo,
+            pub_tp=pub_tp,
+            pub_leg=pub_leg,
+            pub_sl=pub_sl,
+            pub_dt=pub_dt,
+            pag=pag_text,
+            id_pag=id_pag,
+            url_diario=url_diario
+        )
+        self.session.add(publicacao)
     
-    def _process_dados_comissao(self, petition: ET.Element, peticao_db_id: int):
+    def _process_dados_comissao(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
         """Process committee data (can be multiple across legislaturas)"""
         # Clear existing committee data
-        self.cursor.execute("DELETE FROM peticoes_comissoes WHERE peticao_id = ?", (peticao_db_id,))
+        for comissao in peticao_obj.comissoes:
+            self.session.delete(comissao)
         
         dados_comissao = petition.find('DadosComissao')
         if dados_comissao is not None:
@@ -317,12 +379,12 @@ class PeticoesMapper(SchemaMapper):
                 for doc in docs_relatorio.findall('PeticaoDocsRelatorioFinal'):
                     self._insert_documento(None, comissao_db_id, doc, 'DocsRelatorioFinal')
     
-    def _process_documentos(self, petition: ET.Element, peticao_db_id: int):
+    def _process_documentos(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
         """Process main petition documents"""
         documentos = petition.find('Documentos')
         if documentos is not None:
             for doc in documentos.findall('PeticaoDocsOut'):
-                self._insert_documento(peticao_db_id, None, doc, 'Documentos')
+                self._insert_documento(peticao_obj, None, doc, 'Documentos')
     
     def _insert_documento(self, peticao_id: Optional[int], comissao_peticao_id: Optional[int], 
                          doc: ET.Element, categoria: str):
@@ -339,10 +401,11 @@ class PeticoesMapper(SchemaMapper):
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (peticao_id, comissao_peticao_id, categoria, titulo_documento, data_documento, tipo_documento, url))
     
-    def _process_intervencoes(self, petition: ET.Element, peticao_db_id: int):
+    def _process_intervencoes(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
         """Process interventions/debates"""
         # Clear existing interventions
-        self.cursor.execute("DELETE FROM peticoes_intervencoes WHERE peticao_id = ?", (peticao_db_id,))
+        for intervencao in peticao_obj.intervencoes:
+            self.session.delete(intervencao)
         
         intervencoes = petition.find('Intervencoes')
         if intervencoes is not None:
@@ -460,26 +523,25 @@ class PeticoesMapper(SchemaMapper):
         
         return None
     
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> int:
+    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
         """Get or create legislatura record"""
-        # Check if legislatura exists
-        self.cursor.execute("""
-            SELECT id FROM legislaturas WHERE numero = ?
-        """, (legislatura_sigla,))
+        legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
         
-        result = self.cursor.fetchone()
-        if result:
-            return result[0]
+        if legislatura:
+            return legislatura
         
         # Create new legislatura if it doesn't exist
         numero_int = self._convert_roman_to_int(legislatura_sigla)
         
-        self.cursor.execute("""
-            INSERT INTO legislaturas (numero, designacao, ativa)
-            VALUES (?, ?, ?)
-        """, (legislatura_sigla, f"{numero_int}.ª Legislatura", False))
+        legislatura = Legislatura(
+            numero=legislatura_sigla,
+            designacao=f"{numero_int}.ª Legislatura",
+            ativa=False
+        )
         
-        return self.cursor.lastrowid
+        self.session.add(legislatura)
+        self.session.flush()  # Get the ID
+        return legislatura
     
     def _convert_roman_to_int(self, roman: str) -> int:
         """Convert Roman numeral to integer"""
@@ -488,3 +550,8 @@ class PeticoesMapper(SchemaMapper):
             'XI': 11, 'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17, 'CONSTITUINTE': 0
         }
         return roman_numerals.get(roman, 17)
+    
+    def close(self):
+        """Close the database session"""
+        if hasattr(self, 'session') and self.session:
+            self.session.close()

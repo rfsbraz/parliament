@@ -2055,6 +2055,161 @@ class IniciativaIntervencaoDebate(Base):
     evento = relationship("IniciativaEvento", back_populates="intervencoes_debates")
 
 
+# Petition models
+class PeticaoParlamentar(Base):
+    __tablename__ = 'peticoes_detalhadas'
+    
+    id = Column(Integer, primary_key=True)
+    pet_id = Column(Integer, unique=True, nullable=False)  # External ID
+    pet_nr = Column(Integer)
+    pet_leg = Column(Text)
+    pet_sel = Column(Integer)
+    pet_assunto = Column(Text)
+    pet_situacao = Column(Text)
+    pet_nr_assinaturas = Column(Integer)
+    pet_data_entrada = Column(Date)
+    pet_atividade_id = Column(Integer)
+    pet_autor = Column(Text)
+    data_debate = Column(Date)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    updated_at = Column(DateTime, default=func.now, onupdate=func.now)
+    
+    # Relationships
+    legislatura = relationship("Legislatura", backref="peticoes")
+    publicacoes = relationship("PeticaoPublicacao", back_populates="peticao", cascade="all, delete-orphan")
+    comissoes = relationship("PeticaoComissao", back_populates="peticao", cascade="all, delete-orphan")
+    documentos = relationship("PeticaoDocumento", back_populates="peticao", cascade="all, delete-orphan")
+    intervencoes = relationship("PeticaoIntervencao", back_populates="peticao", cascade="all, delete-orphan")
+
+class PeticaoPublicacao(Base):
+    __tablename__ = 'peticoes_publicacoes'
+    
+    id = Column(Integer, primary_key=True)
+    peticao_id = Column(Integer, ForeignKey('peticoes_detalhadas.id'), nullable=False)
+    tipo = Column(Text)  # PublicacaoPeticao or PublicacaoDebate
+    pub_nr = Column(Integer)
+    pub_tipo = Column(Text)
+    pub_tp = Column(Text)
+    pub_leg = Column(Text)
+    pub_sl = Column(Integer)
+    pub_dt = Column(Date)
+    pag = Column(Text)
+    id_pag = Column(Integer)
+    url_diario = Column(Text)
+    
+    # Relationships
+    peticao = relationship("PeticaoParlamentar", back_populates="publicacoes")
+
+class PeticaoComissao(Base):
+    __tablename__ = 'peticoes_comissoes'
+    
+    id = Column(Integer, primary_key=True)
+    peticao_id = Column(Integer, ForeignKey('peticoes_detalhadas.id'), nullable=False)
+    legislatura = Column(Text)
+    numero = Column(Integer)
+    id_comissao = Column(Integer)
+    nome = Column(Text)
+    admissibilidade = Column(Text)
+    data_admissibilidade = Column(Date)
+    data_envio_par = Column(Date)
+    data_arquivo = Column(Date)
+    situacao = Column(Text)
+    data_reaberta = Column(Date)
+    data_baixa_comissao = Column(Date)
+    transitada = Column(Text)
+    
+    # Relationships
+    peticao = relationship("PeticaoParlamentar", back_populates="comissoes")
+    relatores = relationship("PeticaoRelator", back_populates="comissao", cascade="all, delete-orphan")
+    relatorios_finais = relationship("PeticaoRelatorioFinal", back_populates="comissao", cascade="all, delete-orphan")
+    documentos = relationship("PeticaoDocumento", back_populates="comissao_peticao", cascade="all, delete-orphan")
+
+class PeticaoRelator(Base):
+    __tablename__ = 'peticoes_relatores'
+    
+    id = Column(Integer, primary_key=True)
+    comissao_peticao_id = Column(Integer, ForeignKey('peticoes_comissoes.id'), nullable=False)
+    relator_id = Column(Integer)
+    nome = Column(Text)
+    gp = Column(Text)
+    data_nomeacao = Column(Date)
+    data_cessacao = Column(Date)
+    
+    # Relationships
+    comissao = relationship("PeticaoComissao", back_populates="relatores")
+
+class PeticaoRelatorioFinal(Base):
+    __tablename__ = 'peticoes_relatorios_finais'
+    
+    id = Column(Integer, primary_key=True)
+    comissao_peticao_id = Column(Integer, ForeignKey('peticoes_comissoes.id'), nullable=False)
+    data_relatorio = Column(Date)
+    votacao = Column(Text)
+    relatorio_final_id = Column(Text)
+    
+    # Relationships
+    comissao = relationship("PeticaoComissao", back_populates="relatorios_finais")
+
+class PeticaoDocumento(Base):
+    __tablename__ = 'peticoes_documentos'
+    
+    id = Column(Integer, primary_key=True)
+    peticao_id = Column(Integer, ForeignKey('peticoes_detalhadas.id'), nullable=True)
+    comissao_peticao_id = Column(Integer, ForeignKey('peticoes_comissoes.id'), nullable=True)
+    tipo_documento_categoria = Column(Text)
+    titulo_documento = Column(Text)
+    data_documento = Column(Date)
+    tipo_documento = Column(Text)
+    url = Column(Text)
+    
+    # Relationships
+    peticao = relationship("PeticaoParlamentar", back_populates="documentos")
+    comissao_peticao = relationship("PeticaoComissao", back_populates="documentos")
+
+class PeticaoIntervencao(Base):
+    __tablename__ = 'peticoes_intervencoes'
+    
+    id = Column(Integer, primary_key=True)
+    peticao_id = Column(Integer, ForeignKey('peticoes_detalhadas.id'), nullable=False)
+    data_reuniao_plenaria = Column(Date)
+    
+    # Relationships
+    peticao = relationship("PeticaoParlamentar", back_populates="intervencoes")
+    oradores = relationship("PeticaoOrador", back_populates="intervencao", cascade="all, delete-orphan")
+
+class PeticaoOrador(Base):
+    __tablename__ = 'peticoes_oradores'
+    
+    id = Column(Integer, primary_key=True)
+    intervencao_id = Column(Integer, ForeignKey('peticoes_intervencoes.id'), nullable=False)
+    fase_sessao = Column(Text)
+    sumario = Column(Text)
+    convidados = Column(Text)
+    membros_governo = Column(Text)
+    
+    # Relationships
+    intervencao = relationship("PeticaoIntervencao", back_populates="oradores")
+    publicacoes = relationship("PeticaoOradorPublicacao", back_populates="orador", cascade="all, delete-orphan")
+
+class PeticaoOradorPublicacao(Base):
+    __tablename__ = 'peticoes_oradores_publicacoes'
+    
+    id = Column(Integer, primary_key=True)
+    orador_id = Column(Integer, ForeignKey('peticoes_oradores.id'), nullable=False)
+    pub_nr = Column(Integer)
+    pub_tipo = Column(Text)
+    pub_tp = Column(Text)
+    pub_leg = Column(Text)
+    pub_sl = Column(Integer)
+    pub_dt = Column(Date)
+    pag = Column(Text)
+    id_int = Column(Integer)
+    url_diario = Column(Text)
+    
+    # Relationships
+    orador = relationship("PeticaoOrador", back_populates="publicacoes")
+
+
 class IntervencaoParlamentar(Base):
     __tablename__ = 'intervencao_parlamentar'
     
