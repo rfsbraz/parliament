@@ -22,14 +22,34 @@ import re
 from typing import Dict, Optional, Set, List
 import logging
 from datetime import datetime
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
+
+# Import our models
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from database.models import (
+    IniciativaParlamentar, IniciativaAutorOutro, IniciativaAutorDeputado,
+    IniciativaAutorGrupoParlamentar, IniciativaPropostaAlteracao, 
+    IniciativaPropostaAlteracaoPublicacao, IniciativaEvento, IniciativaEventoPublicacao,
+    IniciativaEventoVotacao, IniciativaVotacaoAusencia, IniciativaEventoComissao,
+    IniciativaComissaoPublicacao, IniciativaEventoRecursoGP, IniciativaConjunta,
+    IniciativaIntervencaoDebate, Legislatura
+)
 
 logger = logging.getLogger(__name__)
 
 
 class InitiativasMapper(SchemaMapper):
     """Comprehensive schema mapper for legislative initiatives files"""
+    
+    def __init__(self, db_path: str = None):
+        super().__init__(db_path)
+        self.engine = create_engine(f'sqlite:///{self.db_path}')
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
     
     def get_expected_fields(self) -> Set[str]:
         # Complete field list from XML analysis
@@ -72,30 +92,41 @@ class InitiativasMapper(SchemaMapper):
         """Map legislative initiatives with complete structure to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
-        # Validate schema coverage with strict mode support
-        self.validate_schema_coverage(xml_root, file_info, strict_mode)
-        
-        # Extract legislatura from filename
-        filename = os.path.basename(file_info['file_path'])
-        leg_match = re.search(r'Iniciativas(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)\.xml', filename)
-        legislatura_sigla = leg_match.group(1) if leg_match else 'XVII'
-        legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
-        
-        for iniciativa in xml_root.findall('.//Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut'):
-            try:
-                success = self._process_iniciativa_complete(iniciativa, legislatura_id)
-                results['records_processed'] += 1
-                if success:
-                    results['records_imported'] += 1
-            except Exception as e:
-                error_msg = f"Initiative processing error: {str(e)}"
-                logger.error(error_msg)
-                results['errors'].append(error_msg)
-                results['records_processed'] += 1
-        
-        return results
+        try:
+            # Validate schema coverage with strict mode support
+            self.validate_schema_coverage(xml_root, file_info, strict_mode)
+            
+            # Extract legislatura from filename
+            filename = os.path.basename(file_info['file_path'])
+            leg_match = re.search(r'Iniciativas(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)\.xml', filename)
+            legislatura_sigla = leg_match.group(1) if leg_match else 'XVII'
+            legislatura = self._get_or_create_legislatura(legislatura_sigla)
+            
+            for iniciativa in xml_root.findall('.//Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut'):
+                try:
+                    success = self._process_iniciativa_complete(iniciativa, legislatura)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"Initiative processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
+                    self.session.rollback()
+            
+            # Commit all changes
+            self.session.commit()
+            return results
+            
+        except Exception as e:
+            error_msg = f"Critical error processing initiatives: {str(e)}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
+            self.session.rollback()
+            return results
     
-    def _process_iniciativa_complete(self, iniciativa: ET.Element, legislatura_id: int) -> bool:
+    def _process_iniciativa_complete(self, iniciativa: ET.Element, legislatura: Legislatura) -> bool:
         """Process complete initiative with all structures"""
         try:
             # Extract core initiative data
@@ -115,27 +146,51 @@ class InitiativasMapper(SchemaMapper):
                 logger.warning("Missing required fields: ini_id or ini_titulo")
                 return False
             
-            # Insert or update main initiative record
-            self.cursor.execute("""
-                INSERT OR REPLACE INTO iniciativas_detalhadas (
-                    ini_id, ini_nr, ini_tipo, ini_desc_tipo, ini_leg, ini_sel,
-                    data_inicio_leg, data_fim_leg, ini_titulo, ini_texto_subst, 
-                    ini_link_texto, legislatura_id, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                ini_id, ini_nr, ini_tipo, ini_desc_tipo, ini_leg, ini_sel,
-                data_inicio_leg, data_fim_leg, ini_titulo, ini_texto_subst,
-                ini_link_texto, legislatura_id, datetime.now().isoformat()
-            ))
+            # Check if initiative already exists
+            existing = None
+            if ini_id:
+                existing = self.session.query(IniciativaParlamentar).filter_by(ini_id=ini_id).first()
             
-            iniciativa_db_id = self.cursor.lastrowid or self._get_iniciativa_db_id(ini_id)
+            if existing:
+                # Update existing initiative
+                existing.ini_nr = ini_nr
+                existing.ini_tipo = ini_tipo
+                existing.ini_desc_tipo = ini_desc_tipo
+                existing.ini_leg = ini_leg
+                existing.ini_sel = ini_sel
+                existing.data_inicio_leg = data_inicio_leg
+                existing.data_fim_leg = data_fim_leg
+                existing.ini_titulo = ini_titulo
+                existing.ini_texto_subst = ini_texto_subst
+                existing.ini_link_texto = ini_link_texto
+                existing.legislatura_id = legislatura.id
+                existing.updated_at = datetime.now()
+            else:
+                # Create new initiative record
+                existing = IniciativaParlamentar(
+                    ini_id=ini_id,
+                    ini_nr=ini_nr,
+                    ini_tipo=ini_tipo,
+                    ini_desc_tipo=ini_desc_tipo,
+                    ini_leg=ini_leg,
+                    ini_sel=ini_sel,
+                    data_inicio_leg=data_inicio_leg,
+                    data_fim_leg=data_fim_leg,
+                    ini_titulo=ini_titulo,
+                    ini_texto_subst=ini_texto_subst,
+                    ini_link_texto=ini_link_texto,
+                    legislatura_id=legislatura.id,
+                    updated_at=datetime.now()
+                )
+                self.session.add(existing)
+                self.session.flush()  # Get the ID
             
             # Process all related structures
-            self._process_autores_outros(iniciativa, iniciativa_db_id)
-            self._process_autores_deputados(iniciativa, iniciativa_db_id)
-            self._process_autores_grupos_parlamentares(iniciativa, iniciativa_db_id)
-            self._process_propostas_alteracao(iniciativa, iniciativa_db_id)
-            self._process_eventos(iniciativa, iniciativa_db_id)
+            self._process_autores_outros(iniciativa, existing)
+            self._process_autores_deputados(iniciativa, existing)
+            self._process_autores_grupos_parlamentares(iniciativa, existing)
+            self._process_propostas_alteracao(iniciativa, existing)
+            self._process_eventos(iniciativa, existing)
             
             return True
             
@@ -149,25 +204,29 @@ class InitiativasMapper(SchemaMapper):
         result = self.cursor.fetchone()
         return result[0] if result else None
     
-    def _process_autores_outros(self, iniciativa: ET.Element, iniciativa_db_id: int):
+    def _process_autores_outros(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process IniAutorOutros - Other authors (Government, etc.)"""
         # Clear existing records
-        self.cursor.execute("DELETE FROM iniciativas_autores_outros WHERE iniciativa_id = ?", (iniciativa_db_id,))
+        for autor in iniciativa_obj.autores_outros:
+            self.session.delete(autor)
         
         autor_outros = iniciativa.find('IniAutorOutros')
         if autor_outros is not None:
             sigla = self._get_text_value(autor_outros, 'sigla')
             nome = self._get_text_value(autor_outros, 'nome')
             
-            self.cursor.execute("""
-                INSERT INTO iniciativas_autores_outros (iniciativa_id, sigla, nome)
-                VALUES (?, ?, ?)
-            """, (iniciativa_db_id, sigla, nome))
+            autor = IniciativaAutorOutro(
+                iniciativa_id=iniciativa_obj.id,
+                sigla=sigla,
+                nome=nome
+            )
+            self.session.add(autor)
     
-    def _process_autores_deputados(self, iniciativa: ET.Element, iniciativa_db_id: int):
+    def _process_autores_deputados(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process IniAutorDeputados - Deputy authors"""
         # Clear existing records
-        self.cursor.execute("DELETE FROM iniciativas_autores_deputados WHERE iniciativa_id = ?", (iniciativa_db_id,))
+        for autor in iniciativa_obj.autores_deputados:
+            self.session.delete(autor)
         
         autores_deputados = iniciativa.find('IniAutorDeputados')
         if autores_deputados is not None:
@@ -176,30 +235,36 @@ class InitiativasMapper(SchemaMapper):
                 nome = self._get_text_value(autor, 'nome')
                 gp = self._get_text_value(autor, 'GP')
                 
-                self.cursor.execute("""
-                    INSERT INTO iniciativas_autores_deputados (iniciativa_id, id_cadastro, nome, gp)
-                    VALUES (?, ?, ?, ?)
-                """, (iniciativa_db_id, id_cadastro, nome, gp))
+                autor_deputado = IniciativaAutorDeputado(
+                    iniciativa_id=iniciativa_obj.id,
+                    id_cadastro=id_cadastro,
+                    nome=nome,
+                    gp=gp
+                )
+                self.session.add(autor_deputado)
     
-    def _process_autores_grupos_parlamentares(self, iniciativa: ET.Element, iniciativa_db_id: int):
+    def _process_autores_grupos_parlamentares(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process IniAutorGruposParlamentares - Parliamentary group authors"""
         # Clear existing records
-        self.cursor.execute("DELETE FROM iniciativas_autores_grupos_parlamentares WHERE iniciativa_id = ?", (iniciativa_db_id,))
+        for autor in iniciativa_obj.autores_grupos:
+            self.session.delete(autor)
         
         autores_grupos = iniciativa.find('IniAutorGruposParlamentares')
         if autores_grupos is not None:
             for grupo in autores_grupos.findall('pt_gov_ar_objectos_AutoresGruposParlamentaresOut'):
                 gp = self._get_text_value(grupo, 'GP')
                 
-                self.cursor.execute("""
-                    INSERT INTO iniciativas_autores_grupos_parlamentares (iniciativa_id, gp)
-                    VALUES (?, ?)
-                """, (iniciativa_db_id, gp))
+                autor_grupo = IniciativaAutorGrupoParlamentar(
+                    iniciativa_id=iniciativa_obj.id,
+                    gp=gp
+                )
+                self.session.add(autor_grupo)
     
-    def _process_propostas_alteracao(self, iniciativa: ET.Element, iniciativa_db_id: int):
+    def _process_propostas_alteracao(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process PropostasAlteracao - Amendment proposals"""
         # Clear existing records
-        self.cursor.execute("DELETE FROM iniciativas_propostas_alteracao WHERE iniciativa_id = ?", (iniciativa_db_id,))
+        for proposta in iniciativa_obj.propostas_alteracao:
+            self.session.delete(proposta)
         
         propostas = iniciativa.find('PropostasAlteracao')
         if propostas is not None:
@@ -248,10 +313,11 @@ class InitiativasMapper(SchemaMapper):
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (proposta_id, pub_nr, pub_tipo, pub_tp, pub_leg, pub_sl, pub_dt, pag_text, id_pag, url_diario))
     
-    def _process_eventos(self, iniciativa: ET.Element, iniciativa_db_id: int):
+    def _process_eventos(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process IniEventos - Complete events timeline"""
         # Clear existing events and related data
-        self.cursor.execute("DELETE FROM iniciativas_eventos WHERE iniciativa_id = ?", (iniciativa_db_id,))
+        for evento in iniciativa_obj.eventos:
+            self.session.delete(evento)
         
         eventos = iniciativa.find('IniEventos')
         if eventos is not None:
@@ -514,8 +580,14 @@ class InitiativasMapper(SchemaMapper):
             logger.warning(f"Could not parse date '{date_str}': {e}")
             return date_str
     
-    def _get_or_create_legislatura(self, sigla: str) -> int:
+    def _get_or_create_legislatura(self, sigla: str) -> Legislatura:
         """Get or create legislatura from sigla"""
+        legislatura = self.session.query(Legislatura).filter_by(numero=sigla).first()
+        
+        if legislatura:
+            return legislatura
+        
+        # Create new legislatura if it doesn't exist
         roman_to_num = {
             'XVII': 17, 'XVI': 16, 'XV': 15, 'XIV': 14, 'XIII': 13,
             'XII': 12, 'XI': 11, 'X': 10, 'IX': 9, 'VIII': 8,
@@ -523,7 +595,19 @@ class InitiativasMapper(SchemaMapper):
             'II': 2, 'I': 1, 'CONSTITUINTE': 0
         }
         
-        numero = roman_to_num.get(sigla, 17)
-        self.cursor.execute("SELECT id FROM legislaturas WHERE numero = ?", (numero,))
-        result = self.cursor.fetchone()
-        return result[0] if result else 1  # Fallback to first legislatura
+        numero_int = roman_to_num.get(sigla, 17)
+        
+        legislatura = Legislatura(
+            numero=sigla,
+            designacao=f"{numero_int}.ª Legislatura",
+            ativa=False
+        )
+        
+        self.session.add(legislatura)
+        self.session.flush()  # Get the ID
+        return legislatura
+    
+    def close(self):
+        """Close the database session"""
+        if hasattr(self, 'session') and self.session:
+            self.session.close()

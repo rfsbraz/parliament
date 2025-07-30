@@ -11,7 +11,6 @@ import os
 import re
 import requests
 import time
-import sqlite3
 from typing import Dict, Optional, Set
 import logging
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode
@@ -253,7 +252,7 @@ class IntervencoesMapper(SchemaMapper):
             logger.error(f"Error processing intervention: {e}")
             return False
     
-    def _process_publicacao(self, intervencao: ET.Element, intervention_id: int):
+    def _process_publicacao(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
         """Process publication data"""
         publicacao_elem = intervencao.find('Publicacao')
         if publicacao_elem is not None:
@@ -279,25 +278,21 @@ class IntervencoesMapper(SchemaMapper):
                     else:
                         paginas = pag_elem.text
                 
-                self.cursor.execute("""
-                    INSERT INTO intervencoes_publicacoes 
-                    (intervencao_id, pub_numero, pub_tipo, pub_tp, pub_legislatura, pub_serie_legislatura,
-                     pub_data, paginas, id_interno, url_diario)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    intervention_id,
-                    pub_numero.text if pub_numero is not None else None,
-                    pub_tipo.text if pub_tipo is not None else None,
-                    pub_tp.text if pub_tp is not None else None,
-                    pub_leg.text if pub_leg is not None else None,
-                    pub_sl.text if pub_sl is not None else None,
-                    self._parse_date(pub_data.text) if pub_data is not None else None,
-                    paginas,
-                    self._safe_int(id_interno.text) if id_interno is not None else None,
-                    url_diario.text if url_diario is not None else None
-                ))
+                publicacao = IntervencaoPublicacao(
+                    intervencao_id=intervention.id,
+                    pub_numero=pub_numero.text if pub_numero is not None else None,
+                    pub_tipo=pub_tipo.text if pub_tipo is not None else None,
+                    pub_tp=pub_tp.text if pub_tp is not None else None,
+                    pub_legislatura=pub_leg.text if pub_leg is not None else None,
+                    pub_serie_legislatura=pub_sl.text if pub_sl is not None else None,
+                    pub_data=self._parse_date(pub_data.text) if pub_data is not None else None,
+                    paginas=paginas,
+                    id_interno=self._safe_int(id_interno.text) if id_interno is not None else None,
+                    url_diario=url_diario.text if url_diario is not None else None
+                )
+                self.session.add(publicacao)
     
-    def _process_deputados(self, intervencao: ET.Element, intervention_id: int):
+    def _process_deputados(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
         """Process deputy data"""
         deputados_elem = intervencao.find('Deputados')
         if deputados_elem is not None:
@@ -307,18 +302,15 @@ class IntervencoesMapper(SchemaMapper):
             gp_elem = deputados_elem.find('GP')
             
             if id_cadastro_elem is not None or nome_elem is not None:
-                self.cursor.execute("""
-                    INSERT INTO intervencoes_deputados 
-                    (intervencao_id, id_cadastro, nome, grupo_parlamentar)
-                    VALUES (?, ?, ?, ?)
-                """, (
-                    intervention_id,
-                    self._safe_int(id_cadastro_elem.text) if id_cadastro_elem is not None else None,
-                    nome_elem.text if nome_elem is not None else None,
-                    gp_elem.text if gp_elem is not None else None
-                ))
+                deputado = IntervencaoDeputado(
+                    intervencao_id=intervention.id,
+                    id_cadastro=self._safe_int(id_cadastro_elem.text) if id_cadastro_elem is not None else None,
+                    nome=nome_elem.text if nome_elem is not None else None,
+                    grupo_parlamentar=gp_elem.text if gp_elem is not None else None
+                )
+                self.session.add(deputado)
     
-    def _process_membros_governo(self, intervencao: ET.Element, intervention_id: int):
+    def _process_membros_governo(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
         """Process government members data"""
         membros_elem = intervencao.find('MembrosGoverno')
         if membros_elem is not None:
@@ -327,18 +319,15 @@ class IntervencoesMapper(SchemaMapper):
             governo_elem = membros_elem.find('governo')
             
             if nome_elem is not None or cargo_elem is not None:
-                self.cursor.execute("""
-                    INSERT INTO intervencoes_membros_governo 
-                    (intervencao_id, nome, cargo, governo)
-                    VALUES (?, ?, ?, ?)
-                """, (
-                    intervention_id,
-                    nome_elem.text if nome_elem is not None else None,
-                    cargo_elem.text if cargo_elem is not None else None,
-                    governo_elem.text if governo_elem is not None else None
-                ))
+                membro_governo = IntervencaoMembroGoverno(
+                    intervencao_id=intervention.id,
+                    nome=nome_elem.text if nome_elem is not None else None,
+                    cargo=cargo_elem.text if cargo_elem is not None else None,
+                    governo=governo_elem.text if governo_elem is not None else None
+                )
+                self.session.add(membro_governo)
     
-    def _process_convidados(self, intervencao: ET.Element, intervention_id: int):
+    def _process_convidados(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
         """Process invited guests data"""
         convidados_elem = intervencao.find('Convidados')
         if convidados_elem is not None:
@@ -346,17 +335,14 @@ class IntervencoesMapper(SchemaMapper):
             cargo_elem = convidados_elem.find('cargo')
             
             if nome_elem is not None or cargo_elem is not None:
-                self.cursor.execute("""
-                    INSERT INTO intervencoes_convidados 
-                    (intervencao_id, nome, cargo)
-                    VALUES (?, ?, ?)
-                """, (
-                    intervention_id,
-                    nome_elem.text if nome_elem is not None else None,
-                    cargo_elem.text if cargo_elem is not None else None
-                ))
+                convidado = IntervencaoConvidado(
+                    intervencao_id=intervention.id,
+                    nome=nome_elem.text if nome_elem is not None else None,
+                    cargo=cargo_elem.text if cargo_elem is not None else None
+                )
+                self.session.add(convidado)
     
-    def _process_atividades_relacionadas(self, intervencao: ET.Element, intervention_id: int):
+    def _process_atividades_relacionadas(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
         """Process related activities data"""
         atividades_elem = intervencao.find('ActividadesRelacionadas')
         if atividades_elem is not None:
@@ -364,17 +350,14 @@ class IntervencoesMapper(SchemaMapper):
             tipo_elem = atividades_elem.find('tipo')
             
             if id_elem is not None or tipo_elem is not None:
-                self.cursor.execute("""
-                    INSERT INTO intervencoes_atividades_relacionadas 
-                    (intervencao_id, atividade_id, tipo)
-                    VALUES (?, ?, ?)
-                """, (
-                    intervention_id,
-                    self._safe_int(id_elem.text) if id_elem is not None else None,
-                    tipo_elem.text if tipo_elem is not None else None
-                ))
+                atividade = IntervencaoAtividadeRelacionada(
+                    intervencao_id=intervention.id,
+                    atividade_id=self._safe_int(id_elem.text) if id_elem is not None else None,
+                    tipo=tipo_elem.text if tipo_elem is not None else None
+                )
+                self.session.add(atividade)
     
-    def _process_iniciativas(self, intervencao: ET.Element, intervention_id: int):
+    def _process_iniciativas(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
         """Process initiatives data"""
         iniciativas_elem = intervencao.find('Iniciativas')
         if iniciativas_elem is not None:
@@ -385,18 +368,15 @@ class IntervencoesMapper(SchemaMapper):
                 fase_elem = init_dados_elem.find('fase')
                 
                 if id_elem is not None or tipo_elem is not None:
-                    self.cursor.execute("""
-                        INSERT INTO intervencoes_iniciativas 
-                        (intervencao_id, iniciativa_id, tipo, fase)
-                        VALUES (?, ?, ?, ?)
-                    """, (
-                        intervention_id,
-                        self._safe_int(id_elem.text) if id_elem is not None else None,
-                        tipo_elem.text if tipo_elem is not None else None,
-                        fase_elem.text if fase_elem is not None else None
-                    ))
+                    iniciativa = IntervencaoIniciativa(
+                        intervencao_id=intervention.id,
+                        iniciativa_id=self._safe_int(id_elem.text) if id_elem is not None else None,
+                        tipo=tipo_elem.text if tipo_elem is not None else None,
+                        fase=fase_elem.text if fase_elem is not None else None
+                    )
+                    self.session.add(iniciativa)
     
-    def _process_audiovisual(self, intervencao: ET.Element, intervention_id: int, filename: str = None):
+    def _process_audiovisual(self, intervencao: ET.Element, intervention: IntervencaoParlamentar, filename: str = None):
         """Process audiovisual data with thumbnail extraction"""
         video_url = None
         thumbnail_url = None
@@ -449,18 +429,15 @@ class IntervencoesMapper(SchemaMapper):
         
         # Store audiovisual data
         if video_url or duracao or assunto or tipo_intervencao:
-            self.cursor.execute("""
-                INSERT INTO intervencoes_audiovisual 
-                (intervencao_id, url_video, thumbnail_url, duracao, assunto, tipo_intervencao)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                intervention_id,
-                video_url,
-                thumbnail_url,
-                duracao,
-                assunto,
-                tipo_intervencao
-            ))
+            audiovisual = IntervencaoAudiovisual(
+                intervencao_id=intervention.id,
+                url_video=video_url,
+                thumbnail_url=thumbnail_url,
+                duracao=duracao,
+                assunto=assunto,
+                tipo_intervencao=tipo_intervencao
+            )
+            self.session.add(audiovisual)
     
     def _get_or_create_legislatura(self, sigla: str) -> Legislatura:
         """Get or create legislatura from sigla"""
@@ -613,3 +590,8 @@ class IntervencoesMapper(SchemaMapper):
             'II': 2, 'I': 1, 'CONSTITUINTE': 0
         }
         return roman_map.get(roman.upper(), None)
+    
+    def close(self):
+        """Close the database session"""
+        if hasattr(self, 'session') and self.session:
+            self.session.close()
