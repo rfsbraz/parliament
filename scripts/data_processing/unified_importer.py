@@ -31,6 +31,10 @@ import argparse
 import hashlib
 import sqlite3
 import xml.etree.ElementTree as ET
+
+# Add project root to path for config import
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from config.settings import DOWNLOADS_DIR, PARLIAMENT_DATA_DIR
 import traceback
 from datetime import datetime
 from pathlib import Path
@@ -208,8 +212,8 @@ class UnifiedImporter:
         script_dir = Path(__file__).parent
         self.db_path = db_path or str((script_dir / "../../parlamento.db").resolve())
         self.data_roots = [
-            str((script_dir / "../../data/raw/downloads").resolve()),
-            str((script_dir / "../../data/raw/parliament_data").resolve())
+            DOWNLOADS_DIR,
+            PARLIAMENT_DATA_DIR
         ]
         self.file_type_resolver = FileTypeResolver()
         self.init_database()

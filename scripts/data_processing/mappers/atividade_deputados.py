@@ -27,7 +27,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 from database.models import (
     Deputado, AtividadeDeputado, AtividadeDeputadoList, ActividadeOut,
     DadosLegisDeputado, ActividadeAudiencia, ActividadeAudicao, 
-    ActividadesComissaoOut, DeputadoSituacao, DadosSituacaoDeputado
+    ActividadesComissaoOut, DeputadoSituacao, DadosSituacaoDeputado,
+    DepCargo, DadosCargoDeputado
 )
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DadosLegisDeputado.DadosLegisDeputado',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DadosLegisDeputado.DadosLegisDeputado.Nome',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DadosLegisDeputado.DadosLegisDeputado.Dpl_grpar',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DadosLegisDeputado.DadosLegisDeputado.Dpl_lg',
             
             # Deputy information - ACTUAL XML FORMAT  
             'ArrayOfAtividadeDeputado.AtividadeDeputado.Deputado',
@@ -90,7 +92,10 @@ class AtividadeDeputadosMapper(SchemaMapper):
             
             # Deputy cargo - ACTUAL XML FORMAT
             'ArrayOfAtividadeDeputado.AtividadeDeputado.Deputado.DepCargo',
-            'ArrayOfAtividadeDeputado.AtividadeDeputado.Deputado.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado'
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.Deputado.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.Deputado.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDes',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.Deputado.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.Deputado.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtInicio'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -108,7 +113,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
         # Process each deputy's activities - ACTUAL XML STRUCTURE
         for atividade_deputado in xml_root.findall('.//AtividadeDeputado'):
             try:
-                success = self._process_deputy_real_structure(atividade_deputado, legislatura_sigla, file_info['file_path'])
+                success = self._process_deputy_real_structure(atividade_deputado, legislatura_sigla, file_info['file_path'], strict_mode)
                 results['records_processed'] += 1
                 if success:
                     results['records_imported'] += 1
@@ -117,10 +122,12 @@ class AtividadeDeputadosMapper(SchemaMapper):
                 logger.error(error_msg)
                 results['errors'].append(error_msg)
                 results['records_processed'] += 1
+                if strict_mode:
+                    raise SchemaError(f"Processing failed in strict mode: {error_msg}")
         
         return results
     
-    def _process_deputy_real_structure(self, atividade_deputado: ET.Element, legislatura_sigla: str, xml_file_path: str) -> bool:
+    def _process_deputy_real_structure(self, atividade_deputado: ET.Element, legislatura_sigla: str, xml_file_path: str, strict_mode: bool = False) -> bool:
         """Process deputy activities with REAL XML structure and store in our new models"""
         try:
             # Get deputy information from ACTUAL XML structure
@@ -172,7 +179,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     self._process_audicoes(actividade_out, actividade_out_id)
             
             # Process deputy situations - REAL XML structure
-            self._process_deputy_situacoes_real(deputado, atividade_deputado_id)
+            self._process_deputy_situacoes_real(deputado, atividade_deputado_id, strict_mode)
             
             return True
             
@@ -201,6 +208,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
             
             self.session.add(new_deputado)
             self.session.commit()
+            
+            # Process deputy positions (DepCargo)
+            self._process_dep_cargo(deputado_elem, new_deputado.id)
             
             return new_deputado.id
             
@@ -276,11 +286,13 @@ class AtividadeDeputadosMapper(SchemaMapper):
                 for dados_legis in dados_legis_section.findall('DadosLegisDeputado'):
                     nome = self._get_text_value(dados_legis, 'Nome')
                     dpl_grpar = self._get_text_value(dados_legis, 'Dpl_grpar')
+                    dpl_lg = self._get_text_value(dados_legis, 'Dpl_lg')
                     
                     dados_legis_obj = DadosLegisDeputado(
                         actividade_out_id=actividade_out_id,
                         nome=nome,
-                        dpl_grpar=dpl_grpar
+                        dpl_grpar=dpl_grpar,
+                        dpl_lg=dpl_lg
                     )
                     
                     self.session.add(dados_legis_obj)
@@ -343,7 +355,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
             logger.error(f"Error processing audicoes: {e}")
             self.session.rollback()
     
-    def _process_deputy_situacoes_real(self, deputado: ET.Element, atividade_deputado_id: int):
+    def _process_deputy_situacoes_real(self, deputado: ET.Element, atividade_deputado_id: int, strict_mode: bool = False):
         """Process deputy situations using SQLAlchemy ORM"""
         try:
             dep_situacao = deputado.find('DepSituacao')
@@ -376,6 +388,8 @@ class AtividadeDeputadosMapper(SchemaMapper):
         except Exception as e:
             logger.error(f"Error processing deputy situacoes: {e}")
             self.session.rollback()
+            if strict_mode:
+                raise SchemaError(f"Deputy situations processing failed in strict mode: {e}")
     
     def __del__(self):
         """Cleanup SQLAlchemy session"""
@@ -401,24 +415,59 @@ class AtividadeDeputadosMapper(SchemaMapper):
         except (ValueError, TypeError):
             return None
     
-    def _parse_date(self, date_str: str) -> Optional[str]:
-        """Parse date string to ISO format"""
+    def _parse_date(self, date_str: str) -> Optional[object]:
+        """Parse date string to Python date object"""
         if not date_str:
             return None
         
         try:
+            from datetime import datetime
+            
             # Try ISO format first
             if re.match(r'\d{4}-\d{2}-\d{2}', date_str):
-                return date_str
+                return datetime.strptime(date_str, '%Y-%m-%d').date()
             
             # Try DD/MM/YYYY format
             if '/' in date_str:
                 parts = date_str.split('/')
                 if len(parts) == 3:
                     day, month, year = parts
-                    return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+                    return datetime.strptime(f"{year}-{month.zfill(2)}-{day.zfill(2)}", '%Y-%m-%d').date()
             
-        except (ValueError, IndexError):
-            logger.warning(f"Could not parse date: {date_str}")
+        except (ValueError, IndexError) as e:
+            logger.warning(f"Could not parse date: {date_str} - {e}")
         
         return None
+    
+    def _process_dep_cargo(self, deputado_elem: ET.Element, deputado_id: int):
+        """Process DepCargo (deputy positions) using SQLAlchemy ORM"""
+        try:
+            dep_cargo_elem = deputado_elem.find('DepCargo')
+            if dep_cargo_elem is not None:
+                # Create DepCargo record
+                dep_cargo = DepCargo(deputado_id=deputado_id)
+                self.session.add(dep_cargo)
+                self.session.flush()  # Get the ID
+                
+                # Process DadosCargoDeputado elements
+                dados_cargo_elem = dep_cargo_elem.find('pt_ar_wsgode_objectos_DadosCargoDeputado')
+                if dados_cargo_elem is not None:
+                    car_des = self._get_text_value(dados_cargo_elem, 'carDes')
+                    car_id = self._safe_int(self._get_text_value(dados_cargo_elem, 'carId'))
+                    car_dt_inicio_str = self._get_text_value(dados_cargo_elem, 'carDtInicio')
+                    car_dt_inicio = self._parse_date(car_dt_inicio_str) if car_dt_inicio_str else None
+                    
+                    dados_cargo = DadosCargoDeputado(
+                        dep_cargo_id=dep_cargo.id,
+                        car_des=car_des,
+                        car_id=car_id,
+                        car_dt_inicio=car_dt_inicio
+                    )
+                    
+                    self.session.add(dados_cargo)
+                
+                self.session.commit()
+                
+        except Exception as e:
+            logger.error(f"Error processing DepCargo: {e}")
+            self.session.rollback()

@@ -32,9 +32,12 @@ logger = logging.getLogger(__name__)
 class CooperacaoMapper(SchemaMapper):
     """Schema mapper for parliamentary cooperation files"""
     
-    def __init__(self, db_path: str = None):
-        super().__init__(db_path)
-        self.engine = create_engine(f'sqlite:///{self.db_path}')
+    def __init__(self, db_connection):
+        super().__init__(db_connection)
+        # Create SQLAlchemy session from raw connection
+        # Get the database file path from the connection
+        db_path = db_connection.execute('PRAGMA database_list').fetchone()[2]
+        self.engine = create_engine(f"sqlite:///{db_path}", echo=False)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
     
@@ -54,34 +57,27 @@ class CooperacaoMapper(SchemaMapper):
         # Validate schema coverage according to strict mode
         self.validate_schema_coverage(xml_root, file_info, strict_mode)
         
-            # Extract legislatura from filename or XML
-            legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
-            legislatura = self._get_or_create_legislatura(legislatura_sigla)
-            
-            # Process cooperation items
-            for cooperacao_item in xml_root.findall('.//CooperacaoOut'):
-                try:
-                    success = self._process_cooperacao_item(cooperacao_item, legislatura)
-                    results['records_processed'] += 1
-                    if success:
-                        results['records_imported'] += 1
-                except Exception as e:
-                    error_msg = f"Cooperation item processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
-                    self.session.rollback()
-            
-            # Commit all changes
-            self.session.commit()
-            return results
-            
-        except Exception as e:
-            error_msg = f"Critical error processing cooperation: {str(e)}"
-            logger.error(error_msg)
-            results['errors'].append(error_msg)
-            self.session.rollback()
-            return results
+        # Extract legislatura from filename or XML
+        legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+        legislatura = self._get_or_create_legislatura(legislatura_sigla)
+        
+        # Process cooperation items
+        for cooperacao_item in xml_root.findall('.//CooperacaoOut'):
+            try:
+                success = self._process_cooperacao_item(cooperacao_item, legislatura)
+                results['records_processed'] += 1
+                if success:
+                    results['records_imported'] += 1
+            except Exception as e:
+                error_msg = f"Cooperation item processing error: {str(e)}"
+                logger.error(error_msg)
+                results['errors'].append(error_msg)
+                results['records_processed'] += 1
+                self.session.rollback()
+        
+        # Commit all changes
+        self.session.commit()
+        return results
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""

@@ -87,6 +87,33 @@ class Deputado(Base):
     
     # Relationships
     atividades = relationship("AtividadeDeputado", back_populates="deputado", cascade="all, delete-orphan")
+    cargos = relationship("DepCargo", back_populates="deputado", cascade="all, delete-orphan")
+
+
+class DepCargo(Base):
+    __tablename__ = 'dep_cargos'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    deputado = relationship("Deputado", back_populates="cargos")
+    dados_cargo_deputado = relationship("DadosCargoDeputado", back_populates="dep_cargo", cascade="all, delete-orphan")
+
+
+class DadosCargoDeputado(Base):
+    __tablename__ = 'dados_cargo_deputados'
+    
+    id = Column(Integer, primary_key=True)
+    dep_cargo_id = Column(Integer, ForeignKey('dep_cargos.id'), nullable=False)
+    car_des = Column(String(200))  # carDes - Position description
+    car_id = Column(Integer)  # carId - Position ID
+    car_dt_inicio = Column(Date)  # carDtInicio - Position start date
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    dep_cargo = relationship("DepCargo", back_populates="dados_cargo_deputado")
 
 
 # =====================================================
@@ -1275,6 +1302,7 @@ class DadosLegisDeputado(Base):
     actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
     nome = Column(String(200))  # Nome field
     dpl_grpar = Column(String(100))  # Dpl_grpar field
+    dpl_lg = Column(String(100))  # Dpl_lg field - NEW FIELD
     created_at = Column(DateTime, default=func.now())
     
     actividade_out = relationship("ActividadeOut", back_populates="dados_legis_deputados")

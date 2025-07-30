@@ -28,9 +28,12 @@ logger = logging.getLogger(__name__)
 class DiplomasAprovadosMapper(SchemaMapper):
     """Schema mapper for approved diplomas files"""
     
-    def __init__(self, db_path: str = None):
-        super().__init__(db_path)
-        self.engine = create_engine(f'sqlite:///{self.db_path}')
+    def __init__(self, db_connection):
+        super().__init__(db_connection)
+        # Create SQLAlchemy session from raw connection
+        # Get the database file path from the connection
+        db_path = db_connection.execute('PRAGMA database_list').fetchone()[2]
+        self.engine = create_engine(f"sqlite:///{db_path}", echo=False)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
     
@@ -314,8 +317,8 @@ class DiplomasAprovadosMapper(SchemaMapper):
             if '/' in date_str:
                 parts = date_str.split('/')
                 if len(parts) == 3 and len(parts[2]) == 4:
-                    return datetime.strptime(f\"{parts[2]}-{parts[1]}-{parts[0]}\", '%Y-%m-%d').date()
+                    return datetime.strptime(f"{parts[2]}-{parts[1]}-{parts[0]}", '%Y-%m-%d').date()
             return None
         except Exception as e:
-            logger.warning(f\"Could not parse date '{date_str}': {e}\")
+            logger.warning(f"Could not parse date '{date_str}': {e}")
             return None

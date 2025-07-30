@@ -31,9 +31,12 @@ logger = logging.getLogger(__name__)
 class DelegacaoPermanenteMapper(SchemaMapper):
     """Schema mapper for parliamentary permanent delegation files"""
     
-    def __init__(self, db_path: str = None):
-        super().__init__(db_path)
-        self.engine = create_engine(f'sqlite:///{self.db_path}')
+    def __init__(self, db_connection):
+        super().__init__(db_connection)
+        # Create SQLAlchemy session from raw connection
+        # Get the database file path from the connection
+        db_path = db_connection.execute('PRAGMA database_list').fetchone()[2]
+        self.engine = create_engine(f"sqlite:///{db_path}", echo=False)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
     
