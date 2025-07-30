@@ -281,6 +281,7 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
                 next_folder_path = os.path.join(folder_path, safe_level_name)
                 
                 for i, item in enumerate(archive_items, 1):
+                    check_shutdown()
                     link = item.find('a', href=True)
                     if link:
                         next_url = urljoin(url, link['href'])
@@ -300,6 +301,7 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
                             sys.exit(1)
                         
                         time.sleep(0.2)
+                        check_shutdown()
             else:
                 print(f"{indent}No LEVEL {current_level + 1} archive items found")
             
@@ -323,6 +325,7 @@ def process_recursos_pages(recursos_links, overwrite=False, target_legislature=N
     print(f"{'='*60}")
     
     for i, link_info in enumerate(recursos_links, 1):
+        check_shutdown()
         section_name = link_info['section_name']
         url = link_info['url']
         
@@ -348,6 +351,7 @@ def process_recursos_pages(recursos_links, overwrite=False, target_legislature=N
                 
                 # Process each archive item (LEVEL 2)
                 for j, item in enumerate(archive_items, 1):
+                    check_shutdown()
                     link = item.find('a', href=True)
                     if link:
                         item_url = urljoin(url, link['href'])
@@ -373,6 +377,7 @@ def process_recursos_pages(recursos_links, overwrite=False, target_legislature=N
                                 
                                 # Process each LEVEL 3+ archive item using recursive function
                                 for k, level3_item in enumerate(level3_archive_items, 1):
+                                    check_shutdown()
                                     level3_link = level3_item.find('a', href=True)
                                     if level3_link:
                                         level3_url = urljoin(item_url, level3_link['href'])
@@ -392,10 +397,12 @@ def process_recursos_pages(recursos_links, overwrite=False, target_legislature=N
                                             sys.exit(1)
                                         
                                         time.sleep(0.2)
+                                        check_shutdown()
                             else:
                                 print(f"{'':10} No LEVEL 3 archive items found")
                             
                             time.sleep(0.3)
+                            check_shutdown()
                             
                         except Exception as e:
                             print(f"{'':10} ERROR: Failed to process LEVEL 2 page - {e}")
@@ -403,6 +410,7 @@ def process_recursos_pages(recursos_links, overwrite=False, target_legislature=N
                 print(f"{'':6} No archive items found")
             
             time.sleep(0.5)
+            check_shutdown()
             
         except Exception as e:
             print(f"{'':6} ERROR: Failed to fetch page - {e}")
