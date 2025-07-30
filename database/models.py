@@ -1819,3 +1819,149 @@ class RelatorioParlamentar(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
     legislatura = relationship("Legislatura", backref="relatorios_parlamentares")
+
+
+class IntervencaoParlamentar(Base):
+    __tablename__ = 'intervencao_parlamentar'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core fields
+    intervencao_id = Column(Integer, unique=True)  # External ID
+    legislatura_numero = Column(String(50))
+    sessao_numero = Column(String(50))
+    tipo_intervencao = Column(String(200))
+    data_reuniao_plenaria = Column(Date)
+    qualidade = Column(String(100))
+    fase_sessao = Column(String(100))
+    sumario = Column(Text)
+    resumo = Column(Text)
+    atividade_id = Column(Integer)
+    id_debate = Column(Integer)
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    legislatura = relationship("Legislatura", backref="intervencoes_parlamentares")
+    publicacoes = relationship("IntervencaoPublicacao", back_populates="intervencao", cascade="all, delete-orphan")
+    deputados = relationship("IntervencaoDeputado", back_populates="intervencao", cascade="all, delete-orphan")
+    membros_governo = relationship("IntervencaoMembroGoverno", back_populates="intervencao", cascade="all, delete-orphan")
+    convidados = relationship("IntervencaoConvidado", back_populates="intervencao", cascade="all, delete-orphan")
+    atividades_relacionadas = relationship("IntervencaoAtividadeRelacionada", back_populates="intervencao", cascade="all, delete-orphan")
+    iniciativas = relationship("IntervencaoIniciativa", back_populates="intervencao", cascade="all, delete-orphan")
+    audiovisuais = relationship("IntervencaoAudiovisual", back_populates="intervencao", cascade="all, delete-orphan")
+
+
+class IntervencaoPublicacao(Base):
+    __tablename__ = 'intervencao_publicacoes'
+    
+    id = Column(Integer, primary_key=True)
+    intervencao_id = Column(Integer, ForeignKey('intervencao_parlamentar.id'), nullable=False)
+    
+    pub_nr = Column(Integer)
+    pub_tipo = Column(String(100))
+    pub_tp = Column(String(50))
+    pub_leg = Column(String(50))
+    pub_sl = Column(Integer)
+    pub_dt = Column(Date)
+    pag = Column(Text)
+    id_int = Column(Integer)
+    url_diario = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    intervencao = relationship("IntervencaoParlamentar", back_populates="publicacoes")
+
+
+class IntervencaoDeputado(Base):
+    __tablename__ = 'intervencao_deputados'
+    
+    id = Column(Integer, primary_key=True)
+    intervencao_id = Column(Integer, ForeignKey('intervencao_parlamentar.id'), nullable=False)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=True)
+    
+    id_cadastro = Column(Integer)
+    nome = Column(String(200))
+    gp = Column(String(50))  # Grupo Parlamentar
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    intervencao = relationship("IntervencaoParlamentar", back_populates="deputados")
+    deputado = relationship("Deputado", backref="intervencoes_parlamentares")
+
+
+class IntervencaoMembroGoverno(Base):
+    __tablename__ = 'intervencao_membros_governo'
+    
+    id = Column(Integer, primary_key=True)
+    intervencao_id = Column(Integer, ForeignKey('intervencao_parlamentar.id'), nullable=False)
+    
+    nome = Column(String(200))
+    cargo = Column(String(200))
+    governo = Column(String(100))
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    intervencao = relationship("IntervencaoParlamentar", back_populates="membros_governo")
+
+
+class IntervencaoConvidado(Base):
+    __tablename__ = 'intervencao_convidados'
+    
+    id = Column(Integer, primary_key=True)
+    intervencao_id = Column(Integer, ForeignKey('intervencao_parlamentar.id'), nullable=False)
+    
+    nome = Column(String(200))
+    cargo = Column(String(200))
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    intervencao = relationship("IntervencaoParlamentar", back_populates="convidados")
+
+
+class IntervencaoAtividadeRelacionada(Base):
+    __tablename__ = 'intervencao_atividades_relacionadas'
+    
+    id = Column(Integer, primary_key=True)
+    intervencao_id = Column(Integer, ForeignKey('intervencao_parlamentar.id'), nullable=False)
+    
+    atividade_id = Column(Integer)
+    tipo = Column(String(100))
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    intervencao = relationship("IntervencaoParlamentar", back_populates="atividades_relacionadas")
+
+
+class IntervencaoIniciativa(Base):
+    __tablename__ = 'intervencao_iniciativas'
+    
+    id = Column(Integer, primary_key=True)
+    intervencao_id = Column(Integer, ForeignKey('intervencao_parlamentar.id'), nullable=False)
+    
+    iniciativa_id = Column(Integer)
+    tipo = Column(String(100))
+    numero = Column(String(50))
+    fase = Column(String(100))
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    intervencao = relationship("IntervencaoParlamentar", back_populates="iniciativas")
+
+
+class IntervencaoAudiovisual(Base):
+    __tablename__ = 'intervencao_audiovisuais'
+    
+    id = Column(Integer, primary_key=True)
+    intervencao_id = Column(Integer, ForeignKey('intervencao_parlamentar.id'), nullable=False)
+    
+    duracao = Column(String(50))
+    assunto = Column(Text)
+    url = Column(Text)
+    tipo_intervencao = Column(String(200))
+    video_url = Column(Text)  # Legacy field
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    intervencao = relationship("IntervencaoParlamentar", back_populates="audiovisuais")

@@ -15,14 +15,31 @@ import sqlite3
 from typing import Dict, Optional, Set
 import logging
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
+
+# Import our models
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from database.models import (
+    IntervencaoParlamentar, IntervencaoPublicacao, IntervencaoDeputado,
+    IntervencaoMembroGoverno, IntervencaoConvidado, IntervencaoAtividadeRelacionada,
+    IntervencaoIniciativa, IntervencaoAudiovisual, Deputado, Legislatura
+)
 
 logger = logging.getLogger(__name__)
 
 
 class IntervencoesMapper(SchemaMapper):
     """Schema mapper for parliamentary interventions files"""
+    
+    def __init__(self, db_path: str = None):
+        super().__init__(db_path)
+        self.engine = create_engine(f'sqlite:///{self.db_path}')
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -120,31 +137,42 @@ class IntervencoesMapper(SchemaMapper):
         file_path = file_info['file_path']
         filename = os.path.basename(file_path)
         
-        # Validate schema coverage according to strict mode
-        self.validate_schema_coverage(xml_root, file_info, strict_mode)
-        
-        # Extract legislatura from filename
-        leg_match = re.search(r'Intervencoes(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)\.xml', filename)
-        legislatura_sigla = leg_match.group(1) if leg_match else 'XVII'
-        legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
-        
-        logger.info(f"Processing interventions from {filename} (Legislatura {legislatura_sigla})")
-        
-        for intervencao in xml_root.findall('.//DadosPesquisaIntervencoesOut'):
-            try:
-                success = self._process_intervencao_record(intervencao, legislatura_id, filename)
-                results['records_processed'] += 1
-                if success:
-                    results['records_imported'] += 1
-            except Exception as e:
-                error_msg = f"Intervention processing error in {filename}: {str(e)}"
-                logger.error(error_msg)
-                results['errors'].append(error_msg)
-                results['records_processed'] += 1
-        
-        return results
+        try:
+            # Validate schema coverage according to strict mode
+            self.validate_schema_coverage(xml_root, file_info, strict_mode)
+            
+            # Extract legislatura from filename
+            leg_match = re.search(r'Intervencoes(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)\.xml', filename)
+            legislatura_sigla = leg_match.group(1) if leg_match else 'XVII'
+            legislatura = self._get_or_create_legislatura(legislatura_sigla)
+            
+            logger.info(f"Processing interventions from {filename} (Legislatura {legislatura_sigla})")
+            
+            for intervencao in xml_root.findall('.//DadosPesquisaIntervencoesOut'):
+                try:
+                    success = self._process_intervencao_record(intervencao, legislatura, filename)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"Intervention processing error in {filename}: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
+                    self.session.rollback()
+            
+            # Commit all changes
+            self.session.commit()
+            return results
+            
+        except Exception as e:
+            error_msg = f"Critical error processing interventions: {str(e)}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
+            self.session.rollback()
+            return results
     
-    def _process_intervencao_record(self, intervencao: ET.Element, legislatura_id: int, filename: str = None) -> bool:
+    def _process_intervencao_record(self, intervencao: ET.Element, legislatura: Legislatura, filename: str = None) -> bool:
         """Process individual intervention record with proper normalized storage"""
         try:
             # Extract basic fields
@@ -163,56 +191,62 @@ class IntervencoesMapper(SchemaMapper):
             if id_elem is None or data_elem is None:
                 return False
             
-            # Start a transaction for this intervention
             try:
-                # Insert main intervention record
-                self.cursor.execute("""
-                    INSERT OR REPLACE INTO intervencoes 
-                    (id_externo, legislatura_numero, sessao_numero, tipo_intervencao, data_reuniao_plenaria,
-                     qualidade, fase_sessao, sumario, resumo, atividade_id, id_debate)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    self._safe_int(id_elem.text),
-                    legislatura_elem.text if legislatura_elem is not None else None,
-                    sessao_elem.text if sessao_elem is not None else None,
-                    tipo_elem.text if tipo_elem is not None else None,
-                    self._parse_date(data_elem.text),
-                    qualidade_elem.text if qualidade_elem is not None else None,
-                    fase_sessao_elem.text if fase_sessao_elem is not None else None,
-                    sumario_elem.text if sumario_elem is not None else None,
-                    resumo_elem.text if resumo_elem is not None else None,
-                    self._safe_int(atividade_id_elem.text) if atividade_id_elem is not None else None,
-                    self._safe_int(id_debate_elem.text) if id_debate_elem is not None else None
-                ))
+                intervencao_id = self._safe_int(id_elem.text)
                 
-                intervention_id = self.cursor.lastrowid
+                # Check if intervention already exists
+                existing = None
+                if intervencao_id:
+                    existing = self.session.query(IntervencaoParlamentar).filter_by(
+                        intervencao_id=intervencao_id
+                    ).first()
                 
-                # Process publication data
-                self._process_publicacao(intervencao, intervention_id)
+                if existing:
+                    # Update existing intervention
+                    existing.legislatura_numero = legislatura_elem.text if legislatura_elem is not None else None
+                    existing.sessao_numero = sessao_elem.text if sessao_elem is not None else None
+                    existing.tipo_intervencao = tipo_elem.text if tipo_elem is not None else None
+                    existing.data_reuniao_plenaria = self._parse_date(data_elem.text)
+                    existing.qualidade = qualidade_elem.text if qualidade_elem is not None else None
+                    existing.fase_sessao = fase_sessao_elem.text if fase_sessao_elem is not None else None
+                    existing.sumario = sumario_elem.text if sumario_elem is not None else None
+                    existing.resumo = resumo_elem.text if resumo_elem is not None else None
+                    existing.atividade_id = self._safe_int(atividade_id_elem.text) if atividade_id_elem is not None else None
+                    existing.id_debate = self._safe_int(id_debate_elem.text) if id_debate_elem is not None else None
+                    existing.legislatura_id = legislatura.id
+                else:
+                    # Create new intervention record
+                    intervention = IntervencaoParlamentar(
+                        intervencao_id=intervencao_id,
+                        legislatura_numero=legislatura_elem.text if legislatura_elem is not None else None,
+                        sessao_numero=sessao_elem.text if sessao_elem is not None else None,
+                        tipo_intervencao=tipo_elem.text if tipo_elem is not None else None,
+                        data_reuniao_plenaria=self._parse_date(data_elem.text),
+                        qualidade=qualidade_elem.text if qualidade_elem is not None else None,
+                        fase_sessao=fase_sessao_elem.text if fase_sessao_elem is not None else None,
+                        sumario=sumario_elem.text if sumario_elem is not None else None,
+                        resumo=resumo_elem.text if resumo_elem is not None else None,
+                        atividade_id=self._safe_int(atividade_id_elem.text) if atividade_id_elem is not None else None,
+                        id_debate=self._safe_int(id_debate_elem.text) if id_debate_elem is not None else None,
+                        legislatura_id=legislatura.id
+                    )
+                    self.session.add(intervention)
+                    self.session.flush()  # Get the ID
+                    existing = intervention
                 
-                # Process deputy data
-                self._process_deputados(intervencao, intervention_id)
-                
-                # Process government members
-                self._process_membros_governo(intervencao, intervention_id)
-                
-                # Process invited guests
-                self._process_convidados(intervencao, intervention_id)
-                
-                # Process related activities
-                self._process_atividades_relacionadas(intervencao, intervention_id)
-                
-                # Process initiatives
-                self._process_iniciativas(intervencao, intervention_id)
-                
-                # Process audiovisual data
-                self._process_audiovisual(intervencao, intervention_id, filename)
+                # Process related data
+                self._process_publicacao(intervencao, existing)
+                self._process_deputados(intervencao, existing)
+                self._process_membros_governo(intervencao, existing)
+                self._process_convidados(intervencao, existing)
+                self._process_atividades_relacionadas(intervencao, existing)
+                self._process_iniciativas(intervencao, existing)
+                self._process_audiovisual(intervencao, existing, filename)
                 
                 return True
                 
-            except sqlite3.Error as db_error:
+            except Exception as db_error:
                 logger.error(f"Database error processing intervention {id_elem.text if id_elem is not None else 'unknown'}: {db_error}")
-                # Don't rollback here - let the caller handle it
                 raise
             
         except Exception as e:
@@ -428,8 +462,14 @@ class IntervencoesMapper(SchemaMapper):
                 tipo_intervencao
             ))
     
-    def _get_or_create_legislatura(self, sigla: str) -> int:
+    def _get_or_create_legislatura(self, sigla: str) -> Legislatura:
         """Get or create legislatura from sigla"""
+        legislatura = self.session.query(Legislatura).filter_by(numero=sigla).first()
+        
+        if legislatura:
+            return legislatura
+        
+        # Create new legislatura if it doesn't exist
         roman_to_num = {
             'XVII': 17, 'XVI': 16, 'XV': 15, 'XIV': 14, 'XIII': 13,
             'XII': 12, 'XI': 11, 'X': 10, 'IX': 9, 'VIII': 8,
@@ -437,10 +477,17 @@ class IntervencoesMapper(SchemaMapper):
             'II': 2, 'I': 1, 'CONSTITUINTE': 0
         }
         
-        numero = roman_to_num.get(sigla, 17)
-        self.cursor.execute("SELECT id FROM legislaturas WHERE numero = ?", (numero,))
-        result = self.cursor.fetchone()
-        return result[0] if result else 1  # Fallback to first legislatura
+        numero_int = roman_to_num.get(sigla, 17)
+        
+        legislatura = Legislatura(
+            numero=sigla,
+            designacao=f"{numero_int}.ª Legislatura",
+            ativa=False
+        )
+        
+        self.session.add(legislatura)
+        self.session.flush()  # Get the ID
+        return legislatura
     
     def _safe_int(self, value) -> Optional[int]:
         """Safely convert to int"""
