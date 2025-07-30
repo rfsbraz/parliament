@@ -530,44 +530,11 @@ class AtividadesMapper(SchemaMapper):
             data_agendamento_debate = self._parse_date(data_agendamento_str)
             data_atividade = data_entrada or data_agendamento_debate
             
-            # If no primary dates found, try fallback date sources
+            # Strict validation - only accept records with primary dates
             if not data_atividade:
-                # Try publication dates from nested structures
-                pub_date_str = None
-                publicacao = atividade.find('.//Publicacao//pubdt')
-                if publicacao is not None and publicacao.text:
-                    pub_date_str = publicacao.text
-                    data_atividade = self._parse_date(pub_date_str)
-                
-                # Try voting dates if still no date found  
-                if not data_atividade:
-                    voting_date = atividade.find('.//VotacaoDebate//data')
-                    if voting_date is not None and voting_date.text:
-                        voting_date_str = voting_date.text
-                        data_atividade = self._parse_date(voting_date_str)
-                        
-                # Try general date elements
-                if not data_atividade:
-                    general_date = atividade.find('.//data')
-                    if general_date is not None and general_date.text:
-                        general_date_str = general_date.text
-                        data_atividade = self._parse_date(general_date_str)
-                        
-                # Log what fallback sources were attempted
-                if data_atividade:
-                    logger.info(f"Used fallback date source for activity: {assunto[:50] if assunto else 'Unknown'}")
-                else:
-                    logger.warning(f"DATA VALIDATION FAILURE: No valid date found for activity: {assunto[:50] if assunto else 'Unknown'}")
-                    logger.warning(f"Primary date fields - DataEntrada: {data_entrada_str}, DataAgendamentoDebate: {data_agendamento_str}")
-                    logger.warning(f"Fallback attempts - Publication date: {pub_date_str if 'pub_date_str' in locals() else 'None'}")
-                    
-                    # Before giving up, let's examine what fields ARE available
-                    available_fields = []
-                    for child in atividade:
-                        if child.text and child.text.strip():
-                            available_fields.append(f"{child.tag}={child.text[:20]}")
-                    logger.warning(f"Available fields in failing activity: {', '.join(available_fields[:10])}")
-                    return False
+                logger.warning(f"DATA VALIDATION FAILURE: No valid date found for activity: {assunto[:50] if assunto else 'Unknown'}")
+                logger.warning(f"Primary date fields - DataEntrada: {data_entrada_str}, DataAgendamentoDebate: {data_agendamento_str}")
+                return False
             
             if not assunto:
                 logger.warning("DATA VALIDATION FAILURE: Missing required field: Assunto")
@@ -655,84 +622,22 @@ class AtividadesMapper(SchemaMapper):
             assunto = self._get_text_value(debate, 'Assunto')
             intervencoes = self._get_text_value(debate, 'Intervencoes')
             
-            if not debate_id or not assunto:
-                # Before failing, try alternative field names for assunto
-                if not assunto:
-                    # Try alternative subject field names
-                    assunto = (self._get_text_value(debate, 'Titulo') or 
-                              self._get_text_value(debate, 'Tema') or
-                              self._get_text_value(debate, 'Materia') or
-                              self._get_text_value(debate, 'TipoDebateDesig'))
+            # Strict validation - require both debate_id and assunto
+            if not debate_id:
+                logger.warning(f"DATA VALIDATION FAILURE: Missing required DebateId")
+                return False
                 
-                # If still no assunto, generate one from available information
-                if not assunto:
-                    sessao = self._get_text_value(debate, 'Sessao')
-                    legislatura_nome = self._get_text_value(debate, 'Legislatura')  # Use different variable name
-                    tipo_autor = self._get_text_value(debate, 'TipoAutor')
-                    
-                    assunto_parts = []
-                    if tipo_debate_desig:
-                        assunto_parts.append(tipo_debate_desig)
-                    if tipo_debate:
-                        assunto_parts.append(tipo_debate)
-                    if tipo_autor:
-                        assunto_parts.append(f"({tipo_autor})")
-                    if legislatura_nome and sessao:
-                        assunto_parts.append(f"Leg.{legislatura_nome} Ses.{sessao}")
-                    
-                    assunto = " - ".join(assunto_parts) if assunto_parts else f"Debate {debate_id}"
-                    logger.info(f"Generated subject for debate {debate_id}: {assunto}")
-                
-                if not debate_id:
-                    logger.warning(f"DATA VALIDATION FAILURE: Missing required DebateId")
-                    
-                    # Show available fields for debugging
-                    available_fields = []
-                    for child in debate:
-                        if child.text and child.text.strip():
-                            available_fields.append(f"{child.tag}={child.text[:30]}")
-                    logger.warning(f"Available fields in failing debate: {', '.join(available_fields[:10])}")
-                    return False
+            if not assunto:
+                logger.warning(f"DATA VALIDATION FAILURE: Missing required Assunto")
+                return False
             
             data_debate = self._parse_date(data_debate_str)
             
-            # If no primary date found, try fallback date sources
+            # Strict validation - only accept records with primary dates
             if not data_debate:
-                # Try publication dates from nested structures
-                pub_date_str = None
-                publicacao = debate.find('.//Publicacao//pubdt')
-                if publicacao is not None and publicacao.text:
-                    pub_date_str = publicacao.text
-                    data_debate = self._parse_date(pub_date_str)
-                
-                # Try general date elements if still no date found
-                if not data_debate:
-                    general_date = debate.find('.//data')
-                    if general_date is not None and general_date.text:
-                        general_date_str = general_date.text
-                        data_debate = self._parse_date(general_date_str)
-                
-                # Try DataEntrada as fallback (common in some debate records)
-                if not data_debate:
-                    data_entrada_str = self._get_text_value(debate, 'DataEntrada')
-                    if data_entrada_str:
-                        data_debate = self._parse_date(data_entrada_str)
-                        
-                # Log what fallback sources were attempted
-                if data_debate:
-                    logger.info(f"Used fallback date source for debate: {assunto[:50] if assunto else 'Unknown'}")
-                else:
-                    logger.warning(f"DATA VALIDATION FAILURE: No valid date found for debate: {assunto[:50] if assunto else 'Unknown'}")
-                    logger.warning(f"Primary date field - DataDebate: {data_debate_str}")
-                    logger.warning(f"Fallback attempts - Publication date: {pub_date_str if 'pub_date_str' in locals() else 'None'}")
-                    
-                    # Before giving up, let's examine what fields ARE available
-                    available_fields = []
-                    for child in debate:
-                        if child.text and child.text.strip():
-                            available_fields.append(f"{child.tag}={child.text[:20]}")
-                    logger.warning(f"Available fields in failing debate: {', '.join(available_fields[:10])}")
-                    return False
+                logger.warning(f"DATA VALIDATION FAILURE: No valid date found for debate: {assunto[:50] if assunto else 'Unknown'}")
+                logger.warning(f"Primary date field - DataDebate: {data_debate_str}")
+                return False
             
             debate_id_int = int(debate_id)
             
