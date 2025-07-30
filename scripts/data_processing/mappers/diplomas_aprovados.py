@@ -12,14 +12,27 @@ import re
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
+
+# Import our models
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from database.models import DiplomaAprovado, DiplomaPublicacao, DiplomaIniciativa, Legislatura
 
 logger = logging.getLogger(__name__)
 
 
 class DiplomasAprovadosMapper(SchemaMapper):
     """Schema mapper for approved diplomas files"""
+    
+    def __init__(self, db_path: str = None):
+        super().__init__(db_path)
+        self.engine = create_engine(f'sqlite:///{self.db_path}')
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -38,27 +51,38 @@ class DiplomasAprovadosMapper(SchemaMapper):
         """Map approved diplomas to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
-        # Validate schema coverage according to strict mode
-        self.validate_schema_coverage(xml_root, file_info, strict_mode)
+        try:
+            # Validate schema coverage according to strict mode
+            self.validate_schema_coverage(xml_root, file_info, strict_mode)
+            
+            # Extract legislatura from filename or XML
+            legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+            legislatura = self._get_or_create_legislatura(legislatura_sigla)
         
-        # Extract legislatura from filename or XML
-        legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
-        legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
-        
-        # Process diplomas
-        for diploma in xml_root.findall('.//DiplomaOut'):
-            try:
-                success = self._process_diploma(diploma, legislatura_id)
-                results['records_processed'] += 1
-                if success:
-                    results['records_imported'] += 1
-            except Exception as e:
-                error_msg = f"Diploma processing error: {str(e)}"
-                logger.error(error_msg)
-                results['errors'].append(error_msg)
-                results['records_processed'] += 1
-        
-        return results
+            # Process diplomas
+            for diploma in xml_root.findall('.//DiplomaOut'):
+                try:
+                    success = self._process_diploma(diploma, legislatura)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"Diploma processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
+                    self.session.rollback()
+            
+            # Commit all changes
+            self.session.commit()
+            return results
+            
+        except Exception as e:
+            error_msg = f"Critical error processing diplomas: {str(e)}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
+            self.session.rollback()
+            return results
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
@@ -85,7 +109,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
         # Default to XVII
         return 'XVII'
     
-    def _process_diploma(self, diploma: ET.Element, legislatura_id: int) -> bool:
+    def _process_diploma(self, diploma: ET.Element, legislatura: Legislatura) -> bool:
         """Process individual diploma"""
         try:
             # Extract basic fields
@@ -99,44 +123,51 @@ class DiplomasAprovadosMapper(SchemaMapper):
             observacoes = self._get_text_value(diploma, 'Observacoes')
             tp = self._get_text_value(diploma, 'Tp')
             
-            if not titulo or not tipo:
-                logger.warning("Missing required fields: titulo or tipo")
+            if not titulo:
+                logger.warning("Missing required field: titulo")
                 return False
             
-            # Create activity date from year (use January 1st as default)
-            data_atividade = f"{ano_civil}-01-01" if ano_civil else None
-            
-            # Create diploma title combining type, number and title
-            if numero:
-                full_title = f"{tipo} n.º {numero}: {titulo}"
-            else:
-                full_title = f"{tipo}: {titulo}"
-            
-            # Map diploma type to standard activity type
-            activity_type = self._map_diploma_type(tipo, tp)
-            
             # Check if diploma already exists
+            existing = None
             if diploma_id:
-                self.cursor.execute("""
-                    SELECT id FROM atividades_parlamentares_detalhadas
-                    WHERE id_externo = ? AND tipo = ?
-                """, (diploma_id, activity_type))
-                
-                if self.cursor.fetchone():
-                    # Update existing record
-                    self.cursor.execute("""
-                        UPDATE atividades_parlamentares_detalhadas SET
-                            titulo = ?, data_atividade = ?, legislatura_id = ?
-                        WHERE id_externo = ? AND tipo = ?
-                    """, (full_title, data_atividade, legislatura_id, diploma_id, activity_type))
-                    return True
+                existing = self.session.query(DiplomaAprovado).filter_by(
+                    diploma_id=diploma_id
+                ).first()
             
-            # Insert new diploma record
-            self.cursor.execute("""
-                INSERT INTO atividades_parlamentares_detalhadas (
-                    id_externo, tipo, titulo, data_atividade, legislatura_id
-                ) VALUES (?, ?, ?, ?, ?)
-            """, (diploma_id, activity_type, full_title, data_atividade, legislatura_id))
+            if existing:
+                # Update existing record
+                existing.numero = numero
+                existing.titulo = titulo
+                existing.tipo = tipo
+                existing.sessao = sessao
+                existing.ano_civil = ano_civil
+                existing.link_texto = link_texto
+                existing.observacoes = observacoes
+                existing.tp = tp
+                existing.legislatura_id = legislatura.id
+            else:
+                # Create new diploma record
+                diploma_record = DiplomaAprovado(
+                    diploma_id=diploma_id,
+                    numero=numero,
+                    titulo=titulo,
+                    tipo=tipo,
+                    sessao=sessao,
+                    ano_civil=ano_civil,
+                    link_texto=link_texto,
+                    observacoes=observacoes,
+                    tp=tp,
+                    legislatura_id=legislatura.id
+                )
+                self.session.add(diploma_record)
+                self.session.flush()  # Get the ID
+                existing = diploma_record
+            
+            # Process publications
+            self._process_diploma_publications(diploma, existing)
+            
+            # Process initiatives
+            self._process_diploma_initiatives(diploma, existing)
             
             return True
             
@@ -179,26 +210,25 @@ class DiplomasAprovadosMapper(SchemaMapper):
                 return None
         return None
     
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> int:
+    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
         """Get or create legislatura record"""
-        # Check if legislatura exists
-        self.cursor.execute("""
-            SELECT id FROM legislaturas WHERE numero = ?
-        """, (legislatura_sigla,))
+        legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
         
-        result = self.cursor.fetchone()
-        if result:
-            return result[0]
+        if legislatura:
+            return legislatura
         
         # Create new legislatura if it doesn't exist
         numero_int = self._convert_roman_to_int(legislatura_sigla)
         
-        self.cursor.execute("""
-            INSERT INTO legislaturas (numero, designacao, ativa)
-            VALUES (?, ?, ?)
-        """, (legislatura_sigla, f"{numero_int}.ª Legislatura", False))
+        legislatura = Legislatura(
+            numero=legislatura_sigla,
+            designacao=f"{numero_int}.ª Legislatura",
+            ativa=False
+        )
         
-        return self.cursor.lastrowid
+        self.session.add(legislatura)
+        self.session.flush()  # Get the ID
+        return legislatura
     
     def _convert_roman_to_int(self, roman: str) -> int:
         """Convert Roman numeral to integer"""
@@ -207,3 +237,85 @@ class DiplomasAprovadosMapper(SchemaMapper):
             'XI': 11, 'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17, 'CONSTITUINTE': 0
         }
         return roman_numerals.get(roman, 17)
+    
+    def _process_diploma_publications(self, diploma: ET.Element, diploma_record: DiplomaAprovado):
+        """Process publications for diploma"""
+        publicacao = diploma.find('Publicacao')
+        if publicacao is not None:
+            for pub in publicacao.findall('pt_gov_ar_objectos_PublicacoesOut'):
+                pub_nr = self._get_int_value(pub, 'pubNr')
+                pub_tipo = self._get_text_value(pub, 'pubTipo')
+                pub_tp = self._get_text_value(pub, 'pubTp')
+                pub_leg = self._get_text_value(pub, 'pubLeg')
+                pub_sl = self._get_int_value(pub, 'pubSL')
+                pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
+                id_pag = self._get_int_value(pub, 'idPag')
+                url_diario = self._get_text_value(pub, 'URLDiario')
+                supl = self._get_text_value(pub, 'supl')
+                obs = self._get_text_value(pub, 'obs')
+                pag_final_diario_supl = self._get_text_value(pub, 'pagFinalDiarioSupl')
+                
+                # Handle page numbers (can be in <pag><string> elements)
+                pag_text = None
+                pag_elem = pub.find('pag')
+                if pag_elem is not None:
+                    string_elems = pag_elem.findall('string')
+                    if string_elems:
+                        pag_text = ', '.join([s.text for s in string_elems if s.text])
+                
+                publicacao_record = DiplomaPublicacao(
+                    diploma_id=diploma_record.id,
+                    pub_nr=pub_nr,
+                    pub_tipo=pub_tipo,
+                    pub_tp=pub_tp,
+                    pub_leg=pub_leg,
+                    pub_sl=pub_sl,
+                    pub_dt=pub_dt,
+                    pag=pag_text,
+                    id_pag=id_pag,
+                    url_diario=url_diario,
+                    supl=supl,
+                    obs=obs,
+                    pag_final_diario_supl=pag_final_diario_supl
+                )
+                self.session.add(publicacao_record)
+    
+    def _process_diploma_initiatives(self, diploma: ET.Element, diploma_record: DiplomaAprovado):
+        """Process initiatives for diploma"""
+        iniciativas = diploma.find('Iniciativas')
+        if iniciativas is not None:
+            for ini in iniciativas.findall('DiplomaIniciativaOut'):
+                ini_nr = self._get_int_value(ini, 'IniNr')
+                ini_tipo = self._get_text_value(ini, 'IniTipo')
+                ini_link_texto = self._get_text_value(ini, 'IniLinkTexto')
+                ini_id = self._get_int_value(ini, 'IniId')
+                
+                iniciativa_record = DiplomaIniciativa(
+                    diploma_id=diploma_record.id,
+                    ini_nr=ini_nr,
+                    ini_tipo=ini_tipo,
+                    ini_link_texto=ini_link_texto,
+                    ini_id=ini_id
+                )
+                self.session.add(iniciativa_record)
+    
+    def _parse_date(self, date_str: str) -> Optional[datetime]:
+        """Parse date string to datetime"""
+        if not date_str:
+            return None
+        try:
+            # Handle ISO format: YYYY-MM-DD
+            if re.match(r'\\d{4}-\\d{2}-\\d{2}', date_str):
+                return datetime.strptime(date_str, '%Y-%m-%d').date()
+            # Handle datetime format: YYYY-MM-DDTHH:MM:SS
+            if 'T' in date_str:
+                return datetime.strptime(date_str.split('T')[0], '%Y-%m-%d').date()
+            # Handle DD/MM/YYYY format
+            if '/' in date_str:
+                parts = date_str.split('/')
+                if len(parts) == 3 and len(parts[2]) == 4:
+                    return datetime.strptime(f\"{parts[2]}-{parts[1]}-{parts[0]}\", '%Y-%m-%d').date()
+            return None
+        except Exception as e:
+            logger.warning(f\"Could not parse date '{date_str}': {e}\")
+            return None

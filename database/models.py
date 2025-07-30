@@ -1336,3 +1336,102 @@ class DadosSituacaoDeputado(Base):
     created_at = Column(DateTime, default=func.now())
     
     deputado_situacao = relationship("DeputadoSituacao", back_populates="dados_situacao")
+
+
+class RegistoInteresses(Base):
+    __tablename__ = 'registo_interesses'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # V3 Schema fields (newer format)
+    record_id = Column(String(50))
+    full_name = Column(String(200))
+    marital_status = Column(String(50))
+    spouse_name = Column(String(200))
+    matrimonial_regime = Column(String(100))
+    exclusivity = Column(String(10))  # "Yes"/"No"
+    dgf_number = Column(String(50))
+    
+    # V2/V1 Schema fields (older formats)
+    cad_id = Column(Integer)
+    cad_nome_completo = Column(String(200))
+    cad_actividade_profissional = Column(Text)
+    cad_estado_civil_cod = Column(String(10))
+    cad_estado_civil_des = Column(String(50))
+    cad_fam_id = Column(Integer)
+    cad_nome_conjuge = Column(String(200))
+    cad_rgi = Column(String(100))
+    
+    schema_version = Column(String(10))  # "V1", "V2", or "V3"
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    deputado = relationship("Deputado", backref="registos_interesses")
+    legislatura = relationship("Legislatura", backref="registos_interesses")
+
+
+class DiplomaAprovado(Base):
+    __tablename__ = 'diplomas_aprovados'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core diploma fields
+    diploma_id = Column(Integer, unique=True)  # External ID
+    numero = Column(Integer)
+    titulo = Column(Text)
+    tipo = Column(String(100))
+    sessao = Column(Integer)
+    ano_civil = Column(Integer)
+    link_texto = Column(Text)
+    observacoes = Column(Text)
+    tp = Column(String(50))
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    legislatura = relationship("Legislatura", backref="diplomas_aprovados")
+    publicacoes = relationship("DiplomaPublicacao", back_populates="diploma", cascade="all, delete-orphan")
+    iniciativas = relationship("DiplomaIniciativa", back_populates="diploma", cascade="all, delete-orphan")
+
+
+class DiplomaPublicacao(Base):
+    __tablename__ = 'diploma_publicacoes'
+    
+    id = Column(Integer, primary_key=True)
+    diploma_id = Column(Integer, ForeignKey('diplomas_aprovados.id'), nullable=False)
+    
+    pub_nr = Column(Integer)
+    pub_tipo = Column(String(50))
+    pub_tp = Column(String(10))
+    pub_leg = Column(String(20))
+    pub_sl = Column(Integer)
+    pub_dt = Column(Date)
+    pag = Column(Text)  # Can contain multiple page numbers
+    id_pag = Column(Integer)
+    url_diario = Column(Text)
+    supl = Column(String(10))
+    obs = Column(Text)
+    pag_final_diario_supl = Column(String(50))
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    diploma = relationship("DiplomaAprovado", back_populates="publicacoes")
+
+
+class DiplomaIniciativa(Base):
+    __tablename__ = 'diploma_iniciativas'
+    
+    id = Column(Integer, primary_key=True)
+    diploma_id = Column(Integer, ForeignKey('diplomas_aprovados.id'), nullable=False)
+    
+    ini_nr = Column(Integer)
+    ini_tipo = Column(String(100))
+    ini_link_texto = Column(Text)
+    ini_id = Column(Integer)
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    diploma = relationship("DiplomaAprovado", back_populates="iniciativas")

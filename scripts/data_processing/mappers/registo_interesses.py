@@ -12,14 +12,27 @@ from typing import Dict, Optional, Set
 import logging
 import re
 import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
+
+# Import our models
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from database.models import RegistoInteresses, Deputado, Legislatura
 
 logger = logging.getLogger(__name__)
 
 
 class RegistoInteressesMapper(SchemaMapper):
     """Schema mapper for conflicts of interest registry files"""
+    
+    def __init__(self, db_path: str = None):
+        super().__init__(db_path)
+        self.engine = create_engine(f'sqlite:///{self.db_path}')
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -63,19 +76,22 @@ class RegistoInteressesMapper(SchemaMapper):
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Validate and map conflicts of interest XML to database"""
         results = {
+            'records_processed': 0,
             'records_imported': 0,
-            'errors': [],
-            'warnings': []
+            'errors': []
         }
         
         try:
             # Extract legislatura from file path
-            legislatura = self._extract_legislatura(file_info['file_path'])
-            if not legislatura:
+            legislatura_sigla = self._extract_legislatura(file_info['file_path'])
+            if not legislatura_sigla:
                 error_msg = f"Could not extract legislatura from file path: {file_info['file_path']}"
                 logger.error(error_msg)
                 results['errors'].append(error_msg)
                 return results
+            
+            # Get or create legislatura
+            legislatura = self._get_or_create_legislatura(legislatura_sigla)
             
             # Validate schema coverage according to strict mode
             self.validate_schema_coverage(xml_root, file_info, strict_mode)
@@ -98,22 +114,18 @@ class RegistoInteressesMapper(SchemaMapper):
                         exclusivity = self._get_text(registo_v3, 'Exclusivity')
                         dgf_number = self._get_text(registo_v3, 'DGFNumber')
                         
-                        if not record_id or not full_name:
-                            results['errors'].append(f"Missing required fields in V3 record")
-                            continue
-                        
-                        self.cursor.execute('''
-                            INSERT OR REPLACE INTO conflicts_of_interest 
-                            (record_id, legislatura, full_name, marital_status, spouse_name, matrimonial_regime, exclusivity, dgf_number)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (record_id, legislatura, full_name, marital_status, spouse_name, matrimonial_regime, exclusivity, dgf_number))
-                        
-                        results['records_imported'] += 1
+                        success = self._process_v3_record(
+                            record_id, full_name, marital_status, spouse_name, 
+                            matrimonial_regime, exclusivity, dgf_number, legislatura
+                        )
+                        if success:
+                            results['records_imported'] += 1
                         
                     except Exception as e:
                         error_msg = f"Error processing V3 conflicts record: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
+                        self.session.rollback()
                         
                 elif registo_v2 is not None:
                     # Handle V2 schema (XII, XIII)
@@ -133,22 +145,18 @@ class RegistoInteressesMapper(SchemaMapper):
                         if rgi is not None:
                             matrimonial_regime = self._get_text(rgi, 'rgiRegimeBensDes')
                         
-                        if not record_id or not full_name:
-                            results['errors'].append(f"Missing required fields in V2 record")
-                            continue
-                        
-                        self.cursor.execute('''
-                            INSERT OR REPLACE INTO conflicts_of_interest 
-                            (record_id, legislatura, full_name, marital_status, spouse_name, matrimonial_regime, exclusivity, dgf_number)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (record_id, legislatura, full_name, marital_status_desc, spouse_name, matrimonial_regime, exclusivity, dgf_number))
-                        
-                        results['records_imported'] += 1
+                        success = self._process_v2_record(
+                            record_id, full_name, marital_status_desc, spouse_name,
+                            matrimonial_regime, exclusivity, dgf_number, legislatura
+                        )
+                        if success:
+                            results['records_imported'] += 1
                         
                     except Exception as e:
                         error_msg = f"Error processing V2 conflicts record: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
+                        self.session.rollback()
                         
                 elif registo_v1 is not None:
                     # Handle V1 schema (XI)
@@ -163,30 +171,29 @@ class RegistoInteressesMapper(SchemaMapper):
                         exclusivity = None
                         dgf_number = None
                         
-                        if not record_id or not full_name:
-                            results['errors'].append(f"Missing required fields in V1 record")
-                            continue
-                        
-                        self.cursor.execute('''
-                            INSERT OR REPLACE INTO conflicts_of_interest 
-                            (record_id, legislatura, full_name, marital_status, spouse_name, matrimonial_regime, exclusivity, dgf_number)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (record_id, legislatura, full_name, marital_status_desc, spouse_name, matrimonial_regime, exclusivity, dgf_number))
-                        
-                        results['records_imported'] += 1
+                        success = self._process_v1_record(
+                            record_id, full_name, marital_status_desc, spouse_name,
+                            matrimonial_regime, exclusivity, dgf_number, legislatura
+                        )
+                        if success:
+                            results['records_imported'] += 1
                         
                     except Exception as e:
                         error_msg = f"Error processing V1 conflicts record: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
+                        self.session.rollback()
             
+            # Commit all changes
+            self.session.commit()
             logger.info(f"Imported {results['records_imported']} conflicts of interest records from {file_info['file_path']}")
             
         except Exception as e:
             error_msg = f"Critical error processing conflicts file {file_info['file_path']}: {str(e)}"
             logger.error(error_msg)
             results['errors'].append(error_msg)
-            raise SchemaError(error_msg) from e
+            self.session.rollback()
+            return results
         
         return results
     
@@ -221,3 +228,192 @@ class RegistoInteressesMapper(SchemaMapper):
                 return roman_map.get(leg, leg)
         
         return None
+    
+    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
+        """Get or create legislatura record"""
+        legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
+        
+        if legislatura:
+            return legislatura
+        
+        # Create new legislatura if it doesn't exist
+        numero_int = self._convert_roman_to_int(legislatura_sigla)
+        
+        legislatura = Legislatura(
+            numero=legislatura_sigla,
+            designacao=f"{numero_int}.ª Legislatura",
+            ativa=False
+        )
+        
+        self.session.add(legislatura)
+        self.session.flush()  # Get the ID
+        return legislatura
+    
+    def _convert_roman_to_int(self, roman: str) -> int:
+        """Convert Roman numeral to integer"""
+        roman_numerals = {
+            'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10,
+            'XI': 11, 'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17, 'CONSTITUINTE': 0
+        }
+        return roman_numerals.get(roman, 17)
+    
+    def _get_or_create_deputado(self, record_id: int, full_name: str) -> Deputado:
+        """Get or create deputy record"""
+        deputado = self.session.query(Deputado).filter_by(id_cadastro=record_id).first()
+        
+        if deputado:
+            return deputado
+        
+        # Create basic deputy record
+        deputado = Deputado(
+            id_cadastro=record_id,
+            nome=full_name,
+            nome_completo=full_name,
+            ativo=True
+        )
+        
+        self.session.add(deputado)
+        self.session.flush()  # Get the ID
+        return deputado
+    
+    def _process_v3_record(self, record_id: str, full_name: str, marital_status: str, 
+                          spouse_name: str, matrimonial_regime: str, exclusivity: str, 
+                          dgf_number: str, legislatura: Legislatura) -> bool:
+        """Process V3 schema record"""
+        try:
+            if not record_id or not full_name:
+                return False
+            
+            # Try to find deputy by record_id (assuming it's a cad_id)
+            try:
+                cad_id = int(record_id)
+                deputado = self._get_or_create_deputado(cad_id, full_name)
+            except ValueError:
+                # If record_id is not numeric, create a dummy deputy
+                deputado = self._get_or_create_deputado(0, full_name)
+            
+            # Check if record already exists
+            existing = self.session.query(RegistoInteresses).filter_by(
+                deputado_id=deputado.id,
+                legislatura_id=legislatura.id,
+                record_id=record_id
+            ).first()
+            
+            if existing:
+                # Update existing record
+                existing.full_name = full_name
+                existing.marital_status = marital_status
+                existing.spouse_name = spouse_name
+                existing.matrimonial_regime = matrimonial_regime
+                existing.exclusivity = exclusivity
+                existing.dgf_number = dgf_number
+                existing.schema_version = "V3"
+            else:
+                # Create new record
+                registo = RegistoInteresses(
+                    deputado_id=deputado.id,
+                    legislatura_id=legislatura.id,
+                    record_id=record_id,
+                    full_name=full_name,
+                    marital_status=marital_status,
+                    spouse_name=spouse_name,
+                    matrimonial_regime=matrimonial_regime,
+                    exclusivity=exclusivity,
+                    dgf_number=dgf_number,
+                    schema_version="V3"
+                )
+                self.session.add(registo)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing V3 record: {e}")
+            return False
+    
+    def _process_v2_record(self, record_id: str, full_name: str, marital_status_desc: str,
+                          spouse_name: str, matrimonial_regime: str, exclusivity: str,
+                          dgf_number: str, legislatura: Legislatura) -> bool:
+        """Process V2 schema record"""
+        try:
+            if not record_id or not full_name:
+                return False
+            
+            cad_id = int(record_id) if record_id.isdigit() else 0
+            deputado = self._get_or_create_deputado(cad_id, full_name)
+            
+            # Check if record already exists
+            existing = self.session.query(RegistoInteresses).filter_by(
+                deputado_id=deputado.id,
+                legislatura_id=legislatura.id,
+                cad_id=cad_id
+            ).first()
+            
+            if existing:
+                # Update existing record
+                existing.cad_nome_completo = full_name
+                existing.cad_estado_civil_des = marital_status_desc
+                existing.cad_nome_conjuge = spouse_name
+                existing.cad_rgi = matrimonial_regime
+                existing.schema_version = "V2"
+            else:
+                # Create new record
+                registo = RegistoInteresses(
+                    deputado_id=deputado.id,
+                    legislatura_id=legislatura.id,
+                    cad_id=cad_id,
+                    cad_nome_completo=full_name,
+                    cad_estado_civil_des=marital_status_desc,
+                    cad_nome_conjuge=spouse_name,
+                    cad_rgi=matrimonial_regime,
+                    schema_version="V2"
+                )
+                self.session.add(registo)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing V2 record: {e}")
+            return False
+    
+    def _process_v1_record(self, record_id: str, full_name: str, marital_status_desc: str,
+                          spouse_name: str, matrimonial_regime: str, exclusivity: str,
+                          dgf_number: str, legislatura: Legislatura) -> bool:
+        """Process V1 schema record"""
+        try:
+            if not record_id or not full_name:
+                return False
+            
+            cad_id = int(record_id) if record_id.isdigit() else 0
+            deputado = self._get_or_create_deputado(cad_id, full_name)
+            
+            # Check if record already exists
+            existing = self.session.query(RegistoInteresses).filter_by(
+                deputado_id=deputado.id,
+                legislatura_id=legislatura.id,
+                cad_id=cad_id
+            ).first()
+            
+            if existing:
+                # Update existing record
+                existing.cad_nome_completo = full_name
+                existing.cad_estado_civil_des = marital_status_desc
+                existing.cad_nome_conjuge = spouse_name
+                existing.schema_version = "V1"
+            else:
+                # Create new record
+                registo = RegistoInteresses(
+                    deputado_id=deputado.id,
+                    legislatura_id=legislatura.id,
+                    cad_id=cad_id,
+                    cad_nome_completo=full_name,
+                    cad_estado_civil_des=marital_status_desc,
+                    cad_nome_conjuge=spouse_name,
+                    schema_version="V1"
+                )
+                self.session.add(registo)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing V1 record: {e}")
+            return False
