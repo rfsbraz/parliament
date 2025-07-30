@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail, Shield, AlertTriangle, Heart, Users } from 'lucide-react';
 import { useLegislatura } from '../contexts/LegislaturaContext';
+import VotingAnalytics from './VotingAnalytics';
 
 // TODO: Deputy mandate linking limitation
 // Current system uses name-based linking to connect same person across legislaturas
@@ -1104,141 +1105,10 @@ const DeputadoDetalhes = () => {
             )}
 
             {activeTab === 'votacoes' && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Histórico de Votações
-                </h3>
-                {atividades?.votacoes && atividades.votacoes.length > 0 ? (
-                  <div className="space-y-4">
-                    {atividades.votacoes.map((votacao, index) => (
-                      <div key={index} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <p className="text-gray-900 font-medium leading-relaxed mb-2">
-                              {votacao.objeto_votacao}
-                            </p>
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4" />
-                                {new Date(votacao.data_votacao).toLocaleDateString('pt-PT')}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-700">Voto:</span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                votacao.voto_deputado === 'favor' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : votacao.voto_deputado === 'contra'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {votacao.voto_deputado === 'favor' ? 'A Favor' : 
-                                 votacao.voto_deputado === 'contra' ? 'Contra' : 
-                                 'Abstenção'}
-                              </span>
-                            </div>
-                            
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-700">Resultado:</span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                votacao.resultado === 'aprovada' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
-                                {votacao.resultado === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {votacao.urls && (
-                            <div className="flex items-center gap-2">
-                              {votacao.urls.iniciativa && (
-                                <a 
-                                  href={votacao.urls.iniciativa} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition-colors"
-                                >
-                                  Ver Iniciativa
-                                </a>
-                              )}
-                              <a 
-                                href={votacao.urls.arquivo || votacao.urls.votacoes} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-xs px-2 py-1 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 transition-colors"
-                              >
-                                Arquivo de Votações
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {votacao.vote_counts && (
-                          <div className="mt-3 pt-3 border-t border-gray-100">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-gray-700">Totais da Votação:</span>
-                              <span className="text-xs px-2 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-200">
-                                ⚠️ Dados de template
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-6 text-sm">
-                              <div className="flex items-center gap-1">
-                                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                                <span className="font-medium text-gray-700">A Favor:</span>
-                                <span className="text-gray-600">{votacao.vote_counts.favor || 0}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                                <span className="font-medium text-gray-700">Contra:</span>
-                                <span className="text-gray-600">{votacao.vote_counts.contra || 0}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                                <span className="font-medium text-gray-700">Abstenções:</span>
-                                <span className="text-gray-600">{votacao.vote_counts.abstencoes || 0}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                                <span className="font-medium text-gray-700">Ausências:</span>
-                                <span className="text-gray-600">{votacao.vote_counts.ausencias || 0}</span>
-                              </div>
-                              {votacao.vote_counts.total > 0 && (
-                                <div className="ml-auto text-xs text-gray-500">
-                                  Total: {votacao.vote_counts.total}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {votacao.justificacao && (
-                          <div className="mt-4 pt-4 border-t border-gray-100">
-                            <p className="text-sm text-gray-600">
-                              <span className="font-medium">Justificação:</span> {votacao.justificacao}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Vote className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">
-                      Este deputado ainda não participou em votações nesta legislatura
-                    </p>
-                    <p className="text-sm text-gray-400">
-                      As votações aparecerão aqui conforme forem registradas
-                    </p>
-                  </div>
-                )}
-              </div>
+              <VotingAnalytics 
+                deputadoId={deputadoId} 
+                legislatura={currentLegislatura} 
+              />
             )}
 
             {activeTab === 'conflitos-interesse' && (
