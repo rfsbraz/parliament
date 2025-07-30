@@ -1233,45 +1233,59 @@ def get_estatisticas():
     try:
         legislatura = request.args.get('legislatura', '17', type=str)
         
-        # Totais baseados na legislatura especificada - count unique active deputies
-        total_deputados = db.session.query(func.count(func.distinct(Deputado.id))).join(
+        # Count unique deputies by id_cadastro (intended stable identifier)
+        # This should be the proper way once data quality issues are resolved
+        total_deputados = db.session.query(func.count(func.distinct(Deputado.id_cadastro))).join(
             Mandato, Deputado.id == Mandato.deputado_id
         ).join(
             Legislatura, Mandato.legislatura_id == Legislatura.id
         ).filter(
-            Legislatura.numero == legislatura,
-            Deputado.ativo == True
+            Legislatura.numero == legislatura
         ).scalar()
         
         total_partidos = db.session.query(func.count(func.distinct(Mandato.partido_id))).join(
             Legislatura, Mandato.legislatura_id == Legislatura.id
-        ).filter(Legislatura.numero == legislatura).scalar()
+        ).filter(
+            Legislatura.numero == legislatura
+        ).scalar()
         
         total_circulos = db.session.query(func.count(func.distinct(Mandato.circulo_id))).join(
             Legislatura, Mandato.legislatura_id == Legislatura.id
-        ).filter(Legislatura.numero == legislatura).scalar()
+        ).filter(
+            Legislatura.numero == legislatura
+        ).scalar()
         
         total_mandatos = db.session.query(func.count(Mandato.id)).join(
             Legislatura, Mandato.legislatura_id == Legislatura.id
-        ).filter(Legislatura.numero == legislatura).scalar()
+        ).filter(
+            Legislatura.numero == legislatura
+        ).scalar()
         
-        # Distribuição por partidos para a legislatura especificada
+        # Distribuição por partidos - count unique deputies by id_cadastro per party
         distribuicao_partidos = db.session.query(
             Partido.id,
             Partido.sigla,
             Partido.designacao_completa.label('nome'),
-            func.count(Mandato.id).label('deputados')
-        ).outerjoin(Mandato, Partido.id == Mandato.partido_id).outerjoin(
+            func.count(func.distinct(Deputado.id_cadastro)).label('deputados')
+        ).join(
+            Mandato, Partido.id == Mandato.partido_id
+        ).join(
+            Deputado, Mandato.deputado_id == Deputado.id
+        ).join(
             Legislatura, Mandato.legislatura_id == Legislatura.id
         ).filter(
             Legislatura.numero == legislatura
         ).group_by(Partido.id).order_by(desc('deputados')).all()
         
-        # Distribuição por círculos eleitorais para a legislatura especificada
+        # Distribuição por círculos eleitorais - count unique deputies by id_cadastro per district
         distribuicao_circulos = db.session.query(
             CirculoEleitoral.designacao.label('circulo'),
-            func.count(Mandato.id).label('deputados')
-        ).outerjoin(Mandato, CirculoEleitoral.id == Mandato.circulo_id).outerjoin(
+            func.count(func.distinct(Deputado.id_cadastro)).label('deputados')
+        ).join(
+            Mandato, CirculoEleitoral.id == Mandato.circulo_id
+        ).join(
+            Deputado, Mandato.deputado_id == Deputado.id
+        ).join(
             Legislatura, Mandato.legislatura_id == Legislatura.id
         ).filter(
             Legislatura.numero == legislatura

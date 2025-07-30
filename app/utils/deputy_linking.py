@@ -3,45 +3,33 @@ Deputy Linking Utilities
 ========================
 
 Reusable functions for linking deputies across legislaturas.
-Currently uses name + birth date as unique key, but designed to be extensible.
-
-TODO: Enhance with better unique identifiers when available
-- Parliamentary ID numbers
-- Citizen ID integration
-- Photo matching
-- More robust person identification
+Uses id_cadastro as the stable identifier across legislative periods.
+This is the official Parliamentary registration ID from the Portuguese Assembly system.
 """
 
-def get_deputy_unique_key(nome_completo, data_nascimento=None):
+def get_deputy_unique_key(id_cadastro, nome_completo=None, data_nascimento=None):
     """
     Generate a unique key to identify the same person across legislaturas.
     
     Args:
-        nome_completo (str): Full name of the deputy
-        data_nascimento (str, optional): Birth date in YYYY-MM-DD format
+        id_cadastro (int): Parliamentary registration ID (required stable identifier)
+        nome_completo (str, optional): Full name of the deputy (kept for API compatibility)
+        data_nascimento (str, optional): Birth date (kept for API compatibility)
     
     Returns:
         str: Unique key for grouping deputies
     """
-    if not nome_completo:
-        return None
+    if not id_cadastro:
+        raise ValueError("id_cadastro is required - all deputies must have a parliamentary registration ID")
     
-    # Normalize name: strip whitespace, convert to lowercase for consistency
-    normalized_name = nome_completo.strip().lower()
-    
-    if data_nascimento:
-        # Use name + birth date as unique key (most reliable)
-        return f"{normalized_name}|{data_nascimento}"
-    else:
-        # Fall back to name only (less reliable but necessary for incomplete data)
-        return f"{normalized_name}|no_birthdate"
+    return f"id_cadastro:{id_cadastro}"
 
 def group_deputies_by_person(deputies_list):
     """
-    Group a list of deputy records by unique person.
+    Group a list of deputy records by unique person using id_cadastro.
     
     Args:
-        deputies_list (list): List of deputy dictionaries with nome_completo, data_nascimento
+        deputies_list (list): List of deputy dictionaries with id_cadastro (required)
     
     Returns:
         dict: Dictionary with unique_key -> list of deputy records
@@ -49,15 +37,15 @@ def group_deputies_by_person(deputies_list):
     grouped = {}
     
     for deputy in deputies_list:
-        unique_key = get_deputy_unique_key(
-            deputy.get('nome_completo'),
-            deputy.get('data_nascimento')
-        )
+        id_cadastro = deputy.get('id_cadastro')
+        if not id_cadastro:
+            continue  # Skip deputies without id_cadastro (should not happen)
+            
+        unique_key = get_deputy_unique_key(id_cadastro)
         
-        if unique_key:
-            if unique_key not in grouped:
-                grouped[unique_key] = []
-            grouped[unique_key].append(deputy)
+        if unique_key not in grouped:
+            grouped[unique_key] = []
+        grouped[unique_key].append(deputy)
     
     return grouped
 
@@ -147,3 +135,24 @@ def enhance_deputy_with_career_info(deputy_record, all_records_for_person):
     }
     
     return enhanced
+
+def get_unique_deputy_count_query():
+    """
+    Get the proper SQL query for counting unique deputies using id_cadastro.
+    
+    Returns:
+        str: SQL query that counts unique deputies by id_cadastro
+    """
+    return "COUNT(DISTINCT id_cadastro)"
+
+def get_unique_deputy_filter_query(table_alias="d"):
+    """
+    Get the proper SQL filter for unique deputy queries using id_cadastro.
+    
+    Args:
+        table_alias (str): Alias for the deputados table in the query
+    
+    Returns:
+        str: SQL field reference for unique deputy identification
+    """
+    return f"{table_alias}.id_cadastro"
