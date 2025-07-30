@@ -364,7 +364,49 @@ class AtividadesMapper(SchemaMapper):
             'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao.AtividadeComissoesOut.Documentos.pt_gov_ar_objectos_DocsOut.dataDocumento',
             
             # UTAO Opinion Date
-            'Atividades.AtividadesGerais.Relatorios.Relatorio.DataParecerUTAO'
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.DataParecerUTAO',
+            
+            # Additional XIII Legislature fields discovered in second pass
+            # Deslocacoes (Displacements) section
+            'Atividades.Deslocacoes',
+            'Atividades.Deslocacoes.DadosDeslocacoesComissaoOut',
+            'Atividades.Deslocacoes.DadosDeslocacoesComissaoOut.SessaoLegislativa',
+            'Atividades.Deslocacoes.DadosDeslocacoesComissaoOut.Legislatura',
+            'Atividades.Deslocacoes.DadosDeslocacoesComissaoOut.LocalEvento',
+            
+            # Report Commission Opinion - Extended fields
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao.AtividadeComissoesOut.Relatores',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao.AtividadeComissoesOut.Relatores.pt_gov_ar_objectos_RelatoresOut',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao.AtividadeComissoesOut.Relatores.pt_gov_ar_objectos_RelatoresOut.gp',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao.AtividadeComissoesOut.Documentos.pt_gov_ar_objectos_DocsOut.publicarInternet',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao.AtividadeComissoesOut.Documentos.pt_gov_ar_objectos_DocsOut.tipoDocumento',
+            
+            # Report Links and Audicoes
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Links',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Links.DocsOut',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Links.DocsOut.TituloDocumento',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Audicoes',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Audicoes.string',
+            
+            # Third pass - additional XIII Legislature fields
+            # Report Commission Opinion - More fields
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao.AtividadeComissoesOut.Sigla',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao.AtividadeComissoesOut.Nome',
+            
+            # Report Documents - Extended fields
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Documentos.DocsOut.DataDocumento',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Documentos.DocsOut.TituloDocumento',
+            
+            # Deslocacoes - Additional fields
+            'Atividades.Deslocacoes.DadosDeslocacoesComissaoOut.DataIni',
+            'Atividades.Deslocacoes.DadosDeslocacoesComissaoOut.Tipo',
+            'Atividades.Deslocacoes.DadosDeslocacoesComissaoOut.IDDeslocacao',
+            
+            # Activity - Additional fields
+            'Atividades.AtividadesGerais.Atividades.Atividade.OutrosSubscritores',
+            
+            # Report - Government Members
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.MembrosGoverno'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
