@@ -25,20 +25,27 @@ def check_shutdown():
         print("Exiting gracefully...")
         sys.exit(0)
 
+def get_latest_legislature_number():
+    """Determine the latest (highest) legislature number"""
+    # As of 2024, XVII (17) is the current legislature
+    # This could be made dynamic by checking the Parliament website
+    return 17
+
 def matches_legislature(name, target_legislature):
     """Check if a name matches the target legislative period"""
-    if not target_legislature or target_legislature.lower() in ['all', 'latest']:
+    if not target_legislature or target_legislature.lower() == 'all':
         return True
+    
+    # Handle "latest" by converting to actual latest legislature
+    if target_legislature.lower() == 'latest':
+        latest_num = get_latest_legislature_number()
+        target_legislature = str(latest_num)
     
     # Convert target to different formats for matching
     target_lower = target_legislature.lower()
     name_lower = name.lower()
     
-    # Direct match
-    if target_lower in name_lower:
-        return True
-    
-    # Try to match Roman numerals
+    # Roman numeral mapping for precise matching
     roman_map = {
         '1': 'i', '2': 'ii', '3': 'iii', '4': 'iv', '5': 'v',
         '6': 'vi', '7': 'vii', '8': 'viii', '9': 'ix', '10': 'x',
@@ -46,17 +53,36 @@ def matches_legislature(name, target_legislature):
         '16': 'xvi', '17': 'xvii', '18': 'xviii', '19': 'xix', '20': 'xx'
     }
     
-    # If target is a number, try to match Roman numeral
-    if target_legislature.isdigit():
-        roman = roman_map.get(target_legislature)
-        if roman and roman in name_lower:
-            return True
-        if target_legislature in name_lower:
-            return True
+    # Build all possible representations of the target
+    target_variants = set()
     
-    # If target is Roman numeral, try to match number
-    for num, roman in roman_map.items():
-        if target_lower == roman and (num in name_lower or f'{num}ª' in name_lower):
+    if target_legislature.isdigit():
+        # Target is a number like "17"
+        num = target_legislature
+        roman = roman_map.get(num)
+        if roman:
+            target_variants.add(roman)  # "xvii"
+            target_variants.add(roman.upper())  # "XVII"
+        target_variants.add(num)  # "17"
+        target_variants.add(f"{num}ª")  # "17ª"
+    else:
+        # Target is Roman numeral like "XVII"
+        target_variants.add(target_lower)  # "xvii"
+        target_variants.add(target_legislature.upper())  # "XVII"
+        # Find corresponding number
+        for num, roman in roman_map.items():
+            if target_lower == roman:
+                target_variants.add(num)  # "17"
+                target_variants.add(f"{num}ª")  # "17ª"
+                break
+    
+    # Check for exact word boundaries to avoid substring issues
+    import re
+    for variant in target_variants:
+        # Use word boundaries to ensure exact matches
+        # This prevents "XVI" from matching "XVII"
+        pattern = r'\b' + re.escape(variant) + r'\b'
+        if re.search(pattern, name_lower, re.IGNORECASE):
             return True
     
     return False
@@ -322,7 +348,21 @@ def process_recursos_pages(recursos_links, overwrite=False, target_legislature=N
     print(f"Processing {len(recursos_links)} recursos pages")
     print(f"Overwrite mode: {'ON' if overwrite else 'OFF'}")
     print(f"Target legislature: {target_legislature if target_legislature else 'ALL'}")
+    if target_legislature and target_legislature.lower() != 'all':
+        actual_target = target_legislature
+        if target_legislature.lower() == 'latest':
+            latest_num = get_latest_legislature_number()
+            actual_target = f"XVII ({latest_num})"
+        print(f"OPTIMIZATION: Will filter at Level 2 to skip non-matching directories")
+        print(f"TARGET: {actual_target}")
     print(f"{'='*60}")
+    
+    # Statistics tracking for efficiency
+    stats = {
+        'total_level2_dirs': 0,
+        'skipped_level2_dirs': 0,
+        'processed_level2_dirs': 0
+    }
     
     for i, link_info in enumerate(recursos_links, 1):
         check_shutdown()
@@ -359,6 +399,20 @@ def process_recursos_pages(recursos_links, overwrite=False, target_legislature=N
                         
                         level2_progress = f"    [{j:2d}/{len(archive_items):2d}]"
                         print(f"{level2_progress} LEVEL 2: {item_name}")
+                        
+                        stats['total_level2_dirs'] += 1
+                        
+                        # Check legislature filter at Level 2 - stop here if no match
+                        if target_legislature and target_legislature.lower() != 'all':
+                            if not matches_legislature(item_name, target_legislature):
+                                display_target = target_legislature
+                                if target_legislature.lower() == 'latest':
+                                    display_target = f"latest (XVII)"
+                                print(f"{'':10} SKIPPING: Does not match legislature filter '{display_target}'")
+                                stats['skipped_level2_dirs'] += 1
+                                continue
+                        
+                        stats['processed_level2_dirs'] += 1
                         
                         try:
                             item_response = requests.get(item_url, headers=headers, timeout=30)
@@ -414,6 +468,19 @@ def process_recursos_pages(recursos_links, overwrite=False, target_legislature=N
             
         except Exception as e:
             print(f"{'':6} ERROR: Failed to fetch page - {e}")
+    
+    # Print efficiency statistics
+    if target_legislature and target_legislature.lower() != 'all':
+        print(f"\n{'='*60}")
+        print(f"LEGISLATURE FILTER EFFICIENCY REPORT")
+        print(f"{'='*60}")
+        print(f"Total Level 2 directories found: {stats['total_level2_dirs']}")
+        print(f"Directories processed: {stats['processed_level2_dirs']}")
+        print(f"Directories skipped: {stats['skipped_level2_dirs']}")
+        if stats['total_level2_dirs'] > 0:
+            efficiency = (stats['skipped_level2_dirs'] / stats['total_level2_dirs']) * 100
+            print(f"Efficiency gain: {efficiency:.1f}% of directories skipped")
+        print(f"{'='*60}")
 
 if __name__ == "__main__":
     import argparse
