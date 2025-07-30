@@ -338,7 +338,33 @@ class AtividadesMapper(SchemaMapper):
             'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.leg',
             'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.SL',
             'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.dtAprovacaoCA',
-            'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.dtAgendamento'
+            'Atividades.OrcamentoContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.dtAgendamento',
+            
+            # Additional fields found in XIII Legislature
+            # Report Documents  
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Documentos',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Documentos.DocsOut',
+            
+            # Report Voting with unanime field
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.unanime',
+            
+            # Events section
+            'Atividades.Eventos',
+            'Atividades.Eventos.DadosEventosComissaoOut',
+            'Atividades.Eventos.DadosEventosComissaoOut.IDEvento',
+            'Atividades.Eventos.DadosEventosComissaoOut.Data',
+            'Atividades.Eventos.DadosEventosComissaoOut.Legislatura',
+            'Atividades.Eventos.DadosEventosComissaoOut.LocalEvento',
+            
+            # Report Commission Opinion
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao.AtividadeComissoesOut',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao.AtividadeComissoesOut.Documentos',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao.AtividadeComissoesOut.Documentos.pt_gov_ar_objectos_DocsOut',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.ParecerComissao.AtividadeComissoesOut.Documentos.pt_gov_ar_objectos_DocsOut.dataDocumento',
+            
+            # UTAO Opinion Date
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.DataParecerUTAO'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
