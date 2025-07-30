@@ -1652,34 +1652,170 @@ class DelegacaoPermanente(Base):
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     
     # Core fields
-    reuniao_id = Column(Integer, unique=True)  # External ID
+    delegacao_id = Column(Integer, unique=True)  # External ID
     nome = Column(Text)
-    local = Column(Text)
-    sessao = Column(Integer)
-    data_inicio = Column(Date)
-    data_fim = Column(Date)
-    tipo = Column(String(100))
+    sessao = Column(String(50))
+    data_eleicao = Column(Date)
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
     legislatura = relationship("Legislatura", backref="delegacoes_permanentes")
-    participantes = relationship("DelegacaoPermanenteParticipante", back_populates="delegacao", cascade="all, delete-orphan")
+    membros = relationship("DelegacaoPermanenteMembro", back_populates="delegacao", cascade="all, delete-orphan")
 
 
-class DelegacaoPermanenteParticipante(Base):
-    __tablename__ = 'delegacao_permanente_participantes'
+class DelegacaoPermanenteMembro(Base):
+    __tablename__ = 'delegacao_permanente_membros'
     
     id = Column(Integer, primary_key=True)
     delegacao_id = Column(Integer, ForeignKey('delegacao_permanente.id'), nullable=False)
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=True)
     
+    membro_id = Column(Integer)  # External member ID
     nome = Column(String(200))
     cargo = Column(String(100))
     gp = Column(String(50))  # Grupo Parlamentar
-    tipo_participante = Column(String(50))  # 'deputado', 'funcionario', 'externo'
+    data_inicio = Column(Date)
+    data_fim = Column(Date)
     
     created_at = Column(DateTime, default=func.now())
     
-    delegacao = relationship("DelegacaoPermanente", back_populates="participantes")
+    delegacao = relationship("DelegacaoPermanente", back_populates="membros")
     deputado = relationship("Deputado", backref="delegacoes_permanentes_participacao")
+
+
+class AtividadeParlamentar(Base):
+    __tablename__ = 'atividade_parlamentar'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core fields
+    atividade_id = Column(Integer, unique=True)  # External ID
+    tipo = Column(String(100))
+    desc_tipo = Column(String(200))
+    assunto = Column(Text)
+    numero = Column(String(50))
+    data_atividade = Column(Date)
+    data_entrada = Column(Date)
+    data_agendamento_debate = Column(Date)
+    tipo_autor = Column(String(100))
+    autores_gp = Column(Text)
+    observacoes = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    legislatura = relationship("Legislatura", backref="atividades_parlamentares")
+    publicacoes = relationship("AtividadeParlamentarPublicacao", back_populates="atividade", cascade="all, delete-orphan")
+    votacoes = relationship("AtividadeParlamentarVotacao", back_populates="atividade", cascade="all, delete-orphan")
+    eleitos = relationship("AtividadeParlamentarEleito", back_populates="atividade", cascade="all, delete-orphan")
+    convidados = relationship("AtividadeParlamentarConvidado", back_populates="atividade", cascade="all, delete-orphan")
+
+
+class AtividadeParlamentarPublicacao(Base):
+    __tablename__ = 'atividade_parlamentar_publicacoes'
+    
+    id = Column(Integer, primary_key=True)
+    atividade_id = Column(Integer, ForeignKey('atividade_parlamentar.id'), nullable=False)
+    
+    pub_nr = Column(Integer)
+    pub_tipo = Column(String(100))
+    pub_tp = Column(String(50))
+    pub_leg = Column(String(50))
+    pub_sl = Column(Integer)
+    pub_dt = Column(Date)
+    pag = Column(Text)
+    url_diario = Column(Text)
+    id_pag = Column(Integer)
+    id_deb = Column(Integer)
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    atividade = relationship("AtividadeParlamentar", back_populates="publicacoes")
+
+
+class AtividadeParlamentarVotacao(Base):
+    __tablename__ = 'atividade_parlamentar_votacoes'
+    
+    id = Column(Integer, primary_key=True)
+    atividade_id = Column(Integer, ForeignKey('atividade_parlamentar.id'), nullable=False)
+    
+    votacao_id = Column(Integer)
+    resultado = Column(String(100))
+    reuniao = Column(String(100))
+    publicacao = Column(String(200))
+    data = Column(Date)
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    atividade = relationship("AtividadeParlamentar", back_populates="votacoes")
+
+
+class AtividadeParlamentarEleito(Base):
+    __tablename__ = 'atividade_parlamentar_eleitos'
+    
+    id = Column(Integer, primary_key=True)
+    atividade_id = Column(Integer, ForeignKey('atividade_parlamentar.id'), nullable=False)
+    
+    nome = Column(String(200))
+    cargo = Column(String(100))
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    atividade = relationship("AtividadeParlamentar", back_populates="eleitos")
+
+
+class AtividadeParlamentarConvidado(Base):
+    __tablename__ = 'atividade_parlamentar_convidados'
+    
+    id = Column(Integer, primary_key=True)
+    atividade_id = Column(Integer, ForeignKey('atividade_parlamentar.id'), nullable=False)
+    
+    nome = Column(String(200))
+    pais = Column(String(100))
+    honra = Column(String(100))
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    atividade = relationship("AtividadeParlamentar", back_populates="convidados")
+
+
+class DebateParlamentar(Base):
+    __tablename__ = 'debate_parlamentar'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core fields
+    debate_id = Column(Integer, unique=True)  # External ID
+    tipo_debate_desig = Column(String(200))
+    data_debate = Column(Date)
+    tipo_debate = Column(String(100))
+    assunto = Column(Text)
+    intervencoes = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    legislatura = relationship("Legislatura", backref="debates_parlamentares")
+
+
+class RelatorioParlamentar(Base):
+    __tablename__ = 'relatorio_parlamentar'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core fields
+    relatorio_id = Column(Integer, unique=True)  # External ID if available
+    tipo = Column(String(100))
+    assunto = Column(Text)
+    data_entrada = Column(Date)
+    comissao = Column(String(200))
+    entidades_externas = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    legislatura = relationship("Legislatura", backref="relatorios_parlamentares")

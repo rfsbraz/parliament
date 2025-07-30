@@ -13,14 +13,29 @@ import re
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
+
+# Import our models
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from database.models import (
+    DelegacaoPermanente, DelegacaoPermanenteMembro, Deputado, Legislatura
+)
 
 logger = logging.getLogger(__name__)
 
 
 class DelegacaoPermanenteMapper(SchemaMapper):
     """Schema mapper for parliamentary permanent delegation files"""
+    
+    def __init__(self, db_path: str = None):
+        super().__init__(db_path)
+        self.engine = create_engine(f'sqlite:///{self.db_path}')
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -34,27 +49,38 @@ class DelegacaoPermanenteMapper(SchemaMapper):
         """Map parliamentary permanent delegations to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
-        # Validate schema coverage according to strict mode
-        self.validate_schema_coverage(xml_root, file_info, strict_mode)
-        
-        # Extract legislatura from filename or XML
-        legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
-        legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
-        
-        # Process permanent delegations
-        for delegation in xml_root.findall('.//DelegacaoPermanenteOut'):
-            try:
-                success = self._process_delegation(delegation, legislatura_id)
-                results['records_processed'] += 1
-                if success:
-                    results['records_imported'] += 1
-            except Exception as e:
-                error_msg = f"Permanent delegation processing error: {str(e)}"
-                logger.error(error_msg)
-                results['errors'].append(error_msg)
-                results['records_processed'] += 1
-        
-        return results
+        try:
+            # Validate schema coverage according to strict mode
+            self.validate_schema_coverage(xml_root, file_info, strict_mode)
+            
+            # Extract legislatura from filename or XML
+            legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+            legislatura = self._get_or_create_legislatura(legislatura_sigla)
+            
+            # Process permanent delegations
+            for delegation in xml_root.findall('.//DelegacaoPermanenteOut'):
+                try:
+                    success = self._process_delegation(delegation, legislatura)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"Permanent delegation processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
+                    self.session.rollback()
+            
+            # Commit all changes
+            self.session.commit()
+            return results
+            
+        except Exception as e:
+            error_msg = f"Critical error processing permanent delegations: {str(e)}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
+            self.session.rollback()
+            return results
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
@@ -81,7 +107,7 @@ class DelegacaoPermanenteMapper(SchemaMapper):
         # Default to XVII
         return 'XVII'
     
-    def _process_delegation(self, delegation: ET.Element, legislatura_id: int) -> bool:
+    def _process_delegation(self, delegation: ET.Element, legislatura: Legislatura) -> bool:
         """Process individual permanent delegation"""
         try:
             # Extract basic fields
@@ -95,45 +121,39 @@ class DelegacaoPermanenteMapper(SchemaMapper):
                 return False
             
             # Parse election date
-            data_atividade = self._parse_date(data_eleicao_str)
-            if not data_atividade:
-                logger.warning(f"Invalid election date: {data_eleicao_str}")
-                return False
+            data_eleicao = self._parse_date(data_eleicao_str)
             
-            # Check if delegation record already exists
+            # Check if delegation already exists
+            existing = None
             if id_externo:
-                self.cursor.execute("""
-                    SELECT id FROM atividades_parlamentares_detalhadas
-                    WHERE id_externo = ? AND tipo = 'DELEGACAO_PERMANENTE'
-                """, (id_externo,))
-                
-                if self.cursor.fetchone():
-                    # Update existing record
-                    self.cursor.execute("""
-                        UPDATE atividades_parlamentares_detalhadas SET
-                            titulo = ?, data_atividade = ?, legislatura_id = ?
-                        WHERE id_externo = ? AND tipo = 'DELEGACAO_PERMANENTE'
-                    """, (nome, data_atividade, legislatura_id, id_externo))
-                else:
-                    # Insert new delegation record
-                    self.cursor.execute("""
-                        INSERT INTO atividades_parlamentares_detalhadas (
-                            id_externo, tipo, titulo, data_atividade, legislatura_id
-                        ) VALUES (?, ?, ?, ?, ?)
-                    """, (id_externo, 'DELEGACAO_PERMANENTE', nome, data_atividade, legislatura_id))
+                existing = self.session.query(DelegacaoPermanente).filter_by(
+                    delegacao_id=id_externo
+                ).first()
+            
+            if existing:
+                # Update existing record
+                existing.nome = nome
+                existing.sessao = sessao
+                existing.data_eleicao = data_eleicao
+                existing.legislatura_id = legislatura.id
             else:
-                # Insert without external ID
-                self.cursor.execute("""
-                    INSERT INTO atividades_parlamentares_detalhadas (
-                        tipo, titulo, data_atividade, legislatura_id
-                    ) VALUES (?, ?, ?, ?)
-                """, ('DELEGACAO_PERMANENTE', nome, data_atividade, legislatura_id))
+                # Create new delegation record
+                delegacao = DelegacaoPermanente(
+                    delegacao_id=id_externo,
+                    nome=nome,
+                    sessao=sessao,
+                    data_eleicao=data_eleicao,
+                    legislatura_id=legislatura.id
+                )
+                self.session.add(delegacao)
+                self.session.flush()  # Get the ID
+                existing = delegacao
             
             # Process members
             composicao = delegation.find('Composicao')
             if composicao is not None:
                 for member in composicao.findall('DelegacaoPermanenteMembroOut'):
-                    self._process_delegation_member(member, id_externo, legislatura_id)
+                    self._process_delegation_member(member, existing)
             
             return True
             
@@ -141,7 +161,7 @@ class DelegacaoPermanenteMapper(SchemaMapper):
             logger.error(f"Error processing permanent delegation: {e}")
             return False
     
-    def _process_delegation_member(self, member: ET.Element, delegation_id: int, legislatura_id: int) -> bool:
+    def _process_delegation_member(self, member: ET.Element, delegacao: DelegacaoPermanente) -> bool:
         """Process delegation member"""
         try:
             # Extract member fields
@@ -159,27 +179,33 @@ class DelegacaoPermanenteMapper(SchemaMapper):
             data_inicio = self._parse_date(data_inicio_str)
             data_fim = self._parse_date(data_fim_str) if data_fim_str else None
             
-            # Create member activity record
-            titulo = f"{nome} - {cargo}" if cargo else nome
-            if gp:
-                titulo += f" ({gp})"
-            
             # Check if member record already exists
+            existing = None
             if member_id:
-                self.cursor.execute("""
-                    SELECT id FROM atividades_parlamentares_detalhadas
-                    WHERE id_externo = ? AND tipo = 'DELEGACAO_PERMANENTE_MEMBRO'
-                """, (member_id,))
-                
-                if self.cursor.fetchone():
-                    return True  # Already exists
+                existing = self.session.query(DelegacaoPermanenteMembro).filter_by(
+                    membro_id=member_id,
+                    delegacao_id=delegacao.id
+                ).first()
             
-            # Insert member record
-            self.cursor.execute("""
-                INSERT INTO atividades_parlamentares_detalhadas (
-                    id_externo, tipo, titulo, data_atividade, legislatura_id
-                ) VALUES (?, ?, ?, ?, ?)
-            """, (member_id, 'DELEGACAO_PERMANENTE_MEMBRO', titulo, data_inicio, legislatura_id))
+            if existing:
+                # Update existing member
+                existing.nome = nome
+                existing.gp = gp
+                existing.cargo = cargo
+                existing.data_inicio = data_inicio
+                existing.data_fim = data_fim
+            else:
+                # Create new member record
+                membro = DelegacaoPermanenteMembro(
+                    delegacao_id=delegacao.id,
+                    membro_id=member_id,
+                    nome=nome,
+                    gp=gp,
+                    cargo=cargo,
+                    data_inicio=data_inicio,
+                    data_fim=data_fim
+                )
+                self.session.add(membro)
             
             return True
             
@@ -232,26 +258,25 @@ class DelegacaoPermanenteMapper(SchemaMapper):
         
         return None
     
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> int:
+    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
         """Get or create legislatura record"""
-        # Check if legislatura exists
-        self.cursor.execute("""
-            SELECT id FROM legislaturas WHERE numero = ?
-        """, (legislatura_sigla,))
+        legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
         
-        result = self.cursor.fetchone()
-        if result:
-            return result[0]
+        if legislatura:
+            return legislatura
         
         # Create new legislatura if it doesn't exist
         numero_int = self._convert_roman_to_int(legislatura_sigla)
         
-        self.cursor.execute("""
-            INSERT INTO legislaturas (numero, designacao, ativa)
-            VALUES (?, ?, ?)
-        """, (legislatura_sigla, f"{numero_int}.ª Legislatura", False))
+        legislatura = Legislatura(
+            numero=legislatura_sigla,
+            designacao=f"{numero_int}.ª Legislatura",
+            ativa=False
+        )
         
-        return self.cursor.lastrowid
+        self.session.add(legislatura)
+        self.session.flush()  # Get the ID
+        return legislatura
     
     def _convert_roman_to_int(self, roman: str) -> int:
         """Convert Roman numeral to integer"""

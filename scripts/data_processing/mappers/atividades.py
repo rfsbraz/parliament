@@ -13,14 +13,31 @@ import re
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
+
+# Import our models
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from database.models import (
+    AtividadeParlamentar, AtividadeParlamentarPublicacao, AtividadeParlamentarVotacao,
+    AtividadeParlamentarEleito, AtividadeParlamentarConvidado, DebateParlamentar,
+    RelatorioParlamentar, Legislatura
+)
 
 logger = logging.getLogger(__name__)
 
 
 class AtividadesMapper(SchemaMapper):
     """Schema mapper for parliamentary activities files"""
+    
+    def __init__(self, db_path: str = None):
+        super().__init__(db_path)
+        self.engine = create_engine(f'sqlite:///{self.db_path}')
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -52,59 +69,72 @@ class AtividadesMapper(SchemaMapper):
         """Map parliamentary activities to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
-        # Validate schema coverage according to strict mode
-        self.validate_schema_coverage(xml_root, file_info, strict_mode)
-        
-        # Extract legislatura from filename or XML
-        legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
-        legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
-        
-        # Process general activities
-        atividades_gerais = xml_root.find('.//AtividadesGerais')
-        if atividades_gerais is not None:
-            for atividade in atividades_gerais.findall('.//Atividade'):
-                try:
-                    success = self._process_atividade(atividade, legislatura_id)
-                    results['records_processed'] += 1
-                    if success:
-                        results['records_imported'] += 1
-                except Exception as e:
-                    error_msg = f"Activity processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
-        
-        # Process debates
-        debates = xml_root.find('.//Debates')
-        if debates is not None:
-            for debate in debates.findall('.//DadosPesquisaDebatesOut'):
-                try:
-                    success = self._process_debate(debate, legislatura_id)
-                    results['records_processed'] += 1
-                    if success:
-                        results['records_imported'] += 1
-                except Exception as e:
-                    error_msg = f"Debate processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
-        
-        # Process reports
-        relatorios = xml_root.find('.//Relatorios')
-        if relatorios is not None:
-            for relatorio in relatorios.findall('.//Relatorio'):
-                try:
-                    success = self._process_relatorio(relatorio, legislatura_id)
-                    results['records_processed'] += 1
-                    if success:
-                        results['records_imported'] += 1
-                except Exception as e:
-                    error_msg = f"Report processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
-        
-        return results
+        try:
+            # Validate schema coverage according to strict mode
+            self.validate_schema_coverage(xml_root, file_info, strict_mode)
+            
+            # Extract legislatura from filename or XML
+            legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+            legislatura = self._get_or_create_legislatura(legislatura_sigla)
+            
+            # Process general activities
+            atividades_gerais = xml_root.find('.//AtividadesGerais')
+            if atividades_gerais is not None:
+                for atividade in atividades_gerais.findall('.//Atividade'):
+                    try:
+                        success = self._process_atividade(atividade, legislatura)
+                        results['records_processed'] += 1
+                        if success:
+                            results['records_imported'] += 1
+                    except Exception as e:
+                        error_msg = f"Activity processing error: {str(e)}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                        results['records_processed'] += 1
+                        self.session.rollback()
+            
+            # Process debates
+            debates = xml_root.find('.//Debates')
+            if debates is not None:
+                for debate in debates.findall('.//DadosPesquisaDebatesOut'):
+                    try:
+                        success = self._process_debate(debate, legislatura)
+                        results['records_processed'] += 1
+                        if success:
+                            results['records_imported'] += 1
+                    except Exception as e:
+                        error_msg = f"Debate processing error: {str(e)}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                        results['records_processed'] += 1
+                        self.session.rollback()
+            
+            # Process reports
+            relatorios = xml_root.find('.//Relatorios')
+            if relatorios is not None:
+                for relatorio in relatorios.findall('.//Relatorio'):
+                    try:
+                        success = self._process_relatorio(relatorio, legislatura)
+                        results['records_processed'] += 1
+                        if success:
+                            results['records_imported'] += 1
+                    except Exception as e:
+                        error_msg = f"Report processing error: {str(e)}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                        results['records_processed'] += 1
+                        self.session.rollback()
+            
+            # Commit all changes
+            self.session.commit()
+            return results
+            
+        except Exception as e:
+            error_msg = f"Critical error processing activities: {str(e)}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
+            self.session.rollback()
+            return results
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
@@ -131,7 +161,7 @@ class AtividadesMapper(SchemaMapper):
         # Default to XVII
         return 'XVII'
     
-    def _process_atividade(self, atividade: ET.Element, legislatura_id: int) -> bool:
+    def _process_atividade(self, atividade: ET.Element, legislatura: Legislatura) -> bool:
         """Process individual parliamentary activity"""
         try:
             # Extract basic fields
@@ -139,12 +169,18 @@ class AtividadesMapper(SchemaMapper):
             desc_tipo = self._get_text_value(atividade, 'DescTipo')
             assunto = self._get_text_value(atividade, 'Assunto')
             numero = self._get_text_value(atividade, 'Numero')
+            tipo_autor = self._get_text_value(atividade, 'TipoAutor')
+            autores_gp = self._get_text_value(atividade, 'AutoresGP')
+            observacoes = self._get_text_value(atividade, 'Observacoes')
             
             # Extract dates
             data_entrada_str = self._get_text_value(atividade, 'DataEntrada')
             data_agendamento_str = self._get_text_value(atividade, 'DataAgendamentoDebate')
             
-            data_atividade = self._parse_date(data_entrada_str) or self._parse_date(data_agendamento_str)
+            data_entrada = self._parse_date(data_entrada_str)
+            data_agendamento_debate = self._parse_date(data_agendamento_str)
+            data_atividade = data_entrada or data_agendamento_debate
+            
             if not data_atividade:
                 logger.warning(f"No valid date found for activity: {assunto[:50] if assunto else 'Unknown'}")
                 return False
@@ -153,13 +189,7 @@ class AtividadesMapper(SchemaMapper):
                 logger.warning("Missing required field: Assunto")
                 return False
             
-            # Map activity type
-            tipo_atividade = self._map_activity_type(tipo)
-            if not tipo_atividade:
-                logger.warning(f"Unknown activity type: {tipo}")
-                return False
-            
-            # Create external ID from numero or generate one
+            # Create external ID from numero
             id_externo = None
             if numero:
                 try:
@@ -167,28 +197,51 @@ class AtividadesMapper(SchemaMapper):
                 except ValueError:
                     pass
             
-            # Check if record already exists
+            # Check if activity already exists
+            existing = None
             if id_externo:
-                self.cursor.execute("""
-                    SELECT id FROM atividades_parlamentares_detalhadas
-                    WHERE id_externo = ?
-                """, (id_externo,))
-                
-                if self.cursor.fetchone():
-                    # Update existing record
-                    self.cursor.execute("""
-                        UPDATE atividades_parlamentares_detalhadas SET
-                            tipo = ?, titulo = ?, data_atividade = ?, legislatura_id = ?
-                        WHERE id_externo = ?
-                    """, (tipo, assunto, data_atividade, legislatura_id, id_externo))
-                    return True
+                existing = self.session.query(AtividadeParlamentar).filter_by(
+                    atividade_id=id_externo
+                ).first()
             
-            # Insert new record
-            self.cursor.execute("""
-                INSERT INTO atividades_parlamentares_detalhadas (
-                    id_externo, tipo, titulo, data_atividade, legislatura_id
-                ) VALUES (?, ?, ?, ?, ?)
-            """, (id_externo, tipo, assunto, data_atividade, legislatura_id))
+            if existing:
+                # Update existing record
+                existing.tipo = tipo
+                existing.desc_tipo = desc_tipo
+                existing.assunto = assunto
+                existing.numero = numero
+                existing.data_atividade = data_atividade
+                existing.data_entrada = data_entrada
+                existing.data_agendamento_debate = data_agendamento_debate
+                existing.tipo_autor = tipo_autor
+                existing.autores_gp = autores_gp
+                existing.observacoes = observacoes
+                existing.legislatura_id = legislatura.id
+            else:
+                # Create new activity record
+                atividade_obj = AtividadeParlamentar(
+                    atividade_id=id_externo,
+                    tipo=tipo,
+                    desc_tipo=desc_tipo,
+                    assunto=assunto,
+                    numero=numero,
+                    data_atividade=data_atividade,
+                    data_entrada=data_entrada,
+                    data_agendamento_debate=data_agendamento_debate,
+                    tipo_autor=tipo_autor,
+                    autores_gp=autores_gp,
+                    observacoes=observacoes,
+                    legislatura_id=legislatura.id
+                )
+                self.session.add(atividade_obj)
+                self.session.flush()  # Get the ID
+                existing = atividade_obj
+            
+            # Process related data
+            self._process_activity_publications(atividade, existing)
+            self._process_activity_votacoes(atividade, existing)
+            self._process_activity_eleitos(atividade, existing)
+            self._process_activity_convidados(atividade, existing)
             
             return True
             
@@ -196,12 +249,15 @@ class AtividadesMapper(SchemaMapper):
             logger.error(f"Error processing activity: {e}")
             return False
     
-    def _process_debate(self, debate: ET.Element, legislatura_id: int) -> bool:
+    def _process_debate(self, debate: ET.Element, legislatura: Legislatura) -> bool:
         """Process debate data"""
         try:
             debate_id = self._get_text_value(debate, 'DebateId')
-            assunto = self._get_text_value(debate, 'Assunto')
+            tipo_debate_desig = self._get_text_value(debate, 'TipoDebateDesig')
             data_debate_str = self._get_text_value(debate, 'DataDebate')
+            tipo_debate = self._get_text_value(debate, 'TipoDebate')
+            assunto = self._get_text_value(debate, 'Assunto')
+            intervencoes = self._get_text_value(debate, 'Intervencoes')
             
             if not debate_id or not assunto:
                 return False
@@ -210,21 +266,33 @@ class AtividadesMapper(SchemaMapper):
             if not data_debate:
                 return False
             
-            # Check if already exists
-            self.cursor.execute("""
-                SELECT id FROM atividades_parlamentares_detalhadas
-                WHERE id_externo = ?
-            """, (int(debate_id),))
+            debate_id_int = int(debate_id)
             
-            if self.cursor.fetchone():
-                return True  # Already exists
+            # Check if debate already exists
+            existing = self.session.query(DebateParlamentar).filter_by(
+                debate_id=debate_id_int
+            ).first()
             
-            # Insert debate as activity
-            self.cursor.execute("""
-                INSERT INTO atividades_parlamentares_detalhadas (
-                    id_externo, tipo, titulo, data_atividade, legislatura_id
-                ) VALUES (?, ?, ?, ?, ?)
-            """, (int(debate_id), 'DEBATE', assunto, data_debate, legislatura_id))
+            if existing:
+                # Update existing debate
+                existing.tipo_debate_desig = tipo_debate_desig
+                existing.data_debate = data_debate
+                existing.tipo_debate = tipo_debate
+                existing.assunto = assunto
+                existing.intervencoes = intervencoes
+                existing.legislatura_id = legislatura.id
+            else:
+                # Create new debate record
+                debate_obj = DebateParlamentar(
+                    debate_id=debate_id_int,
+                    tipo_debate_desig=tipo_debate_desig,
+                    data_debate=data_debate,
+                    tipo_debate=tipo_debate,
+                    assunto=assunto,
+                    intervencoes=intervencoes,
+                    legislatura_id=legislatura.id
+                )
+                self.session.add(debate_obj)
             
             return True
             
@@ -232,12 +300,14 @@ class AtividadesMapper(SchemaMapper):
             logger.error(f"Error processing debate: {e}")
             return False
     
-    def _process_relatorio(self, relatorio: ET.Element, legislatura_id: int) -> bool:
+    def _process_relatorio(self, relatorio: ET.Element, legislatura: Legislatura) -> bool:
         """Process report data"""
         try:
             tipo = self._get_text_value(relatorio, 'Tipo')
             assunto = self._get_text_value(relatorio, 'Assunto')
             data_entrada_str = self._get_text_value(relatorio, 'DataEntrada')
+            comissao = self._get_text_value(relatorio, 'Comissao')
+            entidades_externas = self._get_text_value(relatorio, 'EntidadesExternas')
             
             if not assunto:
                 return False
@@ -246,12 +316,16 @@ class AtividadesMapper(SchemaMapper):
             if not data_entrada:
                 return False
             
-            # Insert report as activity  
-            self.cursor.execute("""
-                INSERT INTO atividades_parlamentares_detalhadas (
-                    tipo, titulo, data_atividade, legislatura_id
-                ) VALUES (?, ?, ?, ?)
-            """, (tipo or 'RELATORIO', assunto, data_entrada, legislatura_id))
+            # Create new report record (no external ID available, so always create new)
+            relatorio_obj = RelatorioParlamentar(
+                tipo=tipo or 'RELATORIO',
+                assunto=assunto,
+                data_entrada=data_entrada,
+                comissao=comissao,
+                entidades_externas=entidades_externas,
+                legislatura_id=legislatura.id
+            )
+            self.session.add(relatorio_obj)
             
             return True
             
@@ -305,26 +379,25 @@ class AtividadesMapper(SchemaMapper):
         
         return None
     
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> int:
+    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
         """Get or create legislatura record"""
-        # Check if legislatura exists
-        self.cursor.execute("""
-            SELECT id FROM legislaturas WHERE numero = ?
-        """, (legislatura_sigla,))
+        legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
         
-        result = self.cursor.fetchone()
-        if result:
-            return result[0]
+        if legislatura:
+            return legislatura
         
         # Create new legislatura if it doesn't exist
         numero_int = self._convert_roman_to_int(legislatura_sigla)
         
-        self.cursor.execute("""
-            INSERT INTO legislaturas (numero, designacao, ativa)
-            VALUES (?, ?, ?)
-        """, (legislatura_sigla, f"{numero_int}.ª Legislatura", False))
+        legislatura = Legislatura(
+            numero=legislatura_sigla,
+            designacao=f"{numero_int}.ª Legislatura",
+            ativa=False
+        )
         
-        return self.cursor.lastrowid
+        self.session.add(legislatura)
+        self.session.flush()  # Get the ID
+        return legislatura
     
     def _convert_roman_to_int(self, roman: str) -> int:
         """Convert Roman numeral to integer"""
@@ -333,3 +406,106 @@ class AtividadesMapper(SchemaMapper):
             'XI': 11, 'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17, 'CONSTITUINTE': 0
         }
         return roman_numerals.get(roman, 17)
+    
+    def _process_activity_publications(self, atividade: ET.Element, atividade_obj: AtividadeParlamentar):
+        """Process publications for activity"""
+        publicacao = atividade.find('Publicacao')
+        if publicacao is not None:
+            for pub in publicacao.findall('pt_gov_ar_objectos_PublicacoesOut'):
+                pub_nr = self._get_int_value(pub, 'pubNr')
+                pub_tipo = self._get_text_value(pub, 'pubTipo')
+                pub_tp = self._get_text_value(pub, 'pubTp')
+                pub_leg = self._get_text_value(pub, 'pubLeg')
+                pub_sl = self._get_int_value(pub, 'pubSL')
+                pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
+                url_diario = self._get_text_value(pub, 'URLDiario')
+                id_pag = self._get_int_value(pub, 'idPag')
+                id_deb = self._get_int_value(pub, 'idDeb')
+                
+                # Handle page numbers
+                pag_text = None
+                pag_elem = pub.find('pag')
+                if pag_elem is not None:
+                    string_elems = pag_elem.findall('string')
+                    if string_elems:
+                        pag_text = ', '.join([s.text for s in string_elems if s.text])
+                
+                publicacao_record = AtividadeParlamentarPublicacao(
+                    atividade_id=atividade_obj.id,
+                    pub_nr=pub_nr,
+                    pub_tipo=pub_tipo,
+                    pub_tp=pub_tp,
+                    pub_leg=pub_leg,
+                    pub_sl=pub_sl,
+                    pub_dt=pub_dt,
+                    pag=pag_text,
+                    url_diario=url_diario,
+                    id_pag=id_pag,
+                    id_deb=id_deb
+                )
+                self.session.add(publicacao_record)
+    
+    def _process_activity_votacoes(self, atividade: ET.Element, atividade_obj: AtividadeParlamentar):
+        """Process voting records for activity"""
+        votacao_debate = atividade.find('VotacaoDebate')
+        if votacao_debate is not None:
+            for votacao in votacao_debate.findall('pt_gov_ar_objectos_VotacaoOut'):
+                votacao_id = self._get_int_value(votacao, 'id')
+                resultado = self._get_text_value(votacao, 'resultado')
+                reuniao = self._get_text_value(votacao, 'reuniao')
+                publicacao = self._get_text_value(votacao, 'publicacao')
+                data = self._parse_date(self._get_text_value(votacao, 'data'))
+                
+                votacao_record = AtividadeParlamentarVotacao(
+                    atividade_id=atividade_obj.id,
+                    votacao_id=votacao_id,
+                    resultado=resultado,
+                    reuniao=reuniao,
+                    publicacao=publicacao,
+                    data=data
+                )
+                self.session.add(votacao_record)
+    
+    def _process_activity_eleitos(self, atividade: ET.Element, atividade_obj: AtividadeParlamentar):
+        """Process elected members for activity"""
+        eleitos = atividade.find('Eleitos')
+        if eleitos is not None:
+            for eleito in eleitos.findall('pt_gov_ar_objectos_EleitosOut'):
+                nome = self._get_text_value(eleito, 'nome')
+                cargo = self._get_text_value(eleito, 'cargo')
+                
+                if nome:
+                    eleito_record = AtividadeParlamentarEleito(
+                        atividade_id=atividade_obj.id,
+                        nome=nome,
+                        cargo=cargo
+                    )
+                    self.session.add(eleito_record)
+    
+    def _process_activity_convidados(self, atividade: ET.Element, atividade_obj: AtividadeParlamentar):
+        """Process guests/invitees for activity"""
+        convidados = atividade.find('Convidados')
+        if convidados is not None:
+            for convidado in convidados.findall('pt_gov_ar_objectos_ConvidadosOut'):
+                nome = self._get_text_value(convidado, 'nome')
+                pais = self._get_text_value(convidado, 'pais')
+                honra = self._get_text_value(convidado, 'honra')
+                
+                if nome:
+                    convidado_record = AtividadeParlamentarConvidado(
+                        atividade_id=atividade_obj.id,
+                        nome=nome,
+                        pais=pais,
+                        honra=honra
+                    )
+                    self.session.add(convidado_record)
+    
+    def _get_int_value(self, parent: ET.Element, tag_name: str) -> Optional[int]:
+        """Get integer value from XML element"""
+        text_value = self._get_text_value(parent, tag_name)
+        if text_value:
+            try:
+                return int(text_value)
+            except ValueError:
+                return None
+        return None

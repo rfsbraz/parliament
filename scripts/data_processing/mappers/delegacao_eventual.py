@@ -47,27 +47,38 @@ class DelegacaoEventualMapper(SchemaMapper):
         """Map parliamentary delegation events to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
-        # Validate schema coverage according to strict mode
-        self.validate_schema_coverage(xml_root, file_info, strict_mode)
-        
-        # Extract legislatura from filename or XML
-        legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
-        legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
-        
-        # Process delegation events
-        for delegation_event in xml_root.findall('.//DelegacaoEventualReuniao'):
-            try:
-                success = self._process_delegation_event(delegation_event, legislatura_id)
-                results['records_processed'] += 1
-                if success:
-                    results['records_imported'] += 1
-            except Exception as e:
-                error_msg = f"Delegation event processing error: {str(e)}"
-                logger.error(error_msg)
-                results['errors'].append(error_msg)
-                results['records_processed'] += 1
-        
-        return results
+        try:
+            # Validate schema coverage according to strict mode
+            self.validate_schema_coverage(xml_root, file_info, strict_mode)
+            
+            # Extract legislatura from filename or XML
+            legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+            legislatura = self._get_or_create_legislatura(legislatura_sigla)
+            
+            # Process delegation events
+            for delegation_event in xml_root.findall('.//DelegacaoEventualReuniao'):
+                try:
+                    success = self._process_delegation_event(delegation_event, legislatura)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"Delegation event processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
+                    self.session.rollback()
+            
+            # Commit all changes
+            self.session.commit()
+            return results
+            
+        except Exception as e:
+            error_msg = f"Critical error processing delegation events: {str(e)}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
+            self.session.rollback()
+            return results
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
@@ -94,7 +105,7 @@ class DelegacaoEventualMapper(SchemaMapper):
         # Default to XVII
         return 'XVII'
     
-    def _process_delegation_event(self, delegation_event: ET.Element, legislatura_id: int) -> bool:
+    def _process_delegation_event(self, delegation_event: ET.Element, legislatura: Legislatura) -> bool:
         """Process individual delegation event"""
         try:
             # Extract basic fields
@@ -110,33 +121,41 @@ class DelegacaoEventualMapper(SchemaMapper):
                 return False
             
             # Parse dates
-            data_atividade = self._parse_date(data_inicio_str)
-            if not data_atividade:
-                logger.warning(f"Invalid event date: {data_inicio_str}")
-                return False
+            data_inicio = self._parse_date(data_inicio_str)
+            data_fim = self._parse_date(data_fim_str)
             
-            # Check if record already exists
+            # Check if delegation already exists
+            existing = None
             if id_externo:
-                self.cursor.execute("""
-                    SELECT id FROM atividades_parlamentares_detalhadas
-                    WHERE id_externo = ?
-                """, (id_externo,))
-                
-                if self.cursor.fetchone():
-                    # Update existing record
-                    self.cursor.execute("""
-                        UPDATE atividades_parlamentares_detalhadas SET
-                            tipo = ?, titulo = ?, data_atividade = ?, legislatura_id = ?
-                        WHERE id_externo = ?
-                    """, ('DELEGACAO_EVENTUAL', nome, data_atividade, legislatura_id, id_externo))
-                    return True
+                existing = self.session.query(DelegacaoEventual).filter_by(
+                    delegacao_id=id_externo
+                ).first()
             
-            # Insert new record
-            self.cursor.execute("""
-                INSERT INTO atividades_parlamentares_detalhadas (
-                    id_externo, tipo, titulo, data_atividade, legislatura_id
-                ) VALUES (?, ?, ?, ?, ?)
-            """, (id_externo, 'DELEGACAO_EVENTUAL', nome, data_atividade, legislatura_id))
+            if existing:
+                # Update existing record
+                existing.nome = nome
+                existing.local = local
+                existing.sessao = sessao
+                existing.data_inicio = data_inicio
+                existing.data_fim = data_fim
+                existing.legislatura_id = legislatura.id
+            else:
+                # Create new delegation record
+                delegacao = DelegacaoEventual(
+                    delegacao_id=id_externo,
+                    nome=nome,
+                    local=local,
+                    sessao=sessao,
+                    data_inicio=data_inicio,
+                    data_fim=data_fim,
+                    legislatura_id=legislatura.id
+                )
+                self.session.add(delegacao)
+                self.session.flush()  # Get the ID
+                existing = delegacao
+            
+            # Process participants
+            self._process_delegation_participants(delegation_event, existing)
             
             return True
             
@@ -189,26 +208,25 @@ class DelegacaoEventualMapper(SchemaMapper):
         
         return None
     
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> int:
+    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
         """Get or create legislatura record"""
-        # Check if legislatura exists
-        self.cursor.execute("""
-            SELECT id FROM legislaturas WHERE numero = ?
-        """, (legislatura_sigla,))
+        legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
         
-        result = self.cursor.fetchone()
-        if result:
-            return result[0]
+        if legislatura:
+            return legislatura
         
         # Create new legislatura if it doesn't exist
         numero_int = self._convert_roman_to_int(legislatura_sigla)
         
-        self.cursor.execute("""
-            INSERT INTO legislaturas (numero, designacao, ativa)
-            VALUES (?, ?, ?)
-        """, (legislatura_sigla, f"{numero_int}.ª Legislatura", False))
+        legislatura = Legislatura(
+            numero=legislatura_sigla,
+            designacao=f"{numero_int}.ª Legislatura",
+            ativa=False
+        )
         
-        return self.cursor.lastrowid
+        self.session.add(legislatura)
+        self.session.flush()  # Get the ID
+        return legislatura
     
     def _convert_roman_to_int(self, roman: str) -> int:
         """Convert Roman numeral to integer"""
@@ -217,3 +235,38 @@ class DelegacaoEventualMapper(SchemaMapper):
             'XI': 11, 'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17, 'CONSTITUINTE': 0
         }
         return roman_numerals.get(roman, 17)
+    
+    def _process_delegation_participants(self, delegation_event: ET.Element, delegacao: DelegacaoEventual):
+        """Process delegation participants"""
+        # Process internal participants
+        participantes = delegation_event.find('Participantes')
+        if participantes is not None:
+            for participante in participantes:
+                nome = participante.text if participante.text else participante.tag
+                tipo = self._get_text_value(participante, 'Tipo')
+                gp = self._get_text_value(participante, 'Gp')
+                leg = self._get_text_value(participante, 'Leg')
+                
+                if nome:
+                    participante_record = DelegacaoEventualParticipante(
+                        delegacao_id=delegacao.id,
+                        nome=nome,
+                        tipo=tipo,
+                        gp=gp,
+                        leg=leg,
+                        tipo_participante='interno'
+                    )
+                    self.session.add(participante_record)
+        
+        # Process external participants
+        externos = delegation_event.find('RelacoesExternasParticipantes')
+        if externos is not None:
+            for externo in externos:
+                nome = externo.text if externo.text else externo.tag
+                if nome:
+                    participante_record = DelegacaoEventualParticipante(
+                        delegacao_id=delegacao.id,
+                        nome=nome,
+                        tipo_participante='externo'
+                    )
+                    self.session.add(participante_record)
