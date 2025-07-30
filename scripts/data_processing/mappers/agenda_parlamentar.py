@@ -1,9 +1,10 @@
 """
-Parliamentary Agenda Mapper
-===========================
+Parliamentary Agenda Mapper - SQLAlchemy ORM Version
+===================================================
 
 Schema mapper for parliamentary agenda files (AgendaParlamentar*.xml).
 Handles parliamentary session agendas, meetings, and event scheduling.
+Uses SQLAlchemy ORM models for clean, type-safe database operations.
 """
 
 import xml.etree.ElementTree as ET
@@ -12,14 +13,29 @@ import re
 from datetime import datetime
 from typing import Dict, Optional, Set
 import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
+
+# Import our models
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from database.models import AgendaParlamentar, Legislatura
 
 logger = logging.getLogger(__name__)
 
 
 class AgendaParlamentarMapper(SchemaMapper):
-    """Schema mapper for parliamentary agenda files"""
+    """Schema mapper for parliamentary agenda files - SQLAlchemy ORM Version"""
+    
+    def __init__(self, db_connection):
+        super().__init__(db_connection)
+        # Create SQLAlchemy session from raw connection
+        db_path = db_connection.execute('PRAGMA database_list').fetchone()[2]
+        self.engine = create_engine(f"sqlite:///{db_path}", echo=False)
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -97,7 +113,7 @@ class AgendaParlamentarMapper(SchemaMapper):
         return 'XVII'
     
     def _process_agenda_item(self, agenda_item: ET.Element, legislatura_id: int) -> bool:
-        """Process individual agenda item"""
+        """Process individual agenda item using SQLAlchemy ORM"""
         try:
             # Extract basic fields
             id_externo = self._get_int_value(agenda_item, 'Id')
@@ -136,46 +152,58 @@ class AgendaParlamentarMapper(SchemaMapper):
                 logger.warning("Missing required field: Title")
                 return False
             
-            # Check if record already exists
-            self.cursor.execute("""
-                SELECT id FROM agenda_parlamentar 
-                WHERE id_externo = ? AND legislatura_id = ?
-            """, (id_externo, legislatura_id))
+            # Check if record already exists using SQLAlchemy ORM
+            existing_agenda = self.session.query(AgendaParlamentar).filter_by(
+                id_externo=id_externo, 
+                legislatura_id=legislatura_id
+            ).first()
             
-            if self.cursor.fetchone():
+            if existing_agenda:
                 # Update existing record
-                self.cursor.execute("""
-                    UPDATE agenda_parlamentar SET
-                        secao_id = ?, secao_nome = ?, tema_id = ?, tema_nome = ?,
-                        grupo_parlamentar = ?, data_evento = ?, hora_inicio = ?, hora_fim = ?,
-                        evento_dia_inteiro = ?, titulo = ?, subtitulo = ?, descricao = ?,
-                        local_evento = ?, link_externo = ?, pos_plenario = ?,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE id_externo = ? AND legislatura_id = ?
-                """, (
-                    secao_id, secao_nome, tema_id, tema_nome, grupo_parlamentar,
-                    data_evento, hora_inicio, hora_fim, all_day_event, titulo,
-                    subtitulo, descricao, local_evento, link_externo, pos_plenario,
-                    id_externo, legislatura_id
-                ))
+                existing_agenda.secao_id = secao_id
+                existing_agenda.secao_nome = secao_nome
+                existing_agenda.tema_id = tema_id
+                existing_agenda.tema_nome = tema_nome
+                existing_agenda.grupo_parlamentar = grupo_parlamentar
+                existing_agenda.data_evento = data_evento
+                existing_agenda.hora_inicio = hora_inicio
+                existing_agenda.hora_fim = hora_fim
+                existing_agenda.evento_dia_inteiro = all_day_event
+                existing_agenda.titulo = titulo
+                existing_agenda.subtitulo = subtitulo
+                existing_agenda.descricao = descricao
+                existing_agenda.local_evento = local_evento
+                existing_agenda.link_externo = link_externo
+                existing_agenda.pos_plenario = pos_plenario
             else:
-                # Insert new record
-                self.cursor.execute("""
-                    INSERT INTO agenda_parlamentar (
-                        id_externo, legislatura_id, secao_id, secao_nome, tema_id, tema_nome,
-                        grupo_parlamentar, data_evento, hora_inicio, hora_fim, evento_dia_inteiro,
-                        titulo, subtitulo, descricao, local_evento, link_externo, pos_plenario
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    id_externo, legislatura_id, secao_id, secao_nome, tema_id, tema_nome,
-                    grupo_parlamentar, data_evento, hora_inicio, hora_fim, all_day_event,
-                    titulo, subtitulo, descricao, local_evento, link_externo, pos_plenario
-                ))
+                # Create new record
+                new_agenda = AgendaParlamentar(
+                    id_externo=id_externo,
+                    legislatura_id=legislatura_id,
+                    secao_id=secao_id,
+                    secao_nome=secao_nome,
+                    tema_id=tema_id,
+                    tema_nome=tema_nome,
+                    grupo_parlamentar=grupo_parlamentar,
+                    data_evento=data_evento,
+                    hora_inicio=hora_inicio,
+                    hora_fim=hora_fim,
+                    evento_dia_inteiro=all_day_event,
+                    titulo=titulo,
+                    subtitulo=subtitulo,
+                    descricao=descricao,
+                    local_evento=local_evento,
+                    link_externo=link_externo,
+                    pos_plenario=pos_plenario
+                )
+                self.session.add(new_agenda)
             
+            self.session.commit()
             return True
             
         except Exception as e:
             logger.error(f"Error processing agenda item: {e}")
+            self.session.rollback()
             return False
     
     def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
@@ -242,25 +270,37 @@ class AgendaParlamentarMapper(SchemaMapper):
         return None
     
     def _get_or_create_legislatura(self, legislatura_sigla: str) -> int:
-        """Get or create legislatura record"""
-        # Check if legislatura exists
-        self.cursor.execute("""
-            SELECT id FROM legislaturas WHERE numero = ?
-        """, (legislatura_sigla,))
-        
-        result = self.cursor.fetchone()
-        if result:
-            return result[0]
-        
-        # Create new legislatura if it doesn't exist
-        numero_int = self._convert_roman_to_int(legislatura_sigla)
-        
-        self.cursor.execute("""
-            INSERT INTO legislaturas (numero, designacao, ativa)
-            VALUES (?, ?, ?)
-        """, (legislatura_sigla, f"{numero_int}.ª Legislatura", False))
-        
-        return self.cursor.lastrowid
+        """Get or create legislatura record using SQLAlchemy ORM"""
+        try:
+            # Check if legislatura exists
+            legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
+            
+            if legislatura:
+                return legislatura.id
+            
+            # Create new legislatura if it doesn't exist
+            numero_int = self._convert_roman_to_int(legislatura_sigla)
+            
+            new_legislatura = Legislatura(
+                numero=legislatura_sigla,
+                designacao=f"{numero_int}.ª Legislatura",
+                ativa=False
+            )
+            
+            self.session.add(new_legislatura)
+            self.session.commit()
+            
+            return new_legislatura.id
+            
+        except Exception as e:
+            logger.error(f"Error creating legislatura: {e}")
+            self.session.rollback()
+            return None
+    
+    def __del__(self):
+        """Cleanup SQLAlchemy session"""
+        if hasattr(self, 'session'):
+            self.session.close()
     
     def _convert_roman_to_int(self, roman: str) -> int:
         """Convert Roman numeral to integer"""

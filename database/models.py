@@ -84,6 +84,9 @@ class Deputado(Base):
     ativo = Column(Boolean, default=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    atividades = relationship("AtividadeDeputado", back_populates="deputado", cascade="all, delete-orphan")
 
 
 # =====================================================
@@ -717,6 +720,8 @@ class ParliamentaryOrganization(Base):
     ar_boards = relationship("ARBoard", back_populates="organization", cascade="all, delete-orphan")
     commissions = relationship("Commission", back_populates="organization", cascade="all, delete-orphan")
     work_groups = relationship("WorkGroup", back_populates="organization", cascade="all, delete-orphan")
+    permanent_committees = relationship("PermanentCommittee", back_populates="organization", cascade="all, delete-orphan")
+    sub_committees = relationship("SubCommittee", back_populates="organization", cascade="all, delete-orphan")
     
     __table_args__ = (
         Index('idx_parliamentary_organizations_legislatura', 'legislatura_sigla'),
@@ -817,6 +822,7 @@ class Commission(Base):
     
     organization = relationship("ParliamentaryOrganization", back_populates="commissions")
     historical_compositions = relationship("CommissionHistoricalComposition", back_populates="commission", cascade="all, delete-orphan")
+    meetings = relationship("OrganMeeting", back_populates="commission", cascade="all, delete-orphan")
 
 
 class WorkGroup(Base):
@@ -833,6 +839,69 @@ class WorkGroup(Base):
     
     organization = relationship("ParliamentaryOrganization", back_populates="work_groups")
     historical_compositions = relationship("WorkGroupHistoricalComposition", back_populates="work_group", cascade="all, delete-orphan")
+    meetings = relationship("OrganMeeting", back_populates="work_group", cascade="all, delete-orphan")
+
+
+class PermanentCommittee(Base):
+    __tablename__ = 'permanent_committees'
+    
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('parliamentary_organizations.id'), nullable=False)
+    id_orgao = Column(Integer)
+    sigla_orgao = Column(String(20))
+    nome_sigla = Column(String(200))
+    numero_orgao = Column(Integer)
+    sigla_legislatura = Column(String(20))
+    created_at = Column(DateTime, default=func.now())
+    
+    organization = relationship("ParliamentaryOrganization", back_populates="permanent_committees")
+    historical_compositions = relationship("PermanentCommitteeHistoricalComposition", back_populates="permanent_committee", cascade="all, delete-orphan")
+    meetings = relationship("OrganMeeting", back_populates="permanent_committee", cascade="all, delete-orphan")
+
+
+class SubCommittee(Base):
+    __tablename__ = 'sub_committees'
+    
+    id = Column(Integer, primary_key=True)
+    organization_id = Column(Integer, ForeignKey('parliamentary_organizations.id'), nullable=False)
+    id_orgao = Column(Integer)
+    sigla_orgao = Column(String(20))
+    nome_sigla = Column(String(200))
+    numero_orgao = Column(Integer)
+    sigla_legislatura = Column(String(20))
+    created_at = Column(DateTime, default=func.now())
+    
+    organization = relationship("ParliamentaryOrganization", back_populates="sub_committees")
+    historical_compositions = relationship("SubCommitteeHistoricalComposition", back_populates="sub_committee", cascade="all, delete-orphan")
+    meetings = relationship("OrganMeeting", back_populates="sub_committee", cascade="all, delete-orphan")
+
+
+# Meeting Model (shared by all organ types)
+class OrganMeeting(Base):
+    __tablename__ = 'organ_meetings'
+    
+    id = Column(Integer, primary_key=True)
+    
+    # Foreign keys to different organ types
+    commission_id = Column(Integer, ForeignKey('commissions.id'))
+    work_group_id = Column(Integer, ForeignKey('work_groups.id'))
+    permanent_committee_id = Column(Integer, ForeignKey('permanent_committees.id'))
+    sub_committee_id = Column(Integer, ForeignKey('sub_committees.id'))
+    
+    # Meeting data
+    reu_tar_sigla = Column(String(20))
+    reu_local = Column(String(200))
+    reu_data = Column(Date)
+    reu_hora = Column(String(10))
+    reu_tipo = Column(String(100))
+    reu_estado = Column(String(50))
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    commission = relationship("Commission", back_populates="meetings")
+    work_group = relationship("WorkGroup", back_populates="meetings")
+    permanent_committee = relationship("PermanentCommittee", back_populates="meetings")
+    sub_committee = relationship("SubCommittee", back_populates="meetings")
 
 
 # Historical Composition Models
@@ -900,6 +969,7 @@ class PlenaryComposition(Base):
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
     dep_nome_parlamentar = Column(String(200))
+    dep_nome_completo = Column(String(300))
     org_id = Column(Integer)
     created_at = Column(DateTime, default=func.now())
     
@@ -963,6 +1033,42 @@ class WorkGroupHistoricalComposition(Base):
     deputy_situations = relationship("OrganCompositionDeputySituation", back_populates="work_group_composition", cascade="all, delete-orphan")
 
 
+class PermanentCommitteeHistoricalComposition(Base):
+    __tablename__ = 'permanent_committee_historical_compositions'
+    
+    id = Column(Integer, primary_key=True)
+    permanent_committee_id = Column(Integer, ForeignKey('permanent_committees.id'), nullable=False)
+    leg_des = Column(String(20))
+    dep_id = Column(Integer)
+    dep_cad_id = Column(Integer)
+    dep_nome_parlamentar = Column(String(200))
+    org_id = Column(Integer)
+    created_at = Column(DateTime, default=func.now())
+    
+    permanent_committee = relationship("PermanentCommittee", back_populates="historical_compositions")
+    gp_situations = relationship("OrganCompositionGPSituation", back_populates="permanent_committee_composition", cascade="all, delete-orphan")
+    deputy_positions = relationship("OrganCompositionDeputyPosition", back_populates="permanent_committee_composition", cascade="all, delete-orphan")
+    deputy_situations = relationship("OrganCompositionDeputySituation", back_populates="permanent_committee_composition", cascade="all, delete-orphan")
+
+
+class SubCommitteeHistoricalComposition(Base):
+    __tablename__ = 'sub_committee_historical_compositions'
+    
+    id = Column(Integer, primary_key=True)
+    sub_committee_id = Column(Integer, ForeignKey('sub_committees.id'), nullable=False)
+    leg_des = Column(String(20))
+    dep_id = Column(Integer)
+    dep_cad_id = Column(Integer)
+    dep_nome_parlamentar = Column(String(200))
+    org_id = Column(Integer)
+    created_at = Column(DateTime, default=func.now())
+    
+    sub_committee = relationship("SubCommittee", back_populates="historical_compositions")
+    gp_situations = relationship("OrganCompositionGPSituation", back_populates="sub_committee_composition", cascade="all, delete-orphan")
+    deputy_positions = relationship("OrganCompositionDeputyPosition", back_populates="sub_committee_composition", cascade="all, delete-orphan")
+    deputy_situations = relationship("OrganCompositionDeputySituation", back_populates="sub_committee_composition", cascade="all, delete-orphan")
+
+
 # Deputy Position and Situation Models
 class OrganCompositionGPSituation(Base):
     __tablename__ = 'organ_composition_gp_situations'
@@ -975,6 +1081,8 @@ class OrganCompositionGPSituation(Base):
     ar_board_composition_id = Column(Integer, ForeignKey('ar_board_historical_compositions.id'))
     commission_composition_id = Column(Integer, ForeignKey('commission_historical_compositions.id'))
     work_group_composition_id = Column(Integer, ForeignKey('work_group_historical_compositions.id'))
+    permanent_committee_composition_id = Column(Integer, ForeignKey('permanent_committee_historical_compositions.id'))
+    sub_committee_composition_id = Column(Integer, ForeignKey('sub_committee_historical_compositions.id'))
     gp_id = Column(Integer)
     gp_sigla = Column(String(20))
     gp_dt_inicio = Column(Date)
@@ -988,6 +1096,8 @@ class OrganCompositionGPSituation(Base):
     ar_board_composition = relationship("ARBoardHistoricalComposition", back_populates="gp_situations")
     commission_composition = relationship("CommissionHistoricalComposition", back_populates="gp_situations")
     work_group_composition = relationship("WorkGroupHistoricalComposition", back_populates="gp_situations")
+    permanent_committee_composition = relationship("PermanentCommitteeHistoricalComposition", back_populates="gp_situations")
+    sub_committee_composition = relationship("SubCommitteeHistoricalComposition", back_populates="gp_situations")
 
 
 class OrganCompositionDeputyPosition(Base):
@@ -1001,6 +1111,8 @@ class OrganCompositionDeputyPosition(Base):
     ar_board_composition_id = Column(Integer, ForeignKey('ar_board_historical_compositions.id'))
     commission_composition_id = Column(Integer, ForeignKey('commission_historical_compositions.id'))
     work_group_composition_id = Column(Integer, ForeignKey('work_group_historical_compositions.id'))
+    permanent_committee_composition_id = Column(Integer, ForeignKey('permanent_committee_historical_compositions.id'))
+    sub_committee_composition_id = Column(Integer, ForeignKey('sub_committee_historical_compositions.id'))
     car_id = Column(Integer)
     car_des = Column(String(200))
     car_dt_inicio = Column(Date)
@@ -1014,6 +1126,8 @@ class OrganCompositionDeputyPosition(Base):
     ar_board_composition = relationship("ARBoardHistoricalComposition", back_populates="deputy_positions")
     commission_composition = relationship("CommissionHistoricalComposition", back_populates="deputy_positions")
     work_group_composition = relationship("WorkGroupHistoricalComposition", back_populates="deputy_positions")
+    permanent_committee_composition = relationship("PermanentCommitteeHistoricalComposition", back_populates="deputy_positions")
+    sub_committee_composition = relationship("SubCommitteeHistoricalComposition", back_populates="deputy_positions")
 
 
 class OrganCompositionDeputySituation(Base):
@@ -1027,6 +1141,8 @@ class OrganCompositionDeputySituation(Base):
     ar_board_composition_id = Column(Integer, ForeignKey('ar_board_historical_compositions.id'))
     commission_composition_id = Column(Integer, ForeignKey('commission_historical_compositions.id'))
     work_group_composition_id = Column(Integer, ForeignKey('work_group_historical_compositions.id'))
+    permanent_committee_composition_id = Column(Integer, ForeignKey('permanent_committee_historical_compositions.id'))
+    sub_committee_composition_id = Column(Integer, ForeignKey('sub_committee_historical_compositions.id'))
     sio_des = Column(String(200))
     sio_tip_mem = Column(String(100))
     sio_dt_inicio = Column(Date)
@@ -1040,6 +1156,8 @@ class OrganCompositionDeputySituation(Base):
     ar_board_composition = relationship("ARBoardHistoricalComposition", back_populates="deputy_situations")
     commission_composition = relationship("CommissionHistoricalComposition", back_populates="deputy_situations")
     work_group_composition = relationship("WorkGroupHistoricalComposition", back_populates="deputy_situations")
+    permanent_committee_composition = relationship("PermanentCommitteeHistoricalComposition", back_populates="deputy_situations")
+    sub_committee_composition = relationship("SubCommitteeHistoricalComposition", back_populates="deputy_situations")
 
 
 # Commission Presidency Models
@@ -1107,3 +1225,114 @@ class ImportStatus(Base):
         Index('idx_import_status_category', 'category'),
         Index('idx_import_status_legislatura', 'legislatura'),
     )
+
+
+# AtividadeDeputado Models for Deputy Activity Data
+
+class AtividadeDeputado(Base):
+    __tablename__ = 'atividade_deputados'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    dep_cad_id = Column(Integer)  # DepCadId field
+    leg_des = Column(String(20))  # LegDes field
+    created_at = Column(DateTime, default=func.now())
+    
+    deputado = relationship("Deputado", back_populates="atividades")
+    atividade_list = relationship("AtividadeDeputadoList", back_populates="atividade_deputado", cascade="all, delete-orphan")
+    deputado_situacoes = relationship("DeputadoSituacao", back_populates="atividade_deputado", cascade="all, delete-orphan")
+
+
+class AtividadeDeputadoList(Base):
+    __tablename__ = 'atividade_deputado_lists'
+    
+    id = Column(Integer, primary_key=True)
+    atividade_deputado_id = Column(Integer, ForeignKey('atividade_deputados.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    atividade_deputado = relationship("AtividadeDeputado", back_populates="atividade_list")
+    actividade_outs = relationship("ActividadeOut", back_populates="atividade_list", cascade="all, delete-orphan")
+
+
+class ActividadeOut(Base):
+    __tablename__ = 'actividade_outs'
+    
+    id = Column(Integer, primary_key=True)
+    atividade_list_id = Column(Integer, ForeignKey('atividade_deputado_lists.id'), nullable=False)
+    rel = Column(Text)  # Rel field - appears to be empty in the XML
+    created_at = Column(DateTime, default=func.now())
+    
+    atividade_list = relationship("AtividadeDeputadoList", back_populates="actividade_outs")
+    dados_legis_deputados = relationship("DadosLegisDeputado", back_populates="actividade_out", cascade="all, delete-orphan")
+    audiencias = relationship("ActividadeAudiencia", back_populates="actividade_out", cascade="all, delete-orphan")
+    audicoes = relationship("ActividadeAudicao", back_populates="actividade_out", cascade="all, delete-orphan")
+
+
+class DadosLegisDeputado(Base):
+    __tablename__ = 'dados_legis_deputados'
+    
+    id = Column(Integer, primary_key=True)
+    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
+    nome = Column(String(200))  # Nome field
+    dpl_grpar = Column(String(100))  # Dpl_grpar field
+    created_at = Column(DateTime, default=func.now())
+    
+    actividade_out = relationship("ActividadeOut", back_populates="dados_legis_deputados")
+
+
+class ActividadeAudiencia(Base):
+    __tablename__ = 'actividade_audiencias'
+    
+    id = Column(Integer, primary_key=True)
+    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    actividade_out = relationship("ActividadeOut", back_populates="audiencias")
+    actividades_comissao = relationship("ActividadesComissaoOut", back_populates="audiencia", cascade="all, delete-orphan")
+
+
+class ActividadeAudicao(Base):
+    __tablename__ = 'actividade_audicoes'
+    
+    id = Column(Integer, primary_key=True)
+    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    actividade_out = relationship("ActividadeOut", back_populates="audicoes")
+    actividades_comissao = relationship("ActividadesComissaoOut", back_populates="audicao", cascade="all, delete-orphan")
+
+
+class ActividadesComissaoOut(Base):
+    __tablename__ = 'actividades_comissao_outs'
+    
+    id = Column(Integer, primary_key=True)
+    audiencia_id = Column(Integer, ForeignKey('actividade_audiencias.id'), nullable=True)
+    audicao_id = Column(Integer, ForeignKey('actividade_audicoes.id'), nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    
+    audiencia = relationship("ActividadeAudiencia", back_populates="actividades_comissao")
+    audicao = relationship("ActividadeAudicao", back_populates="actividades_comissao")
+
+
+class DeputadoSituacao(Base):
+    __tablename__ = 'deputado_situacoes'
+    
+    id = Column(Integer, primary_key=True)
+    atividade_deputado_id = Column(Integer, ForeignKey('atividade_deputados.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    atividade_deputado = relationship("AtividadeDeputado", back_populates="deputado_situacoes")
+    dados_situacao = relationship("DadosSituacaoDeputado", back_populates="deputado_situacao", cascade="all, delete-orphan")
+
+
+class DadosSituacaoDeputado(Base):
+    __tablename__ = 'dados_situacao_deputados'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_situacao_id = Column(Integer, ForeignKey('deputado_situacoes.id'), nullable=False)
+    sio_des = Column(String(100))  # SioDes - situation description
+    sio_dt_inicio = Column(Date)   # SioDtInicio - start date
+    sio_dt_fim = Column(Date)      # SioDtFim - end date
+    created_at = Column(DateTime, default=func.now())
+    
+    deputado_situacao = relationship("DeputadoSituacao", back_populates="dados_situacao")

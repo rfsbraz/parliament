@@ -1,10 +1,11 @@
 """
-Parliamentary Organ Composition Mapper
-======================================
+Parliamentary Organ Composition Mapper - SQLAlchemy ORM Version
+==============================================================
 
 Schema mapper for parliamentary organ composition files (OrgaoComposicao*.xml).
 Handles composition of various parliamentary organs including plenary, committees,
 and other parliamentary bodies with their member assignments.
+Uses comprehensive OrganizacaoAR SQLAlchemy models for zero data loss.
 """
 
 import xml.etree.ElementTree as ET
@@ -13,14 +14,35 @@ import re
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
+
+# Import our comprehensive OrganizacaoAR models
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from database.models import (
+    ParliamentaryOrganization, AdministrativeCouncil, LeaderConference,
+    CommissionPresidentConference, Commission, ARBoard, WorkGroup,
+    PermanentCommittee, SubCommittee, Plenary, PlenaryComposition,
+    AdministrativeCouncilHistoricalComposition, LeaderConferenceHistoricalComposition,
+    CommissionHistoricalComposition, ARBoardHistoricalComposition,
+    WorkGroupHistoricalComposition, PermanentCommitteeHistoricalComposition,
+    SubCommitteeHistoricalComposition, Deputado, Legislatura
+)
 
 logger = logging.getLogger(__name__)
 
 
 class ComposicaoOrgaosMapper(SchemaMapper):
     """Schema mapper for parliamentary organ composition files"""
+    
+    def __init__(self, db_path: str = None):
+        super().__init__(db_path)
+        self.engine = create_engine(f'sqlite:///{self.db_path}')
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -47,67 +69,76 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         """Map parliamentary organ composition to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
-        # Validate schema coverage according to strict mode
-        self.validate_schema_coverage(xml_root, file_info, strict_mode)
+        try:
+            # Validate schema coverage according to strict mode
+            self.validate_schema_coverage(xml_root, file_info, strict_mode)
+            
+            # Extract legislatura from filename or XML
+            legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+            legislatura = self._get_or_create_legislatura(legislatura_sigla)
         
-        # Extract legislatura from filename or XML
-        legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
-        legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
+            # Process plenary composition
+            plenario = xml_root.find('.//Plenario')
+            if plenario is not None:
+                success = self._process_plenario(plenario, legislatura)
+                results['records_processed'] += 1
+                if success:
+                    results['records_imported'] += 1
         
-        # Process plenary composition
-        plenario = xml_root.find('.//Plenario')
-        if plenario is not None:
-            success = self._process_plenario(plenario, legislatura_id)
-            results['records_processed'] += 1
-            if success:
-                results['records_imported'] += 1
+            # Process committees
+            comissoes = xml_root.find('.//Comissoes')
+            if comissoes is not None:
+                for comissao in comissoes:
+                    try:
+                        success = self._process_comissao(comissao, legislatura)
+                        results['records_processed'] += 1
+                        if success:
+                            results['records_imported'] += 1
+                    except Exception as e:
+                        error_msg = f"Committee processing error: {str(e)}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                        results['records_processed'] += 1
         
-        # Process committees
-        comissoes = xml_root.find('.//Comissoes')
-        if comissoes is not None:
-            for comissao in comissoes:
-                try:
-                    success = self._process_comissao(comissao, legislatura_id)
-                    results['records_processed'] += 1
-                    if success:
-                        results['records_imported'] += 1
-                except Exception as e:
-                    error_msg = f"Committee processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
+            # Process subcommittees
+            subcomissoes = xml_root.find('.//SubComissoes')
+            if subcomissoes is not None:
+                for subcomissao in subcomissoes:
+                    try:
+                        success = self._process_subcomissao(subcomissao, legislatura)
+                        results['records_processed'] += 1
+                        if success:
+                            results['records_imported'] += 1
+                    except Exception as e:
+                        error_msg = f"Subcommittee processing error: {str(e)}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                        results['records_processed'] += 1
         
-        # Process subcommittees
-        subcomissoes = xml_root.find('.//SubComissoes')
-        if subcomissoes is not None:
-            for subcomissao in subcomissoes:
-                try:
-                    success = self._process_subcomissao(subcomissao, legislatura_id)
-                    results['records_processed'] += 1
-                    if success:
-                        results['records_imported'] += 1
-                except Exception as e:
-                    error_msg = f"Subcommittee processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
-        
-        # Process working groups
-        grupos_trabalho = xml_root.find('.//GruposTrabalho')
-        if grupos_trabalho is not None:
-            for grupo in grupos_trabalho:
-                try:
-                    success = self._process_grupo_trabalho(grupo, legislatura_id)
-                    results['records_processed'] += 1
-                    if success:
-                        results['records_imported'] += 1
-                except Exception as e:
-                    error_msg = f"Working group processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
-        
-        return results
+            # Process working groups
+            grupos_trabalho = xml_root.find('.//GruposTrabalho')
+            if grupos_trabalho is not None:
+                for grupo in grupos_trabalho:
+                    try:
+                        success = self._process_grupo_trabalho(grupo, legislatura)
+                        results['records_processed'] += 1
+                        if success:
+                            results['records_imported'] += 1
+                    except Exception as e:
+                        error_msg = f"Working group processing error: {str(e)}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                        results['records_processed'] += 1
+            
+            # Commit all changes
+            self.session.commit()
+            return results
+            
+        except Exception as e:
+            self.session.rollback()
+            logger.error(f"Error in validate_and_map: {e}")
+            results['errors'].append(str(e))
+            return results
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
@@ -137,7 +168,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         # Default to XVII
         return 'XVII'
     
-    def _process_plenario(self, plenario: ET.Element, legislatura_id: int) -> bool:
+    def _process_plenario(self, plenario: ET.Element, legislatura: Legislatura) -> bool:
         """Process plenary composition"""
         try:
             # Get or create plenary as a committee
@@ -152,16 +183,16 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             if not id_orgao:
                 return False
             
-            # Create or get committee record for plenary
-            comissao_id = self._get_or_create_comissao(
-                int(float(id_orgao)), sigla_orgao, nome_sigla, 'permanente', legislatura_id
+            # Create or get plenary record
+            plenary = self._get_or_create_plenary(
+                int(float(id_orgao)), sigla_orgao, nome_sigla, legislatura
             )
             
             # Process members
             composicao = plenario.find('Composicao')
             if composicao is not None:
                 for deputado_data in composicao.findall('DadosDeputadoOrgaoPlenario'):
-                    self._process_deputy_membership(deputado_data, comissao_id, 'membro')
+                    self._process_deputy_plenary_membership(deputado_data, plenary)
             
             return True
             
@@ -169,7 +200,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             logger.error(f"Error processing plenary: {e}")
             return False
     
-    def _process_comissao(self, comissao: ET.Element, legislatura_id: int) -> bool:
+    def _process_comissao(self, comissao: ET.Element, legislatura: Legislatura) -> bool:
         """Process committee composition"""
         try:
             detalhe_orgao = comissao.find('DetalheOrgao')
@@ -184,15 +215,15 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                 return False
             
             # Create or get committee record
-            comissao_id = self._get_or_create_comissao(
-                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, 'permanente', legislatura_id
+            committee = self._get_or_create_committee(
+                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, legislatura
             )
             
             # Process members
             composicao = comissao.find('Composicao')
             if composicao is not None:
                 for deputado_data in composicao.findall('DadosDeputadoOrgaoComissao'):
-                    self._process_deputy_committee_membership(deputado_data, comissao_id)
+                    self._process_deputy_committee_membership(deputado_data, committee)
             
             return True
             
@@ -200,7 +231,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             logger.error(f"Error processing committee: {e}")
             return False
     
-    def _process_subcomissao(self, subcomissao: ET.Element, legislatura_id: int) -> bool:
+    def _process_subcomissao(self, subcomissao: ET.Element, legislatura: Legislatura) -> bool:
         """Process subcommittee composition"""
         try:
             detalhe_orgao = subcomissao.find('DetalheOrgao')
@@ -215,15 +246,15 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                 return False
             
             # Create or get subcommittee record
-            comissao_id = self._get_or_create_comissao(
-                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, 'sub_comissao', legislatura_id
+            subcommittee = self._get_or_create_subcommittee(
+                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, legislatura
             )
             
             # Process members
             composicao = subcomissao.find('Composicao')
             if composicao is not None:
                 for deputado_data in composicao.findall('DadosDeputadoOrgaoSubComissao'):
-                    self._process_deputy_committee_membership(deputado_data, comissao_id)
+                    self._process_deputy_subcommittee_membership(deputado_data, subcommittee)
             
             return True
             
@@ -231,7 +262,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             logger.error(f"Error processing subcommittee: {e}")
             return False
     
-    def _process_grupo_trabalho(self, grupo: ET.Element, legislatura_id: int) -> bool:
+    def _process_grupo_trabalho(self, grupo: ET.Element, legislatura: Legislatura) -> bool:
         """Process working group composition"""
         try:
             detalhe_orgao = grupo.find('DetalheOrgao')
@@ -246,15 +277,15 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                 return False
             
             # Create or get working group record
-            comissao_id = self._get_or_create_comissao(
-                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, 'eventual', legislatura_id
+            work_group = self._get_or_create_work_group(
+                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, legislatura
             )
             
             # Process members
             composicao = grupo.find('Composicao')
             if composicao is not None:
                 for deputado_data in composicao.findall('DadosDeputadoOrgaoGrupoTrabalho'):
-                    self._process_deputy_committee_membership(deputado_data, comissao_id)
+                    self._process_deputy_work_group_membership(deputado_data, work_group)
             
             return True
             
@@ -262,13 +293,14 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             logger.error(f"Error processing working group: {e}")
             return False
     
-    def _process_deputy_membership(self, deputado_data: ET.Element, comissao_id: int, cargo: str = 'membro') -> bool:
+    def _process_deputy_plenary_membership(self, deputado_data: ET.Element, plenary: Plenary) -> bool:
         """Process deputy membership in plenary"""
         try:
-            dep_id = self._get_text_value(deputado_data, 'DepId')
+            dep_cad_id = self._get_text_value(deputado_data, 'DepCadId')
             dep_nome = self._get_text_value(deputado_data, 'DepNomeParlamentar')
+            dep_nome_completo = self._get_text_value(deputado_data, 'DepNomeCompleto')
             
-            if not dep_id or not dep_nome:
+            if not dep_cad_id or not dep_nome:
                 return False
             
             # Get dates from situation data
@@ -286,29 +318,33 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                 return False
             
             # Find or create deputy
-            deputado_id = self._get_or_create_deputy(int(float(dep_id)), dep_nome)
+            deputado = self._get_or_create_deputado(int(float(dep_cad_id)), dep_nome, dep_nome_completo)
             
-            # Insert membership record
-            self.cursor.execute("""
-                INSERT OR IGNORE INTO membros_comissoes (
-                    comissao_id, deputado_id, cargo, data_inicio, data_fim, titular
-                ) VALUES (?, ?, ?, ?, ?, ?)
-            """, (comissao_id, deputado_id, cargo, data_inicio, data_fim, True))
+            # Create plenary composition record
+            plenary_composition = PlenaryComposition(
+                plenary_id=plenary.id,
+                deputado_id=deputado.id,
+                data_inicio=data_inicio,
+                data_fim=data_fim
+            )
             
+            self.session.add(plenary_composition)
             return True
             
         except Exception as e:
-            logger.error(f"Error processing deputy membership: {e}")
+            logger.error(f"Error processing deputy plenary membership: {e}")
+            self.session.rollback()
             return False
     
-    def _process_deputy_committee_membership(self, deputado_data: ET.Element, comissao_id: int) -> bool:
-        """Process deputy membership in committee/subcommittee/working group"""
+    def _process_deputy_committee_membership(self, deputado_data: ET.Element, committee: Commission) -> bool:
+        """Process deputy membership in committee"""
         try:
-            dep_id = self._get_text_value(deputado_data, 'DepId')
+            dep_cad_id = self._get_text_value(deputado_data, 'DepCadId')
             dep_nome = self._get_text_value(deputado_data, 'DepNomeParlamentar')
+            dep_nome_completo = self._get_text_value(deputado_data, 'DepNomeCompleto')
             cargo_des = self._get_text_value(deputado_data, 'CarDes')
             
-            if not dep_id or not dep_nome:
+            if not dep_cad_id or not dep_nome:
                 return False
             
             # Map cargo description to standard values
@@ -322,58 +358,223 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                 return False
             
             # Find or create deputy
-            deputado_id = self._get_or_create_deputy(int(float(dep_id)), dep_nome)
+            deputado = self._get_or_create_deputado(int(float(dep_cad_id)), dep_nome, dep_nome_completo)
             
-            # Insert membership record
-            self.cursor.execute("""
-                INSERT OR IGNORE INTO membros_comissoes (
-                    comissao_id, deputado_id, cargo, data_inicio, data_fim, titular
-                ) VALUES (?, ?, ?, ?, ?, ?)
-            """, (comissao_id, deputado_id, cargo, data_inicio, data_fim, True))
+            # Create commission historical composition record
+            composition = CommissionHistoricalComposition(
+                commission_id=committee.id,
+                deputado_id=deputado.id,
+                cargo=cargo,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                titular=True
+            )
             
+            self.session.add(composition)
             return True
             
         except Exception as e:
             logger.error(f"Error processing deputy committee membership: {e}")
+            self.session.rollback()
             return False
     
-    def _get_or_create_comissao(self, id_externo: int, sigla: str, nome: str, tipo: str, legislatura_id: int) -> int:
-        """Get or create committee record"""
-        # Check if committee exists
-        self.cursor.execute("""
-            SELECT id FROM comissoes WHERE id_externo = ? AND legislatura_id = ?
-        """, (id_externo, legislatura_id))
+    def _process_deputy_subcommittee_membership(self, deputado_data: ET.Element, subcommittee: SubCommittee) -> bool:
+        """Process deputy membership in subcommittee"""
+        try:
+            dep_cad_id = self._get_text_value(deputado_data, 'DepCadId')
+            dep_nome = self._get_text_value(deputado_data, 'DepNomeParlamentar')
+            dep_nome_completo = self._get_text_value(deputado_data, 'DepNomeCompleto')
+            cargo_des = self._get_text_value(deputado_data, 'CarDes')
+            
+            if not dep_cad_id or not dep_nome:
+                return False
+            
+            # Map cargo description to standard values
+            cargo = self._map_cargo(cargo_des)
+            
+            # Get dates
+            data_inicio = self._parse_date(self._get_text_value(deputado_data, 'DtInicio'))
+            data_fim = self._parse_date(self._get_text_value(deputado_data, 'DtFim'))
+            
+            if not data_inicio:
+                return False
+            
+            # Find or create deputy
+            deputado = self._get_or_create_deputado(int(float(dep_cad_id)), dep_nome, dep_nome_completo)
+            
+            # Create subcommittee historical composition record
+            composition = SubCommitteeHistoricalComposition(
+                subcommittee_id=subcommittee.id,
+                deputado_id=deputado.id,
+                cargo=cargo,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                titular=True
+            )
+            
+            self.session.add(composition)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing deputy subcommittee membership: {e}")
+            self.session.rollback()
+            return False
+    
+    def _process_deputy_work_group_membership(self, deputado_data: ET.Element, work_group: WorkGroup) -> bool:
+        """Process deputy membership in work group"""
+        try:
+            dep_cad_id = self._get_text_value(deputado_data, 'DepCadId')
+            dep_nome = self._get_text_value(deputado_data, 'DepNomeParlamentar')
+            dep_nome_completo = self._get_text_value(deputado_data, 'DepNomeCompleto')
+            cargo_des = self._get_text_value(deputado_data, 'CarDes')
+            
+            if not dep_cad_id or not dep_nome:
+                return False
+            
+            # Map cargo description to standard values
+            cargo = self._map_cargo(cargo_des)
+            
+            # Get dates
+            data_inicio = self._parse_date(self._get_text_value(deputado_data, 'DtInicio'))
+            data_fim = self._parse_date(self._get_text_value(deputado_data, 'DtFim'))
+            
+            if not data_inicio:
+                return False
+            
+            # Find or create deputy
+            deputado = self._get_or_create_deputado(int(float(dep_cad_id)), dep_nome, dep_nome_completo)
+            
+            # Create work group historical composition record
+            composition = WorkGroupHistoricalComposition(
+                work_group_id=work_group.id,
+                deputado_id=deputado.id,
+                cargo=cargo,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                titular=True
+            )
+            
+            self.session.add(composition)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing deputy work group membership: {e}")
+            self.session.rollback()
+            return False
+    
+    def _get_or_create_plenary(self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura) -> Plenary:
+        """Get or create plenary record"""
+        plenary = self.session.query(Plenary).filter_by(
+            external_id=id_externo,
+            legislatura_id=legislatura.id
+        ).first()
         
-        result = self.cursor.fetchone()
-        if result:
-            return result[0]
+        if plenary:
+            return plenary
+        
+        # Create new plenary
+        plenary = Plenary(
+            external_id=id_externo,
+            legislatura_id=legislatura.id,
+            nome=nome,
+            sigla=sigla,
+            ativa=True
+        )
+        
+        self.session.add(plenary)
+        self.session.flush()  # Get the ID
+        return plenary
+        
+    def _get_or_create_committee(self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura) -> Commission:
+        """Get or create committee record"""
+        committee = self.session.query(Commission).filter_by(
+            external_id=id_externo,
+            legislatura_id=legislatura.id
+        ).first()
+        
+        if committee:
+            return committee
         
         # Create new committee
-        self.cursor.execute("""
-            INSERT INTO comissoes (id_externo, legislatura_id, nome, sigla, tipo, ativa)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (id_externo, legislatura_id, nome, sigla, tipo, True))
+        committee = Commission(
+            external_id=id_externo,
+            legislatura_id=legislatura.id,
+            nome=nome,
+            sigla=sigla,
+            ativa=True
+        )
         
-        return self.cursor.lastrowid
+        self.session.add(committee)
+        self.session.flush()  # Get the ID
+        return committee
+        
+    def _get_or_create_subcommittee(self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura) -> SubCommittee:
+        """Get or create subcommittee record"""
+        subcommittee = self.session.query(SubCommittee).filter_by(
+            external_id=id_externo,
+            legislatura_id=legislatura.id
+        ).first()
+        
+        if subcommittee:
+            return subcommittee
+        
+        # Create new subcommittee
+        subcommittee = SubCommittee(
+            external_id=id_externo,
+            legislatura_id=legislatura.id,
+            nome=nome,
+            sigla=sigla,
+            ativa=True
+        )
+        
+        self.session.add(subcommittee)
+        self.session.flush()  # Get the ID
+        return subcommittee
+        
+    def _get_or_create_work_group(self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura) -> WorkGroup:
+        """Get or create work group record"""
+        work_group = self.session.query(WorkGroup).filter_by(
+            external_id=id_externo,
+            legislatura_id=legislatura.id
+        ).first()
+        
+        if work_group:
+            return work_group
+        
+        # Create new work group
+        work_group = WorkGroup(
+            external_id=id_externo,
+            legislatura_id=legislatura.id,
+            nome=nome,
+            sigla=sigla,
+            ativa=True
+        )
+        
+        self.session.add(work_group)
+        self.session.flush()  # Get the ID
+        return work_group
     
-    def _get_or_create_deputy(self, dep_id: int, nome: str) -> int:
+    def _get_or_create_deputado(self, dep_cad_id: int, nome: str, nome_completo: str = None) -> Deputado:
         """Get or create deputy record"""
-        # Check if deputy exists
-        self.cursor.execute("""
-            SELECT id FROM deputados WHERE id_cadastro = ?
-        """, (dep_id,))
+        deputado = self.session.query(Deputado).filter_by(id_cadastro=dep_cad_id).first()
         
-        result = self.cursor.fetchone()
-        if result:
-            return result[0]
+        if deputado:
+            # Update name if we have more complete info
+            if nome_completo and not deputado.nome_completo:
+                deputado.nome_completo = nome_completo
+            return deputado
         
         # Create basic deputy record (will be enriched by other mappers)
-        self.cursor.execute("""
-            INSERT INTO deputados (id_cadastro, nome, nome_completo)
-            VALUES (?, ?, ?)
-        """, (dep_id, nome, nome))
+        deputado = Deputado(
+            id_cadastro=dep_cad_id,
+            nome=nome,
+            nome_completo=nome_completo or nome,
+            ativo=True
+        )
         
-        return self.cursor.lastrowid
+        self.session.add(deputado)
+        self.session.flush()  # Get the ID
+        return deputado
     
     def _map_cargo(self, cargo_des: str) -> str:
         """Map cargo description to standard values"""
@@ -419,26 +620,25 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         
         return None
     
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> int:
+    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
         """Get or create legislatura record"""
-        # Check if legislatura exists
-        self.cursor.execute("""
-            SELECT id FROM legislaturas WHERE numero = ?
-        """, (legislatura_sigla,))
+        legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
         
-        result = self.cursor.fetchone()
-        if result:
-            return result[0]
+        if legislatura:
+            return legislatura
         
         # Create new legislatura if it doesn't exist
         numero_int = self._convert_roman_to_int(legislatura_sigla)
         
-        self.cursor.execute("""
-            INSERT INTO legislaturas (numero, designacao, ativa)
-            VALUES (?, ?, ?)
-        """, (legislatura_sigla, f"{numero_int}.ª Legislatura", False))
+        legislatura = Legislatura(
+            numero=legislatura_sigla,
+            designacao=f"{numero_int}.ª Legislatura",
+            ativa=False
+        )
         
-        return self.cursor.lastrowid
+        self.session.add(legislatura)
+        self.session.flush()  # Get the ID
+        return legislatura
     
     def _convert_roman_to_int(self, roman: str) -> int:
         """Convert Roman numeral to integer"""
