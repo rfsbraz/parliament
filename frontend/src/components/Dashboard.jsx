@@ -343,48 +343,59 @@ const Dashboard = ({ stats }) => {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="space-y-6">
+              <div className="h-[350px] flex flex-col justify-center space-y-8">
                 {/* Government vs Opposition Bar */}
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-700">Governo</span>
                     <span className="text-sm font-bold text-green-600">{governoDeputados} deputados</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="w-full bg-gray-200 rounded-full h-4">
                     <div 
-                      className="bg-green-500 h-3 rounded-full transition-all duration-500"
+                      className="bg-green-500 h-4 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
                       style={{ width: `${(governoDeputados / (totais.deputados || 230)) * 100}%` }}
-                    />
+                    >
+                      <span className="text-xs font-semibold text-white">
+                        {estabilidadeGoverno.percentagem}%
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-700">Oposição</span>
                     <span className="text-sm font-bold text-red-600">{oposicaoDeputados} deputados</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="w-full bg-gray-200 rounded-full h-4">
                     <div 
-                      className="bg-red-500 h-3 rounded-full transition-all duration-500"
+                      className="bg-red-500 h-4 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
                       style={{ width: `${(oposicaoDeputados / (totais.deputados || 230)) * 100}%` }}
-                    />
+                    >
+                      <span className="text-xs font-semibold text-white">
+                        {((oposicaoDeputados / (totais.deputados || 230)) * 100).toFixed(1)}%
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Majority Line */}
-                <div className="border-t pt-4">
-                  <div className="flex justify-between items-center mb-2">
+                <div className="border-t pt-6">
+                  <div className="flex justify-between items-center mb-4">
                     <span className="text-sm font-medium text-gray-700">Maioria Absoluta</span>
                     <span className="text-sm font-bold text-gray-600">{maioriaAbsoluta} deputados</span>
                   </div>
                   <div className="text-center">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
                       estabilidadeGoverno.maioria 
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-amber-100 text-amber-800'
                     }`}>
                       {estabilidadeGoverno.maioria ? 'Governo com maioria absoluta' : 'Governo minoritário'}
                     </span>
+                  </div>
+                  <div className="mt-3 text-center text-xs text-gray-500">
+                    Margem: {estabilidadeGoverno.margem > 0 ? '+' : ''}{estabilidadeGoverno.margem} deputados
                   </div>
                 </div>
               </div>
