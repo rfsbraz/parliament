@@ -114,15 +114,14 @@ class IntervencoesMapper(SchemaMapper):
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.url'
         }
     
-    def validate_and_map(self, xml_root: ET.Element, file_info: Dict) -> Dict:
+    def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Map parliamentary interventions to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         file_path = file_info['file_path']
         filename = os.path.basename(file_path)
         
-        unmapped_fields = self.check_schema_coverage(xml_root)
-        if unmapped_fields:
-            raise SchemaError(f"Unmapped fields found: {', '.join(unmapped_fields)}")
+        # Validate schema coverage according to strict mode
+        self.validate_schema_coverage(xml_root, file_info, strict_mode)
         
         # Extract legislatura from filename
         leg_match = re.search(r'Intervencoes(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)\.xml', filename)

@@ -43,13 +43,12 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             'DadosDeputadoOrgaoSubComissao', 'DadosDeputadoOrgaoGrupoTrabalho'
         }
     
-    def validate_and_map(self, xml_root: ET.Element, file_info: Dict) -> Dict:
+    def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Map parliamentary organ composition to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
-        unmapped_fields = self.check_schema_coverage(xml_root)
-        if unmapped_fields:
-            logger.warning(f"Some unmapped fields found: {', '.join(list(unmapped_fields)[:10])}")
+        # Validate schema coverage according to strict mode
+        self.validate_schema_coverage(xml_root, file_info, strict_mode)
         
         # Extract legislatura from filename or XML
         legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)

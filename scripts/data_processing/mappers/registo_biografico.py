@@ -109,7 +109,7 @@ class RegistoBiograficoMapper(SchemaMapper):
             'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadObrasPublicadas.DadosObrasPublicadas.PubOrdem'
         }
     
-    def validate_and_map(self, xml_root: ET.Element, file_info: Dict) -> Dict:
+    def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Map biographical data to database"""
         results = {
             'records_processed': 0,
@@ -117,10 +117,8 @@ class RegistoBiograficoMapper(SchemaMapper):
             'errors': []
         }
         
-        # Check schema coverage
-        unmapped_fields = self.check_schema_coverage(xml_root)
-        if unmapped_fields:
-            raise SchemaError(f"Unmapped fields found: {', '.join(unmapped_fields)}")
+        # Validate schema coverage according to strict mode
+        self.validate_schema_coverage(xml_root, file_info, strict_mode)
         
         # Process biographical records  
         for record in xml_root.findall('.//DadosRegistoBiografico'):

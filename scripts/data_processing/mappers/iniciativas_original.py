@@ -28,13 +28,12 @@ class InitiativasMapper(SchemaMapper):
             'IniLeg', 'IniSel', 'IniAutorGrupo', 'IniAutorDeputado', 'IniTipoPesquisa'
         }
     
-    def validate_and_map(self, xml_root: ET.Element, file_info: Dict) -> Dict:
+    def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Map legislative initiatives to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
-        unmapped_fields = self.check_schema_coverage(xml_root)
-        if unmapped_fields:
-            raise SchemaError(f"Unmapped fields found: {', '.join(unmapped_fields)}")
+        # Validate schema coverage according to strict mode
+        self.validate_schema_coverage(xml_root, file_info, strict_mode)
         
         # Extract legislatura from filename
         filename = os.path.basename(file_info['file_path'])

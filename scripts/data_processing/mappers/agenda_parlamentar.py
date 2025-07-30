@@ -23,21 +23,43 @@ class AgendaParlamentarMapper(SchemaMapper):
     
     def get_expected_fields(self) -> Set[str]:
         return {
-            'ArrayOfAgendaParlamentar', 'AgendaParlamentar',
-            'Id', 'SectionId', 'Section', 'ThemeId', 'Theme', 'OrderValue',
-            'ParlamentGroup', 'AllDayEvent', 'EventStartDate', 'EventStartTime',
-            'EventEndDate', 'EventEndTime', 'Title', 'Subtitle', 'InternetText',
-            'Local', 'Link', 'LegDes', 'OrgDes', 'ReuNumero', 'SelNumero',
-            'PostPlenary', 'AnexosComissaoPermanente', 'AnexosPlenario'
+            # Root elements
+            'ArrayOfAgendaParlamentar',
+            
+            # AgendaParlamentar nested elements
+            'ArrayOfAgendaParlamentar.AgendaParlamentar',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.Id',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.SectionId',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.Section',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.ThemeId',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.Theme',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.OrderValue',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.ParlamentGroup',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.AllDayEvent',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.EventStartDate',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.EventStartTime',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.EventEndDate',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.EventEndTime',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.Title',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.Subtitle',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.InternetText',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.Local',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.Link',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.LegDes',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.OrgDes',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.ReuNumero',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.SelNumero',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.PostPlenary',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.AnexosComissaoPermanente',
+            'ArrayOfAgendaParlamentar.AgendaParlamentar.AnexosPlenario'
         }
     
-    def validate_and_map(self, xml_root: ET.Element, file_info: Dict) -> Dict:
+    def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Map parliamentary agenda to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
-        unmapped_fields = self.check_schema_coverage(xml_root)
-        if unmapped_fields:
-            logger.warning(f"Some unmapped fields found: {', '.join(list(unmapped_fields)[:10])}")
+        # Validate schema coverage according to strict mode
+        self.validate_schema_coverage(xml_root, file_info, strict_mode)
         
         # Extract legislatura from filename or XML
         legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)

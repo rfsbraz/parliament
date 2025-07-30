@@ -60,7 +60,7 @@ class RegistoInteressesMapper(SchemaMapper):
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi',
         }
     
-    def validate_and_map(self, xml_root: ET.Element, file_info: Dict) -> Dict:
+    def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Validate and map conflicts of interest XML to database"""
         results = {
             'records_imported': 0,
@@ -77,11 +77,8 @@ class RegistoInteressesMapper(SchemaMapper):
                 results['errors'].append(error_msg)
                 return results
             
-            # Check schema coverage
-            unmapped_fields = self.check_schema_coverage(xml_root)
-            if unmapped_fields:
-                logger.warning(f"Unmapped fields in {file_info['file_path']}: {unmapped_fields}")
-                results['warnings'].extend([f"Unmapped field: {field}" for field in unmapped_fields])
+            # Validate schema coverage according to strict mode
+            self.validate_schema_coverage(xml_root, file_info, strict_mode)
             
             # Process each RegistoInteresses record
             for registo in xml_root.findall('.//RegistoInteresses'):
