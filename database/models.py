@@ -1603,3 +1603,83 @@ class CooperacaoParticipante(Base):
     created_at = Column(DateTime, default=func.now())
     
     atividade = relationship("CooperacaoAtividade", back_populates="participantes")
+
+
+class DelegacaoEventual(Base):
+    __tablename__ = 'delegacao_eventual'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core fields
+    delegacao_id = Column(Integer, unique=True)  # External ID
+    nome = Column(Text)
+    local = Column(Text)
+    sessao = Column(Integer)
+    data_inicio = Column(Date)
+    data_fim = Column(Date)
+    tipo = Column(String(100))
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    legislatura = relationship("Legislatura", backref="delegacoes_eventuais")
+    participantes = relationship("DelegacaoEventualParticipante", back_populates="delegacao", cascade="all, delete-orphan")
+
+
+class DelegacaoEventualParticipante(Base):
+    __tablename__ = 'delegacao_eventual_participantes'
+    
+    id = Column(Integer, primary_key=True)
+    delegacao_id = Column(Integer, ForeignKey('delegacao_eventual.id'), nullable=False)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=True)
+    
+    nome = Column(String(200))
+    cargo = Column(String(100))
+    gp = Column(String(50))  # Grupo Parlamentar
+    tipo_participante = Column(String(50))  # 'deputado', 'funcionario', 'externo'
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    delegacao = relationship("DelegacaoEventual", back_populates="participantes")
+    deputado = relationship("Deputado", backref="delegacoes_eventuais_participacao")
+
+
+class DelegacaoPermanente(Base):
+    __tablename__ = 'delegacao_permanente'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core fields
+    reuniao_id = Column(Integer, unique=True)  # External ID
+    nome = Column(Text)
+    local = Column(Text)
+    sessao = Column(Integer)
+    data_inicio = Column(Date)
+    data_fim = Column(Date)
+    tipo = Column(String(100))
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    legislatura = relationship("Legislatura", backref="delegacoes_permanentes")
+    participantes = relationship("DelegacaoPermanenteParticipante", back_populates="delegacao", cascade="all, delete-orphan")
+
+
+class DelegacaoPermanenteParticipante(Base):
+    __tablename__ = 'delegacao_permanente_participantes'
+    
+    id = Column(Integer, primary_key=True)
+    delegacao_id = Column(Integer, ForeignKey('delegacao_permanente.id'), nullable=False)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=True)
+    
+    nome = Column(String(200))
+    cargo = Column(String(100))
+    gp = Column(String(50))  # Grupo Parlamentar
+    tipo_participante = Column(String(50))  # 'deputado', 'funcionario', 'externo'
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    delegacao = relationship("DelegacaoPermanente", back_populates="participantes")
+    deputado = relationship("Deputado", backref="delegacoes_permanentes_participacao")

@@ -12,14 +12,29 @@ import re
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
+
+# Import our models
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from database.models import (
+    DelegacaoEventual, DelegacaoEventualParticipante, Deputado, Legislatura
+)
 
 logger = logging.getLogger(__name__)
 
 
 class DelegacaoEventualMapper(SchemaMapper):
     """Schema mapper for parliamentary occasional delegation files"""
+    
+    def __init__(self, db_path: str = None):
+        super().__init__(db_path)
+        self.engine = create_engine(f'sqlite:///{self.db_path}')
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
     
     def get_expected_fields(self) -> Set[str]:
         return {
