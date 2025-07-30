@@ -312,6 +312,47 @@ class UnifiedImporter:
         
         logger.info(f"Processing complete: {total_files} files found, {processed_files} processed")
     
+    def _parse_xml_with_bom_handling(self, file_path: str) -> ET.Element:
+        """Parse XML file with BOM (Byte Order Mark) handling"""
+        # First, try reading the file and removing BOM if present
+        with open(file_path, 'rb') as f:
+            content = f.read()
+        
+        # Log first few bytes for debugging
+        first_bytes = content[:10]
+        logger.info(f"First 10 bytes of {file_path}: {first_bytes}")
+        
+        # Remove UTF-8 BOM if present (EF BB BF)
+        if content.startswith(b'\xef\xbb\xbf'):
+            logger.info(f"Removing UTF-8 BOM from {file_path}")
+            content = content[3:]
+        
+        # Remove UTF-16 BE BOM if present (FE FF)
+        elif content.startswith(b'\xfe\xff'):
+            logger.info(f"Removing UTF-16 BE BOM from {file_path}")
+            content = content[2:]
+        
+        # Remove UTF-16 LE BOM if present (FF FE)  
+        elif content.startswith(b'\xff\xfe'):
+            logger.info(f"Removing UTF-16 LE BOM from {file_path}")
+            content = content[2:]
+        
+        # Also try to remove any other common problematic characters at start
+        # Remove any non-ASCII characters before '<' 
+        while content and content[0:1] != b'<' and content[0] > 127:
+            logger.info(f"Removing problematic byte at start: {content[0:1]}")
+            content = content[1:]
+        
+        # Parse the cleaned content
+        try:
+            return ET.fromstring(content.decode('utf-8'))
+        except UnicodeDecodeError:
+            # Try with different encodings if UTF-8 fails
+            try:
+                return ET.fromstring(content.decode('utf-16'))
+            except UnicodeDecodeError:
+                return ET.fromstring(content.decode('latin-1'))
+    
     def _should_process_file(self, cursor, file_path: str, file_type_filter: str = None, force_reimport: bool = False, legislatura_filter: str = None, strict_mode: bool = False) -> bool:
         """Check if file should be processed"""
         # Check file type filter
@@ -409,7 +450,7 @@ class UnifiedImporter:
             
             # Parse XML first
             try:
-                xml_root = ET.parse(file_path).getroot()
+                xml_root = self._parse_xml_with_bom_handling(file_path)
                 file_info = {
                     'file_path': file_path,
                     'file_type': file_type,
@@ -422,6 +463,10 @@ class UnifiedImporter:
                     SET status = 'failed', processing_completed_at = ?, error_message = ?
                     WHERE file_path = ? AND file_hash = ?
                 """, (datetime.now().isoformat(), error_msg, file_path, file_hash))
+                
+                # Commit the status update
+                cursor.connection.commit()
+                
                 logger.error(f"Failed to parse XML {file_path}: {error_msg}")
                 if strict_mode:
                     logger.error(f"STRICT MODE: Exiting due to XML parsing error in {file_path}")
@@ -458,6 +503,9 @@ class UnifiedImporter:
                         file_path, file_hash
                     ))
                     
+                    # Commit the status update
+                    cursor.connection.commit()
+                    
                     logger.info(f"Successfully processed {file_path}: {results.get('records_imported', 0)} records imported")
                     return True
                     
@@ -469,6 +517,9 @@ class UnifiedImporter:
                     SET status = 'failed', processing_completed_at = ?, error_message = ?
                     WHERE file_path = ? AND file_hash = ?
                 """, (datetime.now().isoformat(), error_msg, file_path, file_hash))
+                
+                # Commit the status update
+                cursor.connection.commit()
                 
                 logger.error(f"Failed to process {file_path}: {error_msg}")
                 if strict_mode:

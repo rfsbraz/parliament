@@ -1729,6 +1729,7 @@ class AtividadeParlamentar(Base):
     data_agendamento_debate = Column(Date)
     tipo_autor = Column(String(100))
     autores_gp = Column(Text)
+    textos_aprovados = Column(Text)  # Missing approved texts field
     observacoes = Column(Text)
     
     created_at = Column(DateTime, default=func.now())
@@ -1757,6 +1758,8 @@ class AtividadeParlamentarPublicacao(Base):
     url_diario = Column(Text)
     id_pag = Column(Integer)
     id_deb = Column(Integer)
+    supl = Column(String(100))  # Missing supplement field
+    obs = Column(Text)  # Missing observations field
     
     created_at = Column(DateTime, default=func.now())
     
@@ -1771,9 +1774,13 @@ class AtividadeParlamentarVotacao(Base):
     
     votacao_id = Column(Integer)
     resultado = Column(String(100))
+    unanime = Column(Boolean)  # Missing unanimous field
     reuniao = Column(String(100))
     publicacao = Column(String(200))
     data = Column(Date)
+    detalhe = Column(Text)  # Missing voting detail field
+    descricao = Column(Text)  # Missing voting description field
+    ausencias = Column(Text)  # Missing voting absences field
     
     created_at = Column(DateTime, default=func.now())
     
@@ -1820,13 +1827,43 @@ class DebateParlamentar(Base):
     tipo_debate_desig = Column(String(200))
     data_debate = Column(Date)
     tipo_debate = Column(String(100))
+    sessao = Column(Integer)  # Missing session field
     assunto = Column(Text)
+    tipo_autor = Column(String(100))  # Missing TipoAutor field
+    autores_deputados = Column(Text)  # Missing authors field
+    autores_gp = Column(Text)  # Missing AutoresGP field
+    data_entrada = Column(Date)  # Missing DataEntrada field
     intervencoes = Column(Text)
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
     legislatura = relationship("Legislatura", backref="debates_parlamentares")
+    publicacoes = relationship("DebateParlamentarPublicacao", back_populates="debate", cascade="all, delete-orphan")
+
+
+class DebateParlamentarPublicacao(Base):
+    __tablename__ = 'debate_parlamentar_publicacoes'
+    
+    id = Column(Integer, primary_key=True)
+    debate_id = Column(Integer, ForeignKey('debate_parlamentar.id'), nullable=False)
+    
+    pub_nr = Column(Integer)
+    pub_tipo = Column(String(100))
+    pub_tp = Column(String(50))
+    pub_leg = Column(String(50))
+    pub_sl = Column(Integer)
+    pub_dt = Column(Date)
+    pag = Column(Text)
+    url_diario = Column(Text)
+    id_pag = Column(Integer)
+    id_deb = Column(Integer)
+    supl = Column(String(100))  # Missing supplement field
+    obs = Column(Text)  # Observations field
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    debate = relationship("DebateParlamentar", back_populates="publicacoes")
 
 
 class RelatorioParlamentar(Base):
@@ -1838,8 +1875,11 @@ class RelatorioParlamentar(Base):
     # Core fields
     relatorio_id = Column(Integer, unique=True)  # External ID if available
     tipo = Column(String(100))
+    desc_tipo = Column(String(200))  # Missing DescTipo field
     assunto = Column(Text)
+    sessao = Column(Integer)  # Missing session field
     data_entrada = Column(Date)
+    data_agendamento_debate = Column(Date)  # Missing DataAgendamentoDebate field
     comissao = Column(String(200))
     entidades_externas = Column(Text)
     
@@ -1847,6 +1887,31 @@ class RelatorioParlamentar(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
     legislatura = relationship("Legislatura", backref="relatorios_parlamentares")
+    publicacoes = relationship("RelatorioParlamentarPublicacao", back_populates="relatorio", cascade="all, delete-orphan")
+
+
+class RelatorioParlamentarPublicacao(Base):
+    __tablename__ = 'relatorio_parlamentar_publicacoes'
+    
+    id = Column(Integer, primary_key=True)
+    relatorio_id = Column(Integer, ForeignKey('relatorio_parlamentar.id'), nullable=False)
+    
+    pub_nr = Column(Integer)
+    pub_tipo = Column(String(100))
+    pub_tp = Column(String(50))
+    pub_leg = Column(String(50))
+    pub_sl = Column(Integer)
+    pub_dt = Column(Date)
+    pag = Column(Text)
+    url_diario = Column(Text)
+    id_pag = Column(Integer)
+    id_deb = Column(Integer)
+    supl = Column(String(100))  # Missing supplement field
+    obs = Column(Text)  # Observations field
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    relatorio = relationship("RelatorioParlamentar", back_populates="publicacoes")
 
 
 # Initiative models

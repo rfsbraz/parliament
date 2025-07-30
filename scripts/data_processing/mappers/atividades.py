@@ -44,28 +44,197 @@ class AtividadesMapper(SchemaMapper):
     
     def get_expected_fields(self) -> Set[str]:
         return {
-            'Atividades', 'AtividadesGerais', 'Debates', 'Audicoes', 
-            'Audiencias', 'Deslocacoes', 'Eventos', 'Relatorios',
-            # General Activities
-            'Atividade', 'Tipo', 'DescTipo', 'Assunto', 'Legislatura', 'Sessao',
-            'DataEntrada', 'Publicacao', 'DataAgendamentoDebate', 'PublicacaoDebate',
-            'Numero', 'TipoAutor', 'AutoresGP', 'VotacaoDebate', 'TextosAprovados',
-            'OrgaoExterior', 'Eleitos', 'Observacoes', 'Convidados',
-            # Publications
-            'pt_gov_ar_objectos_PublicacoesOut', 'pubNr', 'pubTipo', 'pubTp', 
-            'pubLeg', 'pubSL', 'pubdt', 'pag', 'URLDiario', 'idPag', 'idDeb',
-            # Voting
-            'pt_gov_ar_objectos_VotacaoOut', 'id', 'resultado', 'reuniao', 
-            'publicacao', 'data',
-            # Elected members
-            'pt_gov_ar_objectos_EleitosOut', 'nome', 'cargo',
-            # Guests/Invitees  
-            'pt_gov_ar_objectos_ConvidadosOut', 'pais', 'honra',
-            # Debates
-            'DadosPesquisaDebatesOut', 'DebateId', 'TipoDebateDesig', 'DataDebate',
-            'TipoDebate', 'Intervencoes',
-            # Reports
-            'Relatorio', 'Comissao', 'EntidadesExternas'
+            # Root structure
+            'Atividades', 'Atividades.AtividadesGerais', 
+            
+            # Activities section
+            'Atividades.AtividadesGerais.Atividades', 'Atividades.AtividadesGerais.Atividades.Atividade',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Tipo',
+            'Atividades.AtividadesGerais.Atividades.Atividade.DescTipo',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Assunto',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Legislatura',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Sessao',
+            'Atividades.AtividadesGerais.Atividades.Atividade.DataEntrada',
+            'Atividades.AtividadesGerais.Atividades.Atividade.DataAgendamentoDebate',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Numero',
+            'Atividades.AtividadesGerais.Atividades.Atividade.TipoAutor',
+            'Atividades.AtividadesGerais.Atividades.Atividade.AutoresGP',
+            'Atividades.AtividadesGerais.Atividades.Atividade.AutoresGP.string',
+            'Atividades.AtividadesGerais.Atividades.Atividade.TextosAprovados',
+            'Atividades.AtividadesGerais.Atividades.Atividade.TextosAprovados.string',
+            'Atividades.AtividadesGerais.Atividades.Atividade.OrgaoExterior',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Observacoes',
+            
+            # Activity Publications
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idDeb',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.supl',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            
+            # Activity Debate Publications
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.idDeb',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.obs',
+            
+            # Activity Voting
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.id',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.resultado',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.unanime',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.descricao',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.ausencias',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.ausencias.string',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.reuniao',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.data',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.idDeb',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            
+            # Reports section
+            'Atividades.AtividadesGerais.Relatorios', 'Atividades.AtividadesGerais.Relatorios.Relatorio',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Tipo',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.DescTipo',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Assunto',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Legislatura',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Sessao',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.DataEntrada',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.DataAgendamentoDebate',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Comissao',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.EntidadesExternas',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.EntidadesExternas.string',
+            
+            # Report Publications
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idDeb',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.supl',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            
+            # Report Debate Publications
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.idDeb',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.obs',
+            
+            # Debates section
+            'Atividades.Debates', 'Atividades.Debates.DadosPesquisaDebatesOut',
+            'Atividades.Debates.DadosPesquisaDebatesOut.DebateId',
+            'Atividades.Debates.DadosPesquisaDebatesOut.TipoDebateDesig',
+            'Atividades.Debates.DadosPesquisaDebatesOut.TipoDebate',
+            'Atividades.Debates.DadosPesquisaDebatesOut.DataDebate',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Sessao',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Legislatura',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Assunto',
+            'Atividades.Debates.DadosPesquisaDebatesOut.TipoAutor',
+            'Atividades.Debates.DadosPesquisaDebatesOut.AutoresDeputados',
+            'Atividades.Debates.DadosPesquisaDebatesOut.AutoresGP',
+            'Atividades.Debates.DadosPesquisaDebatesOut.DataEntrada',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Intervencoes',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Intervencoes.string',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idDeb',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            
+            # Deslocacoes section
+            'Atividades.Deslocacoes',
+            
+            # Audicoes section
+            'Atividades.Audicoes',
+            
+            # Audiencias section  
+            'Atividades.Audiencias',
+            
+            # Eventos section
+            'Atividades.Eventos',
+            
+            # Eleitos nested structures
+            'Atividades.AtividadesGerais.Atividades.Atividade.Eleitos',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Eleitos.pt_gov_ar_objectos_EleitosOut',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Eleitos.pt_gov_ar_objectos_EleitosOut.nome',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Eleitos.pt_gov_ar_objectos_EleitosOut.cargo',
+            
+            # Convidados nested structures
+            'Atividades.AtividadesGerais.Atividades.Atividade.Convidados',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Convidados.pt_gov_ar_objectos_ConvidadosOut',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Convidados.pt_gov_ar_objectos_ConvidadosOut.nome',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Convidados.pt_gov_ar_objectos_ConvidadosOut.cargo',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Convidados.pt_gov_ar_objectos_ConvidadosOut.pais',
+            'Atividades.AtividadesGerais.Atividades.Atividade.Convidados.pt_gov_ar_objectos_ConvidadosOut.honra',
+            
+            # Nested pag.string structures for all publication types
+            'Atividades.AtividadesGerais.Atividades.Atividade.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'Atividades.AtividadesGerais.Atividades.Atividade.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            
+            # Missing voting detail field
+            'Atividades.AtividadesGerais.Atividades.Atividade.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.detalhe',
+            
+            # Additional sections that might be present but not mapped yet
+            'Atividades.AtividadesGerais.Debates', 'Atividades.AtividadesGerais.Audicoes', 
+            'Atividades.AtividadesGerais.Audiencias', 'Atividades.AtividadesGerais.Deslocacoes',
+            'Atividades.AtividadesGerais.Eventos'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -89,6 +258,10 @@ class AtividadesMapper(SchemaMapper):
                         results['records_processed'] += 1
                         if success:
                             results['records_imported'] += 1
+                        else:
+                            error_msg = f"Failed to process activity record"
+                            logger.error(error_msg)
+                            results['errors'].append(error_msg)
                     except Exception as e:
                         error_msg = f"Activity processing error: {str(e)}"
                         logger.error(error_msg)
@@ -105,6 +278,10 @@ class AtividadesMapper(SchemaMapper):
                         results['records_processed'] += 1
                         if success:
                             results['records_imported'] += 1
+                        else:
+                            error_msg = f"Failed to process debate record"
+                            logger.error(error_msg)
+                            results['errors'].append(error_msg)
                     except Exception as e:
                         error_msg = f"Debate processing error: {str(e)}"
                         logger.error(error_msg)
@@ -121,6 +298,10 @@ class AtividadesMapper(SchemaMapper):
                         results['records_processed'] += 1
                         if success:
                             results['records_imported'] += 1
+                        else:
+                            error_msg = f"Failed to process report record"
+                            logger.error(error_msg)
+                            results['errors'].append(error_msg)
                     except Exception as e:
                         error_msg = f"Report processing error: {str(e)}"
                         logger.error(error_msg)
@@ -250,6 +431,7 @@ class AtividadesMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing activity: {e}")
+            self.session.rollback()
             return False
     
     def _process_debate(self, debate: ET.Element, legislatura: Legislatura) -> bool:
@@ -301,6 +483,7 @@ class AtividadesMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing debate: {e}")
+            self.session.rollback()
             return False
     
     def _process_relatorio(self, relatorio: ET.Element, legislatura: Legislatura) -> bool:
@@ -334,6 +517,7 @@ class AtividadesMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing report: {e}")
+            self.session.rollback()
             return False
     
     def _map_activity_type(self, tipo: str) -> Optional[str]:
@@ -360,25 +544,27 @@ class AtividadesMapper(SchemaMapper):
             return element.text.strip()
         return None
     
-    def _parse_date(self, date_str: str) -> Optional[str]:
-        """Parse date string to ISO format"""
+    def _parse_date(self, date_str: str) -> Optional[object]:
+        """Parse date string to Python date object"""
         if not date_str:
             return None
         
         try:
+            from datetime import datetime
+            
             # Try ISO format first
             if re.match(r'\d{4}-\d{2}-\d{2}', date_str):
-                return date_str
+                return datetime.strptime(date_str, '%Y-%m-%d').date()
             
             # Try DD/MM/YYYY format
             if '/' in date_str:
                 parts = date_str.split('/')
                 if len(parts) == 3:
                     day, month, year = parts
-                    return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+                    return datetime.strptime(f"{year}-{month.zfill(2)}-{day.zfill(2)}", '%Y-%m-%d').date()
             
-        except (ValueError, IndexError):
-            logger.warning(f"Could not parse date: {date_str}")
+        except (ValueError, IndexError) as e:
+            logger.warning(f"Could not parse date: {date_str} - {e}")
         
         return None
     
