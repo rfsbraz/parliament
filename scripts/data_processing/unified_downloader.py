@@ -149,6 +149,13 @@ def download_file(url, filename, folder_path, overwrite, headers, indent_level=1
         file_type = 'XSD'
         mode = 'w'
         content_attr = 'text'
+    elif filename.endswith('.zip'):
+        safe_filename_str = safe_filename(filename)
+        if not safe_filename_str.endswith('.zip'):
+            safe_filename_str += '.zip'
+        file_type = 'ZIP'
+        mode = 'wb'
+        content_attr = 'content'
     else:
         return False
     
@@ -190,7 +197,7 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
     # Check if it's a downloadable file first
     if ('.' in level_name and 
         (level_name.endswith('.xml') or level_name.endswith('_json.txt') or level_name.endswith('.json.txt') or
-         level_name.endswith('.pdf') or level_name.endswith('.xsd'))):
+         level_name.endswith('.pdf') or level_name.endswith('.xsd') or level_name.endswith('.zip'))):
         return download_file(url, level_name, folder_path, overwrite, headers, len(indent))
     
     # Check if URL points to a file (even if name doesn't have extension)
@@ -199,7 +206,7 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
         url_filename = clean_url.split('/')[-1] if '/' in clean_url else ''
         
         if (url_filename.endswith('.xml') or url_filename.endswith('_json.txt') or url_filename.endswith('.json.txt') or
-            url_filename.endswith('.pdf') or url_filename.endswith('.xsd')):
+            url_filename.endswith('.pdf') or url_filename.endswith('.xsd') or url_filename.endswith('.zip')):
             print(f"{indent}URL points to file: {url_filename}")
             return download_file(url, url_filename, folder_path, overwrite, headers, len(indent))
     
@@ -251,7 +258,7 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
             print(f"{indent}Processing failed at URL: {url}")
             sys.exit(1)
     else:
-        print(f"{indent}ERROR: Unknown file type '{level_name}' (expected .xml, _json.txt, .pdf, or .xsd)")
+        print(f"{indent}ERROR: Unknown file type '{level_name}' (expected .xml, _json.txt, .pdf, .xsd, or .zip)")
         print(f"{indent}Processing failed at URL: {url}")
         sys.exit(1)
 
