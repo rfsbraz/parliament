@@ -522,10 +522,14 @@ class UnifiedImporter:
                 cursor.connection.commit()
                 
                 logger.error(f"Failed to process {file_path}: {error_msg}")
+                
+                # Check for strict mode - must exit immediately
                 if strict_mode:
-                    logger.error(f"STRICT MODE: Exiting due to processing error in {file_path}")
+                    logger.error(f"STRICT MODE: Exiting immediately due to processing error in {file_path}")
                     logger.error(f"Error details: {traceback.format_exc()}")
+                    # Force immediate exit - no further processing
                     sys.exit(1)
+                
                 return False
                     
         except Exception as e:
@@ -594,7 +598,7 @@ class UnifiedImporter:
             shutil.copy2(self.db_path, backup_path)
             logger.info(f"Backup created successfully: {backup_path}")
             
-            # Get all table names
+            # Get all table names and truncate them
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
@@ -622,14 +626,19 @@ class UnifiedImporter:
                 # Re-enable foreign key constraints
                 cursor.execute("PRAGMA foreign_keys=ON")
                 
-                # Vacuum to reclaim space
-                logger.info("Vacuuming database to reclaim space...")
-                cursor.execute("VACUUM")
-                
                 conn.commit()
-                logger.info("Database cleanup completed successfully")
-                
-                # Show final statistics
+                logger.info("Tables truncated successfully")
+            
+            # Vacuum to reclaim space (must be done outside transaction)
+            logger.info("Vacuuming database to reclaim space...")
+            conn = sqlite3.connect(self.db_path)
+            conn.execute("VACUUM")
+            conn.close()
+            logger.info("Database vacuum completed successfully")
+            
+            # Show final statistics
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
                 cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
                 table_count = cursor.fetchone()[0]
                 

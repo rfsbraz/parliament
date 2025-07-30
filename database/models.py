@@ -1730,6 +1730,7 @@ class AtividadeParlamentar(Base):
     tipo_autor = Column(String(100))
     autores_gp = Column(Text)
     textos_aprovados = Column(Text)  # Missing approved texts field
+    resultado_votacao_pontos = Column(Text)  # Missing ResultadoVotacaoPontos field
     observacoes = Column(Text)
     
     created_at = Column(DateTime, default=func.now())
@@ -1834,6 +1835,7 @@ class DebateParlamentar(Base):
     autores_gp = Column(Text)  # Missing AutoresGP field
     data_entrada = Column(Date)  # Missing DataEntrada field
     intervencoes = Column(Text)
+    observacoes = Column(Text)  # Missing Observacoes field for debates
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -1882,12 +1884,16 @@ class RelatorioParlamentar(Base):
     data_agendamento_debate = Column(Date)  # Missing DataAgendamentoDebate field
     comissao = Column(String(200))
     entidades_externas = Column(Text)
+    textos_aprovados = Column(Text)  # Missing TextosAprovados field for reports
+    observacoes = Column(Text)  # Missing Observacoes field
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
     legislatura = relationship("Legislatura", backref="relatorios_parlamentares")
     publicacoes = relationship("RelatorioParlamentarPublicacao", back_populates="relatorio", cascade="all, delete-orphan")
+    votacoes = relationship("RelatorioParlamentarVotacao", back_populates="relatorio", cascade="all, delete-orphan")
+    relatores = relationship("RelatorioParlamentarRelator", back_populates="relatorio", cascade="all, delete-orphan")
 
 
 class RelatorioParlamentarPublicacao(Base):
@@ -1912,6 +1918,111 @@ class RelatorioParlamentarPublicacao(Base):
     created_at = Column(DateTime, default=func.now())
     
     relatorio = relationship("RelatorioParlamentar", back_populates="publicacoes")
+
+
+class RelatorioParlamentarVotacao(Base):
+    __tablename__ = 'relatorio_parlamentar_votacoes'
+    
+    id = Column(Integer, primary_key=True)
+    relatorio_id = Column(Integer, ForeignKey('relatorio_parlamentar.id'), nullable=False)
+    
+    votacao_id = Column(Integer)
+    id_votacao = Column(Integer)  # VotacaoRelatorio.id field
+    resultado = Column(String(100))
+    unanime = Column(Boolean)  # VotacaoRelatorio.unanime field
+    descricao = Column(Text)  # VotacaoRelatorio.descricao
+    reuniao = Column(String(100))
+    data = Column(Date)
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    relatorio = relationship("RelatorioParlamentar", back_populates="votacoes")
+    publicacao = relationship("RelatorioParlamentarVotacaoPublicacao", back_populates="votacao", cascade="all, delete-orphan")
+
+
+class RelatorioParlamentarVotacaoPublicacao(Base):
+    __tablename__ = 'relatorio_parlamentar_votacao_publicacoes'
+    
+    id = Column(Integer, primary_key=True)
+    votacao_id = Column(Integer, ForeignKey('relatorio_parlamentar_votacoes.id'), nullable=False)
+    
+    pub_nr = Column(Integer)
+    pub_tipo = Column(String(100))
+    pub_tp = Column(String(50))
+    pub_leg = Column(String(50))
+    pub_sl = Column(Integer)
+    pub_dt = Column(Date)
+    pag = Column(Text)
+    url_diario = Column(Text)
+    id_pag = Column(Integer)
+    id_deb = Column(Integer)
+    obs = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    votacao = relationship("RelatorioParlamentarVotacao", back_populates="publicacao")
+
+
+class RelatorioParlamentarRelator(Base):
+    __tablename__ = 'relatorio_parlamentar_relatores'
+    
+    id = Column(Integer, primary_key=True)
+    relatorio_id = Column(Integer, ForeignKey('relatorio_parlamentar.id'), nullable=False)
+    
+    relator_id = Column(Integer)  # Relatores.pt_gov_ar_objectos_RelatoresOut.id
+    nome = Column(String(200))  # Relatores.pt_gov_ar_objectos_RelatoresOut.nome
+    gp = Column(String(100))    # Relatores.pt_gov_ar_objectos_RelatoresOut.gp
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    relatorio = relationship("RelatorioParlamentar", back_populates="relatores")
+
+
+class AudicoesParlamentares(Base):
+    __tablename__ = 'audicoes_parlamentares'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'))
+    
+    id_audicao = Column(Integer)  # IDAudicao
+    numero_audicao = Column(String(100))  # NumeroAudicao field
+    sessao_legislativa = Column(String(100))  # SessaoLegislativa field
+    assunto = Column(Text)
+    data_audicao = Column(Date)
+    data = Column(Date)  # Data field (alternative date format)
+    comissao = Column(String(200))
+    tipo_audicao = Column(String(100))
+    entidades = Column(Text)  # Entidades field
+    observacoes = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    legislatura = relationship("Legislatura", backref="audicoes_parlamentares")
+
+
+class AudienciasParlamentares(Base):
+    __tablename__ = 'audiencias_parlamentares'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'))
+    
+    id_audiencia = Column(Integer)  # IDAudiencia field
+    numero_audiencia = Column(Integer)  # NumeroAudiencia
+    sessao_legislativa = Column(String(100))  # SessaoLegislativa field
+    assunto = Column(Text)
+    data_audiencia = Column(Date)
+    data = Column(Date)  # Data field (alternative date format)
+    comissao = Column(String(200))
+    concedida = Column(Boolean)  # Concedida
+    tipo_audiencia = Column(String(100))
+    entidades = Column(Text)  # Entidades field
+    observacoes = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    legislatura = relationship("Legislatura", backref="audiencias_parlamentares")
 
 
 # Initiative models

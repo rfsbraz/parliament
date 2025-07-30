@@ -62,6 +62,7 @@ class AtividadesMapper(SchemaMapper):
             'Atividades.AtividadesGerais.Atividades.Atividade.AutoresGP.string',
             'Atividades.AtividadesGerais.Atividades.Atividade.TextosAprovados',
             'Atividades.AtividadesGerais.Atividades.Atividade.TextosAprovados.string',
+            'Atividades.AtividadesGerais.Atividades.Atividade.ResultadoVotacaoPontos',
             'Atividades.AtividadesGerais.Atividades.Atividade.OrgaoExterior',
             'Atividades.AtividadesGerais.Atividades.Atividade.Observacoes',
             
@@ -193,6 +194,7 @@ class AtividadesMapper(SchemaMapper):
             'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
             'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idDeb',
             'Atividades.Debates.DadosPesquisaDebatesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            'Atividades.Debates.DadosPesquisaDebatesOut.Observacoes',
             
             # Deslocacoes section
             'Atividades.Deslocacoes',
@@ -234,7 +236,96 @@ class AtividadesMapper(SchemaMapper):
             # Additional sections that might be present but not mapped yet
             'Atividades.AtividadesGerais.Debates', 'Atividades.AtividadesGerais.Audicoes', 
             'Atividades.AtividadesGerais.Audiencias', 'Atividades.AtividadesGerais.Deslocacoes',
-            'Atividades.AtividadesGerais.Eventos'
+            'Atividades.AtividadesGerais.Eventos',
+            
+            # IX Legislature specific fields - Report Voting and Publications
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.resultado',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.descricao',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.reuniao',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.data',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut.idDeb',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            
+            # Report voting debate section
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.id',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.resultado',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.reuniao',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.data',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.idDeb',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoDebate.pt_gov_ar_objectos_VotacaoOut.detalhe',
+            
+            # Report authors/rapporteurs section
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Relatores',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Relatores.pt_gov_ar_objectos_RelatoresOut',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Relatores.pt_gov_ar_objectos_RelatoresOut.id',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Relatores.pt_gov_ar_objectos_RelatoresOut.nome',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Relatores.pt_gov_ar_objectos_RelatoresOut.gp',
+            
+            # Report observations and texts approved
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.Observacoes',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.TextosAprovados',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.TextosAprovados.string',
+            
+            # Report voting ID field
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.id',
+            'Atividades.AtividadesGerais.Relatorios.Relatorio.VotacaoRelatorio.unanime',
+            
+            # Audicoes (Parliamentary Hearings) section
+            'Atividades.Audicoes.DadosAudicoesComissaoOut',
+            'Atividades.Audicoes.DadosAudicoesComissaoOut.IDAudicao',
+            'Atividades.Audicoes.DadosAudicoesComissaoOut.NumeroAudicao',
+            'Atividades.Audicoes.DadosAudicoesComissaoOut.SessaoLegislativa',
+            'Atividades.Audicoes.DadosAudicoesComissaoOut.Legislatura',
+            'Atividades.Audicoes.DadosAudicoesComissaoOut.Assunto',
+            'Atividades.Audicoes.DadosAudicoesComissaoOut.DataAudicao',
+            'Atividades.Audicoes.DadosAudicoesComissaoOut.Data',
+            'Atividades.Audicoes.DadosAudicoesComissaoOut.Comissao',
+            'Atividades.Audicoes.DadosAudicoesComissaoOut.TipoAudicao',
+            'Atividades.Audicoes.DadosAudicoesComissaoOut.Entidades',
+            'Atividades.Audicoes.DadosAudicoesComissaoOut.Observacoes',
+            
+            # Audiencias (Parliamentary Audiences) section  
+            'Atividades.Audiencias.DadosAudienciasComissaoOut',
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.IDAudiencia',
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.NumeroAudiencia',
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.SessaoLegislativa',
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.Legislatura',
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.Assunto',
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.DataAudiencia',
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.Data',
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.Comissao',
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.Concedida',
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.TipoAudiencia',
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.Entidades',
+            'Atividades.Audiencias.DadosAudienciasComissaoOut.Observacoes'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -262,12 +353,18 @@ class AtividadesMapper(SchemaMapper):
                             error_msg = f"Failed to process activity record"
                             logger.error(error_msg)
                             results['errors'].append(error_msg)
+                            if strict_mode:
+                                logger.error(f"STRICT MODE: Exiting due to data validation failure in activity processing")
+                                raise ValueError(f"STRICT MODE: Activity processing failed - {error_msg}")
                     except Exception as e:
                         error_msg = f"Activity processing error: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
                         results['records_processed'] += 1
                         self.session.rollback()
+                        if strict_mode:
+                            logger.error(f"STRICT MODE: Exiting due to activity processing exception")
+                            raise
             
             # Process debates
             debates = xml_root.find('.//Debates')
@@ -282,12 +379,18 @@ class AtividadesMapper(SchemaMapper):
                             error_msg = f"Failed to process debate record"
                             logger.error(error_msg)
                             results['errors'].append(error_msg)
+                            if strict_mode:
+                                logger.error(f"STRICT MODE: Exiting due to data validation failure in debate processing")
+                                raise ValueError(f"STRICT MODE: Debate processing failed - {error_msg}")
                     except Exception as e:
                         error_msg = f"Debate processing error: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
                         results['records_processed'] += 1
                         self.session.rollback()
+                        if strict_mode:
+                            logger.error(f"STRICT MODE: Exiting due to debate processing exception")
+                            raise
             
             # Process reports
             relatorios = xml_root.find('.//Relatorios')
@@ -302,12 +405,18 @@ class AtividadesMapper(SchemaMapper):
                             error_msg = f"Failed to process report record"
                             logger.error(error_msg)
                             results['errors'].append(error_msg)
+                            if strict_mode:
+                                logger.error(f"STRICT MODE: Exiting due to data validation failure in report processing")
+                                raise ValueError(f"STRICT MODE: Report processing failed - {error_msg}")
                     except Exception as e:
                         error_msg = f"Report processing error: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
                         results['records_processed'] += 1
                         self.session.rollback()
+                        if strict_mode:
+                            logger.error(f"STRICT MODE: Exiting due to report processing exception")
+                            raise
             
             # Commit all changes
             self.session.commit()
@@ -318,6 +427,12 @@ class AtividadesMapper(SchemaMapper):
             logger.error(error_msg)
             results['errors'].append(error_msg)
             self.session.rollback()
+            
+            # In strict mode, re-raise the exception to trigger immediate exit
+            if strict_mode:
+                logger.error(f"STRICT MODE: Re-raising exception to trigger immediate exit")
+                raise
+            
             return results
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
@@ -348,6 +463,17 @@ class AtividadesMapper(SchemaMapper):
     def _process_atividade(self, atividade: ET.Element, legislatura: Legislatura) -> bool:
         """Process individual parliamentary activity"""
         try:
+            # First check if this is an empty/placeholder record
+            has_content = any(
+                child.text and child.text.strip() 
+                for child in atividade.iter() 
+                if child != atividade  # Don't count the parent element itself
+            )
+            
+            if not has_content:
+                logger.debug("Skipping empty activity record (no content found)")
+                return True  # Successfully skip empty records
+            
             # Extract basic fields
             tipo = self._get_text_value(atividade, 'Tipo')
             desc_tipo = self._get_text_value(atividade, 'DescTipo')
@@ -357,7 +483,7 @@ class AtividadesMapper(SchemaMapper):
             autores_gp = self._get_text_value(atividade, 'AutoresGP')
             observacoes = self._get_text_value(atividade, 'Observacoes')
             
-            # Extract dates
+            # Extract dates with comprehensive fallback strategy
             data_entrada_str = self._get_text_value(atividade, 'DataEntrada')
             data_agendamento_str = self._get_text_value(atividade, 'DataAgendamentoDebate')
             
@@ -365,12 +491,47 @@ class AtividadesMapper(SchemaMapper):
             data_agendamento_debate = self._parse_date(data_agendamento_str)
             data_atividade = data_entrada or data_agendamento_debate
             
+            # If no primary dates found, try fallback date sources
             if not data_atividade:
-                logger.warning(f"No valid date found for activity: {assunto[:50] if assunto else 'Unknown'}")
-                return False
+                # Try publication dates from nested structures
+                pub_date_str = None
+                publicacao = atividade.find('.//Publicacao//pubdt')
+                if publicacao is not None and publicacao.text:
+                    pub_date_str = publicacao.text
+                    data_atividade = self._parse_date(pub_date_str)
+                
+                # Try voting dates if still no date found  
+                if not data_atividade:
+                    voting_date = atividade.find('.//VotacaoDebate//data')
+                    if voting_date is not None and voting_date.text:
+                        voting_date_str = voting_date.text
+                        data_atividade = self._parse_date(voting_date_str)
+                        
+                # Try general date elements
+                if not data_atividade:
+                    general_date = atividade.find('.//data')
+                    if general_date is not None and general_date.text:
+                        general_date_str = general_date.text
+                        data_atividade = self._parse_date(general_date_str)
+                        
+                # Log what fallback sources were attempted
+                if data_atividade:
+                    logger.info(f"Used fallback date source for activity: {assunto[:50] if assunto else 'Unknown'}")
+                else:
+                    logger.warning(f"DATA VALIDATION FAILURE: No valid date found for activity: {assunto[:50] if assunto else 'Unknown'}")
+                    logger.warning(f"Primary date fields - DataEntrada: {data_entrada_str}, DataAgendamentoDebate: {data_agendamento_str}")
+                    logger.warning(f"Fallback attempts - Publication date: {pub_date_str if 'pub_date_str' in locals() else 'None'}")
+                    
+                    # Before giving up, let's examine what fields ARE available
+                    available_fields = []
+                    for child in atividade:
+                        if child.text and child.text.strip():
+                            available_fields.append(f"{child.tag}={child.text[:20]}")
+                    logger.warning(f"Available fields in failing activity: {', '.join(available_fields[:10])}")
+                    return False
             
             if not assunto:
-                logger.warning("Missing required field: Assunto")
+                logger.warning("DATA VALIDATION FAILURE: Missing required field: Assunto")
                 return False
             
             # Create external ID from numero
@@ -437,6 +598,17 @@ class AtividadesMapper(SchemaMapper):
     def _process_debate(self, debate: ET.Element, legislatura: Legislatura) -> bool:
         """Process debate data"""
         try:
+            # First check if this is an empty/placeholder record
+            has_content = any(
+                child.text and child.text.strip() 
+                for child in debate.iter() 
+                if child != debate  # Don't count the parent element itself
+            )
+            
+            if not has_content:
+                logger.debug("Skipping empty debate record (no content found)")
+                return True  # Successfully skip empty records
+            
             debate_id = self._get_text_value(debate, 'DebateId')
             tipo_debate_desig = self._get_text_value(debate, 'TipoDebateDesig')
             data_debate_str = self._get_text_value(debate, 'DataDebate')
@@ -445,11 +617,83 @@ class AtividadesMapper(SchemaMapper):
             intervencoes = self._get_text_value(debate, 'Intervencoes')
             
             if not debate_id or not assunto:
-                return False
+                # Before failing, try alternative field names for assunto
+                if not assunto:
+                    # Try alternative subject field names
+                    assunto = (self._get_text_value(debate, 'Titulo') or 
+                              self._get_text_value(debate, 'Tema') or
+                              self._get_text_value(debate, 'Materia') or
+                              self._get_text_value(debate, 'TipoDebateDesig'))
+                
+                # If still no assunto, generate one from available information
+                if not assunto:
+                    sessao = self._get_text_value(debate, 'Sessao')
+                    legislatura_nome = self._get_text_value(debate, 'Legislatura')  # Use different variable name
+                    tipo_autor = self._get_text_value(debate, 'TipoAutor')
+                    
+                    assunto_parts = []
+                    if tipo_debate_desig:
+                        assunto_parts.append(tipo_debate_desig)
+                    if tipo_debate:
+                        assunto_parts.append(tipo_debate)
+                    if tipo_autor:
+                        assunto_parts.append(f"({tipo_autor})")
+                    if legislatura_nome and sessao:
+                        assunto_parts.append(f"Leg.{legislatura_nome} Ses.{sessao}")
+                    
+                    assunto = " - ".join(assunto_parts) if assunto_parts else f"Debate {debate_id}"
+                    logger.info(f"Generated subject for debate {debate_id}: {assunto}")
+                
+                if not debate_id:
+                    logger.warning(f"DATA VALIDATION FAILURE: Missing required DebateId")
+                    
+                    # Show available fields for debugging
+                    available_fields = []
+                    for child in debate:
+                        if child.text and child.text.strip():
+                            available_fields.append(f"{child.tag}={child.text[:30]}")
+                    logger.warning(f"Available fields in failing debate: {', '.join(available_fields[:10])}")
+                    return False
             
             data_debate = self._parse_date(data_debate_str)
+            
+            # If no primary date found, try fallback date sources
             if not data_debate:
-                return False
+                # Try publication dates from nested structures
+                pub_date_str = None
+                publicacao = debate.find('.//Publicacao//pubdt')
+                if publicacao is not None and publicacao.text:
+                    pub_date_str = publicacao.text
+                    data_debate = self._parse_date(pub_date_str)
+                
+                # Try general date elements if still no date found
+                if not data_debate:
+                    general_date = debate.find('.//data')
+                    if general_date is not None and general_date.text:
+                        general_date_str = general_date.text
+                        data_debate = self._parse_date(general_date_str)
+                
+                # Try DataEntrada as fallback (common in some debate records)
+                if not data_debate:
+                    data_entrada_str = self._get_text_value(debate, 'DataEntrada')
+                    if data_entrada_str:
+                        data_debate = self._parse_date(data_entrada_str)
+                        
+                # Log what fallback sources were attempted
+                if data_debate:
+                    logger.info(f"Used fallback date source for debate: {assunto[:50] if assunto else 'Unknown'}")
+                else:
+                    logger.warning(f"DATA VALIDATION FAILURE: No valid date found for debate: {assunto[:50] if assunto else 'Unknown'}")
+                    logger.warning(f"Primary date field - DataDebate: {data_debate_str}")
+                    logger.warning(f"Fallback attempts - Publication date: {pub_date_str if 'pub_date_str' in locals() else 'None'}")
+                    
+                    # Before giving up, let's examine what fields ARE available
+                    available_fields = []
+                    for child in debate:
+                        if child.text and child.text.strip():
+                            available_fields.append(f"{child.tag}={child.text[:20]}")
+                    logger.warning(f"Available fields in failing debate: {', '.join(available_fields[:10])}")
+                    return False
             
             debate_id_int = int(debate_id)
             
@@ -465,9 +709,19 @@ class AtividadesMapper(SchemaMapper):
                 existing.tipo_debate = tipo_debate
                 existing.assunto = assunto
                 existing.intervencoes = intervencoes
-                existing.legislatura_id = legislatura.id
+                # Ensure legislatura has an ID
+                if hasattr(legislatura, 'id') and legislatura.id:
+                    existing.legislatura_id = legislatura.id
+                else:
+                    logger.error(f"Legislatura object missing ID: {type(legislatura)} = {legislatura}")
+                    return False
             else:
-                # Create new debate record
+                # Create new debate record  
+                # Ensure legislatura has an ID
+                if not hasattr(legislatura, 'id') or not legislatura.id:
+                    logger.error(f"Legislatura object missing ID: {type(legislatura)} = {legislatura}")
+                    return False
+                    
                 debate_obj = DebateParlamentar(
                     debate_id=debate_id_int,
                     tipo_debate_desig=tipo_debate_desig,
@@ -489,6 +743,17 @@ class AtividadesMapper(SchemaMapper):
     def _process_relatorio(self, relatorio: ET.Element, legislatura: Legislatura) -> bool:
         """Process report data"""
         try:
+            # First check if this is an empty/placeholder record
+            has_content = any(
+                child.text and child.text.strip() 
+                for child in relatorio.iter() 
+                if child != relatorio  # Don't count the parent element itself
+            )
+            
+            if not has_content:
+                logger.debug("Skipping empty report record (no content found)")
+                return True  # Successfully skip empty records
+            
             tipo = self._get_text_value(relatorio, 'Tipo')
             assunto = self._get_text_value(relatorio, 'Assunto')
             data_entrada_str = self._get_text_value(relatorio, 'DataEntrada')
@@ -496,10 +761,13 @@ class AtividadesMapper(SchemaMapper):
             entidades_externas = self._get_text_value(relatorio, 'EntidadesExternas')
             
             if not assunto:
+                logger.warning(f"DATA VALIDATION FAILURE: Missing required report field - Assunto")
                 return False
             
             data_entrada = self._parse_date(data_entrada_str)
             if not data_entrada:
+                logger.warning(f"DATA VALIDATION FAILURE: No valid date found for report: {assunto[:50] if assunto else 'Unknown'}")
+                logger.warning(f"Date field checked - DataEntrada: {data_entrada_str}")
                 return False
             
             # Create new report record (no external ID available, so always create new)

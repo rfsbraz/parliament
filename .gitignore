@@ -98,3 +98,4 @@ Thumbs.db
 .claude/
 parlamento.db-shm
 parlamento.db-wal
+*.db.backup*
