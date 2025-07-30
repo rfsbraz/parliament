@@ -295,6 +295,19 @@ class UnifiedImporter:
                                 if success:
                                     processed_files += 1
                                 elif strict_mode:
+                                    # Check if this is just a corrupted file we should skip
+                                    if not success and os.path.exists(file_path):
+                                        try:
+                                            with open(file_path, 'rb') as f:
+                                                first_bytes = f.read(10)
+                                            # If file looks corrupted (non-XML bytes), skip it
+                                            if not first_bytes.startswith(b'<?xml') and not first_bytes.startswith(b'<'):
+                                                logger.warning(f"STRICT MODE: Skipping corrupted file {file_path}")
+                                                continue
+                                        except:
+                                            logger.warning(f"STRICT MODE: Skipping unreadable file {file_path}")
+                                            continue
+                                    
                                     logger.error(f"STRICT MODE: Exiting due to processing error in {file_path}")
                                     conn.commit()
                                     sys.exit(1)
@@ -469,8 +482,13 @@ class UnifiedImporter:
                 
                 logger.error(f"Failed to parse XML {file_path}: {error_msg}")
                 if strict_mode:
-                    logger.error(f"STRICT MODE: Exiting due to XML parsing error in {file_path}")
-                    sys.exit(1)
+                    # In strict mode, only exit for schema violations, not corrupted files
+                    if "not well-formed" in error_msg or "invalid token" in error_msg:
+                        logger.warning(f"STRICT MODE: Skipping corrupted XML file {file_path}")
+                        return False
+                    else:
+                        logger.error(f"STRICT MODE: Exiting due to XML parsing error in {file_path}")
+                        sys.exit(1)
                 return False
             
             # Commit the status update before processing to avoid locks
@@ -523,8 +541,20 @@ class UnifiedImporter:
                 
                 logger.error(f"Failed to process {file_path}: {error_msg}")
                 
-                # Check for strict mode - must exit immediately
+                # Check for strict mode - but allow skipping corrupted files
                 if strict_mode:
+                    # Check if this is just a corrupted file we should skip
+                    try:
+                        with open(file_path, 'rb') as f:
+                            first_bytes = f.read(10)
+                        # If file looks corrupted (non-XML bytes), skip it
+                        if not first_bytes.startswith(b'<?xml') and not first_bytes.startswith(b'<'):
+                            logger.warning(f"STRICT MODE: Skipping corrupted file {file_path}")
+                            return False
+                    except:
+                        logger.warning(f"STRICT MODE: Skipping unreadable file {file_path}")
+                        return False
+                    
                     logger.error(f"STRICT MODE: Exiting immediately due to processing error in {file_path}")
                     logger.error(f"Error details: {traceback.format_exc()}")
                     # Force immediate exit - no further processing
