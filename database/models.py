@@ -1435,3 +1435,171 @@ class DiplomaIniciativa(Base):
     created_at = Column(DateTime, default=func.now())
     
     diploma = relationship("DiplomaAprovado", back_populates="iniciativas")
+
+
+class PerguntaRequerimento(Base):
+    __tablename__ = 'perguntas_requerimentos'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core fields
+    requerimento_id = Column(Integer, unique=True)  # External ID
+    tipo = Column(String(100))
+    nr = Column(Integer)
+    req_tipo = Column(String(100))
+    sessao = Column(Integer)
+    assunto = Column(Text)
+    dt_entrada = Column(Date)
+    data_envio = Column(Date)
+    observacoes = Column(Text)
+    ficheiro = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    legislatura = relationship("Legislatura", backref="perguntas_requerimentos")
+    publicacoes = relationship("PerguntaRequerimentoPublicacao", back_populates="pergunta_requerimento", cascade="all, delete-orphan")
+    destinatarios = relationship("PerguntaRequerimentoDestinatario", back_populates="pergunta_requerimento", cascade="all, delete-orphan")
+    autores = relationship("PerguntaRequerimentoAutor", back_populates="pergunta_requerimento", cascade="all, delete-orphan")
+
+
+class PerguntaRequerimentoPublicacao(Base):
+    __tablename__ = 'pergunta_requerimento_publicacoes'
+    
+    id = Column(Integer, primary_key=True)
+    pergunta_requerimento_id = Column(Integer, ForeignKey('perguntas_requerimentos.id'), nullable=False)
+    
+    pub_nr = Column(Integer)
+    pub_tipo = Column(String(50))
+    pub_tp = Column(String(10))
+    pub_leg = Column(String(20))
+    pub_sl = Column(Integer)
+    pub_dt = Column(Date)
+    id_pag = Column(Integer)
+    url_diario = Column(Text)
+    pag = Column(Text)
+    supl = Column(String(10))
+    obs = Column(Text)
+    pag_final_diario_supl = Column(String(50))
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    pergunta_requerimento = relationship("PerguntaRequerimento", back_populates="publicacoes")
+
+
+class PerguntaRequerimentoDestinatario(Base):
+    __tablename__ = 'pergunta_requerimento_destinatarios'
+    
+    id = Column(Integer, primary_key=True)
+    pergunta_requerimento_id = Column(Integer, ForeignKey('perguntas_requerimentos.id'), nullable=False)
+    
+    nome_entidade = Column(String(200))
+    data_envio = Column(Date)
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    pergunta_requerimento = relationship("PerguntaRequerimento", back_populates="destinatarios")
+    respostas = relationship("PerguntaRequerimentoResposta", back_populates="destinatario", cascade="all, delete-orphan")
+
+
+class PerguntaRequerimentoResposta(Base):
+    __tablename__ = 'pergunta_requerimento_respostas'
+    
+    id = Column(Integer, primary_key=True)
+    destinatario_id = Column(Integer, ForeignKey('pergunta_requerimento_destinatarios.id'), nullable=False)
+    
+    entidade = Column(String(200))
+    data_resposta = Column(Date)
+    ficheiro = Column(Text)
+    doc_remetida = Column(String(200))
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    destinatario = relationship("PerguntaRequerimentoDestinatario", back_populates="respostas")
+
+
+class PerguntaRequerimentoAutor(Base):
+    __tablename__ = 'pergunta_requerimento_autores'
+    
+    id = Column(Integer, primary_key=True)
+    pergunta_requerimento_id = Column(Integer, ForeignKey('perguntas_requerimentos.id'), nullable=False)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=True)
+    
+    id_cadastro = Column(Integer)
+    nome = Column(String(200))
+    gp = Column(String(50))  # Grupo Parlamentar
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    pergunta_requerimento = relationship("PerguntaRequerimento", back_populates="autores")
+    deputado = relationship("Deputado", backref="perguntas_requerimentos_autoria")
+
+
+class CooperacaoParlamentar(Base):
+    __tablename__ = 'cooperacao_parlamentar'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core fields
+    cooperacao_id = Column(Integer, unique=True)  # External ID
+    tipo = Column(String(100))
+    nome = Column(Text)
+    sessao = Column(Integer)
+    data = Column(Date)
+    local = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    legislatura = relationship("Legislatura", backref="cooperacao_parlamentar")
+    programas = relationship("CooperacaoPrograma", back_populates="cooperacao", cascade="all, delete-orphan")
+    atividades = relationship("CooperacaoAtividade", back_populates="cooperacao", cascade="all, delete-orphan")
+
+
+class CooperacaoPrograma(Base):
+    __tablename__ = 'cooperacao_programas'
+    
+    id = Column(Integer, primary_key=True)
+    cooperacao_id = Column(Integer, ForeignKey('cooperacao_parlamentar.id'), nullable=False)
+    
+    nome = Column(Text)
+    descricao = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    cooperacao = relationship("CooperacaoParlamentar", back_populates="programas")
+
+
+class CooperacaoAtividade(Base):
+    __tablename__ = 'cooperacao_atividades'
+    
+    id = Column(Integer, primary_key=True)
+    cooperacao_id = Column(Integer, ForeignKey('cooperacao_parlamentar.id'), nullable=False)
+    
+    tipo_atividade = Column(String(100))
+    data_inicio = Column(Date)
+    data_fim = Column(Date)
+    descricao = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    cooperacao = relationship("CooperacaoParlamentar", back_populates="atividades")
+    participantes = relationship("CooperacaoParticipante", back_populates="atividade", cascade="all, delete-orphan")
+
+
+class CooperacaoParticipante(Base):
+    __tablename__ = 'cooperacao_participantes'
+    
+    id = Column(Integer, primary_key=True)
+    atividade_id = Column(Integer, ForeignKey('cooperacao_atividades.id'), nullable=False)
+    
+    nome = Column(String(200))
+    cargo = Column(String(100))
+    entidade = Column(String(200))
+    tipo_participante = Column(String(50))  # 'interno', 'externo', etc.
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    atividade = relationship("CooperacaoAtividade", back_populates="participantes")

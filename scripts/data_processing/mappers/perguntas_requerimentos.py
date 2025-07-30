@@ -12,14 +12,30 @@ import re
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
+
+# Import our models
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from database.models import (
+    PerguntaRequerimento, PerguntaRequerimentoPublicacao, PerguntaRequerimentoDestinatario,
+    PerguntaRequerimentoResposta, PerguntaRequerimentoAutor, Deputado, Legislatura
+)
 
 logger = logging.getLogger(__name__)
 
 
 class PerguntasRequerimentosMapper(SchemaMapper):
     """Schema mapper for parliamentary questions and requests files"""
+    
+    def __init__(self, db_path: str = None):
+        super().__init__(db_path)
+        self.engine = create_engine(f'sqlite:///{self.db_path}')
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -43,27 +59,38 @@ class PerguntasRequerimentosMapper(SchemaMapper):
         """Map parliamentary questions and requests to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
-        # Validate schema coverage according to strict mode
-        self.validate_schema_coverage(xml_root, file_info, strict_mode)
+        try:
+            # Validate schema coverage according to strict mode
+            self.validate_schema_coverage(xml_root, file_info, strict_mode)
+            
+            # Extract legislatura from filename or XML
+            legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+            legislatura = self._get_or_create_legislatura(legislatura_sigla)
         
-        # Extract legislatura from filename or XML
-        legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
-        legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
-        
-        # Process requests/questions
-        for request in xml_root.findall('.//RequerimentoOut'):
-            try:
-                success = self._process_request(request, legislatura_id)
-                results['records_processed'] += 1
-                if success:
-                    results['records_imported'] += 1
-            except Exception as e:
-                error_msg = f"Request processing error: {str(e)}"
-                logger.error(error_msg)
-                results['errors'].append(error_msg)
-                results['records_processed'] += 1
-        
-        return results
+            # Process requests/questions
+            for request in xml_root.findall('.//RequerimentoOut'):
+                try:
+                    success = self._process_request(request, legislatura)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"Request processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
+                    self.session.rollback()
+            
+            # Commit all changes
+            self.session.commit()
+            return results
+            
+        except Exception as e:
+            error_msg = f"Critical error processing requests: {str(e)}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
+            self.session.rollback()
+            return results
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
@@ -90,7 +117,7 @@ class PerguntasRequerimentosMapper(SchemaMapper):
         # Default to XVII
         return 'XVII'
     
-    def _process_request(self, request: ET.Element, legislatura_id: int) -> bool:
+    def _process_request(self, request: ET.Element, legislatura: Legislatura) -> bool:
         """Process individual request/question"""
         try:
             # Extract basic fields
@@ -98,55 +125,63 @@ class PerguntasRequerimentosMapper(SchemaMapper):
             tipo = self._get_text_value(request, 'Tipo')
             nr = self._get_int_value(request, 'Nr')
             req_tipo = self._get_text_value(request, 'ReqTipo')
+            sessao = self._get_int_value(request, 'Sessao')
             assunto = self._get_text_value(request, 'Assunto')
             dt_entrada_str = self._get_text_value(request, 'DtEntrada')
             data_envio_str = self._get_text_value(request, 'DataEnvio')
             observacoes = self._get_text_value(request, 'Observacoes')
+            ficheiro = self._get_text_value(request, 'Ficheiro')
             
             if not assunto:
                 logger.warning("Missing required field: Assunto")
                 return False
             
-            # Parse entry date
-            data_atividade = self._parse_date(dt_entrada_str)
-            if not data_atividade:
-                logger.warning(f"Invalid request entry date: {dt_entrada_str}")
-                return False
+            # Parse dates
+            dt_entrada = self._parse_date(dt_entrada_str)
+            data_envio = self._parse_date(data_envio_str)
             
-            # Create request title
-            titulo_tipo = tipo or 'Pergunta/Requerimento'
-            titulo = f"{titulo_tipo} {nr}: {assunto}" if nr else f"{titulo_tipo}: {assunto}"
-            
-            # Get author information
-            author_info = self._get_author_info(request)
-            if author_info:
-                titulo += f" (Autor: {author_info})"
-            
-            # Map request type to standard activity type
-            activity_type = self._map_request_type(tipo, req_tipo)
-            
-            # Check if request record already exists
+            # Check if request already exists
+            existing = None
             if req_id:
-                self.cursor.execute("""
-                    SELECT id FROM atividades_parlamentares_detalhadas
-                    WHERE id_externo = ? AND tipo = ?
-                """, (req_id, activity_type))
-                
-                if self.cursor.fetchone():
-                    # Update existing record
-                    self.cursor.execute("""
-                        UPDATE atividades_parlamentares_detalhadas SET
-                            titulo = ?, data_atividade = ?, legislatura_id = ?
-                        WHERE id_externo = ? AND tipo = ?
-                    """, (titulo, data_atividade, legislatura_id, req_id, activity_type))
-                    return True
+                existing = self.session.query(PerguntaRequerimento).filter_by(
+                    requerimento_id=req_id
+                ).first()
             
-            # Insert new request record
-            self.cursor.execute("""
-                INSERT INTO atividades_parlamentares_detalhadas (
-                    id_externo, tipo, titulo, data_atividade, legislatura_id
-                ) VALUES (?, ?, ?, ?, ?)
-            """, (req_id, activity_type, titulo, data_atividade, legislatura_id))
+            if existing:
+                # Update existing record
+                existing.tipo = tipo
+                existing.nr = nr
+                existing.req_tipo = req_tipo
+                existing.sessao = sessao
+                existing.assunto = assunto
+                existing.dt_entrada = dt_entrada
+                existing.data_envio = data_envio
+                existing.observacoes = observacoes
+                existing.ficheiro = ficheiro
+                existing.legislatura_id = legislatura.id
+            else:
+                # Create new record
+                pergunta_req = PerguntaRequerimento(
+                    requerimento_id=req_id,
+                    tipo=tipo,
+                    nr=nr,
+                    req_tipo=req_tipo,
+                    sessao=sessao,
+                    assunto=assunto,
+                    dt_entrada=dt_entrada,
+                    data_envio=data_envio,
+                    observacoes=observacoes,
+                    ficheiro=ficheiro,
+                    legislatura_id=legislatura.id
+                )
+                self.session.add(pergunta_req)
+                self.session.flush()  # Get the ID
+                existing = pergunta_req
+            
+            # Process related data
+            self._process_request_publications(request, existing)
+            self._process_request_destinatarios(request, existing)
+            self._process_request_authors(request, existing)
             
             return True
             
@@ -224,26 +259,25 @@ class PerguntasRequerimentosMapper(SchemaMapper):
         
         return None
     
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> int:
+    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
         """Get or create legislatura record"""
-        # Check if legislatura exists
-        self.cursor.execute("""
-            SELECT id FROM legislaturas WHERE numero = ?
-        """, (legislatura_sigla,))
+        legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
         
-        result = self.cursor.fetchone()
-        if result:
-            return result[0]
+        if legislatura:
+            return legislatura
         
         # Create new legislatura if it doesn't exist
         numero_int = self._convert_roman_to_int(legislatura_sigla)
         
-        self.cursor.execute("""
-            INSERT INTO legislaturas (numero, designacao, ativa)
-            VALUES (?, ?, ?)
-        """, (legislatura_sigla, f"{numero_int}.ª Legislatura", False))
+        legislatura = Legislatura(
+            numero=legislatura_sigla,
+            designacao=f"{numero_int}.ª Legislatura",
+            ativa=False
+        )
         
-        return self.cursor.lastrowid
+        self.session.add(legislatura)
+        self.session.flush()  # Get the ID
+        return legislatura
     
     def _convert_roman_to_int(self, roman: str) -> int:
         """Convert Roman numeral to integer"""
@@ -252,3 +286,112 @@ class PerguntasRequerimentosMapper(SchemaMapper):
             'XI': 11, 'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17, 'CONSTITUINTE': 0
         }
         return roman_numerals.get(roman, 17)
+    
+    def _process_request_publications(self, request: ET.Element, pergunta_req: PerguntaRequerimento):
+        """Process publications for request"""
+        publicacao = request.find('Publicacao')
+        if publicacao is not None:
+            for pub in publicacao.findall('pt_gov_ar_objectos_PublicacoesOut'):
+                pub_nr = self._get_int_value(pub, 'pubNr')
+                pub_tipo = self._get_text_value(pub, 'pubTipo')
+                pub_tp = self._get_text_value(pub, 'pubTp')
+                pub_leg = self._get_text_value(pub, 'pubLeg')
+                pub_sl = self._get_int_value(pub, 'pubSL')
+                pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
+                id_pag = self._get_int_value(pub, 'idPag')
+                url_diario = self._get_text_value(pub, 'URLDiario')
+                supl = self._get_text_value(pub, 'supl')
+                obs = self._get_text_value(pub, 'obs')
+                pag_final_diario_supl = self._get_text_value(pub, 'pagFinalDiarioSupl')
+                
+                # Handle page numbers
+                pag_text = None
+                pag_elem = pub.find('pag')
+                if pag_elem is not None:
+                    string_elems = pag_elem.findall('string')
+                    if string_elems:
+                        pag_text = ', '.join([s.text for s in string_elems if s.text])
+                
+                publicacao_record = PerguntaRequerimentoPublicacao(
+                    pergunta_requerimento_id=pergunta_req.id,
+                    pub_nr=pub_nr,
+                    pub_tipo=pub_tipo,
+                    pub_tp=pub_tp,
+                    pub_leg=pub_leg,
+                    pub_sl=pub_sl,
+                    pub_dt=pub_dt,
+                    id_pag=id_pag,
+                    url_diario=url_diario,
+                    pag=pag_text,
+                    supl=supl,
+                    obs=obs,
+                    pag_final_diario_supl=pag_final_diario_supl
+                )
+                self.session.add(publicacao_record)
+    
+    def _process_request_destinatarios(self, request: ET.Element, pergunta_req: PerguntaRequerimento):
+        """Process recipients for request"""
+        destinatarios = request.find('Destinatarios')
+        if destinatarios is not None:
+            for dest in destinatarios.findall('pt_gov_ar_objectos_requerimentos_DestinatariosOut'):
+                nome_entidade = self._get_text_value(dest, 'nomeEntidade')
+                data_envio = self._parse_date(self._get_text_value(dest, 'dataEnvio'))
+                
+                destinatario_record = PerguntaRequerimentoDestinatario(
+                    pergunta_requerimento_id=pergunta_req.id,
+                    nome_entidade=nome_entidade,
+                    data_envio=data_envio
+                )
+                self.session.add(destinatario_record)
+                self.session.flush()  # Get the ID
+                
+                # Process responses
+                respostas = dest.find('respostas')
+                if respostas is not None:
+                    for resp in respostas.findall('pt_gov_ar_objectos_requerimentos_RespostasOut'):
+                        entidade = self._get_text_value(resp, 'entidade')
+                        data_resposta = self._parse_date(self._get_text_value(resp, 'dataResposta'))
+                        ficheiro = self._get_text_value(resp, 'ficheiro')
+                        doc_remetida = self._get_text_value(resp, 'docRemetida')
+                        
+                        resposta_record = PerguntaRequerimentoResposta(
+                            destinatario_id=destinatario_record.id,
+                            entidade=entidade,
+                            data_resposta=data_resposta,
+                            ficheiro=ficheiro,
+                            doc_remetida=doc_remetida
+                        )
+                        self.session.add(resposta_record)
+    
+    def _process_request_authors(self, request: ET.Element, pergunta_req: PerguntaRequerimento):
+        """Process authors for request"""
+        autores = request.find('Autores')
+        if autores is not None:
+            for autor in autores.findall('pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut'):
+                id_cadastro = self._get_int_value(autor, 'idCadastro')
+                nome = self._get_text_value(autor, 'nome')
+                gp = self._get_text_value(autor, 'GP')
+                
+                # Try to find the deputy
+                deputado = None
+                if id_cadastro:
+                    deputado = self.session.query(Deputado).filter_by(id_cadastro=id_cadastro).first()
+                    if not deputado and nome:
+                        # Create basic deputy record
+                        deputado = Deputado(
+                            id_cadastro=id_cadastro,
+                            nome=nome,
+                            nome_completo=nome,
+                            ativo=True
+                        )
+                        self.session.add(deputado)
+                        self.session.flush()
+                
+                autor_record = PerguntaRequerimentoAutor(
+                    pergunta_requerimento_id=pergunta_req.id,
+                    deputado_id=deputado.id if deputado else None,
+                    id_cadastro=id_cadastro,
+                    nome=nome,
+                    gp=gp
+                )
+                self.session.add(autor_record)

@@ -13,14 +13,30 @@ import re
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
+
+# Import our models
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from database.models import (
+    CooperacaoParlamentar, CooperacaoPrograma, CooperacaoAtividade, 
+    CooperacaoParticipante, Legislatura
+)
 
 logger = logging.getLogger(__name__)
 
 
 class CooperacaoMapper(SchemaMapper):
     """Schema mapper for parliamentary cooperation files"""
+    
+    def __init__(self, db_path: str = None):
+        super().__init__(db_path)
+        self.engine = create_engine(f'sqlite:///{self.db_path}')
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -38,24 +54,34 @@ class CooperacaoMapper(SchemaMapper):
         # Validate schema coverage according to strict mode
         self.validate_schema_coverage(xml_root, file_info, strict_mode)
         
-        # Extract legislatura from filename or XML
-        legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
-        legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
-        
-        # Process cooperation items
-        for cooperacao_item in xml_root.findall('.//CooperacaoOut'):
-            try:
-                success = self._process_cooperacao_item(cooperacao_item, legislatura_id)
-                results['records_processed'] += 1
-                if success:
-                    results['records_imported'] += 1
-            except Exception as e:
-                error_msg = f"Cooperation item processing error: {str(e)}"
-                logger.error(error_msg)
-                results['errors'].append(error_msg)
-                results['records_processed'] += 1
-        
-        return results
+            # Extract legislatura from filename or XML
+            legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+            legislatura = self._get_or_create_legislatura(legislatura_sigla)
+            
+            # Process cooperation items
+            for cooperacao_item in xml_root.findall('.//CooperacaoOut'):
+                try:
+                    success = self._process_cooperacao_item(cooperacao_item, legislatura)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"Cooperation item processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
+                    self.session.rollback()
+            
+            # Commit all changes
+            self.session.commit()
+            return results
+            
+        except Exception as e:
+            error_msg = f"Critical error processing cooperation: {str(e)}"
+            logger.error(error_msg)
+            results['errors'].append(error_msg)
+            self.session.rollback()
+            return results
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
@@ -82,14 +108,14 @@ class CooperacaoMapper(SchemaMapper):
         # Default to XVII
         return 'XVII'
     
-    def _process_cooperacao_item(self, cooperacao_item: ET.Element, legislatura_id: int) -> bool:
+    def _process_cooperacao_item(self, cooperacao_item: ET.Element, legislatura: Legislatura) -> bool:
         """Process individual cooperation item"""
         try:
             # Extract basic fields
             id_externo = self._get_int_value(cooperacao_item, 'Id')
             tipo = self._get_text_value(cooperacao_item, 'Tipo')
             nome = self._get_text_value(cooperacao_item, 'Nome')
-            sessao = self._get_text_value(cooperacao_item, 'Sessao')
+            sessao = self._get_int_value(cooperacao_item, 'Sessao')
             data_str = self._get_text_value(cooperacao_item, 'Data')
             local = self._get_text_value(cooperacao_item, 'Local')
             
@@ -98,33 +124,41 @@ class CooperacaoMapper(SchemaMapper):
                 return False
             
             # Parse date
-            data_atividade = self._parse_date(data_str)
-            
-            # Map cooperation type to activity type
-            tipo_atividade = self._map_cooperation_type(tipo)
+            data = self._parse_date(data_str)
             
             # Check if record already exists
+            existing = None
             if id_externo:
-                self.cursor.execute("""
-                    SELECT id FROM atividades_parlamentares_detalhadas
-                    WHERE id_externo = ?
-                """, (id_externo,))
-                
-                if self.cursor.fetchone():
-                    # Update existing record
-                    self.cursor.execute("""
-                        UPDATE atividades_parlamentares_detalhadas SET
-                            tipo = ?, titulo = ?, data_atividade = ?, legislatura_id = ?
-                        WHERE id_externo = ?
-                    """, (tipo or 'COOPERACAO', nome, data_atividade, legislatura_id, id_externo))
-                    return True
+                existing = self.session.query(CooperacaoParlamentar).filter_by(
+                    cooperacao_id=id_externo
+                ).first()
             
-            # Insert new record
-            self.cursor.execute("""
-                INSERT INTO atividades_parlamentares_detalhadas (
-                    id_externo, tipo, titulo, data_atividade, legislatura_id
-                ) VALUES (?, ?, ?, ?, ?)
-            """, (id_externo, tipo or 'COOPERACAO', nome, data_atividade, legislatura_id))
+            if existing:
+                # Update existing record
+                existing.tipo = tipo
+                existing.nome = nome
+                existing.sessao = sessao
+                existing.data = data
+                existing.local = local
+                existing.legislatura_id = legislatura.id
+            else:
+                # Create new record
+                cooperacao = CooperacaoParlamentar(
+                    cooperacao_id=id_externo,
+                    tipo=tipo,
+                    nome=nome,
+                    sessao=sessao,
+                    data=data,
+                    local=local,
+                    legislatura_id=legislatura.id
+                )
+                self.session.add(cooperacao)
+                self.session.flush()  # Get the ID
+                existing = cooperacao
+            
+            # Process programs and activities
+            self._process_cooperation_programs(cooperacao_item, existing)
+            self._process_cooperation_activities(cooperacao_item, existing)
             
             # Process nested programs
             programas = cooperacao_item.find('Programas')
@@ -142,47 +176,6 @@ class CooperacaoMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing cooperation item: {e}")
-            return False
-    
-    def _process_cooperacao_atividade(self, atividade: ET.Element, legislatura_id: int) -> bool:
-        """Process cooperation activity"""
-        try:
-            # Extract activity fields
-            id_externo = self._get_int_value(atividade, 'Id')
-            tipo_atividade = self._get_text_value(atividade, 'TipoAtividade')
-            tipo = self._get_text_value(atividade, 'Tipo')
-            nome = self._get_text_value(atividade, 'Nome')
-            data_inicio_str = self._get_text_value(atividade, 'DataInicio')
-            data_fim_str = self._get_text_value(atividade, 'DataFim')
-            local = self._get_text_value(atividade, 'Local')
-            
-            if not nome:
-                return False
-            
-            # Parse dates
-            data_atividade = self._parse_date(data_inicio_str)
-            
-            # Check if already exists
-            if id_externo:
-                self.cursor.execute("""
-                    SELECT id FROM atividades_parlamentares_detalhadas
-                    WHERE id_externo = ?
-                """, (id_externo,))
-                
-                if self.cursor.fetchone():
-                    return True  # Already exists
-            
-            # Insert activity
-            self.cursor.execute("""
-                INSERT INTO atividades_parlamentares_detalhadas (
-                    id_externo, tipo, titulo, data_atividade, legislatura_id
-                ) VALUES (?, ?, ?, ?, ?)
-            """, (id_externo, tipo_atividade or 'COOPERACAO_ATIVIDADE', nome, data_atividade, legislatura_id))
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error processing cooperation activity: {e}")
             return False
     
     def _map_cooperation_type(self, tipo: str) -> Optional[str]:
@@ -246,26 +239,25 @@ class CooperacaoMapper(SchemaMapper):
         
         return None
     
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> int:
+    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
         """Get or create legislatura record"""
-        # Check if legislatura exists
-        self.cursor.execute("""
-            SELECT id FROM legislaturas WHERE numero = ?
-        """, (legislatura_sigla,))
+        legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
         
-        result = self.cursor.fetchone()
-        if result:
-            return result[0]
+        if legislatura:
+            return legislatura
         
         # Create new legislatura if it doesn't exist
         numero_int = self._convert_roman_to_int(legislatura_sigla)
         
-        self.cursor.execute("""
-            INSERT INTO legislaturas (numero, designacao, ativa)
-            VALUES (?, ?, ?)
-        """, (legislatura_sigla, f"{numero_int}.ª Legislatura", False))
+        legislatura = Legislatura(
+            numero=legislatura_sigla,
+            designacao=f"{numero_int}.ª Legislatura",
+            ativa=False
+        )
         
-        return self.cursor.lastrowid
+        self.session.add(legislatura)
+        self.session.flush()  # Get the ID
+        return legislatura
     
     def _convert_roman_to_int(self, roman: str) -> int:
         """Convert Roman numeral to integer"""
@@ -274,3 +266,70 @@ class CooperacaoMapper(SchemaMapper):
             'XI': 11, 'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17, 'CONSTITUINTE': 0
         }
         return roman_numerals.get(roman, 17)
+    
+    def _process_cooperation_programs(self, cooperacao_item: ET.Element, cooperacao: CooperacaoParlamentar):
+        """Process cooperation programs"""
+        programas = cooperacao_item.find('Programas')
+        if programas is not None:
+            for programa in programas:
+                nome = programa.tag if programa.tag else None
+                descricao = programa.text if programa.text else None
+                
+                if nome:
+                    programa_record = CooperacaoPrograma(
+                        cooperacao_id=cooperacao.id,
+                        nome=nome,
+                        descricao=descricao
+                    )
+                    self.session.add(programa_record)
+    
+    def _process_cooperation_activities(self, cooperacao_item: ET.Element, cooperacao: CooperacaoParlamentar):
+        """Process cooperation activities"""
+        atividades = cooperacao_item.find('Atividades')
+        if atividades is not None:
+            for atividade in atividades.findall('CooperacaoAtividade'):
+                tipo_atividade = self._get_text_value(atividade, 'TipoAtividade')
+                data_inicio = self._parse_date(self._get_text_value(atividade, 'DataInicio'))
+                data_fim = self._parse_date(self._get_text_value(atividade, 'DataFim'))
+                descricao = self._get_text_value(atividade, 'Descricao')
+                
+                atividade_record = CooperacaoAtividade(
+                    cooperacao_id=cooperacao.id,
+                    tipo_atividade=tipo_atividade,
+                    data_inicio=data_inicio,
+                    data_fim=data_fim,
+                    descricao=descricao
+                )
+                self.session.add(atividade_record)
+                self.session.flush()  # Get the ID
+                
+                # Process participants
+                self._process_cooperation_participants(atividade, atividade_record)
+    
+    def _process_cooperation_participants(self, atividade: ET.Element, atividade_record: CooperacaoAtividade):
+        """Process cooperation participants"""
+        # Process internal participants
+        participantes = atividade.find('Participantes')
+        if participantes is not None:
+            for participante in participantes:
+                nome = participante.text if participante.text else participante.tag
+                if nome:
+                    participante_record = CooperacaoParticipante(
+                        atividade_id=atividade_record.id,
+                        nome=nome,
+                        tipo_participante='interno'
+                    )
+                    self.session.add(participante_record)
+        
+        # Process external participants
+        externos = atividade.find('RelacoesExternasParticipantes')
+        if externos is not None:
+            for externo in externos:
+                nome = externo.text if externo.text else externo.tag
+                if nome:
+                    participante_record = CooperacaoParticipante(
+                        atividade_id=atividade_record.id,
+                        nome=nome,
+                        tipo_participante='externo'
+                    )
+                    self.session.add(participante_record)
