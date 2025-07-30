@@ -1,0 +1,20 @@
+# AWS Configuration
+aws_region = "eu-west-1"  # Ireland - closest to Portugal
+
+# Environment
+environment = "prod"
+
+# Domain Configuration (optional)
+# domain_name = "parliament.yourdomain.com"
+# certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+
+# Backend Configuration
+backend_image = "parliament-backend:latest"
+backend_cpu = 512
+backend_memory = 1024
+backend_desired_count = 2
+
+# Database Persistence
+# Set to true if you want to persist the SQLite database using EFS
+# Warning: This adds cost and complexity
+enable_database_persistence = false
