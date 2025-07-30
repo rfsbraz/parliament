@@ -25,6 +25,42 @@ def check_shutdown():
         print("Exiting gracefully...")
         sys.exit(0)
 
+def matches_legislature(name, target_legislature):
+    """Check if a name matches the target legislative period"""
+    if not target_legislature or target_legislature.lower() in ['all', 'latest']:
+        return True
+    
+    # Convert target to different formats for matching
+    target_lower = target_legislature.lower()
+    name_lower = name.lower()
+    
+    # Direct match
+    if target_lower in name_lower:
+        return True
+    
+    # Try to match Roman numerals
+    roman_map = {
+        '1': 'i', '2': 'ii', '3': 'iii', '4': 'iv', '5': 'v',
+        '6': 'vi', '7': 'vii', '8': 'viii', '9': 'ix', '10': 'x',
+        '11': 'xi', '12': 'xii', '13': 'xiii', '14': 'xiv', '15': 'xv',
+        '16': 'xvi', '17': 'xvii', '18': 'xviii', '19': 'xix', '20': 'xx'
+    }
+    
+    # If target is a number, try to match Roman numeral
+    if target_legislature.isdigit():
+        roman = roman_map.get(target_legislature)
+        if roman and roman in name_lower:
+            return True
+        if target_legislature in name_lower:
+            return True
+    
+    # If target is Roman numeral, try to match number
+    for num, roman in roman_map.items():
+        if target_lower == roman and (num in name_lower or f'{num}ª' in name_lower):
+            return True
+    
+    return False
+
 def safe_filename(name):
     """Convert a string to a safe filename"""
     # Remove or replace accented characters
@@ -186,7 +222,7 @@ def download_file(url, filename, folder_path, overwrite, headers, indent_level=1
         print(f"{indent}ERROR downloading {file_type}: {e}")
         return False
 
-def process_archive_level(url, level_name, folder_path, overwrite, headers, current_level, max_level=8):
+def process_archive_level(url, level_name, folder_path, overwrite, headers, current_level, max_level=8, target_legislature=None):
     """Recursively process archive items up to max_level"""
     if current_level > max_level:
         return True
@@ -225,6 +261,22 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
             if archive_items:
                 print(f"{indent}Found {len(archive_items)} LEVEL {current_level + 1} archive items")
                 
+                # Filter items by legislative period if specified
+                if target_legislature and target_legislature.lower() not in ['all', 'latest']:
+                    filtered_items = []
+                    for item in archive_items:
+                        link = item.find('a', href=True)
+                        if link:
+                            item_name = link.get_text(strip=True)
+                            if matches_legislature(item_name, target_legislature):
+                                filtered_items.append(item)
+                    
+                    if filtered_items:
+                        print(f"{indent}Filtered to {len(filtered_items)} items matching legislature '{target_legislature}'")
+                        archive_items = filtered_items
+                    else:
+                        print(f"{indent}No items match legislature '{target_legislature}', processing all")
+                
                 safe_level_name = safe_filename(level_name)
                 next_folder_path = os.path.join(folder_path, safe_level_name)
                 
@@ -239,7 +291,7 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
                         
                         success = process_archive_level(
                             next_url, next_name, next_folder_path, 
-                            overwrite, headers, current_level + 1, max_level
+                            overwrite, headers, current_level + 1, max_level, target_legislature
                         )
                         
                         if not success:
@@ -262,11 +314,12 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
         print(f"{indent}Processing failed at URL: {url}")
         sys.exit(1)
 
-def process_recursos_pages(recursos_links, overwrite=False):
+def process_recursos_pages(recursos_links, overwrite=False, target_legislature=None):
     """Process each recursos page"""
     print(f"\n{'='*60}")
     print(f"Processing {len(recursos_links)} recursos pages")
     print(f"Overwrite mode: {'ON' if overwrite else 'OFF'}")
+    print(f"Target legislature: {target_legislature if target_legislature else 'ALL'}")
     print(f"{'='*60}")
     
     for i, link_info in enumerate(recursos_links, 1):
@@ -330,7 +383,7 @@ def process_recursos_pages(recursos_links, overwrite=False):
                                         
                                         success = process_archive_level(
                                             level3_url, level3_name, folder_path,
-                                            overwrite, headers, 3, max_level=8
+                                            overwrite, headers, 3, max_level=8, target_legislature=target_legislature
                                         )
                                         
                                         if not success:
@@ -364,6 +417,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Download Parliament data files')
     parser.add_argument('--overwrite', action='store_true', 
                         help='Overwrite existing files (default: skip existing files)')
+    parser.add_argument('--legislature', type=str, default='all',
+                        help='Legislative period to target (e.g., "XVII", "16", "all" for all periods, "latest" for most recent)')
     args = parser.parse_args()
     
     # Extract recursos links
@@ -371,6 +426,6 @@ if __name__ == "__main__":
     
     if recursos_links:
         # Process each recursos page
-        process_recursos_pages(recursos_links, overwrite=args.overwrite)
+        process_recursos_pages(recursos_links, overwrite=args.overwrite, target_legislature=args.legislature)
     else:
         print("No recursos links found to process.")
