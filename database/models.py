@@ -144,12 +144,7 @@ class DeputyActivity(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
-    # Relationships
-    initiatives = relationship("DeputyInitiative", back_populates="deputy_activity", cascade="all, delete-orphan")
-    interventions = relationship("DeputyIntervention", back_populates="deputy_activity", cascade="all, delete-orphan")
-    reports = relationship("DeputyReport", back_populates="deputy_activity", cascade="all, delete-orphan")
-    parliamentary_activities = relationship("DeputyParliamentaryActivity", back_populates="deputy_activity", cascade="all, delete-orphan")
-    legislative_data = relationship("DeputyLegislativeData", back_populates="deputy_activity", cascade="all, delete-orphan")
+    # Relationships removed - these now link to AtividadeDeputado instead
     
     __table_args__ = (
         Index('idx_deputy_activities_cadastro_leg', 'id_cadastro', 'legislatura_sigla'),
@@ -164,10 +159,10 @@ class DeputyInitiative(Base):
     __tablename__ = 'deputy_initiatives'
     
     id = Column(Integer, primary_key=True)
-    deputy_activity_id = Column(Integer, ForeignKey('deputy_activities.id'), nullable=False)
+    deputy_activity_id = Column(Integer, ForeignKey('atividade_deputados.id'), nullable=False)
     id_iniciativa = Column(Integer)
     numero = Column(String(50))
-    tipo = Column(String(50))
+    tipo = Column(Text)
     desc_tipo = Column(String(200))
     assunto = Column(Text)
     legislatura = Column(String(20))
@@ -180,7 +175,7 @@ class DeputyInitiative(Base):
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
-    deputy_activity = relationship("DeputyActivity", back_populates="initiatives")
+    deputy_activity = relationship("AtividadeDeputado", back_populates="initiatives")
     votes = relationship("DeputyInitiativeVote", back_populates="initiative", cascade="all, delete-orphan")
     author_groups = relationship("DeputyInitiativeAuthorGroup", back_populates="initiative", cascade="all, delete-orphan")
     author_elected = relationship("DeputyInitiativeAuthorElected", back_populates="initiative", cascade="all, delete-orphan")
@@ -279,7 +274,7 @@ class DeputyIntervention(Base):
     __tablename__ = 'deputy_interventions'
     
     id = Column(Integer, primary_key=True)
-    deputy_activity_id = Column(Integer, ForeignKey('deputy_activities.id'), nullable=False)
+    deputy_activity_id = Column(Integer, ForeignKey('atividade_deputados.id'), nullable=False)
     id_intervencao = Column(Integer)
     tipo = Column(String(50))
     data_intervencao = Column(Date)
@@ -290,7 +285,7 @@ class DeputyIntervention(Base):
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
-    deputy_activity = relationship("DeputyActivity", back_populates="interventions")
+    deputy_activity = relationship("AtividadeDeputado", back_populates="interventions")
     
     __table_args__ = (
         Index('idx_deputy_interventions_activity', 'deputy_activity_id'),
@@ -306,7 +301,7 @@ class DeputyReport(Base):
     __tablename__ = 'deputy_reports'
     
     id = Column(Integer, primary_key=True)
-    deputy_activity_id = Column(Integer, ForeignKey('deputy_activities.id'), nullable=False)
+    deputy_activity_id = Column(Integer, ForeignKey('atividade_deputados.id'), nullable=False)
     id_relatorio = Column(Integer)
     numero = Column(String(50))
     tipo = Column(String(50))
@@ -322,7 +317,7 @@ class DeputyReport(Base):
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
-    deputy_activity = relationship("DeputyActivity", back_populates="reports")
+    deputy_activity = relationship("AtividadeDeputado", back_populates="reports")
     votes = relationship("DeputyReportVote", back_populates="report", cascade="all, delete-orphan")
     author_groups = relationship("DeputyReportAuthorGroup", back_populates="report", cascade="all, delete-orphan")
     author_elected = relationship("DeputyReportAuthorElected", back_populates="report", cascade="all, delete-orphan")
@@ -417,7 +412,7 @@ class DeputyParliamentaryActivity(Base):
     __tablename__ = 'deputy_parliamentary_activities'
     
     id = Column(Integer, primary_key=True)
-    deputy_activity_id = Column(Integer, ForeignKey('deputy_activities.id'), nullable=False)
+    deputy_activity_id = Column(Integer, ForeignKey('atividade_deputados.id'), nullable=False)
     id_atividade = Column(Integer)
     numero = Column(String(50))
     tipo = Column(String(50))
@@ -433,7 +428,7 @@ class DeputyParliamentaryActivity(Base):
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
-    deputy_activity = relationship("DeputyActivity", back_populates="parliamentary_activities")
+    deputy_activity = relationship("AtividadeDeputado", back_populates="parliamentary_activities")
     votes = relationship("DeputyParliamentaryActivityVote", back_populates="activity", cascade="all, delete-orphan")
     author_groups = relationship("DeputyParliamentaryActivityAuthorGroup", back_populates="activity", cascade="all, delete-orphan")
     author_elected = relationship("DeputyParliamentaryActivityAuthorElected", back_populates="activity", cascade="all, delete-orphan")
@@ -528,7 +523,7 @@ class DeputyLegislativeData(Base):
     __tablename__ = 'deputy_legislative_data'
     
     id = Column(Integer, primary_key=True)
-    deputy_activity_id = Column(Integer, ForeignKey('deputy_activities.id'), nullable=False)
+    deputy_activity_id = Column(Integer, ForeignKey('atividade_deputados.id'), nullable=False)
     id_dados = Column(Integer)
     numero = Column(String(50))
     tipo = Column(String(50))
@@ -544,7 +539,7 @@ class DeputyLegislativeData(Base):
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
-    deputy_activity = relationship("DeputyActivity", back_populates="legislative_data")
+    deputy_activity = relationship("AtividadeDeputado", back_populates="legislative_data")
     votes = relationship("DeputyLegislativeDataVote", back_populates="legislative_data", cascade="all, delete-orphan")
     author_groups = relationship("DeputyLegislativeDataAuthorGroup", back_populates="legislative_data", cascade="all, delete-orphan")
     author_elected = relationship("DeputyLegislativeDataAuthorElected", back_populates="legislative_data", cascade="all, delete-orphan")
@@ -1357,6 +1352,11 @@ class AtividadeDeputado(Base):
     deputado = relationship("Deputado", back_populates="atividades")
     atividade_list = relationship("AtividadeDeputadoList", back_populates="atividade_deputado", cascade="all, delete-orphan")
     deputado_situacoes = relationship("DeputadoSituacao", back_populates="atividade_deputado", cascade="all, delete-orphan")
+    initiatives = relationship("DeputyInitiative", back_populates="deputy_activity", cascade="all, delete-orphan")
+    interventions = relationship("DeputyIntervention", back_populates="deputy_activity", cascade="all, delete-orphan")
+    reports = relationship("DeputyReport", back_populates="deputy_activity", cascade="all, delete-orphan")
+    parliamentary_activities = relationship("DeputyParliamentaryActivity", back_populates="deputy_activity", cascade="all, delete-orphan")
+    legislative_data = relationship("DeputyLegislativeData", back_populates="deputy_activity", cascade="all, delete-orphan")
 
 
 class AtividadeDeputadoList(Base):
@@ -3219,7 +3219,7 @@ class ComissoesOut(Base):
     cms_cd = Column(String(20))  # CmsCd - committee code
     cms_lg = Column(String(20))  # CmsLg - committee legislature
     cms_cargo = Column(String(200))  # CmsCargo - committee position
-    cms_sub_cargo = Column(String(200))  # CmsSubCargo - committee sub-position
+    cms_sub_cargo = Column(Text)  # CmsSubCargo - committee sub-position (can be very long list)
     cms_situacao = Column(String(200))  # CmsSituacao - committee situation
     
     created_at = Column(DateTime, default=func.now())
@@ -3434,7 +3434,7 @@ class RelatoresContasPublicasOut(Base):
     # Core fields from XML - based on similar structure to other rapporteur models
     act_id = Column(Integer)  # ActId - activity ID
     act_as = Column(Text)  # ActAs - activity subject
-    act_tp = Column(String(10))  # ActTp - activity type
+    act_tp = Column(String(100))  # ActTp - activity type
     cta_id = Column(Integer)  # CtaId - account ID
     cta_no = Column(String(500))  # CtaNo - account name
     
