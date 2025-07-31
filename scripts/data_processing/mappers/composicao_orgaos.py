@@ -994,7 +994,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process videos for this deputy (XIII Legislature structure)
             videos = deputado_data.find('Videos')
             if videos is not None:
-                self._process_deputy_videos(videos, deputado, 'Plenario', plenary.id, plenary.sigla_legislatura)
+                self._process_deputy_videos(videos, deputado.id, int(float(dep_cad_id)), dep_nome, 'Plenario', plenary.id, plenary.sigla_legislatura)
             
             return True
             
@@ -1675,7 +1675,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process historical composition (VI Legislature and others)
             historico_composicao = comissao.find('HistoricoComposicao')
             if historico_composicao is not None:
-                logger.info(f"Processing PermanentCommittee HistoricoComposicao for {legislatura.leg_des} Legislature")
+                logger.info(f"Processing PermanentCommittee HistoricoComposicao for {legislatura.numero} Legislature")
                 for dados_historico in historico_composicao.findall('pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico'):
                     success = self._process_permanent_committee_historical_composition(dados_historico, permanent_committee, legislatura)
                     if not success:
@@ -2279,7 +2279,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Create historical composition record
             composition = ARBoardHistoricalComposition(
                 board_id=ar_board.id,
-                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.leg_des,
+                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.numero,
                 dep_id=self._get_int_value(historico_data, 'depId'),
                 dep_cad_id=self._get_int_value(historico_data, 'depCadId'),
                 dep_nome_parlamentar=self._get_text_value(historico_data, 'depNomeParlamentar'),
@@ -2312,7 +2312,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Create historical composition record
             composition = CommissionHistoricalComposition(
                 commission_id=committee.id,
-                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.leg_des,
+                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.numero,
                 dep_id=self._get_int_value(historico_data, 'depId'),
                 dep_cad_id=self._get_int_value(historico_data, 'depCadId'),
                 dep_nome_parlamentar=self._get_text_value(historico_data, 'depNomeParlamentar'),
@@ -2350,7 +2350,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Create historical composition record
             composition = SubCommitteeHistoricalComposition(
                 sub_committee_id=subcommittee.id,
-                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.leg_des,
+                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.numero,
                 dep_id=self._get_int_value(historico_data, 'depId'),
                 dep_cad_id=self._get_int_value(historico_data, 'depCadId'),
                 dep_nome_parlamentar=self._get_text_value(historico_data, 'depNomeParlamentar'),
@@ -2388,7 +2388,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Create historical composition record
             composition = WorkGroupHistoricalComposition(
                 work_group_id=work_group.id,
-                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.leg_des,
+                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.numero,
                 dep_id=self._get_int_value(historico_data, 'depId'),
                 dep_cad_id=self._get_int_value(historico_data, 'depCadId'),
                 dep_nome_parlamentar=self._get_text_value(historico_data, 'depNomeParlamentar'),
@@ -2490,7 +2490,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Create historical composition record
             composition = PermanentCommitteeHistoricalComposition(
                 permanent_committee_id=permanent_committee.id,
-                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.leg_des,
+                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.numero,
                 dep_id=self._get_int_value(historico_data, 'depId'),
                 dep_cad_id=self._get_int_value(historico_data, 'depCadId'),
                 dep_nome_parlamentar=self._get_text_value(historico_data, 'depNomeParlamentar'),
@@ -2560,7 +2560,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Create historical composition record
             composition = AdministrativeCouncilHistoricalComposition(
                 council_id=admin_council.id,
-                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.leg_des,
+                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.numero,
                 dep_id=self._get_int_value(historico_data, 'depId'),
                 dep_cad_id=self._get_int_value(historico_data, 'depCadId'),
                 dep_nome_parlamentar=self._get_text_value(historico_data, 'depNomeParlamentar'),
@@ -2598,7 +2598,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Create historical composition record
             composition = LeaderConferenceHistoricalComposition(
                 conference_id=leader_conference.id,
-                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.leg_des,
+                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.numero,
                 dep_id=self._get_int_value(historico_data, 'depId'),
                 dep_cad_id=self._get_int_value(historico_data, 'depCadId'),
                 dep_nome_parlamentar=self._get_text_value(historico_data, 'depNomeParlamentar'),
@@ -2630,7 +2630,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             logger.error(f"Error processing Leader Conference historical composition: {e}")
             return False
     
-    def _process_deputy_videos(self, videos: ET.Element, deputado: Deputado, organ_type: str, organ_id: int, legislatura_numero: str) -> bool:
+    def _process_deputy_videos(self, videos: ET.Element, dep_id: int, dep_cad_id: int, dep_nome_parlamentar: str, organ_type: str, organ_id: int, legislatura_numero: str) -> bool:
         """Process deputy videos from DadosDeputadoOrgaoPlenario.Videos structure (XIII Legislature)"""
         try:
             for dados_video in videos.findall('pt_ar_wsgode_objectos_DadosVideo'):
@@ -2639,9 +2639,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 
                 if url:  # Only create record if we have a URL
                     video = DeputyVideo(
-                        dep_id=deputado.id,
-                        dep_cad_id=deputado.cad_id,
-                        dep_nome_parlamentar=deputado.nome_parlamentar,
+                        dep_id=dep_id,
+                        dep_cad_id=dep_cad_id,
+                        dep_nome_parlamentar=dep_nome_parlamentar,
                         url=url,
                         tipo=tipo,
                         organ_type=organ_type,
@@ -2650,7 +2650,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                     )
                     
                     self.session.add(video)
-                    logger.debug(f"Added video for deputy {deputado.nome_parlamentar}: {tipo} - {url}")
+                    logger.debug(f"Added video for deputy {dep_nome_parlamentar}: {tipo} - {url}")
             
             return True
             
