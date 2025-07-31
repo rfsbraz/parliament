@@ -27,7 +27,8 @@ from database.models import (
     AdministrativeCouncilHistoricalComposition, LeaderConferenceHistoricalComposition,
     CommissionHistoricalComposition, ARBoardHistoricalComposition,
     WorkGroupHistoricalComposition, PermanentCommitteeHistoricalComposition,
-    SubCommitteeHistoricalComposition, OrganMeeting, MeetingAttendance, Deputado, Legislatura
+    SubCommitteeHistoricalComposition, OrganMeeting, MeetingAttendance, Deputado, Legislatura,
+    DeputyGPSituation, DeputySituation
 )
 
 logger = logging.getLogger(__name__)
@@ -126,6 +127,54 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             'OrganizacaoAR.ConferenciaPresidentesComissoes.HistoricoComposicaoCPC.pt_ar_wsgode_objectos_DadosPCPComposicaoHistorico.presOrgao.pt_ar_wsgode_objectos_DadosOrgaoPCPHistorico.presComissao.pt_ar_wsgode_objectos_DadosPeriodoCargo.pecDtInicio',
             'OrganizacaoAR.ConferenciaPresidentesComissoes.HistoricoComposicaoCPC.pt_ar_wsgode_objectos_DadosPCPComposicaoHistorico.presOrgao.pt_ar_wsgode_objectos_DadosOrgaoPCPHistorico.presComissao.pt_ar_wsgode_objectos_DadosPeriodoCargo.pecDtFim',
             'OrganizacaoAR.ConferenciaPresidentesComissoes.HistoricoComposicaoCPC.pt_ar_wsgode_objectos_DadosPCPComposicaoHistorico.presOrgao.pt_ar_wsgode_objectos_DadosOrgaoPCPHistorico.presComissao.pt_ar_wsgode_objectos_DadosPeriodoCargo.pecTiaDes',
+            
+            # I Legislature specific structures - Plenario composition with DadosDeputadoSearch
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depId',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depCadId',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depNomeParlamentar',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depNomeCompleto',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depCPId',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depCPDes',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.legDes',
+            
+            # Deputy GP structure in I Legislature plenario composition
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depGP',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpId',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpSigla',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtInicio',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtFim',
+            
+            # Deputy Situacao structure in I Legislature plenario composition
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depSituacao',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDes',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtInicio',
+            'OrganizacaoAR.Plenario.Composicao.pt_ar_wsgode_objectos_DadosDeputadoSearch.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtFim',
+            
+            # I Legislature specific DetalheOrgao fields
+            'OrganizacaoAR.MesaAR.DetalheOrgao.orgId',
+            'OrganizacaoAR.MesaAR.DetalheOrgao.orgNumero',
+            'OrganizacaoAR.MesaAR.DetalheOrgao.orgSigla',
+            'OrganizacaoAR.MesaAR.DetalheOrgao.orgTioId',
+            'OrganizacaoAR.MesaAR.DetalheOrgao.orgSuoId',
+            'OrganizacaoAR.MesaAR.DetalheOrgao.legDes',
+            
+            # I Legislature Commission DetalheOrgao fields
+            'OrganizacaoAR.Comissoes.Orgao.DetalheOrgao.idOrgao',
+            'OrganizacaoAR.Comissoes.Orgao.DetalheOrgao.siglaOrgao', 
+            'OrganizacaoAR.Comissoes.Orgao.DetalheOrgao.nomeSigla',
+            'OrganizacaoAR.Comissoes.Orgao.DetalheOrgao.numeroOrgao',
+            'OrganizacaoAR.Comissoes.Orgao.DetalheOrgao.siglaLegislatura',
+            
+            # I Legislature Plenario Reunioes - meetings and attendance
+            'OrganizacaoAR.Plenario.Reunioes',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas.siglaQualidadePresencaOrgao',
             'OrganizacaoAR.ConselhoAdministracao',
             'OrganizacaoAR.ConselhoAdministracao.DetalheOrgao',
             'OrganizacaoAR.ConselhoAdministracao.DetalheOrgao.idOrgao',
@@ -577,8 +626,13 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             # Process members
             composicao = plenario.find('Composicao')
             if composicao is not None:
+                # Handle standard structure (newer legislatures)
                 for deputado_data in composicao.findall('DadosDeputadoOrgaoPlenario'):
                     self._process_deputy_plenary_membership(deputado_data, plenary)
+                
+                # Handle I Legislature structure with DadosDeputadoSearch
+                for deputado_search in composicao.findall('pt_ar_wsgode_objectos_DadosDeputadoSearch'):
+                    self._process_i_legislature_deputy_composition(deputado_search, plenary, legislatura)
             
             # Process meetings (Reunioes) - handle both simple and ReuniaoPlenario structures
             reunioes = plenario.find('Reunioes')
@@ -587,9 +641,9 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                 for reuniao in reunioes.findall('Reuniao'):
                     self._process_organ_meeting(reuniao, plenary=plenary)
                 
-                # Handle ReuniaoPlenario structure (III Legislature)
+                # Handle ReuniaoPlenario structure (III Legislature and I Legislature)
                 for reuniao_plenario in reunioes.findall('ReuniaoPlenario'):
-                    self._process_reuniao_plenario(reuniao_plenario, plenary)
+                    self._process_reuniao_plenario(reuniao_plenario, plenary, legislatura)
             
             return True
             
@@ -883,6 +937,109 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         except Exception as e:
             logger.error(f"Error processing deputy work group membership: {e}")
             self.session.rollback()
+            return False
+    
+    def _process_i_legislature_deputy_composition(self, deputado_data: ET.Element, plenary: Plenary, legislatura: Legislatura) -> bool:
+        """Process I Legislature deputy composition with DadosDeputadoSearch structure"""
+        try:
+            # Extract deputy information
+            dep_id = self._get_text_value(deputado_data, 'depId')
+            dep_cad_id = self._get_text_value(deputado_data, 'depCadId')
+            dep_nome_parlamentar = self._get_text_value(deputado_data, 'depNomeParlamentar')
+            dep_nome_completo = self._get_text_value(deputado_data, 'depNomeCompleto')
+            dep_cp_id = self._get_text_value(deputado_data, 'depCPId')
+            dep_cp_des = self._get_text_value(deputado_data, 'depCPDes')
+            leg_des = self._get_text_value(deputado_data, 'legDes')
+            
+            if not dep_cad_id or not dep_nome_parlamentar:
+                return False
+            
+            # Get or create deputy
+            deputado = self._get_or_create_deputado(
+                int(dep_cad_id), dep_nome_parlamentar, dep_nome_completo
+            )
+            
+            # Process parliamentary group information (depGP)
+            dep_gp = deputado_data.find('depGP')
+            if dep_gp is not None:
+                self._process_deputy_gp_situation(dep_gp, deputado, legislatura)
+            
+            # Process deputy situation information (depSituacao)
+            dep_situacao = deputado_data.find('depSituacao')
+            if dep_situacao is not None:
+                # Handle multiple situation records
+                for situacao_item in dep_situacao.findall('pt_ar_wsgode_objectos_DadosSituacaoDeputado'):
+                    self._process_deputy_situation_record(situacao_item, deputado, legislatura)
+            
+            # Create plenary composition record
+            composition = PlenaryComposition(
+                plenary_id=plenary.id,
+                leg_des=leg_des,
+                dep_id=int(dep_id) if dep_id else None,
+                dep_cad_id=int(dep_cad_id) if dep_cad_id else None,
+                dep_nome_parlamentar=dep_nome_parlamentar,
+                dep_nome_completo=dep_nome_completo,
+                org_id=plenary.id  # Using plenary ID as org_id for I Legislature
+            )
+            
+            self.session.add(composition)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing I Legislature deputy composition: {e}")
+            self.session.rollback()
+            return False
+    
+    def _process_deputy_gp_situation(self, dep_gp: ET.Element, deputado: Deputado, legislatura: Legislatura) -> bool:
+        """Process deputy parliamentary group situation for I Legislature"""
+        try:
+            # Handle multiple GP situations
+            for gp_situacao in dep_gp.findall('pt_ar_wsgode_objectos_DadosSituacaoGP'):
+                gp_id = self._get_text_value(gp_situacao, 'gpId')
+                gp_sigla = self._get_text_value(gp_situacao, 'gpSigla')
+                gp_dt_inicio = self._get_text_value(gp_situacao, 'gpDtInicio')
+                gp_dt_fim = self._get_text_value(gp_situacao, 'gpDtFim')
+                
+                if gp_id and gp_sigla:
+                    # Create or update parliamentary group situation
+                    gp_record = DeputyGPSituation(
+                        deputado_id=deputado.id,
+                        legislatura_id=legislatura.id,
+                        gp_id=int(gp_id),
+                        gp_sigla=gp_sigla,
+                        dt_inicio=self._parse_date(gp_dt_inicio) if gp_dt_inicio else None,
+                        dt_fim=self._parse_date(gp_dt_fim) if gp_dt_fim else None
+                    )
+                    self.session.add(gp_record)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing deputy GP situation: {e}")
+            return False
+    
+    def _process_deputy_situation_record(self, situacao_data: ET.Element, deputado: Deputado, legislatura: Legislatura) -> bool:
+        """Process individual deputy situation record for I Legislature"""
+        try:
+            sio_des = self._get_text_value(situacao_data, 'sioDes')
+            sio_dt_inicio = self._get_text_value(situacao_data, 'sioDtInicio')
+            sio_dt_fim = self._get_text_value(situacao_data, 'sioDtFim')
+            
+            if sio_des:
+                # Create deputy situation record
+                situacao_record = DeputySituation(
+                    deputado_id=deputado.id,
+                    legislatura_id=legislatura.id,
+                    situacao_des=sio_des,
+                    dt_inicio=self._parse_date(sio_dt_inicio) if sio_dt_inicio else None,
+                    dt_fim=self._parse_date(sio_dt_fim) if sio_dt_fim else None
+                )
+                self.session.add(situacao_record)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing deputy situation record: {e}")
             return False
     
     def _get_or_create_plenary(self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura) -> Plenary:
@@ -1325,8 +1482,8 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             logger.error(f"Error processing OrgaoBase: {e}")
             return False
     
-    def _process_reuniao_plenario(self, reuniao_plenario: ET.Element, plenary) -> bool:
-        """Process ReuniaoPlenario structure (III Legislature plenary meetings)"""
+    def _process_reuniao_plenario(self, reuniao_plenario: ET.Element, plenary, legislatura: Legislatura = None) -> bool:
+        """Process ReuniaoPlenario structure (III Legislature and I Legislature plenary meetings)"""
         try:
             # Process the main meeting data
             reuniao = reuniao_plenario.find('Reuniao')
@@ -1507,13 +1664,16 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                     nome_deputado = self._get_text_value(dados_presenca_alt, 'nomeDeputado')
                     sigla_grupo = self._get_text_value(dados_presenca_alt, 'siglaGrupo')
                     sigla_falta = self._get_text_value(dados_presenca_alt, 'siglaFalta')
+                    sigla_qualidade_presenca_orgao = self._get_text_value(dados_presenca_alt, 'siglaQualidadePresencaOrgao')
                     
                     # Create attendance record with available data
                     attendance = MeetingAttendance(
                         meeting_id=meeting.id,
                         dep_nome_parlamentar=nome_deputado,
                         dt_reuniao=dt_reuniao,
-                        tipo_reuniao=tipo_reuniao
+                        tipo_reuniao=tipo_reuniao,
+                        # Store I Legislature specific presence quality info in notes field
+                        observacoes=sigla_qualidade_presenca_orgao if sigla_qualidade_presenca_orgao else None
                         # Note: siglaGrupo and siglaFalta would need separate fields in the model if needed
                     )
                     
