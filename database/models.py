@@ -981,12 +981,36 @@ class MeetingAttendance(Base):
     sigla_qualidade_presenca = Column(String(100))  # Presence quality designation
     sigla_grupo = Column(String(50))  # Group designation if applicable  
     sigla_falta = Column(String(50))  # Absence designation if applicable
+    motivo_falta = Column(Text)  # Reason for absence - XIII Legislature
     observacoes = Column(Text)  # Additional free-text observations
     
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
     meeting = relationship("OrganMeeting", back_populates="attendances")
+
+
+class DeputyVideo(Base):
+    """Deputy video data - stores video links associated with deputies"""
+    __tablename__ = 'deputy_videos'
+    
+    id = Column(Integer, primary_key=True)
+    
+    # Deputy information
+    dep_id = Column(Integer)
+    dep_cad_id = Column(Integer)
+    dep_nome_parlamentar = Column(String(200))
+    
+    # Video details
+    url = Column(Text)  # Video URL
+    tipo = Column(String(100))  # Video type/category
+    
+    # Context - which organ/composition this video is associated with
+    organ_type = Column(String(50))  # Type of organ (Plenario, Commission, etc.)
+    organ_id = Column(Integer)  # ID of the specific organ
+    legislatura_numero = Column(String(20))  # Legislature designation
+    
+    created_at = Column(DateTime, default=func.now())
 
 
 # Historical Composition Models
@@ -999,6 +1023,7 @@ class AdministrativeCouncilHistoricalComposition(Base):
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
     dep_nome_parlamentar = Column(String(200))
+    dep_nome_completo = Column(String(200))
     org_id = Column(Integer)
     created_at = Column(DateTime, default=func.now())
     
@@ -1017,6 +1042,7 @@ class LeaderConferenceHistoricalComposition(Base):
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
     dep_nome_parlamentar = Column(String(200))
+    dep_nome_completo = Column(String(200))
     org_id = Column(Integer)
     created_at = Column(DateTime, default=func.now())
     

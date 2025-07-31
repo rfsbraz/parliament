@@ -31,7 +31,7 @@ from database.models import (
     AdministrativeCouncilHistoricalComposition, LeaderConferenceHistoricalComposition,
     CommissionHistoricalComposition, ARBoardHistoricalComposition,
     WorkGroupHistoricalComposition, PermanentCommitteeHistoricalComposition,
-    SubCommitteeHistoricalComposition, OrganMeeting, MeetingAttendance, Deputado, Legislatura,
+    SubCommitteeHistoricalComposition, OrganMeeting, MeetingAttendance, DeputyVideo, Deputado, Legislatura,
     DeputyGPSituation, DeputySituation
 )
 
@@ -81,6 +81,14 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             'OrganizacaoAR.Comissoes',
             'OrganizacaoAR.SubComissoes',
             'OrganizacaoAR.ConferenciaPresidentesComissoes',
+            
+            # ConferenciaPresidentesComissoes DetalheOrgao - XIII Legislature
+            'OrganizacaoAR.ConferenciaPresidentesComissoes.DetalheOrgao',
+            'OrganizacaoAR.ConferenciaPresidentesComissoes.DetalheOrgao.idOrgao',
+            'OrganizacaoAR.ConferenciaPresidentesComissoes.DetalheOrgao.siglaOrgao',
+            'OrganizacaoAR.ConferenciaPresidentesComissoes.DetalheOrgao.nomeSigla',
+            'OrganizacaoAR.ConferenciaPresidentesComissoes.DetalheOrgao.numeroOrgao',
+            'OrganizacaoAR.ConferenciaPresidentesComissoes.DetalheOrgao.siglaLegislatura',
             
             # ConferenciaPresidentesComissoes Historical Composition - I Legislature
             'OrganizacaoAR.ConferenciaPresidentesComissoes.HistoricoComposicaoCPC',
@@ -303,6 +311,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtInicio',
             'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtFim',
             
+            # DadosDeputadoOrgaoPlenario Videos structure - XIII Legislature
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.Videos',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.Videos.pt_ar_wsgode_objectos_DadosVideo',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.Videos.pt_ar_wsgode_objectos_DadosVideo.url',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.Videos.pt_ar_wsgode_objectos_DadosVideo.tipo',
+            
             # III Legislature additional mappings - extended structure
             # ComissaoPermanente detailed mappings
             'OrganizacaoAR.ComissaoPermanente.DetalheOrgao',
@@ -463,6 +477,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas.nomeDeputado',
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas.siglaGrupo',
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas.siglaFalta',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas.motivoFalta',
             
             # VIII Legislature Working Groups OrgaoBase structure
             'OrganizacaoAR.GruposTrabalho.OrgaoBase',
@@ -516,7 +531,74 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuData',
             'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuHora',
             'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTipo',
-            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuEstado'
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuEstado',
+            
+            # XIII Legislature ConselhoAdministracao HistoricoComposicao structure
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depId',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCadId',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depNomeParlamentar',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depNomeCompleto',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.orgId',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.legDes',
+            
+            # ConselhoAdministracao HistoricoComposicao - Deputy GP structure
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpId',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpSigla',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtInicio',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtFim',
+            
+            # ConselhoAdministracao HistoricoComposicao - Deputy Cargo structure
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carId',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDes',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtInicio',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtFim',
+            
+            # ConselhoAdministracao HistoricoComposicao - Deputy Situacao structure
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioDes',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioDtInicio',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioDtFim',
+            'OrganizacaoAR.ConselhoAdministracao.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioTipMem',
+            
+            # XIII Legislature ConferenciaLideres HistoricoComposicao structure (same as ConselhoAdministracao)
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depId',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCadId',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depNomeParlamentar',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depNomeCompleto',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.orgId',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.legDes',
+            
+            # ConferenciaLideres HistoricoComposicao - Deputy GP structure
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpId',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpSigla',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtInicio',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtFim',
+            
+            # ConferenciaLideres HistoricoComposicao - Deputy Cargo structure
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carId',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDes',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtInicio',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtFim',
+            
+            # ConferenciaLideres HistoricoComposicao - Deputy Situacao structure  
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioDes',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioDtInicio',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioDtFim',
+            'OrganizacaoAR.ConferenciaLideres.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioTipMem'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -901,6 +983,13 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
             
             self.session.add(plenary_composition)
+            self.session.flush()
+            
+            # Process videos for this deputy (XIII Legislature structure)
+            videos = deputado_data.find('Videos')
+            if videos is not None:
+                self._process_deputy_videos(videos, deputado, 'Plenario', plenary.id, plenary.legislatura_numero)
+            
             return True
             
         except Exception as e:
@@ -1528,12 +1617,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 for deputado_data in composicao.findall('DadosDeputadoOrgao'):
                     self._process_deputy_admin_council_membership(deputado_data, admin_council)
             
-            # Process historical composition (I Legislature)
+            # Process historical composition (I Legislature and XIII Legislature)
             historico_composicao = conselho.find('HistoricoComposicao')
             if historico_composicao is not None:
-                logger.info(f"Processing AdministrativeCouncil HistoricoComposicao for I Legislature")
-                # I Legislature HistoricoComposicao structure would be processed here
-                # This structure exists in schema but processing can be implemented when needed
+                logger.info(f"Processing AdministrativeCouncil HistoricoComposicao for {legislatura.numero} Legislature")
+                for historico_data in historico_composicao.findall('pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico'):
+                    self._process_admin_council_historical_composition(historico_data, admin_council, legislatura)
             
             return True
             
@@ -1608,12 +1697,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 for deputado_data in composicao.findall('DadosDeputadoOrgao'):
                     self._process_deputy_leader_conference_membership(deputado_data, leader_conference)
             
-            # Process historical composition (I Legislature)
+            # Process historical composition (I Legislature and XIII Legislature)
             historico_composicao = conferencia.find('HistoricoComposicao')
             if historico_composicao is not None:
-                logger.info(f"Processing LeaderConference HistoricoComposicao for I Legislature")
-                # I Legislature HistoricoComposicao structure would be processed here
-                # This structure exists in schema but processing can be implemented when needed
+                logger.info(f"Processing LeaderConference HistoricoComposicao for {legislatura.numero} Legislature")
+                for historico_data in historico_composicao.findall('pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico'):
+                    self._process_leader_conference_historical_composition(historico_data, leader_conference, legislatura)
             
             return True
             
@@ -1624,6 +1713,28 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
     def _process_conferencia_presidentes_comissoes(self, conferencia: ET.Element, legislatura: Legislatura) -> bool:
         """Process Commission Presidents Conference"""
         try:
+            # First get or create parliamentary organization
+            organization = self._get_or_create_parliamentary_organization(legislatura)
+            
+            # Process DetalheOrgao structure (XIII Legislature) to get basic conference details
+            detalhe_orgao = conferencia.find('DetalheOrgao')
+            conference = None
+            
+            if detalhe_orgao is not None:
+                # Extract organ details from DetalheOrgao
+                id_orgao = self._get_int_value(detalhe_orgao, 'idOrgao')
+                sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao')
+                nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla')
+                numero_orgao = self._get_int_value(detalhe_orgao, 'numeroOrgao')
+                sigla_legislatura = self._get_text_value(detalhe_orgao, 'siglaLegislatura')
+                
+                logger.info(f"Processing ConferenciaPresidentesComissoes DetalheOrgao: {sigla_orgao} for {sigla_legislatura}")
+                
+                # Create or get conference record with DetalheOrgao data
+                conference = self._get_or_create_commission_president_conference(
+                    id_orgao, sigla_orgao, nome_sigla, numero_orgao, sigla_legislatura, organization
+                )
+            
             # Process historical composition (I Legislature HistoricoComposicaoCPC)
             historico_composicao = conferencia.find('HistoricoComposicaoCPC')
             if historico_composicao is not None:
@@ -1958,6 +2069,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                     sigla_grupo = self._get_text_value(dados_presenca_alt, 'siglaGrupo')
                     sigla_falta = self._get_text_value(dados_presenca_alt, 'siglaFalta')
                     sigla_qualidade_presenca_orgao = self._get_text_value(dados_presenca_alt, 'siglaQualidadePresencaOrgao')
+                    motivo_falta = self._get_text_value(dados_presenca_alt, 'motivoFalta')
                     
                     # Create attendance record with available data
                     attendance = MeetingAttendance(
@@ -1966,7 +2078,10 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                         dt_reuniao=dt_reuniao,
                         tipo_reuniao=tipo_reuniao,
                         # Store structured presence quality information
-                        sigla_qualidade_presenca=sigla_qualidade_presenca_orgao if sigla_qualidade_presenca_orgao else None
+                        sigla_qualidade_presenca=sigla_qualidade_presenca_orgao if sigla_qualidade_presenca_orgao else None,
+                        sigla_grupo=sigla_grupo,
+                        sigla_falta=sigla_falta,
+                        motivo_falta=motivo_falta
                     )
                     
                     self.session.add(attendance)
@@ -2082,6 +2197,33 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         self.session.add(leader_conference)
         self.session.flush()
         return leader_conference
+    
+    def _get_or_create_commission_president_conference(self, id_orgao: int, sigla: str, nome: str, numero: int, sigla_legislatura: str, organization):
+        """Get or create Commission President Conference record"""
+        commission_conference = self.session.query(CommissionPresidentConference).filter_by(
+            id_orgao=id_orgao,
+            organization_id=organization.id
+        ).first()
+        
+        if commission_conference:
+            # Update sigla_legislatura if provided (for XIII Legislature)
+            if sigla_legislatura and not commission_conference.sigla_legislatura:
+                commission_conference.sigla_legislatura = sigla_legislatura
+                self.session.flush()
+            return commission_conference
+        
+        commission_conference = CommissionPresidentConference(
+            organization_id=organization.id,
+            id_orgao=id_orgao,
+            sigla_orgao=sigla,
+            nome_sigla=nome,
+            numero_orgao=numero,
+            sigla_legislatura=sigla_legislatura
+        )
+        
+        self.session.add(commission_conference)
+        self.session.flush()
+        return commission_conference
     
     def _process_deputy_ar_board_membership(self, deputado_data: ET.Element, ar_board) -> bool:
         """Process deputy membership in AR Board"""
@@ -2369,7 +2511,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         try:
             # Create historical composition record
             composition = LeaderConferenceHistoricalComposition(
-                leader_conference_id=leader_conference.id,
+                conference_id=leader_conference.id,
                 leg_des=self._get_text_value(deputado_data, 'LegDes'),
                 dep_id=self._get_int_value(deputado_data, 'DepId'),
                 dep_cad_id=self._get_int_value(deputado_data, 'DepCadId'),
@@ -2394,6 +2536,110 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing Leader Conference deputy membership: {e}")
+            return False
+    
+    def _process_admin_council_historical_composition(self, historico_data: ET.Element, admin_council, legislatura: Legislatura) -> bool:
+        """Process Administrative Council historical composition (XIII Legislature)"""
+        try:
+            # Create historical composition record
+            composition = AdministrativeCouncilHistoricalComposition(
+                council_id=admin_council.id,
+                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.leg_des,
+                dep_id=self._get_int_value(historico_data, 'depId'),
+                dep_cad_id=self._get_int_value(historico_data, 'depCadId'),
+                dep_nome_parlamentar=self._get_text_value(historico_data, 'depNomeParlamentar'),
+                dep_nome_completo=self._get_text_value(historico_data, 'depNomeCompleto'),
+                org_id=self._get_int_value(historico_data, 'orgId') or admin_council.id_orgao
+            )
+            
+            self.session.add(composition)
+            self.session.flush()
+            
+            # Process parliamentary group situations
+            dep_gp = historico_data.find('depGP')
+            if dep_gp is not None:
+                self._process_gp_situations(dep_gp, admin_council_composition=composition)
+            
+            # Process deputy positions/cargo
+            dep_cargo = historico_data.find('depCargo')
+            if dep_cargo is not None:
+                self._process_deputy_positions(dep_cargo, admin_council_composition=composition)
+            
+            # Process deputy situations
+            dep_situacao = historico_data.find('depSituacao')
+            if dep_situacao is not None:
+                self._process_deputy_situations(dep_situacao, admin_council_composition=composition)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing Administrative Council historical composition: {e}")
+            return False
+    
+    def _process_leader_conference_historical_composition(self, historico_data: ET.Element, leader_conference, legislatura: Legislatura) -> bool:
+        """Process Leader Conference historical composition (XIII Legislature)"""
+        try:
+            # Create historical composition record
+            composition = LeaderConferenceHistoricalComposition(
+                conference_id=leader_conference.id,
+                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.leg_des,
+                dep_id=self._get_int_value(historico_data, 'depId'),
+                dep_cad_id=self._get_int_value(historico_data, 'depCadId'),
+                dep_nome_parlamentar=self._get_text_value(historico_data, 'depNomeParlamentar'),
+                dep_nome_completo=self._get_text_value(historico_data, 'depNomeCompleto'),
+                org_id=self._get_int_value(historico_data, 'orgId') or leader_conference.id_orgao
+            )
+            
+            self.session.add(composition)
+            self.session.flush()
+            
+            # Process parliamentary group situations
+            dep_gp = historico_data.find('depGP')
+            if dep_gp is not None:
+                self._process_gp_situations(dep_gp, leader_conference_composition=composition)
+            
+            # Process deputy positions/cargo
+            dep_cargo = historico_data.find('depCargo')
+            if dep_cargo is not None:
+                self._process_deputy_positions(dep_cargo, leader_conference_composition=composition)
+            
+            # Process deputy situations
+            dep_situacao = historico_data.find('depSituacao')
+            if dep_situacao is not None:
+                self._process_deputy_situations(dep_situacao, leader_conference_composition=composition)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing Leader Conference historical composition: {e}")
+            return False
+    
+    def _process_deputy_videos(self, videos: ET.Element, deputado: Deputado, organ_type: str, organ_id: int, legislatura_numero: str) -> bool:
+        """Process deputy videos from DadosDeputadoOrgaoPlenario.Videos structure (XIII Legislature)"""
+        try:
+            for dados_video in videos.findall('pt_ar_wsgode_objectos_DadosVideo'):
+                url = self._get_text_value(dados_video, 'url')
+                tipo = self._get_text_value(dados_video, 'tipo')
+                
+                if url:  # Only create record if we have a URL
+                    video = DeputyVideo(
+                        dep_id=deputado.id,
+                        dep_cad_id=deputado.cad_id,
+                        dep_nome_parlamentar=deputado.nome_parlamentar,
+                        url=url,
+                        tipo=tipo,
+                        organ_type=organ_type,
+                        organ_id=organ_id,
+                        legislatura_numero=legislatura_numero
+                    )
+                    
+                    self.session.add(video)
+                    logger.debug(f"Added video for deputy {deputado.nome_parlamentar}: {tipo} - {url}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing deputy videos: {e}")
             return False
     
     def _convert_roman_to_int(self, roman: str) -> int:
