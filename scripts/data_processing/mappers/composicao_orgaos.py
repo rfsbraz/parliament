@@ -994,7 +994,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process videos for this deputy (XIII Legislature structure)
             videos = deputado_data.find('Videos')
             if videos is not None:
-                self._process_deputy_videos(videos, deputado, 'Plenario', plenary.id, plenary.legislatura_numero)
+                self._process_deputy_videos(videos, deputado, 'Plenario', plenary.id, plenary.sigla_legislatura)
             
             return True
             
