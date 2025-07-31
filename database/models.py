@@ -646,6 +646,7 @@ class DeputyGPSituation(Base):
     gp_sigla = Column(String(20))  # Parliamentary Group acronym/sigla
     gp_dt_inicio = Column(Date)  # Start date of GP membership
     gp_dt_fim = Column(Date)  # End date of GP membership
+    composition_context = Column(String(50))  # Context where this GP situation was recorded (ar_board, commission, etc.)
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
@@ -976,6 +977,11 @@ class MeetingAttendance(Base):
     pres_justificacao = Column(Text)  # Justification for absence
     dt_reuniao = Column(Date)  # Meeting date for this attendance record
     tipo_reuniao = Column(String(100))  # Type of meeting
+    # Structured attendance quality fields
+    sigla_qualidade_presenca = Column(String(100))  # Presence quality designation
+    sigla_grupo = Column(String(50))  # Group designation if applicable  
+    sigla_falta = Column(String(50))  # Absence designation if applicable
+    observacoes = Column(Text)  # Additional free-text observations
     
     created_at = Column(DateTime, default=func.now())
     

@@ -1082,6 +1082,88 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             self.session.rollback()
             return False
     
+    def _process_gp_situations(self, dep_gp: ET.Element, **kwargs) -> bool:
+        """Process deputy parliamentary group situation for various organ compositions"""
+        if dep_gp is None:
+            logger.warning("Empty dep_gp element provided")
+            return True
+            
+        if not kwargs:
+            logger.warning("No composition context provided for GP situation processing")
+            return True
+            
+        try:
+            # Get composition context from kwargs
+            composition = None
+            composition_type = None
+            deputado = None
+            legislatura = None
+            
+            for key, value in kwargs.items():
+                if key.endswith('_composition'):
+                    composition = value
+                    composition_type = key.replace('_composition', '')
+                    # Extract deputado and legislatura from composition context
+                    if hasattr(value, 'deputado_id'):
+                        deputado = self.session.query(Deputado).filter_by(id=value.deputado_id).first()
+                    if hasattr(value, 'legislatura_id'):
+                        legislatura = self.session.query(Legislatura).filter_by(id=value.legislatura_id).first()
+                    break
+            
+            if not composition:
+                logger.warning("No valid composition context found")
+                return True
+            
+            # Handle different GP structure patterns - optimized approach
+            gp_situations = (
+                dep_gp.findall('DadosSituacaoGP') + 
+                dep_gp.findall('pt_ar_wsgode_objectos_DadosSituacaoGP')
+            )
+            
+            # Process each GP situation found
+            for gp_situacao in gp_situations:
+                gp_data = self._extract_gp_data(gp_situacao)
+                
+                if gp_data['gp_id'] and gp_data['gp_sigla'] and deputado and legislatura:
+                    # Safe integer conversion for GP ID
+                    gp_id_int = DataValidationUtils.safe_int_convert(gp_data['gp_id'])
+                    if gp_id_int:
+                        # Create DeputyGPSituation record
+                        gp_record = DeputyGPSituation(
+                            deputado_id=deputado.id,
+                            legislatura_id=legislatura.id,
+                            gp_id=gp_id_int,
+                            gp_sigla=gp_data['gp_sigla'],
+                            gp_dt_inicio=gp_data['gp_dt_inicio'],
+                            gp_dt_fim=gp_data['gp_dt_fim'],
+                            composition_context=composition_type
+                        )
+                        self.session.add(gp_record)
+                        self.session.flush()  # Ensure immediate persistence
+                        logger.debug(f"Created GP situation record: {gp_data['gp_sigla']} (ID: {gp_id_int}) for {composition_type}")
+                    else:
+                        logger.warning(f"Invalid GP ID format: {gp_data['gp_id']}")
+                elif gp_data['gp_id'] and gp_data['gp_sigla']:
+                    logger.debug(f"Processing GP situation: {gp_data['gp_sigla']} (ID: {gp_data['gp_id']}) - missing context")
+            
+            return True
+            
+        except ValueError as ve:
+            logger.error(f"Data validation error in GP situations: {ve}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error processing GP situations: {e}", exc_info=True)
+            return False
+    
+    def _extract_gp_data(self, gp_situacao: ET.Element) -> Dict:
+        """Extract GP situation data from XML element"""
+        return {
+            'gp_id': self._get_text_value(gp_situacao, 'gpId') or self._get_text_value(gp_situacao, 'GpId'),
+            'gp_sigla': self._get_text_value(gp_situacao, 'gpSigla') or self._get_text_value(gp_situacao, 'GpSigla'),
+            'gp_dt_inicio': self._parse_date(self._get_text_value(gp_situacao, 'gpDtInicio') or self._get_text_value(gp_situacao, 'GpDtInicio')),
+            'gp_dt_fim': self._parse_date(self._get_text_value(gp_situacao, 'gpDtFim') or self._get_text_value(gp_situacao, 'GpDtFim'))
+        }
+
     def _process_deputy_gp_situation(self, dep_gp: ET.Element, deputado: Deputado, legislatura: Legislatura) -> bool:
         """Process deputy parliamentary group situation for I Legislature"""
         try:
@@ -1883,9 +1965,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                         dep_nome_parlamentar=nome_deputado,
                         dt_reuniao=dt_reuniao,
                         tipo_reuniao=tipo_reuniao,
-                        # Store I Legislature specific presence quality info in notes field
-                        observacoes=sigla_qualidade_presenca_orgao if sigla_qualidade_presenca_orgao else None
-                        # Note: siglaGrupo and siglaFalta would need separate fields in the model if needed
+                        # Store structured presence quality information
+                        sigla_qualidade_presenca=sigla_qualidade_presenca_orgao if sigla_qualidade_presenca_orgao else None
                     )
                     
                     self.session.add(attendance)
