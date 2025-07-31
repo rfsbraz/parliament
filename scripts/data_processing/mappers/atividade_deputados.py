@@ -28,7 +28,18 @@ from database.models import (
     Deputado, AtividadeDeputado, AtividadeDeputadoList, ActividadeOut,
     DadosLegisDeputado, ActividadeAudiencia, ActividadeAudicao, 
     ActividadesComissaoOut, DeputadoSituacao, DadosSituacaoDeputado,
-    DepCargo, DadosCargoDeputado, ActividadeIntervencao, ActividadeIntervencaoOut
+    DepCargo, DadosCargoDeputado, ActividadeIntervencao, ActividadeIntervencaoOut,
+    # IX Legislature models
+    ActividadesParlamentares, ActividadesParlamentaresOut,
+    GruposParlamentaresAmizade, GruposParlamentaresAmizadeOut,
+    DelegacoesPermanentes, DelegacoesPermanentesOut,
+    DelegacoesEventuais, DelegacoesEventuaisOut,
+    RequerimentosAtivDep, RequerimentosAtivDepOut,
+    SubComissoesGruposTrabalho, SubComissoesGruposTrabalhoOut,
+    RelatoresPeticoes, RelatoresPeticoesOut,
+    RelatoresIniciativas, RelatoresIniciativasOut,
+    ReunioesDelegacoesPermanentes,
+    Comissoes, ComissoesOut
 )
 
 logger = logging.getLogger(__name__)
@@ -119,7 +130,145 @@ class AtividadeDeputadosMapper(SchemaMapper):
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubNr',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubSl',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubTp',
-            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.TinDs'
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.TinDs',
+            
+            # IX Legislature - Parliamentary Activities (ActP)
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ActP',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ActP.ActividadesParlamentaresOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ActP.ActividadesParlamentaresOut.ActId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ActP.ActividadesParlamentaresOut.ActNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ActP.ActividadesParlamentaresOut.ActTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ActP.ActividadesParlamentaresOut.ActTpdesc',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ActP.ActividadesParlamentaresOut.ActSelLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ActP.ActividadesParlamentaresOut.ActSelNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ActP.ActividadesParlamentaresOut.ActDtent',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ActP.ActividadesParlamentaresOut.ActDtdeb',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ActP.ActividadesParlamentaresOut.ActAs',
+            
+            # IX Legislature - Friendship Groups (Gpa)
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Gpa',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Gpa.GruposParlamentaresAmizadeOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Gpa.GruposParlamentaresAmizadeOut.CgaCrg',
+            
+            # IX Legislature - Permanent Delegations (DlP)
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.DepId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.DepNo',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.CdeCrg',
+            
+            # IX Legislature - Occasional Delegations (DlE)
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlE',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlE.DelegacoesEventuaisOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlE.DelegacoesEventuaisOut.DevDtini',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlE.DelegacoesEventuaisOut.DevDtfim',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlE.DelegacoesEventuaisOut.DevSelNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlE.DelegacoesEventuaisOut.DevLoc',
+            
+            # IX Legislature - Requirements (Req)
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Req',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Req.RequerimentosAtivDepOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Req.RequerimentosAtivDepOut.ReqId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Req.RequerimentosAtivDepOut.ReqNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Req.RequerimentosAtivDepOut.ReqTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Req.RequerimentosAtivDepOut.ReqLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Req.RequerimentosAtivDepOut.ReqSl',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Req.RequerimentosAtivDepOut.ReqAs',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Req.RequerimentosAtivDepOut.ReqDt',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Req.RequerimentosAtivDepOut.ReqPerTp',
+            
+            # IX Legislature - Sub-committees/Working Groups (Scgt)
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Scgt',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Scgt.SubComissoesGruposTrabalhoOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Scgt.SubComissoesGruposTrabalhoOut.ScmCd',
+            
+            # IX Legislature - Petition Rapporteurs
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresPeticoes',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresPeticoes.RelatoresPeticoesOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresPeticoes.RelatoresPeticoesOut.PecDtrelf',
+            
+            # IX Legislature - Enhanced Committee Activities
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audiencias.ActividadesComissaoOut.ActId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audiencias.ActividadesComissaoOut.ActAs',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audiencias.ActividadesComissaoOut.ActDtent',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audiencias.ActividadesComissaoOut.AccDtaud',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audiencias.ActividadesComissaoOut.ActTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audiencias.ActividadesComissaoOut.ActTpdesc',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audiencias.ActividadesComissaoOut.ActNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audiencias.ActividadesComissaoOut.ActLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audiencias.ActividadesComissaoOut.NomeEntidadeExterna',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audiencias.ActividadesComissaoOut.CmsNo',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audiencias.ActividadesComissaoOut.CmsAb',
+            
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audicoes.ActividadesComissaoOut.ActId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audicoes.ActividadesComissaoOut.ActAs',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audicoes.ActividadesComissaoOut.AccDtaud',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audicoes.ActividadesComissaoOut.ActTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audicoes.ActividadesComissaoOut.ActDtent',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audicoes.ActividadesComissaoOut.ActNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audicoes.ActividadesComissaoOut.ActTpdesc',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audicoes.ActividadesComissaoOut.NomeEntidadeExterna',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audicoes.ActividadesComissaoOut.CmsNo',
+            
+            # IX Legislature - Committees (Cms)
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Cms',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Cms.ComissoesOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Cms.ComissoesOut.CmsNo',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Cms.ComissoesOut.CmsCd',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Cms.ComissoesOut.CmsLg',
+            
+            # IX Legislature - Enhanced Sub-committees/Working Groups fields
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Scgt.SubComissoesGruposTrabalhoOut.CmsCargo',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Scgt.SubComissoesGruposTrabalhoOut.ScmComLg',
+            
+            # IX Legislature - Enhanced Petition Rapporteurs fields
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresPeticoes.RelatoresPeticoesOut.PetSelLgPk',
+            
+            # IX Legislature - Initiative Rapporteurs fields
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniciativas',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniciativas.RelatoresIniciativasOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniciativas.RelatoresIniciativasOut.IniNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniciativas.RelatoresIniciativasOut.AccDtrel',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniciativas.RelatoresIniciativasOut.IniTi',
+            
+            # IX Legislature - Additional missing fields
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlE.DelegacoesEventuaisOut.DevSelLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Scgt.SubComissoesGruposTrabalhoOut.ScmComCd',
+            
+            # IX Legislature - Permanent Delegation Meetings fields
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.DepReunioes',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.DepReunioes.ReunioesDelegacoesPermanentes',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.DepReunioes.ReunioesDelegacoesPermanentes.RenDtIni',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.DepReunioes.ReunioesDelegacoesPermanentes.RenLoc',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.DepReunioes.ReunioesDelegacoesPermanentes.RenDtFim',
+            
+            # IX Legislature - Additional missing fields from final validation
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlE.DelegacoesEventuaisOut.DevId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlE.DelegacoesEventuaisOut.DevNo',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresPeticoes.RelatoresPeticoesOut.PetAspet',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresPeticoes.RelatoresPeticoesOut.PetSelNrPk',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.DepReunioes.ReunioesDelegacoesPermanentes.RenTi',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Gpa.GruposParlamentaresAmizadeOut.GplNo',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Gpa.GruposParlamentaresAmizadeOut.GplId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.DepSelLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniciativas.RelatoresIniciativasOut.IniId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audicoes.ActividadesComissaoOut.CmsAb',
+            
+            # IX Legislature - Final missing fields for complete coverage
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresPeticoes.RelatoresPeticoesOut.PetNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresPeticoes.RelatoresPeticoesOut.PetId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.IntTe',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Audicoes.ActividadesComissaoOut.ActLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Scgt.SubComissoesGruposTrabalhoOut.CcmDscom',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniciativas.RelatoresIniciativasOut.RelFase',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniciativas.RelatoresIniciativasOut.IniSelLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Gpa.GruposParlamentaresAmizadeOut.GplSelLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Gpa.GruposParlamentaresAmizadeOut.CgaDtini',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Cms.ComissoesOut.CmsCargo',
+            
+            # IX Legislature - Final 2 fields for absolute complete coverage
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniciativas.RelatoresIniciativasOut.IniTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.DepSelNr'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -203,6 +352,17 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     self._process_audicoes(actividade_out, actividade_out_id)
                     self._process_initiatives(actividade_out, atividade_deputado_id)
                     self._process_interventions(actividade_out, actividade_out_id)
+                    
+                    # Process IX Legislature features
+                    self._process_parliamentary_activities(actividade_out, actividade_out_id)
+                    self._process_friendship_groups(actividade_out, actividade_out_id)
+                    self._process_permanent_delegations(actividade_out, actividade_out_id)
+                    self._process_occasional_delegations(actividade_out, actividade_out_id)
+                    self._process_requirements(actividade_out, actividade_out_id)
+                    self._process_subcommittees_working_groups(actividade_out, actividade_out_id)
+                    self._process_petition_rapporteurs(actividade_out, actividade_out_id)
+                    self._process_initiative_rapporteurs(actividade_out, actividade_out_id)
+                    self._process_committees(actividade_out, actividade_out_id)
             
             # Process deputy situations - REAL XML structure
             self._process_deputy_situacoes_real(deputado, atividade_deputado_id, strict_mode)
@@ -344,8 +504,32 @@ class AtividadeDeputadosMapper(SchemaMapper):
                 
                 # Process ActividadesComissaoOut within Audiencias
                 for comissao_out in audiencias_section.findall('ActividadesComissaoOut'):
+                    # Extract IX Legislature fields
+                    act_id = self._safe_int(self._get_text_value(comissao_out, 'ActId'))
+                    act_as = self._get_text_value(comissao_out, 'ActAs')
+                    act_dtent = self._get_text_value(comissao_out, 'ActDtent')
+                    acc_dtaud = self._get_text_value(comissao_out, 'AccDtaud')
+                    act_tp = self._get_text_value(comissao_out, 'ActTp')
+                    act_tpdesc = self._get_text_value(comissao_out, 'ActTpdesc')
+                    act_nr = self._get_text_value(comissao_out, 'ActNr')
+                    act_lg = self._get_text_value(comissao_out, 'ActLg')
+                    nome_entidade_externa = self._get_text_value(comissao_out, 'NomeEntidadeExterna')
+                    cms_no = self._get_text_value(comissao_out, 'CmsNo')
+                    cms_ab = self._get_text_value(comissao_out, 'CmsAb')
+                    
                     comissao_out_obj = ActividadesComissaoOut(
-                        audiencia_id=audiencia.id
+                        audiencia_id=audiencia.id,
+                        act_id=act_id,
+                        act_as=act_as,
+                        act_dtent=act_dtent,
+                        acc_dtaud=acc_dtaud,
+                        act_tp=act_tp,
+                        act_tpdesc=act_tpdesc,
+                        act_nr=act_nr,
+                        act_lg=act_lg,
+                        nome_entidade_externa=nome_entidade_externa,
+                        cms_no=cms_no,
+                        cms_ab=cms_ab
                     )
                     self.session.add(comissao_out_obj)
                 
@@ -370,8 +554,28 @@ class AtividadeDeputadosMapper(SchemaMapper):
                 
                 # Process ActividadesComissaoOut within Audicoes
                 for comissao_out in audicoes_section.findall('ActividadesComissaoOut'):
+                    # Extract IX Legislature fields
+                    act_id = self._safe_int(self._get_text_value(comissao_out, 'ActId'))
+                    act_as = self._get_text_value(comissao_out, 'ActAs')
+                    act_dtent = self._get_text_value(comissao_out, 'ActDtent')
+                    acc_dtaud = self._get_text_value(comissao_out, 'AccDtaud')
+                    act_tp = self._get_text_value(comissao_out, 'ActTp')
+                    act_tpdesc = self._get_text_value(comissao_out, 'ActTpdesc')
+                    act_nr = self._get_text_value(comissao_out, 'ActNr')
+                    nome_entidade_externa = self._get_text_value(comissao_out, 'NomeEntidadeExterna')
+                    cms_no = self._get_text_value(comissao_out, 'CmsNo')
+                    
                     comissao_out_obj = ActividadesComissaoOut(
-                        audicao_id=audicao.id
+                        audicao_id=audicao.id,
+                        act_id=act_id,
+                        act_as=act_as,
+                        act_dtent=act_dtent,
+                        acc_dtaud=acc_dtaud,
+                        act_tp=act_tp,
+                        act_tpdesc=act_tpdesc,
+                        act_nr=act_nr,
+                        nome_entidade_externa=nome_entidade_externa,
+                        cms_no=cms_no
                     )
                     self.session.add(comissao_out_obj)
                 
@@ -441,6 +645,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     # Extract intervention fields
                     int_id = self._safe_int(self._get_text_value(intervencao, 'IntId'))
                     int_su = self._get_text_value(intervencao, 'IntSu')
+                    int_te = self._get_text_value(intervencao, 'IntTe')
                     pub_dar = self._get_text_value(intervencao, 'PubDar')
                     pub_dtreu_str = self._get_text_value(intervencao, 'PubDtreu')
                     pub_dtreu = self._parse_date(pub_dtreu_str) if pub_dtreu_str else None
@@ -455,6 +660,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
                         actividade_intervencao_id=actividade_intervencao.id,
                         int_id=int_id,
                         int_su=int_su,
+                        int_te=int_te,
                         pub_dar=pub_dar,
                         pub_dtreu=pub_dtreu,
                         pub_lg=pub_lg,
@@ -508,6 +714,420 @@ class AtividadeDeputadosMapper(SchemaMapper):
             if strict_mode:
                 raise SchemaError(f"Deputy situations processing failed in strict mode: {e}")
     
+    def _process_parliamentary_activities(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process IX Legislature Parliamentary Activities (ActP)"""
+        try:
+            actp_section = actividade_out.find('ActP')
+            if actp_section is not None:
+                # Create parliamentary activities record
+                atividades_parlamentares = ActividadesParlamentares(
+                    actividade_out_id=actividade_out_id
+                )
+                
+                self.session.add(atividades_parlamentares)
+                self.session.commit()
+                
+                # Process each ActividadesParlamentaresOut
+                for atividade in actp_section.findall('ActividadesParlamentaresOut'):
+                    act_id = self._safe_int(self._get_text_value(atividade, 'ActId'))
+                    act_nr = self._get_text_value(atividade, 'ActNr')
+                    act_tp = self._get_text_value(atividade, 'ActTp')
+                    act_tpdesc = self._get_text_value(atividade, 'ActTpdesc')
+                    act_sel_lg = self._get_text_value(atividade, 'ActSelLg')
+                    act_sel_nr = self._get_text_value(atividade, 'ActSelNr')
+                    act_dtent = self._get_text_value(atividade, 'ActDtent')
+                    act_dtdeb_str = self._get_text_value(atividade, 'ActDtdeb')
+                    act_dtdeb = self._parse_datetime(act_dtdeb_str) if act_dtdeb_str else None
+                    act_as = self._get_text_value(atividade, 'ActAs')
+                    
+                    atividade_out_obj = ActividadesParlamentaresOut(
+                        atividades_parlamentares_id=atividades_parlamentares.id,
+                        act_id=act_id,
+                        act_nr=act_nr,
+                        act_tp=act_tp,
+                        act_tpdesc=act_tpdesc,
+                        act_sel_lg=act_sel_lg,
+                        act_sel_nr=act_sel_nr,
+                        act_dtent=act_dtent,
+                        act_dtdeb=act_dtdeb,
+                        act_as=act_as
+                    )
+                    
+                    self.session.add(atividade_out_obj)
+                
+                self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing parliamentary activities: {e}")
+            self.session.rollback()
+
+    def _process_friendship_groups(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process IX Legislature Friendship Groups (Gpa)"""
+        try:
+            gpa_section = actividade_out.find('Gpa')
+            if gpa_section is not None:
+                # Create friendship groups record
+                grupos_parlamentares_amizade = GruposParlamentaresAmizade(
+                    actividade_out_id=actividade_out_id
+                )
+                
+                self.session.add(grupos_parlamentares_amizade)
+                self.session.commit()
+                
+                # Process each GruposParlamentaresAmizadeOut
+                for grupo in gpa_section.findall('GruposParlamentaresAmizadeOut'):
+                    gpl_id = self._safe_int(self._get_text_value(grupo, 'GplId'))
+                    gpl_no = self._get_text_value(grupo, 'GplNo')
+                    gpl_sel_lg = self._get_text_value(grupo, 'GplSelLg')
+                    cga_crg = self._get_text_value(grupo, 'CgaCrg')
+                    cga_dtini = self._get_text_value(grupo, 'CgaDtini')
+                    
+                    grupo_out = GruposParlamentaresAmizadeOut(
+                        grupos_parlamentares_amizade_id=grupos_parlamentares_amizade.id,
+                        gpl_id=gpl_id,
+                        gpl_no=gpl_no,
+                        gpl_sel_lg=gpl_sel_lg,
+                        cga_crg=cga_crg,
+                        cga_dtini=cga_dtini
+                    )
+                    
+                    self.session.add(grupo_out)
+                
+                self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing friendship groups: {e}")
+            self.session.rollback()
+
+    def _process_permanent_delegations(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process IX Legislature Permanent Delegations (DlP)"""
+        try:
+            dlp_section = actividade_out.find('DlP')
+            if dlp_section is not None:
+                # Create permanent delegations record
+                delegacoes_permanentes = DelegacoesPermanentes(
+                    actividade_out_id=actividade_out_id
+                )
+                
+                self.session.add(delegacoes_permanentes)
+                self.session.commit()
+                
+                # Process each DelegacoesPermanentesOut
+                for delegacao in dlp_section.findall('DelegacoesPermanentesOut'):
+                    dep_id = self._safe_int(self._get_text_value(delegacao, 'DepId'))
+                    dep_no = self._get_text_value(delegacao, 'DepNo')
+                    dep_sel_lg = self._get_text_value(delegacao, 'DepSelLg')
+                    dep_sel_nr = self._get_text_value(delegacao, 'DepSelNr')
+                    cde_crg = self._get_text_value(delegacao, 'CdeCrg')
+                    
+                    delegacao_out = DelegacoesPermanentesOut(
+                        delegacoes_permanentes_id=delegacoes_permanentes.id,
+                        dep_id=dep_id,
+                        dep_no=dep_no,
+                        dep_sel_lg=dep_sel_lg,
+                        dep_sel_nr=dep_sel_nr,
+                        cde_crg=cde_crg
+                    )
+                    
+                    self.session.add(delegacao_out)
+                    self.session.commit()  # Commit to get the delegacao_out.id
+                    
+                    # Process meetings (DepReunioes.ReunioesDelegacoesPermanentes)
+                    reunioes_section = delegacao.find('DepReunioes')
+                    if reunioes_section is not None:
+                        for reuniao in reunioes_section.findall('ReunioesDelegacoesPermanentes'):
+                            ren_dt_ini = self._get_text_value(reuniao, 'RenDtIni')
+                            ren_loc = self._get_text_value(reuniao, 'RenLoc')
+                            ren_dt_fim = self._get_text_value(reuniao, 'RenDtFim')
+                            ren_ti = self._get_text_value(reuniao, 'RenTi')
+                            
+                            reuniao_obj = ReunioesDelegacoesPermanentes(
+                                delegacoes_permanentes_out_id=delegacao_out.id,
+                                ren_dt_ini=ren_dt_ini,
+                                ren_loc=ren_loc,
+                                ren_dt_fim=ren_dt_fim,
+                                ren_ti=ren_ti
+                            )
+                            
+                            self.session.add(reuniao_obj)
+                
+                self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing permanent delegations: {e}")
+            self.session.rollback()
+
+    def _process_occasional_delegations(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process IX Legislature Occasional Delegations (DlE)"""
+        try:
+            dle_section = actividade_out.find('DlE')
+            if dle_section is not None:
+                # Create occasional delegations record
+                delegacoes_eventuais = DelegacoesEventuais(
+                    actividade_out_id=actividade_out_id
+                )
+                
+                self.session.add(delegacoes_eventuais)
+                self.session.commit()
+                
+                # Process each DelegacoesEventuaisOut
+                for delegacao in dle_section.findall('DelegacoesEventuaisOut'):
+                    dev_id = self._safe_int(self._get_text_value(delegacao, 'DevId'))
+                    dev_no = self._get_text_value(delegacao, 'DevNo')
+                    dev_dtini = self._get_text_value(delegacao, 'DevDtini')
+                    dev_dtfim = self._get_text_value(delegacao, 'DevDtfim')
+                    dev_sel_nr = self._get_text_value(delegacao, 'DevSelNr')
+                    dev_sel_lg = self._get_text_value(delegacao, 'DevSelLg')
+                    dev_loc = self._get_text_value(delegacao, 'DevLoc')
+                    
+                    delegacao_out = DelegacoesEventuaisOut(
+                        delegacoes_eventuais_id=delegacoes_eventuais.id,
+                        dev_id=dev_id,
+                        dev_no=dev_no,
+                        dev_dtini=dev_dtini,
+                        dev_dtfim=dev_dtfim,
+                        dev_sel_nr=dev_sel_nr,
+                        dev_sel_lg=dev_sel_lg,
+                        dev_loc=dev_loc
+                    )
+                    
+                    self.session.add(delegacao_out)
+                
+                self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing occasional delegations: {e}")
+            self.session.rollback()
+
+    def _process_requirements(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process IX Legislature Requirements (Req)"""
+        try:
+            req_section = actividade_out.find('Req')
+            if req_section is not None:
+                # Create requirements record
+                requerimentos_ativ_dep = RequerimentosAtivDep(
+                    actividade_out_id=actividade_out_id
+                )
+                
+                self.session.add(requerimentos_ativ_dep)
+                self.session.commit()
+                
+                # Process each RequerimentosAtivDepOut
+                for requerimento in req_section.findall('RequerimentosAtivDepOut'):
+                    req_id = self._safe_int(self._get_text_value(requerimento, 'ReqId'))
+                    req_nr = self._get_text_value(requerimento, 'ReqNr')
+                    req_tp = self._get_text_value(requerimento, 'ReqTp')
+                    req_lg = self._get_text_value(requerimento, 'ReqLg')
+                    req_sl = self._get_text_value(requerimento, 'ReqSl')
+                    req_as = self._get_text_value(requerimento, 'ReqAs')
+                    req_dt_str = self._get_text_value(requerimento, 'ReqDt')
+                    req_dt = self._parse_datetime(req_dt_str) if req_dt_str else None
+                    req_per_tp = self._get_text_value(requerimento, 'ReqPerTp')
+                    
+                    requerimento_out = RequerimentosAtivDepOut(
+                        requerimentos_ativ_dep_id=requerimentos_ativ_dep.id,
+                        req_id=req_id,
+                        req_nr=req_nr,
+                        req_tp=req_tp,
+                        req_lg=req_lg,
+                        req_sl=req_sl,
+                        req_as=req_as,
+                        req_dt=req_dt,
+                        req_per_tp=req_per_tp
+                    )
+                    
+                    self.session.add(requerimento_out)
+                
+                self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing requirements: {e}")
+            self.session.rollback()
+
+    def _process_subcommittees_working_groups(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process IX Legislature Sub-committees/Working Groups (Scgt)"""
+        try:
+            scgt_section = actividade_out.find('Scgt')
+            if scgt_section is not None:
+                # Create sub-committees/working groups record
+                subcomissoes_grupos_trabalho = SubComissoesGruposTrabalho(
+                    actividade_out_id=actividade_out_id
+                )
+                
+                self.session.add(subcomissoes_grupos_trabalho)
+                self.session.commit()
+                
+                # Process each SubComissoesGruposTrabalhoOut
+                for subcomissao in scgt_section.findall('SubComissoesGruposTrabalhoOut'):
+                    scm_cd = self._get_text_value(subcomissao, 'ScmCd')
+                    scm_com_cd = self._get_text_value(subcomissao, 'ScmComCd')
+                    ccm_dscom = self._get_text_value(subcomissao, 'CcmDscom')
+                    cms_cargo = self._get_text_value(subcomissao, 'CmsCargo')
+                    scm_com_lg = self._get_text_value(subcomissao, 'ScmComLg')
+                    
+                    subcomissao_out = SubComissoesGruposTrabalhoOut(
+                        subcomissoes_grupos_trabalho_id=subcomissoes_grupos_trabalho.id,
+                        scm_cd=scm_cd,
+                        scm_com_cd=scm_com_cd,
+                        ccm_dscom=ccm_dscom,
+                        cms_cargo=cms_cargo,
+                        scm_com_lg=scm_com_lg
+                    )
+                    
+                    self.session.add(subcomissao_out)
+                
+                self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing sub-committees/working groups: {e}")
+            self.session.rollback()
+
+    def _process_petition_rapporteurs(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process IX Legislature Petition Rapporteurs (Rel.RelatoresPeticoes)"""
+        try:
+            rel_section = actividade_out.find('Rel')
+            if rel_section is not None:
+                relatores_peticoes_section = rel_section.find('RelatoresPeticoes')
+                if relatores_peticoes_section is not None:
+                    # Create petition rapporteurs record
+                    relatores_peticoes = RelatoresPeticoes(
+                        actividade_out_id=actividade_out_id
+                    )
+                    
+                    self.session.add(relatores_peticoes)
+                    self.session.commit()
+                    
+                    # Process each RelatoresPeticoesOut
+                    for relator in relatores_peticoes_section.findall('RelatoresPeticoesOut'):
+                        pec_dtrelf = self._get_text_value(relator, 'PecDtrelf')
+                        pet_id = self._safe_int(self._get_text_value(relator, 'PetId'))
+                        pet_nr = self._get_text_value(relator, 'PetNr')
+                        pet_aspet = self._get_text_value(relator, 'PetAspet')
+                        pet_sel_lg_pk = self._get_text_value(relator, 'PetSelLgPk')
+                        pet_sel_nr_pk = self._get_text_value(relator, 'PetSelNrPk')
+                        
+                        relator_out = RelatoresPeticoesOut(
+                            relatores_peticoes_id=relatores_peticoes.id,
+                            pec_dtrelf=pec_dtrelf,
+                            pet_id=pet_id,
+                            pet_nr=pet_nr,
+                            pet_aspet=pet_aspet,
+                            pet_sel_lg_pk=pet_sel_lg_pk,
+                            pet_sel_nr_pk=pet_sel_nr_pk
+                        )
+                        
+                        self.session.add(relator_out)
+                    
+                    self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing petition rapporteurs: {e}")
+            self.session.rollback()
+
+    def _process_initiative_rapporteurs(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process IX Legislature Initiative Rapporteurs (Rel.RelatoresIniciativas)"""
+        try:
+            rel_section = actividade_out.find('Rel')
+            if rel_section is not None:
+                # Look for RelatoresIniciativas
+                ini_section = rel_section.find('RelatoresIniciativas')
+                if ini_section is not None:
+                    # Create initiative rapporteurs record
+                    relatores_iniciativas = RelatoresIniciativas(
+                        actividade_out_id=actividade_out_id
+                    )
+                    
+                    self.session.add(relatores_iniciativas)
+                    self.session.commit()
+                    
+                    # Process each RelatoresIniciativasOut
+                    for relator in ini_section.findall('RelatoresIniciativasOut'):
+                        ini_id = self._safe_int(self._get_text_value(relator, 'IniId'))
+                        ini_nr = self._get_text_value(relator, 'IniNr')
+                        ini_tp = self._get_text_value(relator, 'IniTp')
+                        ini_sel_lg = self._get_text_value(relator, 'IniSelLg')
+                        acc_dtrel = self._get_text_value(relator, 'AccDtrel')
+                        rel_fase = self._get_text_value(relator, 'RelFase')
+                        ini_ti = self._get_text_value(relator, 'IniTi')
+                        
+                        relator_out = RelatoresIniciativasOut(
+                            relatores_iniciativas_id=relatores_iniciativas.id,
+                            ini_id=ini_id,
+                            ini_nr=ini_nr,
+                            ini_tp=ini_tp,
+                            ini_sel_lg=ini_sel_lg,
+                            acc_dtrel=acc_dtrel,
+                            rel_fase=rel_fase,
+                            ini_ti=ini_ti
+                        )
+                        
+                        self.session.add(relator_out)
+                    
+                    self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing initiative rapporteurs: {e}")
+            self.session.rollback()
+
+    def _process_committees(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process IX Legislature Committees (Cms)"""
+        try:
+            cms_section = actividade_out.find('Cms')
+            if cms_section is not None:
+                # Create committees record
+                comissoes = Comissoes(
+                    actividade_out_id=actividade_out_id
+                )
+                
+                self.session.add(comissoes)
+                self.session.commit()
+                
+                # Process each ComissoesOut
+                for comissao in cms_section.findall('ComissoesOut'):
+                    cms_no = self._get_text_value(comissao, 'CmsNo')
+                    cms_cd = self._get_text_value(comissao, 'CmsCd')
+                    cms_lg = self._get_text_value(comissao, 'CmsLg')
+                    cms_cargo = self._get_text_value(comissao, 'CmsCargo')
+                    
+                    comissao_out = ComissoesOut(
+                        comissoes_id=comissoes.id,
+                        cms_no=cms_no,
+                        cms_cd=cms_cd,
+                        cms_lg=cms_lg,
+                        cms_cargo=cms_cargo
+                    )
+                    
+                    self.session.add(comissao_out)
+                
+                self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing committees: {e}")
+            self.session.rollback()
+
+    def _parse_datetime(self, datetime_str: str) -> Optional[object]:
+        """Parse datetime string to Python datetime object"""
+        if not datetime_str:
+            return None
+        
+        try:
+            from datetime import datetime
+            
+            # Try ISO format with time: 2004-12-09 00:00:00.0
+            if re.match(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}', datetime_str):
+                # Remove milliseconds if present
+                clean_str = datetime_str.split('.')[0]
+                return datetime.strptime(clean_str, '%Y-%m-%d %H:%M:%S')
+            
+            # Try date-only format
+            if re.match(r'\d{4}-\d{2}-\d{2}', datetime_str):
+                return datetime.strptime(datetime_str, '%Y-%m-%d')
+            
+        except (ValueError, IndexError) as e:
+            logger.warning(f"Could not parse datetime: {datetime_str} - {e}")
+        
+        return None
+
     def __del__(self):
         """Cleanup SQLAlchemy session"""
         if hasattr(self, 'session'):
