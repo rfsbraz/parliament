@@ -32,7 +32,7 @@ from database.models import (
     CommissionHistoricalComposition, ARBoardHistoricalComposition,
     WorkGroupHistoricalComposition, PermanentCommitteeHistoricalComposition,
     SubCommitteeHistoricalComposition, OrganMeeting, MeetingAttendance, DeputyVideo, Deputado, Legislatura,
-    DeputyGPSituation, DeputySituation
+    DeputyGPSituation, DeputySituation, OrganCompositionDeputyPosition, OrganCompositionDeputySituation
 )
 
 logger = logging.getLogger(__name__)
@@ -780,6 +780,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             plenary = self._get_or_create_plenary(
                 int(float(id_orgao)), sigla_orgao, nome_sigla, legislatura
             )
+            logger.info(f"Using plenary ID {plenary.id} for {sigla_orgao} in {legislatura.numero} Legislature")
             
             # Process members
             composicao = plenario.find('Composicao')
@@ -973,6 +974,11 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                     # Process the cargo data - this structure is now covered in schema
                     logger.debug(f"Processing DepCargo for deputy {dep_nome}")
             
+            # Verify plenary exists before creating composition
+            if not plenary or not plenary.id:
+                logger.error(f"Invalid plenary object for deputy {dep_nome}: {plenary}")
+                return False
+                
             # Create plenary composition record
             plenary_composition = PlenaryComposition(
                 plenary_id=plenary.id,
@@ -994,7 +1000,11 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing deputy plenary membership: {e}")
-            self.session.rollback()
+            # Re-raise critical errors (like foreign key constraints) to ensure data integrity
+            # but allow the caller to decide on transaction management
+            if "foreign key constraint" in str(e).lower() or "integrity" in str(e).lower():
+                logger.error(f"Data integrity issue - plenary {plenary.id} may not exist in database")
+                raise
             return False
     
     def _process_deputy_committee_membership(self, deputado_data: ET.Element, committee: Commission) -> bool:
@@ -1423,6 +1433,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         
         self.session.add(plenary)
         self.session.flush()  # Get the ID
+        
+        # Validate the plenary was created successfully
+        if not plenary.id:
+            raise ValueError(f"Failed to create plenary for organ {id_externo}")
+            
+        logger.debug(f"Created plenary {plenary.id} for organ {id_externo}")
         return plenary
         
     def _get_or_create_committee(self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura) -> Commission:
@@ -2640,6 +2656,90 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing deputy videos: {e}")
+            return False
+    
+    def _process_deputy_positions(self, dep_cargo: ET.Element, **kwargs) -> bool:
+        """Process deputy positions/cargo from depCargo element - stores in OrganCompositionDeputyPosition"""
+        try:
+            if dep_cargo is None:
+                logger.warning("Empty dep_cargo element provided")
+                return True
+                
+            if not kwargs:
+                logger.warning("No composition context provided for deputy position processing")
+                return True
+            
+            # Process pt_ar_wsgode_objectos_DadosCargoDeputado structure
+            for dados_cargo in dep_cargo.findall('pt_ar_wsgode_objectos_DadosCargoDeputado'):
+                car_id = self._get_int_value(dados_cargo, 'carId')
+                car_des = self._get_text_value(dados_cargo, 'carDes')
+                car_dt_inicio = self._parse_date(self._get_text_value(dados_cargo, 'carDtInicio'))
+                car_dt_fim = self._parse_date(self._get_text_value(dados_cargo, 'carDtFim'))
+                
+                # Create deputy position record with composition context
+                position = OrganCompositionDeputyPosition(
+                    car_id=car_id,
+                    car_des=car_des,
+                    car_dt_inicio=car_dt_inicio,
+                    car_dt_fim=car_dt_fim
+                )
+                
+                # Set appropriate composition relationship based on kwargs
+                for key, value in kwargs.items():
+                    if key.endswith('_composition') and value:
+                        composition_type = key.replace('_composition', '')
+                        setattr(position, f"{composition_type}_composition_id", value.id)
+                        break  # Only set one relationship
+                
+                self.session.add(position)
+                logger.debug(f"Added deputy position: {car_des} ({car_id})")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing deputy positions: {e}")
+            return False
+    
+    def _process_deputy_situations(self, dep_situacao: ET.Element, **kwargs) -> bool:
+        """Process deputy situations from depSituacao element - stores in OrganCompositionDeputySituation"""
+        try:
+            if dep_situacao is None:
+                logger.warning("Empty dep_situacao element provided")
+                return True
+                
+            if not kwargs:
+                logger.warning("No composition context provided for deputy situation processing")
+                return True
+            
+            # Process pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado structure
+            for dados_situacao in dep_situacao.findall('pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado'):
+                sio_des = self._get_text_value(dados_situacao, 'sioDes')
+                sio_tip_mem = self._get_text_value(dados_situacao, 'sioTipMem')
+                sio_dt_inicio = self._parse_date(self._get_text_value(dados_situacao, 'sioDtInicio'))
+                sio_dt_fim = self._parse_date(self._get_text_value(dados_situacao, 'sioDtFim'))
+                
+                # Create deputy situation record with composition context
+                situation = OrganCompositionDeputySituation(
+                    sio_des=sio_des,
+                    sio_tip_mem=sio_tip_mem,
+                    sio_dt_inicio=sio_dt_inicio,
+                    sio_dt_fim=sio_dt_fim
+                )
+                
+                # Set appropriate composition relationship based on kwargs
+                for key, value in kwargs.items():
+                    if key.endswith('_composition') and value:
+                        composition_type = key.replace('_composition', '')
+                        setattr(situation, f"{composition_type}_composition_id", value.id)
+                        break  # Only set one relationship
+                
+                self.session.add(situation)
+                logger.debug(f"Added deputy situation: {sio_des} ({sio_tip_mem})")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing deputy situations: {e}")
             return False
     
     def _convert_roman_to_int(self, roman: str) -> int:
