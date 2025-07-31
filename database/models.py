@@ -95,6 +95,7 @@ class Deputado(Base):
     titulos = relationship("DeputadoTitulo", back_populates="deputado", cascade="all, delete-orphan")
     condecoracoes = relationship("DeputadoCondecoracao", back_populates="deputado", cascade="all, delete-orphan")
     obras_publicadas = relationship("DeputadoObraPublicada", back_populates="deputado", cascade="all, delete-orphan")
+    atividades_orgaos = relationship("DeputadoAtividadeOrgao", back_populates="deputado", cascade="all, delete-orphan")
     mandatos_legislativos = relationship("DeputadoMandatoLegislativo", back_populates="deputado", cascade="all, delete-orphan")
     registo_interesses_v2 = relationship("RegistoInteressesV2", back_populates="deputado", cascade="all, delete-orphan")
 
@@ -1097,6 +1098,7 @@ class WorkGroupHistoricalComposition(Base):
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
     dep_nome_parlamentar = Column(String(200))
+    dep_nome_completo = Column(String(200))  # VIII Legislature field
     org_id = Column(Integer)
     created_at = Column(DateTime, default=func.now())
     
@@ -1115,6 +1117,7 @@ class PermanentCommitteeHistoricalComposition(Base):
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
     dep_nome_parlamentar = Column(String(200))
+    dep_nome_completo = Column(String(200))  # VI Legislature field
     org_id = Column(Integer)
     created_at = Column(DateTime, default=func.now())
     
@@ -3480,6 +3483,33 @@ class DeputadoObraPublicada(Base):
     
     # Relationships
     deputado = relationship("Deputado", back_populates="obras_publicadas")
+
+
+class DeputadoAtividadeOrgao(Base):
+    """Deputy Activity in Parliamentary Organs (cadActividadeOrgaos)"""
+    __tablename__ = 'deputado_atividades_orgaos'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    
+    # Activity type - 'committee' or 'working_group'
+    tipo_atividade = Column(String(50), nullable=False)  # 'actividadeCom' or 'actividadeGT'
+    
+    # Organ details (pt_ar_wsgode_objectos_DadosOrgaos)
+    org_id = Column(Integer)        # orgId - organ ID
+    org_sigla = Column(String(50))  # orgSigla - organ acronym
+    org_des = Column(String(200))   # orgDes - organ description
+    cargo_des = Column(String(200)) # cargoDes - position description
+    tim_des = Column(String(50))    # timDes - mandate period description
+    leg_des = Column(String(50))    # legDes - legislature description
+    
+    # Position details (pt_ar_wsgode_objectos_DadosCargosOrgao)
+    tia_des = Column(String(200))   # tiaDes - position type description
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    deputado = relationship("Deputado", back_populates="atividades_orgaos")
 
 
 class DeputadoMandatoLegislativo(Base):

@@ -207,6 +207,33 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             
             # ComissaoPermanente Historical Composition - I Legislature
             'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao',
+            
+            # VI Legislature ComissaoPermanente HistoricoComposicao detailed structure
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depId',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCadId',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depNomeParlamentar',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.legDes',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.orgId',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpId',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpSigla',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtInicio',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtFim',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carId',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDes',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtInicio',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtFim',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioDes',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioTipMem',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioDtInicio',
+            'OrganizacaoAR.ComissaoPermanente.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioDtFim',
+            
             'OrganizacaoAR.Plenario',
             
             # MesaAR detailed mappings
@@ -433,7 +460,61 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas',
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas.nomeDeputado',
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas.siglaGrupo',
-            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas.siglaFalta'
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas.siglaFalta',
+            
+            # VIII Legislature Working Groups OrgaoBase structure
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.DetalheOrgao',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.DetalheOrgao.idOrgao',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.DetalheOrgao.siglaOrgao',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.DetalheOrgao.nomeSigla',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.DetalheOrgao.numeroOrgao',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.DetalheOrgao.siglaLegislatura',
+            
+            # VIII Legislature Working Groups Historical Composition
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depId',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCadId',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depNomeParlamentar',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depNomeCompleto',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.orgId',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.legDes',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpId',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpSigla',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtInicio',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtFim',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carId',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDes',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtInicio',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtFim',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioDes',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioDtInicio',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioDtFim',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.HistoricoComposicao.pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoOrgaoDeputado.sioTipMem',
+            
+            # VIII Legislature Working Groups Meetings
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuId',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuNumero',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuDataHora',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuFinalPlenario',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTirDes',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTarId',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTarSigla',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTarDes',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuLocal',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuData',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuHora',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTipo',
+            'OrganizacaoAR.GruposTrabalho.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuEstado'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -575,7 +656,12 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             if grupos_trabalho is not None:
                 for grupo in grupos_trabalho:
                     try:
-                        success = self._process_grupo_trabalho(grupo, legislatura)
+                        # Check if this is an OrgaoBase structure (VIII Legislature)
+                        if grupo.tag == 'OrgaoBase':
+                            success = self._process_working_group_orgao_base(grupo, legislatura)
+                        else:
+                            # Simple working group structure (I Legislature)
+                            success = self._process_grupo_trabalho(grupo, legislatura)
                         results['records_processed'] += 1
                         if success:
                             results['records_imported'] += 1
@@ -1152,11 +1238,33 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             logger.error(f"Error processing I Legislature committee meeting: {e}")
             return False
     
+    def _get_or_create_parliamentary_organization(self, legislatura: Legislatura) -> ParliamentaryOrganization:
+        """Get or create parliamentary organization for the given legislature"""
+        organization = self.session.query(ParliamentaryOrganization).filter_by(
+            legislatura_sigla=legislatura.numero
+        ).first()
+        
+        if organization:
+            return organization
+        
+        # Create new parliamentary organization
+        organization = ParliamentaryOrganization(
+            legislatura_sigla=legislatura.numero,
+            xml_file_path=getattr(self, 'xml_file', None)
+        )
+        
+        self.session.add(organization)
+        self.session.flush()  # Get the ID
+        return organization
+    
     def _get_or_create_plenary(self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura) -> Plenary:
         """Get or create plenary record"""
+        # First get or create parliamentary organization
+        organization = self._get_or_create_parliamentary_organization(legislatura)
+        
         plenary = self.session.query(Plenary).filter_by(
-            external_id=id_externo,
-            legislatura_id=legislatura.id
+            id_orgao=id_externo,
+            organization_id=organization.id
         ).first()
         
         if plenary:
@@ -1164,11 +1272,11 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         
         # Create new plenary
         plenary = Plenary(
-            external_id=id_externo,
-            legislatura_id=legislatura.id,
-            nome=nome,
-            sigla=sigla,
-            ativa=True
+            organization_id=organization.id,
+            id_orgao=id_externo,
+            sigla_orgao=sigla,
+            nome_sigla=nome,
+            sigla_legislatura=legislatura.numero
         )
         
         self.session.add(plenary)
@@ -1177,9 +1285,12 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         
     def _get_or_create_committee(self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura) -> Commission:
         """Get or create committee record"""
+        # First get or create parliamentary organization
+        organization = self._get_or_create_parliamentary_organization(legislatura)
+        
         committee = self.session.query(Commission).filter_by(
-            external_id=id_externo,
-            legislatura_id=legislatura.id
+            id_orgao=id_externo,
+            organization_id=organization.id
         ).first()
         
         if committee:
@@ -1187,11 +1298,11 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         
         # Create new committee
         committee = Commission(
-            external_id=id_externo,
-            legislatura_id=legislatura.id,
-            nome=nome,
-            sigla=sigla,
-            ativa=True
+            organization_id=organization.id,
+            id_orgao=id_externo,
+            sigla_orgao=sigla,
+            nome_sigla=nome,
+            sigla_legislatura=legislatura.numero
         )
         
         self.session.add(committee)
@@ -1200,9 +1311,12 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         
     def _get_or_create_subcommittee(self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura) -> SubCommittee:
         """Get or create subcommittee record"""
+        # First get or create parliamentary organization
+        organization = self._get_or_create_parliamentary_organization(legislatura)
+        
         subcommittee = self.session.query(SubCommittee).filter_by(
-            external_id=id_externo,
-            legislatura_id=legislatura.id
+            id_orgao=id_externo,
+            organization_id=organization.id
         ).first()
         
         if subcommittee:
@@ -1210,11 +1324,11 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         
         # Create new subcommittee
         subcommittee = SubCommittee(
-            external_id=id_externo,
-            legislatura_id=legislatura.id,
-            nome=nome,
-            sigla=sigla,
-            ativa=True
+            organization_id=organization.id,
+            id_orgao=id_externo,
+            sigla_orgao=sigla,
+            nome_sigla=nome,
+            sigla_legislatura=legislatura.numero
         )
         
         self.session.add(subcommittee)
@@ -1223,9 +1337,12 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         
     def _get_or_create_work_group(self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura) -> WorkGroup:
         """Get or create work group record"""
+        # First get or create parliamentary organization
+        organization = self._get_or_create_parliamentary_organization(legislatura)
+        
         work_group = self.session.query(WorkGroup).filter_by(
-            external_id=id_externo,
-            legislatura_id=legislatura.id
+            id_orgao=id_externo,
+            organization_id=organization.id
         ).first()
         
         if work_group:
@@ -1233,11 +1350,11 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         
         # Create new work group
         work_group = WorkGroup(
-            external_id=id_externo,
-            legislatura_id=legislatura.id,
-            nome=nome,
-            sigla=sigla,
-            ativa=True
+            organization_id=organization.id,
+            id_orgao=id_externo,
+            sigla_orgao=sigla,
+            nome_sigla=nome,
+            sigla_legislatura=legislatura.numero
         )
         
         self.session.add(work_group)
@@ -1433,12 +1550,14 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                 for deputado_data in composicao.findall('DadosDeputadoOrgao'):
                     self._process_deputy_permanent_committee_membership(deputado_data, permanent_committee)
             
-            # Process historical composition (I Legislature)
+            # Process historical composition (VI Legislature and others)
             historico_composicao = comissao.find('HistoricoComposicao')
             if historico_composicao is not None:
-                logger.info(f"Processing PermanentCommittee HistoricoComposicao for I Legislature")
-                # I Legislature HistoricoComposicao structure would be processed here
-                # This structure exists in schema but processing can be implemented when needed
+                logger.info(f"Processing PermanentCommittee HistoricoComposicao for {legislatura.leg_des} Legislature")
+                for dados_historico in historico_composicao.findall('pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico'):
+                    success = self._process_permanent_committee_historical_composition(dados_historico, permanent_committee, legislatura)
+                    if not success:
+                        logger.warning(f"Failed to process permanent committee historical composition for {sigla_orgao}")
             
             return True
             
@@ -1590,6 +1709,47 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing OrgaoBase: {e}")
+            return False
+    
+    def _process_working_group_orgao_base(self, orgao_base: ET.Element, legislatura: Legislatura) -> bool:
+        """Process VIII Legislature working group OrgaoBase structure"""
+        try:
+            detalhe_orgao = orgao_base.find('DetalheOrgao')
+            if detalhe_orgao is None:
+                return False
+            
+            id_orgao = self._get_text_value(detalhe_orgao, 'idOrgao')
+            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao')
+            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla')
+            numero_orgao = self._get_text_value(detalhe_orgao, 'numeroOrgao')
+            sigla_legislatura = self._get_text_value(detalhe_orgao, 'siglaLegislatura')
+            
+            if not id_orgao or not sigla_orgao:
+                return False
+            
+            # Create or get working group record
+            work_group = self._get_or_create_work_group(
+                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, legislatura
+            )
+            
+            # Process historical composition (VIII Legislature structure)
+            historico_composicao = orgao_base.find('HistoricoComposicao')
+            if historico_composicao is not None:
+                for dados_historico in historico_composicao.findall('pt_ar_wsgode_objectos_DadosOrgaoComposicaoHistorico'):
+                    success = self._process_work_group_historical_composition(dados_historico, work_group, legislatura)
+                    if not success:
+                        logger.warning(f"Failed to process working group historical composition for {sigla_orgao}")
+            
+            # Process meetings (VIII Legislature structure)
+            reunioes = orgao_base.find('Reunioes')
+            if reunioes is not None:
+                for dados_reuniao in reunioes.findall('pt_ar_wsgode_objectos_DadosReuniao'):
+                    self._process_organ_meeting_namespace(dados_reuniao, work_group=work_group)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing working group OrgaoBase: {e}")
             return False
     
     def _process_reuniao_plenario(self, reuniao_plenario: ET.Element, plenary, legislatura: Legislatura = None) -> bool:
@@ -2042,6 +2202,44 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             logger.error(f"Error processing SubCommittee historical composition: {e}")
             return False
     
+    def _process_work_group_historical_composition(self, historico_data: ET.Element, work_group, legislatura: Legislatura) -> bool:
+        """Process WorkGroup historical composition (VIII Legislature)"""
+        try:
+            # Create historical composition record
+            composition = WorkGroupHistoricalComposition(
+                work_group_id=work_group.id,
+                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.leg_des,
+                dep_id=self._get_int_value(historico_data, 'depId'),
+                dep_cad_id=self._get_int_value(historico_data, 'depCadId'),
+                dep_nome_parlamentar=self._get_text_value(historico_data, 'depNomeParlamentar'),
+                dep_nome_completo=self._get_text_value(historico_data, 'depNomeCompleto'),
+                org_id=self._get_int_value(historico_data, 'orgId') or work_group.id_orgao
+            )
+            
+            self.session.add(composition)
+            self.session.flush()
+            
+            # Process parliamentary group situations
+            dep_gp = historico_data.find('depGP')
+            if dep_gp is not None:
+                self._process_gp_situations(dep_gp, work_group_composition=composition)
+            
+            # Process deputy positions/cargo
+            dep_cargo = historico_data.find('depCargo')
+            if dep_cargo is not None:
+                self._process_deputy_positions(dep_cargo, work_group_composition=composition)
+            
+            # Process deputy situations
+            dep_situacao = historico_data.find('depSituacao')
+            if dep_situacao is not None:
+                self._process_deputy_situations(dep_situacao, work_group_composition=composition)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing WorkGroup historical composition: {e}")
+            return False
+    
     def _process_deputy_admin_council_membership(self, deputado_data: ET.Element, admin_council) -> bool:
         """Process deputy membership in Administrative Council"""
         try:
@@ -2104,6 +2302,44 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing Permanent Committee deputy membership: {e}")
+            return False
+    
+    def _process_permanent_committee_historical_composition(self, historico_data: ET.Element, permanent_committee, legislatura: Legislatura) -> bool:
+        """Process PermanentCommittee historical composition (VI Legislature)"""
+        try:
+            # Create historical composition record
+            composition = PermanentCommitteeHistoricalComposition(
+                permanent_committee_id=permanent_committee.id,
+                leg_des=self._get_text_value(historico_data, 'legDes') or legislatura.leg_des,
+                dep_id=self._get_int_value(historico_data, 'depId'),
+                dep_cad_id=self._get_int_value(historico_data, 'depCadId'),
+                dep_nome_parlamentar=self._get_text_value(historico_data, 'depNomeParlamentar'),
+                dep_nome_completo=self._get_text_value(historico_data, 'depNomeCompleto'),
+                org_id=self._get_int_value(historico_data, 'orgId') or permanent_committee.id_orgao
+            )
+            
+            self.session.add(composition)
+            self.session.flush()
+            
+            # Process parliamentary group situations
+            dep_gp = historico_data.find('depGP')
+            if dep_gp is not None:
+                self._process_gp_situations(dep_gp, permanent_committee_composition=composition)
+            
+            # Process deputy positions/cargo
+            dep_cargo = historico_data.find('depCargo')
+            if dep_cargo is not None:
+                self._process_deputy_positions(dep_cargo, permanent_committee_composition=composition)
+            
+            # Process deputy situations
+            dep_situacao = historico_data.find('depSituacao')
+            if dep_situacao is not None:
+                self._process_deputy_situations(dep_situacao, permanent_committee_composition=composition)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing PermanentCommittee historical composition: {e}")
             return False
     
     def _process_deputy_leader_conference_membership(self, deputado_data: ET.Element, leader_conference) -> bool:

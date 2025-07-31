@@ -87,6 +87,28 @@ class RegistoBiograficoMapper(SchemaMapper):
             'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeCom',
             'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT',
             
+            # Committee activity details (actividadeCom)
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.orgSigla',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.orgDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.orgId',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.legDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao.tiaDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.timDes',
+            
+            # Working group activity details (actividadeGT)
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.orgSigla',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.orgDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.orgId',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.timDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.legDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao.tiaDes',
+            
             # Deputy legislature data with all I Legislature fields
             'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis',
             'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis',
@@ -283,7 +305,7 @@ class RegistoBiograficoMapper(SchemaMapper):
         try:
             from database.models import (
                 Deputado, DeputadoHabilitacao, DeputadoCargoFuncao, DeputadoTitulo,
-                DeputadoCondecoracao, DeputadoObraPublicada, DeputadoMandatoLegislativo
+                DeputadoCondecoracao, DeputadoObraPublicada, DeputadoAtividadeOrgao, DeputadoMandatoLegislativo
             )
             
             # Extract basic biographical data
@@ -422,6 +444,61 @@ class RegistoBiograficoMapper(SchemaMapper):
                             )
                             self.session.add(publication)
             
+            # Process Organ Activities (cadActividadeOrgaos)
+            atividades_orgaos = record.find('cadActividadeOrgaos')
+            if atividades_orgaos is not None:
+                # Process Committee Activities (actividadeCom)
+                comissoes = atividades_orgaos.findall('actividadeCom')
+                for comissao in comissoes:
+                    dados_orgao = comissao.find('pt_ar_wsgode_objectos_DadosOrgaos')
+                    if dados_orgao is not None:
+                        # Check for position details in committee (cargoDes structure)
+                        tia_des = None
+                        cargo_des_elem = dados_orgao.find('cargoDes')
+                        if cargo_des_elem is not None:
+                            cargo_data = cargo_des_elem.find('pt_ar_wsgode_objectos_DadosCargosOrgao')
+                            if cargo_data is not None:
+                                tia_des = self._get_text_value(cargo_data, 'tiaDes')
+                        
+                        atividade = DeputadoAtividadeOrgao(
+                            deputado_id=deputy.id,
+                            tipo_atividade='committee',
+                            org_id=self._parse_int(self._get_text_value(dados_orgao, 'orgId')),
+                            org_sigla=self._get_text_value(dados_orgao, 'orgSigla'),
+                            org_des=self._get_text_value(dados_orgao, 'orgDes'),
+                            cargo_des=self._get_text_value(dados_orgao, 'cargoDes'),
+                            tim_des=self._get_text_value(dados_orgao, 'timDes'),
+                            leg_des=self._get_text_value(dados_orgao, 'legDes'),
+                            tia_des=tia_des
+                        )
+                        self.session.add(atividade)
+                
+                # Process Working Group Activities (actividadeGT)
+                grupos_trabalho = atividades_orgaos.findall('actividadeGT')
+                for grupo in grupos_trabalho:
+                    dados_orgao = grupo.find('pt_ar_wsgode_objectos_DadosOrgaos')
+                    if dados_orgao is not None:
+                        # Check for position details (cargoDes structure)
+                        tia_des = None
+                        cargo_des_elem = dados_orgao.find('cargoDes')
+                        if cargo_des_elem is not None:
+                            cargo_data = cargo_des_elem.find('pt_ar_wsgode_objectos_DadosCargosOrgao')
+                            if cargo_data is not None:
+                                tia_des = self._get_text_value(cargo_data, 'tiaDes')
+                        
+                        atividade = DeputadoAtividadeOrgao(
+                            deputado_id=deputy.id,
+                            tipo_atividade='working_group',
+                            org_id=self._parse_int(self._get_text_value(dados_orgao, 'orgId')),
+                            org_sigla=self._get_text_value(dados_orgao, 'orgSigla'),
+                            org_des=self._get_text_value(dados_orgao, 'orgDes'),
+                            cargo_des=self._get_text_value(dados_orgao, 'cargoDes'),
+                            tim_des=self._get_text_value(dados_orgao, 'timDes'),
+                            leg_des=self._get_text_value(dados_orgao, 'legDes'),
+                            tia_des=tia_des
+                        )
+                        self.session.add(atividade)
+            
             # Process Legislative Mandates (cadDeputadoLegis)
             legislaturas = record.find('cadDeputadoLegis')
             if legislaturas is not None:
@@ -464,7 +541,7 @@ class RegistoBiograficoMapper(SchemaMapper):
         try:
             from database.models import (
                 Deputado, DeputadoHabilitacao, DeputadoCargoFuncao, DeputadoTitulo,
-                DeputadoCondecoracao, DeputadoObraPublicada, DeputadoMandatoLegislativo
+                DeputadoCondecoracao, DeputadoObraPublicada, DeputadoAtividadeOrgao, DeputadoMandatoLegislativo
             )
             
             # Extract basic biographical data using VIII Legislature structure
