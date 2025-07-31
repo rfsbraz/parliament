@@ -331,10 +331,6 @@ class UnifiedImporter:
         with open(file_path, 'rb') as f:
             content = f.read()
         
-        # Log first few bytes for debugging
-        first_bytes = content[:10]
-        logger.info(f"First 10 bytes of {file_path}: {first_bytes}")
-        
         # Remove UTF-8 BOM if present (EF BB BF)
         if content.startswith(b'\xef\xbb\xbf'):
             logger.info(f"Removing UTF-8 BOM from {file_path}")
@@ -353,7 +349,6 @@ class UnifiedImporter:
         # Also try to remove any other common problematic characters at start
         # Remove any non-ASCII characters before '<' 
         while content and content[0:1] != b'<' and content[0] > 127:
-            logger.info(f"Removing problematic byte at start: {content[0:1]}")
             content = content[1:]
         
         # Parse the cleaned content
