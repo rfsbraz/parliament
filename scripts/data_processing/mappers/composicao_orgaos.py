@@ -519,6 +519,8 @@ class ComposicaoOrgaosMapper(SchemaMapper):
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Map parliamentary organ composition to database"""
+        # Store strict_mode for use in nested methods
+        self.strict_mode = strict_mode
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
         try:
@@ -539,9 +541,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                         results['records_imported'] += 1
                 except Exception as e:
                     error_msg = f"MesaAR processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
+                    self._handle_processing_error(error_msg, results, strict_mode)
             
             # Process ConselhoAdministracao (Administrative Council)
             conselho_admin = xml_root.find('.//ConselhoAdministracao')
@@ -553,9 +553,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                         results['records_imported'] += 1
                 except Exception as e:
                     error_msg = f"ConselhoAdministracao processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
+                    self._handle_processing_error(error_msg, results, strict_mode)
             
             # Process ComissaoPermanente (Permanent Committee)
             comissao_permanente = xml_root.find('.//ComissaoPermanente')
@@ -567,9 +565,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                         results['records_imported'] += 1
                 except Exception as e:
                     error_msg = f"ComissaoPermanente processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
+                    self._handle_processing_error(error_msg, results, strict_mode)
             
             # Process ConferenciaLideres (Leader Conference)
             conferencia_lideres = xml_root.find('.//ConferenciaLideres')
@@ -581,9 +577,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                         results['records_imported'] += 1
                 except Exception as e:
                     error_msg = f"ConferenciaLideres processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
+                    self._handle_processing_error(error_msg, results, strict_mode)
             
             # Process ConferenciaPresidentesComissoes (Commission Presidents Conference)
             conferencia_presidentes = xml_root.find('.//ConferenciaPresidentesComissoes')
@@ -595,9 +589,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                         results['records_imported'] += 1
                 except Exception as e:
                     error_msg = f"ConferenciaPresidentesComissoes processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
+                    self._handle_processing_error(error_msg, results, strict_mode)
 
             # Process plenary composition
             plenario = xml_root.find('.//Plenario')
@@ -609,9 +601,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                         results['records_imported'] += 1
                 except Exception as e:
                     error_msg = f"Plenario processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
+                    self._handle_processing_error(error_msg, results, strict_mode)
         
             # Process committees
             comissoes = xml_root.find('.//Comissoes')
@@ -632,9 +622,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                             results['records_imported'] += 1
                     except Exception as e:
                         error_msg = f"Committee processing error: {str(e)}"
-                        logger.error(error_msg)
-                        results['errors'].append(error_msg)
-                        results['records_processed'] += 1
+                        self._handle_processing_error(error_msg, results, strict_mode)
         
             # Process subcommittees
             subcomissoes = xml_root.find('.//SubComissoes')
@@ -647,9 +635,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                             results['records_imported'] += 1
                     except Exception as e:
                         error_msg = f"Subcommittee processing error: {str(e)}"
-                        logger.error(error_msg)
-                        results['errors'].append(error_msg)
-                        results['records_processed'] += 1
+                        self._handle_processing_error(error_msg, results, strict_mode)
         
             # Process working groups
             grupos_trabalho = xml_root.find('.//GruposTrabalho')
@@ -667,9 +653,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                             results['records_imported'] += 1
                     except Exception as e:
                         error_msg = f"Working group processing error: {str(e)}"
-                        logger.error(error_msg)
-                        results['errors'].append(error_msg)
-                        results['records_processed'] += 1
+                        self._handle_processing_error(error_msg, results, strict_mode)
             
             # Process I Legislature working groups (GruposTrabalhoAR)
             grupos_trabalho_ar = xml_root.find('.//GruposTrabalhoAR')
@@ -682,9 +666,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                             results['records_imported'] += 1
                     except Exception as e:
                         error_msg = f"I Legislature working group processing error: {str(e)}"
-                        logger.error(error_msg)
-                        results['errors'].append(error_msg)
-                        results['records_processed'] += 1
+                        self._handle_processing_error(error_msg, results, strict_mode)
             
             # Commit all changes
             self.session.commit()
@@ -692,9 +674,8 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             
         except Exception as e:
             self.session.rollback()
-            logger.error(f"Error in validate_and_map: {e}")
-            results['errors'].append(str(e))
-            return results
+            error_msg = f"Error in validate_and_map: {e}"
+            self._handle_processing_error(error_msg, results, strict_mode)
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
@@ -769,7 +750,13 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             return True
             
         except Exception as e:
-            logger.error(f"Error processing plenary: {e}")
+            error_msg = f"Error processing plenary: {e}"
+            logger.error(error_msg)
+            if hasattr(self, 'strict_mode') and self.strict_mode:
+                import sys
+                logger.error(f"STRICT MODE: Exiting due to plenary processing error")
+                logger.error(f"Error details: {error_msg}")
+                sys.exit(1)
             return False
     
     def _process_comissao(self, comissao: ET.Element, legislatura: Legislatura) -> bool:
@@ -806,7 +793,13 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             return True
             
         except Exception as e:
-            logger.error(f"Error processing committee: {e}")
+            error_msg = f"Error processing committee: {e}"
+            logger.error(error_msg)
+            if hasattr(self, 'strict_mode') and self.strict_mode:
+                import sys
+                logger.error(f"STRICT MODE: Exiting due to committee processing error")
+                logger.error(f"Error details: {error_msg}")
+                sys.exit(1)
             return False
     
     def _process_subcomissao(self, subcomissao: ET.Element, legislatura: Legislatura) -> bool:
@@ -849,7 +842,13 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             return True
             
         except Exception as e:
-            logger.error(f"Error processing subcommittee: {e}")
+            error_msg = f"Error processing subcommittee: {e}"
+            logger.error(error_msg)
+            if hasattr(self, 'strict_mode') and self.strict_mode:
+                import sys
+                logger.error(f"STRICT MODE: Exiting due to subcommittee processing error")
+                logger.error(f"Error details: {error_msg}")
+                sys.exit(1)
             return False
     
     def _process_grupo_trabalho(self, grupo: ET.Element, legislatura: Legislatura) -> bool:
@@ -921,9 +920,10 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             # Create plenary composition record
             plenary_composition = PlenaryComposition(
                 plenary_id=plenary.id,
-                deputado_id=deputado.id,
-                data_inicio=data_inicio,
-                data_fim=data_fim
+                dep_cad_id=int(float(dep_cad_id)),
+                dep_nome_parlamentar=dep_nome,
+                dep_nome_completo=dep_nome_completo,
+                org_id=plenary.id  # Using plenary ID as org_id
             )
             
             self.session.add(plenary_composition)
@@ -961,11 +961,10 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             # Create commission historical composition record
             composition = CommissionHistoricalComposition(
                 commission_id=committee.id,
-                deputado_id=deputado.id,
-                cargo=cargo,
-                data_inicio=data_inicio,
-                data_fim=data_fim,
-                titular=True
+                dep_cad_id=int(float(dep_cad_id)),
+                dep_nome_parlamentar=dep_nome,
+                dep_nome_completo=dep_nome_completo,
+                org_id=committee.id_orgao
             )
             
             self.session.add(composition)
@@ -1002,12 +1001,11 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             
             # Create subcommittee historical composition record
             composition = SubCommitteeHistoricalComposition(
-                subcommittee_id=subcommittee.id,
-                deputado_id=deputado.id,
-                cargo=cargo,
-                data_inicio=data_inicio,
-                data_fim=data_fim,
-                titular=True
+                sub_committee_id=subcommittee.id,
+                dep_cad_id=int(float(dep_cad_id)),
+                dep_nome_parlamentar=dep_nome,
+                dep_nome_completo=dep_nome_completo,
+                org_id=subcommittee.id_orgao
             )
             
             self.session.add(composition)
@@ -1045,11 +1043,10 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             # Create work group historical composition record
             composition = WorkGroupHistoricalComposition(
                 work_group_id=work_group.id,
-                deputado_id=deputado.id,
-                cargo=cargo,
-                data_inicio=data_inicio,
-                data_fim=data_fim,
-                titular=True
+                dep_cad_id=int(float(dep_cad_id)),
+                dep_nome_parlamentar=dep_nome,
+                dep_nome_completo=dep_nome_completo,
+                org_id=work_group.id_orgao
             )
             
             self.session.add(composition)
@@ -1816,7 +1813,13 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             return True
             
         except Exception as e:
-            logger.error(f"Error processing ReuniaoPlenario: {e}")
+            error_msg = f"Error processing ReuniaoPlenario: {e}"
+            logger.error(error_msg)
+            if hasattr(self, 'strict_mode') and self.strict_mode:
+                import sys
+                logger.error(f"STRICT MODE: Exiting due to ReuniaoPlenario processing error")
+                logger.error(f"Error details: {error_msg}")
+                sys.exit(1)
             return False
     
     def _process_organ_meeting_namespace(self, dados_reuniao: ET.Element, **kwargs) -> bool:
@@ -2388,3 +2391,24 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         if text_value:
             return text_value.lower() in ('true', '1', 'yes', 'sim')
         return False
+    
+    def _get_int_value(self, parent: ET.Element, tag_name: str) -> Optional[int]:
+        """Get integer value from XML element"""
+        text_value = self._get_text_value(parent, tag_name)
+        if text_value:
+            try:
+                return int(float(text_value)) if '.' in text_value else int(text_value)
+            except (ValueError, TypeError):
+                return None
+        return None
+    
+    def _handle_processing_error(self, error_msg: str, results: Dict, strict_mode: bool):
+        """Handle processing errors with strict mode support"""
+        logger.error(error_msg)
+        results['errors'].append(error_msg)
+        results['records_processed'] += 1
+        if strict_mode:
+            import sys
+            logger.error(f"STRICT MODE: Exiting due to processing error")
+            logger.error(f"Error details: {error_msg}")
+            sys.exit(1)
