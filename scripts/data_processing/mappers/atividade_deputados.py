@@ -346,7 +346,87 @@ class AtividadeDeputadosMapper(SchemaMapper):
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ParlamentoJovens.DadosDeputado.Sessao',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresContasPublicas.RelatoresContasPublicasOut.ActTp',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ParlamentoJovens.DadosDeputado.Estabelecimento',
-            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.AutoresPareceresIncImu.AutoresPareceresIncImuOut.ActSelLg'
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.AutoresPareceresIncImu.AutoresPareceresIncImuOut.ActSelLg',
+            
+            # I Legislature - AtividadeDeputadoIA.xml namespace variant (same data, different XML format)
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depCadId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depNomeParlamentar',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depNomeCompleto',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depCPId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depCPDes',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.legDes',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depGP',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpSigla',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtInicio',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtFim',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depSituacao',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDes',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtInicio',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.deputado.depSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtFim',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.rel',
+            
+            # I Legislature - AtividadeDeputadoIA.xml comprehensive namespace variants for all activity sections
+            # Initiatives (Ini) - namespace variant
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.ini',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.ini.pt_gov_ar_wsar_objectos_IniciativasOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.ini.pt_gov_ar_wsar_objectos_IniciativasOut.iniId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.ini.pt_gov_ar_wsar_objectos_IniciativasOut.iniNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.ini.pt_gov_ar_wsar_objectos_IniciativasOut.iniSelLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.ini.pt_gov_ar_wsar_objectos_IniciativasOut.iniSelNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.ini.pt_gov_ar_wsar_objectos_IniciativasOut.iniTi',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.ini.pt_gov_ar_wsar_objectos_IniciativasOut.iniTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.ini.pt_gov_ar_wsar_objectos_IniciativasOut.iniTpdesc',
+            
+            # Interventions (Intev) - namespace variant
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.intId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.intSu',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.pubDar',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.pubDtreu',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.pubLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.pubNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.pubSl',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.pubTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.tinDs',
+            
+            # Parliamentary Activities (ActP) - namespace variant
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.actP',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.actP.pt_gov_ar_wsar_objectos_ActividadesParlamentaresOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.actP.pt_gov_ar_wsar_objectos_ActividadesParlamentaresOut.actId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.actP.pt_gov_ar_wsar_objectos_ActividadesParlamentaresOut.actNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.actP.pt_gov_ar_wsar_objectos_ActividadesParlamentaresOut.actTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.actP.pt_gov_ar_wsar_objectos_ActividadesParlamentaresOut.actTpdesc',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.actP.pt_gov_ar_wsar_objectos_ActividadesParlamentaresOut.actSelLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.actP.pt_gov_ar_wsar_objectos_ActividadesParlamentaresOut.actSelNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.actP.pt_gov_ar_wsar_objectos_ActividadesParlamentaresOut.actDtent',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.actP.pt_gov_ar_wsar_objectos_ActividadesParlamentaresOut.actDtdeb',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.actP.pt_gov_ar_wsar_objectos_ActividadesParlamentaresOut.actAs',
+            
+            # Rapporteurs (Rel) - namespace variant
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.rel.relatoresIniciativas',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.rel.relatoresIniciativas.pt_gov_ar_wsar_objectos_RelatoresIniciativasOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.rel.relatoresIniciativas.pt_gov_ar_wsar_objectos_RelatoresIniciativasOut.iniId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.rel.relatoresIniciativas.pt_gov_ar_wsar_objectos_RelatoresIniciativasOut.iniNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.rel.relatoresIniciativas.pt_gov_ar_wsar_objectos_RelatoresIniciativasOut.accDtrel',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.rel.relatoresIniciativas.pt_gov_ar_wsar_objectos_RelatoresIniciativasOut.iniTi',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.rel.relatoresIniciativas.pt_gov_ar_wsar_objectos_RelatoresIniciativasOut.iniSelLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.rel.relatoresIniciativas.pt_gov_ar_wsar_objectos_RelatoresIniciativasOut.relFase',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.rel.relatoresIniciativas.pt_gov_ar_wsar_objectos_RelatoresIniciativasOut.iniTp',
+            
+            # I Legislature - AtividadeDeputadoII.xml additional namespace variants
+            # Legislative Deputy Data (DadosLegisDeputado) - namespace variant
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.dadosLegisDeputado',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.dadosLegisDeputado.pt_gov_ar_wsar_objectos_DadosLegisDeputado',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.dadosLegisDeputado.pt_gov_ar_wsar_objectos_DadosLegisDeputado.nome',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.dadosLegisDeputado.pt_gov_ar_wsar_objectos_DadosLegisDeputado.dpl_grpar',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.dadosLegisDeputado.pt_gov_ar_wsar_objectos_DadosLegisDeputado.dpl_lg'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -382,9 +462,12 @@ class AtividadeDeputadosMapper(SchemaMapper):
         """Process deputy activities with REAL XML structure and store in our new models"""
         try:
             # Get deputy information from ACTUAL XML structure
-            deputado = atividade_deputado.find('Deputado')  # Not 'deputado' - capitalized!
+            # Handle both capitalized (Deputado) and lowercase (deputado) variants
+            deputado = atividade_deputado.find('Deputado')
             if deputado is None:
-                logger.warning("No Deputado section found")
+                deputado = atividade_deputado.find('deputado')  # AtividadeDeputadoIA.xml variant
+            if deputado is None:
+                logger.warning("No Deputado/deputado section found")
                 return False
                 
             # Extract deputy basic information - ACTUAL field names
@@ -767,7 +850,11 @@ class AtividadeDeputadosMapper(SchemaMapper):
     def _process_deputy_situacoes_real(self, deputado: ET.Element, atividade_deputado_id: int, strict_mode: bool = False):
         """Process deputy situations using SQLAlchemy ORM"""
         try:
+            # Handle both DepSituacao and depSituacao variants
             dep_situacao = deputado.find('DepSituacao')
+            if dep_situacao is None:
+                dep_situacao = deputado.find('depSituacao')  # AtividadeDeputadoIA.xml variant
+                
             if dep_situacao is not None:
                 # Create deputado_situacao record
                 deputado_situacao = DeputadoSituacao(
@@ -777,11 +864,26 @@ class AtividadeDeputadosMapper(SchemaMapper):
                 self.session.add(deputado_situacao)
                 self.session.commit()
                 
-                # Process each DadosSituacaoDeputado
+                # Process each DadosSituacaoDeputado (regular format)
                 for situacao in dep_situacao.findall('DadosSituacaoDeputado'):
                     sio_des = self._get_text_value(situacao, 'SioDes')
                     sio_dt_inicio = self._parse_date(self._get_text_value(situacao, 'SioDtInicio'))
                     sio_dt_fim = self._parse_date(self._get_text_value(situacao, 'SioDtFim'))
+                    
+                    dados_situacao = DadosSituacaoDeputado(
+                        deputado_situacao_id=deputado_situacao.id,
+                        sio_des=sio_des,
+                        sio_dt_inicio=sio_dt_inicio,
+                        sio_dt_fim=sio_dt_fim
+                    )
+                    
+                    self.session.add(dados_situacao)
+                
+                # Also handle namespace variant pt_ar_wsgode_objectos_DadosSituacaoDeputado
+                for situacao in dep_situacao.findall('pt_ar_wsgode_objectos_DadosSituacaoDeputado'):
+                    sio_des = self._get_text_value(situacao, 'sioDes')  # lowercase in namespace variant
+                    sio_dt_inicio = self._parse_date(self._get_text_value(situacao, 'sioDtInicio'))
+                    sio_dt_fim = self._parse_date(self._get_text_value(situacao, 'sioDtFim'))
                     
                     dados_situacao = DadosSituacaoDeputado(
                         deputado_situacao_id=deputado_situacao.id,
