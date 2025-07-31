@@ -60,13 +60,13 @@ def upgrade() -> None:
     op.create_index('idx_evento_parlamentar_legislatura', 'eventos_parlamentares', ['legislatura_id'], unique=False)
     op.create_table('relatorio_parlamentar_comissoes_opinioes',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('relatorio_id', sa.Integer(), nullable=False),
+    sa.Column('relatorio_parlamentar_id', sa.Integer(), nullable=False),
     sa.Column('comissao_id', sa.Integer(), nullable=True),
     sa.Column('nome', sa.String(length=500), nullable=True),
     sa.Column('numero', sa.Integer(), nullable=True),
     sa.Column('sigla', sa.String(length=50), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['relatorio_id'], ['relatorio_parlamentar.id'], ),
+    sa.ForeignKeyConstraint(['relatorio_parlamentar_id'], ['relatorio_parlamentar.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('relatorio_parlamentar_documentos',

@@ -2121,7 +2121,7 @@ class RelatorioParlamentarComissaoOpiniao(Base):
     __tablename__ = 'relatorio_parlamentar_comissoes_opinioes'
     
     id = Column(Integer, primary_key=True)
-    relatorio_id = Column(Integer, ForeignKey('relatorio_parlamentar.id'), nullable=False)
+    relatorio_parlamentar_id = Column(Integer, ForeignKey('relatorio_parlamentar.id'), nullable=False)
     
     # Commission Opinion fields from ParecerComissao.AtividadeComissoesOut
     comissao_id = Column(Integer)  # AtividadeComissoesOut.Id
