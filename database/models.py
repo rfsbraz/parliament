@@ -1059,6 +1059,7 @@ class ARBoardHistoricalComposition(Base):
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
     dep_nome_parlamentar = Column(String(200))
+    dep_nome_completo = Column(String(200))  # IX Legislature field
     org_id = Column(Integer)
     created_at = Column(DateTime, default=func.now())
     
@@ -1077,6 +1078,7 @@ class CommissionHistoricalComposition(Base):
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
     dep_nome_parlamentar = Column(String(200))
+    dep_nome_completo = Column(String(200))  # IX Legislature field
     org_id = Column(Integer)
     created_at = Column(DateTime, default=func.now())
     
@@ -1131,6 +1133,7 @@ class SubCommitteeHistoricalComposition(Base):
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
     dep_nome_parlamentar = Column(String(200))
+    dep_nome_completo = Column(String(200))  # IX Legislature field
     org_id = Column(Integer)
     created_at = Column(DateTime, default=func.now())
     
