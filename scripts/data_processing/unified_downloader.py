@@ -9,9 +9,17 @@ import os
 import re
 import sys
 import signal
+import random
+from requests.exceptions import ConnectTimeout, ReadTimeout, ConnectionError, Timeout
 
 # Global flag for graceful shutdown
 shutdown_requested = False
+
+# Global retry state - resets on successful requests
+current_backoff_delay = 1.0  # Start with 1 second
+max_backoff_delay = 120.0    # Cap at 2 minutes
+backoff_multiplier = 2.0     # Double each time
+max_retries = 5              # Maximum retry attempts per request
 
 def signal_handler(signum, frame):
     """Handle Ctrl+C gracefully"""
@@ -24,6 +32,63 @@ def check_shutdown():
     if shutdown_requested:
         print("Exiting gracefully...")
         sys.exit(0)
+
+def reset_backoff():
+    """Reset backoff delay to initial value on successful request"""
+    global current_backoff_delay
+    if current_backoff_delay > 1.0:
+        print(f"SUCCESS: Resetting exponential backoff delay (was {current_backoff_delay:.1f}s)")
+    current_backoff_delay = 1.0
+
+def get_next_backoff_delay():
+    """Calculate next backoff delay with exponential increase and jitter"""
+    global current_backoff_delay
+    
+    # Add jitter (±25% random variation) to prevent thundering herd
+    jitter = random.uniform(0.75, 1.25)
+    delay = current_backoff_delay * jitter
+    
+    # Increase for next time
+    current_backoff_delay = min(current_backoff_delay * backoff_multiplier, max_backoff_delay)
+    
+    return delay
+
+def safe_request_get(url, headers=None, timeout=30, indent=""):
+    """Make HTTP GET request with exponential backoff retry on timeout/connection errors"""
+    retries = 0
+    
+    while retries < max_retries:
+        try:
+            check_shutdown()
+            response = requests.get(url, headers=headers, timeout=timeout)
+            response.raise_for_status()
+            
+            # Success! Reset backoff delay for future requests
+            reset_backoff()
+            return response
+            
+        except (ConnectTimeout, ReadTimeout, ConnectionError, Timeout) as e:
+            retries += 1
+            
+            if retries >= max_retries:
+                print(f"{indent}ERROR: Max retries ({max_retries}) exceeded for URL: {url}")
+                print(f"{indent}Last error: {e}")
+                raise
+            
+            delay = get_next_backoff_delay()
+            print(f"{indent}TIMEOUT/CONNECTION ERROR (attempt {retries}/{max_retries}): {e}")
+            print(f"{indent}Retrying in {delay:.1f} seconds with exponential backoff...")
+            
+            # Sleep with interruption check
+            sleep_intervals = int(delay * 4)  # Check every 0.25 seconds
+            for _ in range(sleep_intervals):
+                check_shutdown()
+                time.sleep(0.25)
+            
+        except Exception as e:
+            # For non-timeout errors (HTTP errors, etc.), don't retry
+            print(f"{indent}HTTP ERROR: {e}")
+            raise
 
 def get_latest_legislature_number():
     """Determine the latest (highest) legislature number"""
@@ -127,8 +192,7 @@ def extract_recursos_links():
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
         
-        response = requests.get(base_url, headers=headers, timeout=30)
-        response.raise_for_status()
+        response = safe_request_get(base_url, headers=headers, timeout=30)
         
         print(f"Status: {response.status_code}")
         print(f"Content length: {len(response.text)}")
@@ -229,8 +293,7 @@ def download_file(url, filename, folder_path, overwrite, headers, indent_level=1
         return True
     
     try:
-        file_response = requests.get(url, headers=headers, timeout=30)
-        file_response.raise_for_status()
+        file_response = safe_request_get(url, headers=headers, timeout=30, indent=indent)
         
         with open(file_path, mode, encoding='utf-8' if mode == 'w' else None) as f:
             if content_attr == 'text':
@@ -277,8 +340,7 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
         print(f"{indent}LEVEL {current_level + 1} entry found: {level_name}")
         
         try:
-            response = requests.get(url, headers=headers, timeout=30)
-            response.raise_for_status()
+            response = safe_request_get(url, headers=headers, timeout=30, indent=indent)
             print(f"{indent}Status: {response.status_code} | Size: {len(response.text):,} chars")
             
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -324,7 +386,9 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
                         if not success:
                             print(f"{indent}ERROR: Failed to process LEVEL {current_level + 1} item: {next_name}")
                             print(f"{indent}Processing failed at URL: {next_url}")
-                            sys.exit(1)
+                            print(f"{indent}Note: Exponential backoff is in effect - delays will reset on success")
+                            # Continue with next item instead of exiting
+                            continue
                         
                         time.sleep(0.2)
                         check_shutdown()
@@ -336,7 +400,8 @@ def process_archive_level(url, level_name, folder_path, overwrite, headers, curr
         except Exception as e:
             print(f"{indent}ERROR: Failed to process LEVEL {current_level + 1} page - {e}")
             print(f"{indent}Processing failed at URL: {url}")
-            sys.exit(1)
+            print(f"{indent}Note: Exponential backoff is in effect - delays will reset on success")
+            return False
     else:
         print(f"{indent}ERROR: Unknown file type '{level_name}' (expected .xml, _json.txt, .pdf, .xsd, or .zip)")
         print(f"{indent}Processing failed at URL: {url}")
@@ -348,6 +413,8 @@ def process_recursos_pages(recursos_links, overwrite=False, target_legislature=N
     print(f"Processing {len(recursos_links)} recursos pages")
     print(f"Overwrite mode: {'ON' if overwrite else 'OFF'}")
     print(f"Target legislature: {target_legislature if target_legislature else 'ALL'}")
+    print(f"Retry policy: Exponential backoff (max {max_retries} retries, up to {max_backoff_delay:.0f}s delay)")
+    print(f"Backoff resets on successful requests")
     if target_legislature and target_legislature.lower() != 'all':
         actual_target = target_legislature
         if target_legislature.lower() == 'latest':
@@ -378,8 +445,7 @@ def process_recursos_pages(recursos_links, overwrite=False, target_legislature=N
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
             
-            response = requests.get(url, headers=headers, timeout=30)
-            response.raise_for_status()
+            response = safe_request_get(url, headers=headers, timeout=30)
             
             print(f"{'':6} Status: {response.status_code} | Size: {len(response.text):,} chars")
             
@@ -415,8 +481,7 @@ def process_recursos_pages(recursos_links, overwrite=False, target_legislature=N
                         stats['processed_level2_dirs'] += 1
                         
                         try:
-                            item_response = requests.get(item_url, headers=headers, timeout=30)
-                            item_response.raise_for_status()
+                            item_response = safe_request_get(item_url, headers=headers, timeout=30, indent="          ")
                             print(f"{'':10} Status: {item_response.status_code} | Size: {len(item_response.text):,} chars")
                             
                             item_soup = BeautifulSoup(item_response.text, 'html.parser')
@@ -448,7 +513,9 @@ def process_recursos_pages(recursos_links, overwrite=False, target_legislature=N
                                         if not success:
                                             print(f"{'':14} ERROR: Failed to process LEVEL 3+ item: {level3_name}")
                                             print(f"{'':14} Processing failed at URL: {level3_url}")
-                                            sys.exit(1)
+                                            print(f"{'':14} Note: Exponential backoff is in effect - delays will reset on success")
+                                            # Continue with next item instead of exiting
+                                            continue
                                         
                                         time.sleep(0.2)
                                         check_shutdown()
