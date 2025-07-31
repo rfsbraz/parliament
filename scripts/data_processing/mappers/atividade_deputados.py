@@ -117,6 +117,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubDtreu',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubLg',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubSl',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubTp',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.TinDs'
         }
@@ -445,6 +446,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     pub_dtreu = self._parse_date(pub_dtreu_str) if pub_dtreu_str else None
                     pub_lg = self._get_text_value(intervencao, 'PubLg')
                     pub_nr = self._safe_int(self._get_text_value(intervencao, 'PubNr'))
+                    pub_sl = self._get_text_value(intervencao, 'PubSl')
                     pub_tp = self._get_text_value(intervencao, 'PubTp')
                     tin_ds = self._get_text_value(intervencao, 'TinDs')
                     
@@ -457,6 +459,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
                         pub_dtreu=pub_dtreu,
                         pub_lg=pub_lg,
                         pub_nr=pub_nr,
+                        pub_sl=pub_sl,
                         pub_tp=pub_tp,
                         tin_ds=tin_ds
                     )

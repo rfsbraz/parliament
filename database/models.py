@@ -1368,6 +1368,7 @@ class ActividadeIntervencaoOut(Base):
     pub_lg = Column(String(50))  # PubLg - Publication Legislature
     pub_nr = Column(Integer)  # PubNr - Publication Number
     pub_tp = Column(String(100))  # PubTp - Publication Type
+    pub_sl = Column(String(200))  # PubSl - Publication Series/Supplement
     tin_ds = Column(String(200))  # TinDs - Intervention Type Description
     
     created_at = Column(DateTime, default=func.now())
