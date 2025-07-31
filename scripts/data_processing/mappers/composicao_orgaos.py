@@ -161,7 +161,9 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             'OrganizacaoAR.MesaAR.DetalheOrgao.orgSuoId',
             'OrganizacaoAR.MesaAR.DetalheOrgao.legDes',
             
-            # I Legislature Commission DetalheOrgao fields
+            # I Legislature Commission structure
+            'OrganizacaoAR.Comissoes.Orgao',
+            'OrganizacaoAR.Comissoes.Orgao.DetalheOrgao',
             'OrganizacaoAR.Comissoes.Orgao.DetalheOrgao.idOrgao',
             'OrganizacaoAR.Comissoes.Orgao.DetalheOrgao.siglaOrgao', 
             'OrganizacaoAR.Comissoes.Orgao.DetalheOrgao.nomeSigla',
@@ -175,6 +177,9 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas',
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas',
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.presencas.pt_gov_ar_wsgode_objectos_Presencas.siglaQualidadePresencaOrgao',
+            
+            # I Legislature specific structures
+            'OrganizacaoAR.GruposTrabalhoAR',
             'OrganizacaoAR.ConselhoAdministracao',
             'OrganizacaoAR.ConselhoAdministracao.DetalheOrgao',
             'OrganizacaoAR.ConselhoAdministracao.DetalheOrgao.idOrgao',
