@@ -117,10 +117,97 @@ class RegistoBiograficoMapper(SchemaMapper):
             'RegistoBiografico.RegistoInteressesV1List',
             'RegistoBiografico.RegistoInteressesV3List', 
             'RegistoBiografico.RegistoInteressesV5List',
+            
+            # VIII Legislature XML structure (ArrayOfDadosRegistoBiografico)
+            'ArrayOfDadosRegistoBiografico',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico',
+            
+            # Basic biographical data - VIII Legislature
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadId',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadNomeCompleto',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDtNascimento',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadSexo',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadProfissao',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadNaturalidade',
+            
+            # Academic qualifications - VIII Legislature
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadHabilitacoes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadHabilitacoes.DadosHabilitacoes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadHabilitacoes.DadosHabilitacoes.HabId',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadHabilitacoes.DadosHabilitacoes.HabDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadHabilitacoes.DadosHabilitacoes.HabTipoId',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadHabilitacoes.DadosHabilitacoes.HabEstado',
+            
+            # Professional roles - VIII Legislature
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCargosFuncoes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCargosFuncoes.DadosCargosFuncoes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCargosFuncoes.DadosCargosFuncoes.FunId',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCargosFuncoes.DadosCargosFuncoes.FunDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCargosFuncoes.DadosCargosFuncoes.FunOrdem',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCargosFuncoes.DadosCargosFuncoes.FunAntiga',
+            
+            # Titles/Awards - VIII Legislature
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadTitulos',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadTitulos.DadosTitulos',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadTitulos.DadosTitulos.TitId',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadTitulos.DadosTitulos.TitDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadTitulos.DadosTitulos.TitOrdem',
+            
+            # Decorations - VIII Legislature
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCondecoracoes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCondecoracoes.DadosCondecoracoes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCondecoracoes.DadosCondecoracoes.CodId',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCondecoracoes.DadosCondecoracoes.CodDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCondecoracoes.DadosCondecoracoes.CodOrdem',
+            
+            # Published Works - VIII Legislature
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadObrasPublicadas',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadObrasPublicadas.DadosObrasPublicadas',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadObrasPublicadas.DadosObrasPublicadas.PubId',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadObrasPublicadas.DadosObrasPublicadas.PubDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadObrasPublicadas.DadosObrasPublicadas.PubOrdem',
+            
+            # Deputy legislature data - VIII Legislature
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.DepNomeParlamentar',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.LegDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.CeDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.ParSigla',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.ParDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.GpSigla',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.GpDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.IndDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.IndData',
+            
+            # Organ activities - VIII Legislature
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.orgId',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.orgDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.orgSigla',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.legDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.timDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao.tiaDes',
+            
+            # Working groups - VIII Legislature  
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.orgId',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.orgDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.orgSigla',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.legDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.timDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao',
+            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao.tiaDes',
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
-        """Map I Legislature biographical data to database with comprehensive field processing"""
+        """Map biographical data to database with comprehensive field processing - supports both I and VIII Legislature structures"""
         results = {
             'records_processed': 0,
             'records_imported': 0,
@@ -131,21 +218,39 @@ class RegistoBiograficoMapper(SchemaMapper):
             # Validate schema coverage according to strict mode
             self.validate_schema_coverage(xml_root, file_info, strict_mode)
             
-            # Process I Legislature biographical records  
-            biografico_list = xml_root.find('RegistoBiograficoList')
-            if biografico_list is not None:
-                for record in biografico_list.findall('pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb'):
+            # Determine XML structure and process accordingly
+            if xml_root.tag == 'ArrayOfDadosRegistoBiografico':
+                # VIII Legislature structure
+                logger.info(f"Processing VIII Legislature biographical structure")
+                for record in xml_root.findall('DadosRegistoBiografico'):
                     try:
-                        success = self._process_i_legislature_biographical_record(record, file_info)
+                        success = self._process_viii_legislature_biographical_record(record, file_info)
                         results['records_processed'] += 1
                         if success:
                             results['records_imported'] += 1
                     except Exception as e:
-                        error_msg = f"Error processing biographical record: {str(e)}"
+                        error_msg = f"Error processing VIII Legislature biographical record: {str(e)}"
                         results['errors'].append(error_msg)
                         logger.error(error_msg)
                         if strict_mode:
                             raise
+            else:
+                # I Legislature structure
+                logger.info(f"Processing I Legislature biographical structure")
+                biografico_list = xml_root.find('RegistoBiograficoList')
+                if biografico_list is not None:
+                    for record in biografico_list.findall('pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb'):
+                        try:
+                            success = self._process_i_legislature_biographical_record(record, file_info)
+                            results['records_processed'] += 1
+                            if success:
+                                results['records_imported'] += 1
+                        except Exception as e:
+                            error_msg = f"Error processing I Legislature biographical record: {str(e)}"
+                            results['errors'].append(error_msg)
+                            logger.error(error_msg)
+                            if strict_mode:
+                                raise
             
             # Process Interest Registry V2 if present
             interesses_list = xml_root.find('RegistoInteressesV2List')
@@ -352,6 +457,180 @@ class RegistoBiograficoMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing I Legislature biographical record: {e}")
+            return False
+    
+    def _process_viii_legislature_biographical_record(self, record: ET.Element, file_info: Dict) -> bool:
+        """Process VIII Legislature biographical record (ArrayOfDadosRegistoBiografico structure)"""
+        try:
+            from database.models import (
+                Deputado, DeputadoHabilitacao, DeputadoCargoFuncao, DeputadoTitulo,
+                DeputadoCondecoracao, DeputadoObraPublicada, DeputadoMandatoLegislativo
+            )
+            
+            # Extract basic biographical data using VIII Legislature structure
+            cad_id = self._get_text_value(record, 'CadId')
+            if not cad_id:
+                return False
+                
+            cad_id = int(float(cad_id))
+            
+            # Get or create deputy
+            deputy = self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
+            if not deputy:
+                deputy = Deputado(
+                    id_cadastro=cad_id,
+                    nome=self._get_text_value(record, 'CadNomeCompleto') or f"Deputy {cad_id}",
+                    nome_completo=self._get_text_value(record, 'CadNomeCompleto'),
+                    sexo=self._get_text_value(record, 'CadSexo'),
+                    profissao=self._get_text_value(record, 'CadProfissao'),
+                    data_nascimento=self._parse_date(self._get_text_value(record, 'CadDtNascimento')),
+                    naturalidade=self._get_text_value(record, 'CadNaturalidade')
+                )
+                self.session.add(deputy)
+                self.session.flush()
+            else:
+                # Update existing fields
+                deputy.nome_completo = self._get_text_value(record, 'CadNomeCompleto') or deputy.nome_completo
+                deputy.sexo = self._get_text_value(record, 'CadSexo') or deputy.sexo
+                deputy.profissao = self._get_text_value(record, 'CadProfissao') or deputy.profissao
+                deputy.data_nascimento = self._parse_date(self._get_text_value(record, 'CadDtNascimento')) or deputy.data_nascimento
+                deputy.naturalidade = self._get_text_value(record, 'CadNaturalidade') or deputy.naturalidade
+            
+            # Process Academic Qualifications (CadHabilitacoes)
+            habilitacoes = record.find('CadHabilitacoes')
+            if habilitacoes is not None:
+                for hab in habilitacoes.findall('DadosHabilitacoes'):
+                    hab_id = self._get_text_value(hab, 'HabId')
+                    if hab_id:
+                        existing = self.session.query(DeputadoHabilitacao).filter(
+                            DeputadoHabilitacao.deputado_id == deputy.id,
+                            DeputadoHabilitacao.hab_id == int(float(hab_id))
+                        ).first()
+                        
+                        if not existing:
+                            qualification = DeputadoHabilitacao(
+                                deputado_id=deputy.id,
+                                hab_id=int(float(hab_id)),
+                                hab_des=self._get_text_value(hab, 'HabDes'),
+                                hab_tipo_id=self._parse_int(self._get_text_value(hab, 'HabTipoId')),
+                                hab_estado=self._get_text_value(hab, 'HabEstado')
+                            )
+                            self.session.add(qualification)
+            
+            # Process Professional Roles (CadCargosFuncoes)
+            cargos_funcoes = record.find('CadCargosFuncoes')
+            if cargos_funcoes is not None:
+                for cargo in cargos_funcoes.findall('DadosCargosFuncoes'):
+                    fun_id = self._get_text_value(cargo, 'FunId')
+                    if fun_id:
+                        existing = self.session.query(DeputadoCargoFuncao).filter(
+                            DeputadoCargoFuncao.deputado_id == deputy.id,
+                            DeputadoCargoFuncao.fun_id == int(float(fun_id))
+                        ).first()
+                        
+                        if not existing:
+                            role = DeputadoCargoFuncao(
+                                deputado_id=deputy.id,
+                                fun_id=int(float(fun_id)),
+                                fun_des=self._get_text_value(cargo, 'FunDes'),
+                                fun_ordem=self._parse_int(self._get_text_value(cargo, 'FunOrdem')),
+                                fun_antiga=self._get_text_value(cargo, 'FunAntiga')
+                            )
+                            self.session.add(role)
+            
+            # Process Titles/Awards (CadTitulos)
+            titulos = record.find('CadTitulos')
+            if titulos is not None:
+                for titulo in titulos.findall('DadosTitulos'):
+                    tit_id = self._get_text_value(titulo, 'TitId')
+                    if tit_id:
+                        existing = self.session.query(DeputadoTitulo).filter(
+                            DeputadoTitulo.deputado_id == deputy.id,
+                            DeputadoTitulo.tit_id == int(float(tit_id))
+                        ).first()
+                        
+                        if not existing:
+                            title = DeputadoTitulo(
+                                deputado_id=deputy.id,
+                                tit_id=int(float(tit_id)),
+                                tit_des=self._get_text_value(titulo, 'TitDes'),
+                                tit_ordem=self._parse_int(self._get_text_value(titulo, 'TitOrdem'))
+                            )
+                            self.session.add(title)
+            
+            # Process Decorations (CadCondecoracoes)
+            condecoracoes = record.find('CadCondecoracoes')
+            if condecoracoes is not None:
+                for cond in condecoracoes.findall('DadosCondecoracoes'):
+                    cod_id = self._get_text_value(cond, 'CodId')
+                    if cod_id:
+                        existing = self.session.query(DeputadoCondecoracao).filter(
+                            DeputadoCondecoracao.deputado_id == deputy.id,
+                            DeputadoCondecoracao.cod_id == int(float(cod_id))
+                        ).first()
+                        
+                        if not existing:
+                            decoration = DeputadoCondecoracao(
+                                deputado_id=deputy.id,
+                                cod_id=int(float(cod_id)),
+                                cod_des=self._get_text_value(cond, 'CodDes'),
+                                cod_ordem=self._parse_int(self._get_text_value(cond, 'CodOrdem'))
+                            )
+                            self.session.add(decoration)
+            
+            # Process Published Works (CadObrasPublicadas)
+            obras = record.find('CadObrasPublicadas')
+            if obras is not None:
+                for obra in obras.findall('DadosObrasPublicadas'):
+                    pub_id = self._get_text_value(obra, 'PubId')
+                    if pub_id:
+                        existing = self.session.query(DeputadoObraPublicada).filter(
+                            DeputadoObraPublicada.deputado_id == deputy.id,
+                            DeputadoObraPublicada.pub_id == int(float(pub_id))
+                        ).first()
+                        
+                        if not existing:
+                            publication = DeputadoObraPublicada(
+                                deputado_id=deputy.id,
+                                pub_id=int(float(pub_id)),
+                                pub_des=self._get_text_value(obra, 'PubDes'),
+                                pub_ordem=self._parse_int(self._get_text_value(obra, 'PubOrdem'))
+                            )
+                            self.session.add(publication)
+            
+            # Process Legislative Mandates (CadDeputadoLegis)
+            legislaturas = record.find('CadDeputadoLegis')
+            if legislaturas is not None:
+                for mandato in legislaturas.findall('DadosDeputadoLegis'):
+                    leg_des = self._get_text_value(mandato, 'LegDes')
+                    ce_des = self._get_text_value(mandato, 'CeDes')
+                    
+                    if leg_des:
+                        existing = self.session.query(DeputadoMandatoLegislativo).filter(
+                            DeputadoMandatoLegislativo.deputado_id == deputy.id,
+                            DeputadoMandatoLegislativo.leg_des == leg_des,
+                            DeputadoMandatoLegislativo.ce_des == ce_des
+                        ).first()
+                        
+                        if not existing:
+                            mandate = DeputadoMandatoLegislativo(
+                                deputado_id=deputy.id,
+                                dep_nome_parlamentar=self._get_text_value(mandato, 'DepNomeParlamentar'),
+                                leg_des=leg_des,
+                                ce_des=ce_des,
+                                par_sigla=self._get_text_value(mandato, 'ParSigla'),
+                                par_des=self._get_text_value(mandato, 'ParDes'),
+                                gp_sigla=self._get_text_value(mandato, 'GpSigla'),
+                                gp_des=self._get_text_value(mandato, 'GpDes'),
+                                ind_des=self._get_text_value(mandato, 'IndDes'),  # VIII Legislature field
+                                ind_data=self._parse_date(self._get_text_value(mandato, 'IndData'))  # VIII Legislature field
+                            )
+                            self.session.add(mandate)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing VIII Legislature biographical record: {e}")
             return False
     
     def _process_registo_interesses_v2(self, record: ET.Element, file_info: Dict) -> bool:
