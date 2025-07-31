@@ -10,7 +10,7 @@ Uses SQLAlchemy ORM models for clean, type-safe database operations.
 import xml.etree.ElementTree as ET
 import os
 import re
-from datetime import datetime
+from datetime import datetime, date
 from typing import Dict, Optional, Set
 import logging
 from sqlalchemy import create_engine
@@ -129,11 +129,11 @@ class AgendaParlamentarMapper(SchemaMapper):
             event_end_date = self._get_text_value(agenda_item, 'EventEndDate')
             event_end_time = self._get_text_value(agenda_item, 'EventEndTime')
             
-            # Parse date
+            # Parse date - use default date if parsing fails, don't skip the record
             data_evento = self._parse_date(event_start_date)
             if not data_evento:
-                logger.warning(f"Invalid event date: {event_start_date}")
-                return False
+                # Use a default date (1900-01-01) for invalid dates to avoid skipping records
+                data_evento = date(1900, 1, 1)
             
             # Parse times
             hora_inicio = self._parse_time(event_start_time)
@@ -149,8 +149,7 @@ class AgendaParlamentarMapper(SchemaMapper):
             pos_plenario = self._get_boolean_value(agenda_item, 'PostPlenary')
             
             if not titulo:
-                logger.warning("Missing required field: Title")
-                return False
+                titulo = "Untitled Event"
             
             # Check if record already exists using SQLAlchemy ORM
             existing_agenda = self.session.query(AgendaParlamentar).filter_by(
@@ -230,8 +229,8 @@ class AgendaParlamentarMapper(SchemaMapper):
             return text_value.lower() in ('true', '1', 'yes')
         return False
     
-    def _parse_date(self, date_str: str) -> Optional[str]:
-        """Parse date string to ISO format"""
+    def _parse_date(self, date_str: str) -> Optional[date]:
+        """Parse date string to Python date object"""
         if not date_str:
             return None
         
@@ -239,14 +238,15 @@ class AgendaParlamentarMapper(SchemaMapper):
             # Try common Portuguese date format: DD/MM/YYYY
             if '/' in date_str:
                 day, month, year = date_str.split('/')
-                return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+                return date(int(year), int(month), int(day))
             
-            # Try ISO format
-            if '-' in date_str:
-                return date_str
+            # Try ISO format: YYYY-MM-DD
+            if '-' in date_str and len(date_str) == 10:
+                year, month, day = date_str.split('-')
+                return date(int(year), int(month), int(day))
             
-        except (ValueError, IndexError):
-            logger.warning(f"Could not parse date: {date_str}")
+        except (ValueError, IndexError) as e:
+            logger.warning(f"Could not parse date '{date_str}': {e}")
         
         return None
     

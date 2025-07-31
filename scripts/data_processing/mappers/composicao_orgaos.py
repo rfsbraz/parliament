@@ -65,7 +65,28 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             # Committee member info
             'DadosDeputadoOrgaoComissao', 'CarId', 'CarDes', 'DtInicio', 'DtFim',
             # Subcommittee and working group info
-            'DadosDeputadoOrgaoSubComissao', 'DadosDeputadoOrgaoGrupoTrabalho'
+            'DadosDeputadoOrgaoSubComissao', 'DadosDeputadoOrgaoGrupoTrabalho',
+            
+            # Constituinte legislature full path mappings
+            'OrganizacaoAR.MesaAR',
+            'OrganizacaoAR.ConferenciaLideres',
+            'OrganizacaoAR.GruposTrabalho',
+            'OrganizacaoAR.Plenario.DetalheOrgao.numeroOrgao',
+            'OrganizacaoAR.Plenario.DetalheOrgao.idOrgao',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepId',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepCadId',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepCPId',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpSigla',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtInicio',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtFim',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDes',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepNomeParlamentar',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepNomeCompleto',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepCPDes',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.LegDes',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpId',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtInicio',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtFim'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
