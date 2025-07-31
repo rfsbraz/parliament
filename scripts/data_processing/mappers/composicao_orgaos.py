@@ -1128,8 +1128,8 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                         legislatura_id=legislatura.id,
                         gp_id=int(gp_id),
                         gp_sigla=gp_sigla,
-                        dt_inicio=self._parse_date(gp_dt_inicio) if gp_dt_inicio else None,
-                        dt_fim=self._parse_date(gp_dt_fim) if gp_dt_fim else None
+                        gp_dt_inicio=self._parse_date(gp_dt_inicio) if gp_dt_inicio else None,
+                        gp_dt_fim=self._parse_date(gp_dt_fim) if gp_dt_fim else None
                     )
                     self.session.add(gp_record)
             
@@ -1151,9 +1151,9 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                 situacao_record = DeputySituation(
                     deputado_id=deputado.id,
                     legislatura_id=legislatura.id,
-                    situacao_des=sio_des,
-                    dt_inicio=self._parse_date(sio_dt_inicio) if sio_dt_inicio else None,
-                    dt_fim=self._parse_date(sio_dt_fim) if sio_dt_fim else None
+                    sio_des=sio_des,
+                    sio_dt_inicio=self._parse_date(sio_dt_inicio) if sio_dt_inicio else None,
+                    sio_dt_fim=self._parse_date(sio_dt_fim) if sio_dt_fim else None
                 )
                 self.session.add(situacao_record)
             

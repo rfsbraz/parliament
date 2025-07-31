@@ -98,6 +98,8 @@ class Deputado(Base):
     atividades_orgaos = relationship("DeputadoAtividadeOrgao", back_populates="deputado", cascade="all, delete-orphan")
     mandatos_legislativos = relationship("DeputadoMandatoLegislativo", back_populates="deputado", cascade="all, delete-orphan")
     registo_interesses_v2 = relationship("RegistoInteressesV2", back_populates="deputado", cascade="all, delete-orphan")
+    gp_situations = relationship("DeputyGPSituation", back_populates="deputado", cascade="all, delete-orphan")
+    situations = relationship("DeputySituation", back_populates="deputado", cascade="all, delete-orphan")
 
 
 class DepCargo(Base):
@@ -148,8 +150,6 @@ class DeputyActivity(Base):
     reports = relationship("DeputyReport", back_populates="deputy_activity", cascade="all, delete-orphan")
     parliamentary_activities = relationship("DeputyParliamentaryActivity", back_populates="deputy_activity", cascade="all, delete-orphan")
     legislative_data = relationship("DeputyLegislativeData", back_populates="deputy_activity", cascade="all, delete-orphan")
-    gp_situations = relationship("DeputyGPSituation", back_populates="deputy_activity", cascade="all, delete-orphan")
-    situations = relationship("DeputySituation", back_populates="deputy_activity", cascade="all, delete-orphan")
     
     __table_args__ = (
         Index('idx_deputy_activities_cadastro_leg', 'id_cadastro', 'legislatura_sigla'),
@@ -636,32 +636,39 @@ class DeputyLegislativeDataPublication(Base):
 # =====================================================
 
 class DeputyGPSituation(Base):
+    """Deputy Parliamentary Group Situation - unified model for all contexts"""
     __tablename__ = 'deputy_gp_situations'
     
     id = Column(Integer, primary_key=True)
-    deputy_activity_id = Column(Integer, ForeignKey('deputy_activities.id'), nullable=False)
-    gp_id = Column(Integer)
-    gp_sigla = Column(String(10))
-    gp_dt_inicio = Column(Date)
-    gp_dt_fim = Column(Date)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    gp_id = Column(Integer)  # Parliamentary Group ID
+    gp_sigla = Column(String(20))  # Parliamentary Group acronym/sigla
+    gp_dt_inicio = Column(Date)  # Start date of GP membership
+    gp_dt_fim = Column(Date)  # End date of GP membership
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
-    deputy_activity = relationship("DeputyActivity", back_populates="gp_situations")
+    deputado = relationship("Deputado", back_populates="gp_situations")
+    legislatura = relationship("Legislatura")
 
 
 class DeputySituation(Base):
+    """Deputy Situation - unified model for all contexts (organ composition, activities, etc.)"""
     __tablename__ = 'deputy_situations'
     
     id = Column(Integer, primary_key=True)
-    deputy_activity_id = Column(Integer, ForeignKey('deputy_activities.id'), nullable=False)
-    sio_des = Column(String(200))
-    sio_dt_inicio = Column(Date)
-    sio_dt_fim = Column(Date)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    sio_des = Column(String(200))  # Situation description (e.g., "Renunciou", "Efetivo", etc.)
+    sio_tip_mem = Column(String(100))  # Type of membership
+    sio_dt_inicio = Column(Date)  # Start date of situation
+    sio_dt_fim = Column(Date)  # End date of situation
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
-    deputy_activity = relationship("DeputyActivity", back_populates="situations")
+    deputado = relationship("Deputado", back_populates="situations")
+    legislatura = relationship("Legislatura")
 
 
 # =====================================================
