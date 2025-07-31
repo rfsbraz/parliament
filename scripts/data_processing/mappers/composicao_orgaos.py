@@ -170,6 +170,18 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             'OrganizacaoAR.Comissoes.Orgao.DetalheOrgao.numeroOrgao',
             'OrganizacaoAR.Comissoes.Orgao.DetalheOrgao.siglaLegislatura',
             
+            # I Legislature Commission meeting data (Reunioes)
+            'OrganizacaoAR.Comissoes.Orgao.Reunioes',
+            'OrganizacaoAR.Comissoes.Orgao.Reunioes.pt_ar_wsgode_objectos_DadosReuniao',
+            'OrganizacaoAR.Comissoes.Orgao.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuId',
+            'OrganizacaoAR.Comissoes.Orgao.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTarId',
+            'OrganizacaoAR.Comissoes.Orgao.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTarSigla',
+            'OrganizacaoAR.Comissoes.Orgao.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTarDes',
+            'OrganizacaoAR.Comissoes.Orgao.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTirDes',
+            'OrganizacaoAR.Comissoes.Orgao.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuNumero',
+            'OrganizacaoAR.Comissoes.Orgao.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuDataHora',
+            'OrganizacaoAR.Comissoes.Orgao.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuFinalPlenario',
+            
             # I Legislature Plenario Reunioes - meetings and attendance
             'OrganizacaoAR.Plenario.Reunioes',
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario',
@@ -1091,11 +1103,53 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                 legislatura
             )
             
+            # Process I Legislature committee meetings if present
+            reunioes = orgao.find('Reunioes')
+            if reunioes is not None:
+                for dados_reuniao in reunioes.findall('pt_ar_wsgode_objectos_DadosReuniao'):
+                    self._process_i_legislature_committee_meeting(dados_reuniao, committee)
+            
             logger.info(f"Processed I Legislature committee: {nome_sigla} (ID: {id_orgao})")
             return True
             
         except Exception as e:
             logger.error(f"Error processing I Legislature Orgao: {e}")
+            return False
+    
+    def _process_i_legislature_committee_meeting(self, dados_reuniao: ET.Element, committee: Commission) -> bool:
+        """Process I Legislature committee meeting data"""
+        try:
+            # Extract I Legislature meeting data
+            reu_id = self._get_text_value(dados_reuniao, 'reuId')
+            reu_tar_id = self._get_text_value(dados_reuniao, 'reuTarId')
+            reu_tar_sigla = self._get_text_value(dados_reuniao, 'reuTarSigla')
+            reu_tar_des = self._get_text_value(dados_reuniao, 'reuTarDes')
+            reu_tir_des = self._get_text_value(dados_reuniao, 'reuTirDes')
+            reu_numero = self._get_text_value(dados_reuniao, 'reuNumero')
+            reu_data_hora = self._get_text_value(dados_reuniao, 'reuDataHora')
+            reu_final_plenario = self._get_text_value(dados_reuniao, 'reuFinalPlenario')
+            
+            # Create meeting record with I Legislature data
+            meeting = OrganMeeting(
+                commission_id=committee.id,
+                reu_id=int(reu_id) if reu_id else None,
+                reu_numero=int(reu_numero) if reu_numero else None,
+                reu_data_hora=reu_data_hora,
+                reu_tipo=reu_tir_des,
+                reu_local=None,  # Not available in I Legislature structure
+                reu_estado=None,  # Not available in I Legislature structure
+                # Use existing fields for I Legislature specific data
+                reu_tar_sigla=reu_tar_sigla,
+                reu_final_plenario=reu_final_plenario == 'true' if reu_final_plenario else None,
+                # Store additional I Legislature data in available fields
+                reu_tir_des=reu_tar_des  # Store reu_tar_des in reu_tir_des field
+            )
+            
+            self.session.add(meeting)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing I Legislature committee meeting: {e}")
             return False
     
     def _get_or_create_plenary(self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura) -> Plenary:
