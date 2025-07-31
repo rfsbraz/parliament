@@ -22,8 +22,6 @@ import re
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
 
@@ -42,14 +40,9 @@ logger = logging.getLogger(__name__)
 class PeticoesMapper(SchemaMapper):
     """Comprehensive schema mapper for parliamentary petition files"""
     
-    def __init__(self, db_connection):
-        super().__init__(db_connection)
-        # Create SQLAlchemy session from raw connection
-        # Get the database file path from the connection
-        db_path = db_connection.execute('PRAGMA database_list').fetchone()[2]
-        self.engine = create_engine(f"sqlite:///{db_path}", echo=False)
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
+    def __init__(self, session):
+        # Accept SQLAlchemy session directly (passed by unified importer)
+        super().__init__(session)
     
     def get_expected_fields(self) -> Set[str]:
         # Complete field list from XML analysis
@@ -217,11 +210,6 @@ class PeticoesMapper(SchemaMapper):
             logger.error(f"Error processing petition {pet_id}: {e}")
             return False
     
-    def _get_peticao_db_id(self, pet_id: int) -> int:
-        """Get database ID for petition"""
-        self.cursor.execute("SELECT id FROM peticoes_detalhadas WHERE pet_id = ?", (pet_id,))
-        result = self.cursor.fetchone()
-        return result[0] if result else None
     
     def _process_publicacoes(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
         """Process all publication types for petition"""
@@ -284,11 +272,11 @@ class PeticoesMapper(SchemaMapper):
         dados_comissao = petition.find('DadosComissao')
         if dados_comissao is not None:
             for comissao in dados_comissao.findall('ComissoesPetOut'):
-                comissao_db_id = self._process_single_comissao(comissao, peticao_db_id)
-                if comissao_db_id:
-                    self._process_comissao_details(comissao, comissao_db_id)
+                comissao_obj = self._process_single_comissao(comissao, peticao_obj)
+                if comissao_obj:
+                    self._process_comissao_details(comissao, comissao_obj)
     
-    def _process_single_comissao(self, comissao: ET.Element, peticao_db_id: int) -> Optional[int]:
+    def _process_single_comissao(self, comissao: ET.Element, peticao_obj: PeticaoParlamentar) -> Optional[PeticaoComissao]:
         """Process single committee record"""
         legislatura = self._get_text_value(comissao, 'Legislatura')
         numero = self._get_int_value(comissao, 'Numero')
@@ -303,32 +291,38 @@ class PeticoesMapper(SchemaMapper):
         data_baixa_comissao = self._parse_date(self._get_text_value(comissao, 'DataBaixaComissao'))
         transitada = self._get_text_value(comissao, 'Transitada')
         
-        self.cursor.execute("""
-            INSERT INTO peticoes_comissoes (
-                peticao_id, legislatura, numero, id_comissao, nome, admissibilidade,
-                data_admissibilidade, data_envio_par, data_arquivo, situacao,
-                data_reaberta, data_baixa_comissao, transitada
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            peticao_db_id, legislatura, numero, id_comissao, nome, admissibilidade,
-            data_admissibilidade, data_envio_par, data_arquivo, situacao,
-            data_reaberta, data_baixa_comissao, transitada
-        ))
+        comissao_obj = PeticaoComissao(
+            peticao_id=peticao_obj.id,
+            legislatura=legislatura,
+            numero=numero,
+            id_comissao=id_comissao,
+            nome=nome,
+            admissibilidade=admissibilidade,
+            data_admissibilidade=data_admissibilidade,
+            data_envio_par=data_envio_par,
+            data_arquivo=data_arquivo,
+            situacao=situacao,
+            data_reaberta=data_reaberta,
+            data_baixa_comissao=data_baixa_comissao,
+            transitada=transitada  
+        )
         
-        return self.cursor.lastrowid
+        self.session.add(comissao_obj)
+        self.session.flush()  # Get the ID
+        return comissao_obj
     
-    def _process_comissao_details(self, comissao: ET.Element, comissao_db_id: int):
+    def _process_comissao_details(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
         """Process detailed committee structures"""
         # Reporters
-        self._process_relatores(comissao, comissao_db_id)
+        self._process_relatores(comissao, comissao_obj)
         
         # Final reports
-        self._process_dados_relatorio_final(comissao, comissao_db_id)
+        self._process_dados_relatorio_final(comissao, comissao_obj)
         
         # Committee documents
-        self._process_documentos_comissao(comissao, comissao_db_id)
+        self._process_documentos_comissao(comissao, comissao_obj)
     
-    def _process_relatores(self, comissao: ET.Element, comissao_db_id: int):
+    def _process_relatores(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
         """Process reporters for committee"""
         relatores = comissao.find('Relatores')
         if relatores is not None:
@@ -339,14 +333,17 @@ class PeticoesMapper(SchemaMapper):
                 data_nomeacao = self._parse_date(self._get_text_value(relator, 'dataNomeacao'))
                 data_cessacao = self._parse_date(self._get_text_value(relator, 'dataCessacao'))
                 
-                self.cursor.execute("""
-                    INSERT INTO peticoes_relatores (
-                        comissao_peticao_id, relator_id, nome, gp, 
-                        data_nomeacao, data_cessacao
-                    ) VALUES (?, ?, ?, ?, ?, ?)
-                """, (comissao_db_id, relator_id, nome, gp, data_nomeacao, data_cessacao))
+                relator_obj = PeticaoRelator(
+                    comissao_peticao_id=comissao_obj.id,
+                    relator_id=relator_id,
+                    nome=nome,
+                    gp=gp,
+                    data_nomeacao=data_nomeacao,
+                    data_cessacao=data_cessacao
+                )
+                self.session.add(relator_obj)
     
-    def _process_dados_relatorio_final(self, comissao: ET.Element, comissao_db_id: int):
+    def _process_dados_relatorio_final(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
         """Process final report data"""
         dados_relatorio = comissao.find('DadosRelatorioFinal')
         if dados_relatorio is not None:
@@ -354,11 +351,12 @@ class PeticoesMapper(SchemaMapper):
                 data_relatorio = self._parse_date(self._get_text_value(relatorio, 'data'))
                 votacao = self._get_text_value(relatorio, 'votacao')
                 
-                self.cursor.execute("""
-                    INSERT INTO peticoes_relatorios_finais (
-                        comissao_peticao_id, data_relatorio, votacao
-                    ) VALUES (?, ?, ?)
-                """, (comissao_db_id, data_relatorio, votacao))
+                relatorio_obj = PeticaoRelatorioFinal(
+                    comissao_peticao_id=comissao_obj.id,
+                    data_relatorio=data_relatorio,
+                    votacao=votacao
+                )
+                self.session.add(relatorio_obj)
         
         # Process RelatorioFinal string elements
         relatorio_final = comissao.find('RelatorioFinal')
@@ -366,13 +364,13 @@ class PeticoesMapper(SchemaMapper):
             for string_elem in relatorio_final.findall('string'):
                 relatorio_id = string_elem.text
                 if relatorio_id:
-                    self.cursor.execute("""
-                        INSERT INTO peticoes_relatorios_finais (
-                            comissao_peticao_id, relatorio_final_id
-                        ) VALUES (?, ?)
-                    """, (comissao_db_id, relatorio_id))
+                    relatorio_obj = PeticaoRelatorioFinal(
+                        comissao_peticao_id=comissao_obj.id,
+                        relatorio_final_id=relatorio_id
+                    )
+                    self.session.add(relatorio_obj)
     
-    def _process_documentos_comissao(self, comissao: ET.Element, comissao_db_id: int):
+    def _process_documentos_comissao(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
         """Process committee-specific documents"""
         documentos_peticao = comissao.find('DocumentosPeticao')
         if documentos_peticao is not None:
@@ -380,7 +378,7 @@ class PeticoesMapper(SchemaMapper):
             docs_relatorio = documentos_peticao.find('DocsRelatorioFinal')
             if docs_relatorio is not None:
                 for doc in docs_relatorio.findall('PeticaoDocsRelatorioFinal'):
-                    self._insert_documento(None, comissao_db_id, doc, 'DocsRelatorioFinal')
+                    self._insert_documento(None, comissao_obj, doc, 'DocsRelatorioFinal')
     
     def _process_documentos(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
         """Process main petition documents"""
@@ -389,7 +387,7 @@ class PeticoesMapper(SchemaMapper):
             for doc in documentos.findall('PeticaoDocsOut'):
                 self._insert_documento(peticao_obj, None, doc, 'Documentos')
     
-    def _insert_documento(self, peticao_id: Optional[int], comissao_peticao_id: Optional[int], 
+    def _insert_documento(self, peticao_obj: Optional[PeticaoParlamentar], comissao_obj: Optional[PeticaoComissao], 
                          doc: ET.Element, categoria: str):
         """Insert document data"""
         titulo_documento = self._get_text_value(doc, 'TituloDocumento')
@@ -397,12 +395,16 @@ class PeticoesMapper(SchemaMapper):
         tipo_documento = self._get_text_value(doc, 'TipoDocumento')
         url = self._get_text_value(doc, 'URL')
         
-        self.cursor.execute("""
-            INSERT INTO peticoes_documentos (
-                peticao_id, comissao_peticao_id, tipo_documento_categoria,
-                titulo_documento, data_documento, tipo_documento, url
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (peticao_id, comissao_peticao_id, categoria, titulo_documento, data_documento, tipo_documento, url))
+        documento_obj = PeticaoDocumento(
+            peticao_id=peticao_obj.id if peticao_obj else None,
+            comissao_peticao_id=comissao_obj.id if comissao_obj else None,
+            tipo_documento_categoria=categoria,
+            titulo_documento=titulo_documento,
+            data_documento=data_documento,
+            tipo_documento=tipo_documento,
+            url=url
+        )
+        self.session.add(documento_obj)
     
     def _process_intervencoes(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
         """Process interventions/debates"""
@@ -413,46 +415,50 @@ class PeticoesMapper(SchemaMapper):
         intervencoes = petition.find('Intervencoes')
         if intervencoes is not None:
             for intervencao in intervencoes.findall('PeticaoIntervencoesOut'):
-                intervencao_db_id = self._process_single_intervencao(intervencao, peticao_db_id)
-                if intervencao_db_id:
-                    self._process_oradores(intervencao, intervencao_db_id)
+                intervencao_obj = self._process_single_intervencao(intervencao, peticao_obj)
+                if intervencao_obj:
+                    self._process_oradores(intervencao, intervencao_obj)
     
-    def _process_single_intervencao(self, intervencao: ET.Element, peticao_db_id: int) -> Optional[int]:
+    def _process_single_intervencao(self, intervencao: ET.Element, peticao_obj: PeticaoParlamentar) -> Optional[PeticaoIntervencao]:
         """Process single intervention"""
         data_reuniao_plenaria = self._parse_date(self._get_text_value(intervencao, 'DataReuniaoPlenaria'))
         
-        self.cursor.execute("""
-            INSERT INTO peticoes_intervencoes (peticao_id, data_reuniao_plenaria)
-            VALUES (?, ?)
-        """, (peticao_db_id, data_reuniao_plenaria))
-        
-        return self.cursor.lastrowid
+        intervencao_obj = PeticaoIntervencao(
+            peticao_id=peticao_obj.id,
+            data_reuniao_plenaria=data_reuniao_plenaria
+        )
+        self.session.add(intervencao_obj)
+        self.session.flush()  # Get the ID
+        return intervencao_obj
     
-    def _process_oradores(self, intervencao: ET.Element, intervencao_db_id: int):
+    def _process_oradores(self, intervencao: ET.Element, intervencao_obj: PeticaoIntervencao):
         """Process speakers in intervention"""
         oradores = intervencao.find('Oradores')
         if oradores is not None:
             for orador in oradores.findall('PeticaoOradoresOut'):
-                orador_db_id = self._process_single_orador(orador, intervencao_db_id)
-                if orador_db_id:
-                    self._process_orador_publicacoes(orador, orador_db_id)
+                orador_obj = self._process_single_orador(orador, intervencao_obj)
+                if orador_obj:
+                    self._process_orador_publicacoes(orador, orador_obj)
     
-    def _process_single_orador(self, orador: ET.Element, intervencao_db_id: int) -> Optional[int]:
+    def _process_single_orador(self, orador: ET.Element, intervencao_obj: PeticaoIntervencao) -> Optional[PeticaoOrador]:
         """Process single speaker"""
         fase_sessao = self._get_text_value(orador, 'FaseSessao')
         sumario = self._get_text_value(orador, 'Sumario')
         convidados = self._get_text_value(orador, 'Convidados')
         membros_governo = self._get_text_value(orador, 'MembrosGoverno')
         
-        self.cursor.execute("""
-            INSERT INTO peticoes_oradores (
-                intervencao_id, fase_sessao, sumario, convidados, membros_governo
-            ) VALUES (?, ?, ?, ?, ?)
-        """, (intervencao_db_id, fase_sessao, sumario, convidados, membros_governo))
-        
-        return self.cursor.lastrowid
+        orador_obj = PeticaoOrador(
+            intervencao_id=intervencao_obj.id,
+            fase_sessao=fase_sessao,
+            sumario=sumario,
+            convidados=convidados,
+            membros_governo=membros_governo
+        )
+        self.session.add(orador_obj)
+        self.session.flush()  # Get the ID
+        return orador_obj
     
-    def _process_orador_publicacoes(self, orador: ET.Element, orador_db_id: int):
+    def _process_orador_publicacoes(self, orador: ET.Element, orador_obj: PeticaoOrador):
         """Process speaker publications"""
         publicacao = orador.find('Publicacao')
         if publicacao is not None:
@@ -474,12 +480,19 @@ class PeticoesMapper(SchemaMapper):
                     if string_elems:
                         pag_text = ', '.join([s.text for s in string_elems if s.text])
                 
-                self.cursor.execute("""
-                    INSERT INTO peticoes_oradores_publicacoes (
-                        orador_id, pub_nr, pub_tipo, pub_tp, pub_leg, pub_sl,
-                        pub_dt, pag, id_int, url_diario
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (orador_db_id, pub_nr, pub_tipo, pub_tp, pub_leg, pub_sl, pub_dt, pag_text, id_int, url_diario))
+                publicacao_obj = PeticaoOradorPublicacao(
+                    orador_id=orador_obj.id,
+                    pub_nr=pub_nr,
+                    pub_tipo=pub_tipo,
+                    pub_tp=pub_tp,
+                    pub_leg=pub_leg,
+                    pub_sl=pub_sl,
+                    pub_dt=pub_dt,
+                    pag=pag_text,
+                    id_int=id_int,
+                    url_diario=url_diario
+                )
+                self.session.add(publicacao_obj)
     
     def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
         """Get text value from XML element"""

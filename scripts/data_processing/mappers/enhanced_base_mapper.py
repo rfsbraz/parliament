@@ -13,8 +13,7 @@ import re
 from typing import Dict, List, Set, Optional, Any
 import logging
 from datetime import datetime
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+# SQLAlchemy session handling (sessions passed from unified importer)
 from abc import ABC, abstractmethod
 
 # Import models
@@ -33,20 +32,12 @@ class SchemaError(Exception):
 class DatabaseSessionMixin:
     """Mixin providing SQLAlchemy session management"""
     
-    def __init__(self, db_connection_or_session):
-        """Initialize with either a raw connection or SQLAlchemy session"""
-        if hasattr(db_connection_or_session, 'query'):
-            # Already a SQLAlchemy session
-            self.session = db_connection_or_session
-            self.engine = self.session.bind
-            self._owns_session = False
-        else:
-            # Raw database connection - create session
-            db_path = db_connection_or_session.execute('PRAGMA database_list').fetchone()[2]
-            self.engine = create_engine(f"sqlite:///{db_path}", echo=False)
-            Session = sessionmaker(bind=self.engine)
-            self.session = Session()
-            self._owns_session = True
+    def __init__(self, session):
+        """Initialize with SQLAlchemy session"""
+        # Only accept SQLAlchemy sessions - unified importer passes these
+        self.session = session
+        self.engine = self.session.bind
+        self._owns_session = False
     
     def close_session(self):
         """Close session if we own it"""
@@ -190,8 +181,8 @@ class XMLProcessingMixin:
 class EnhancedSchemaMapper(DatabaseSessionMixin, LegislatureHandlerMixin, XMLProcessingMixin, ABC):
     """Enhanced base class for all schema mappers with consolidated functionality"""
     
-    def __init__(self, db_connection_or_session):
-        DatabaseSessionMixin.__init__(self, db_connection_or_session)
+    def __init__(self, session):
+        DatabaseSessionMixin.__init__(self, session)
     
     @abstractmethod
     def get_expected_fields(self) -> Set[str]:

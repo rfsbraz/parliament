@@ -58,7 +58,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-from mappers import (
+from .mappers import (
     AgendaParlamentarMapper,
     AtividadeDeputadosMapper,
     AtividadesMapper,

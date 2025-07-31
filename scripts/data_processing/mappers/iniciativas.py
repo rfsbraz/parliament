@@ -22,8 +22,6 @@ import re
 from typing import Dict, Optional, Set, List
 import logging
 from datetime import datetime
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
 
@@ -45,14 +43,9 @@ logger = logging.getLogger(__name__)
 class InitiativasMapper(SchemaMapper):
     """Comprehensive schema mapper for legislative initiatives files"""
     
-    def __init__(self, db_connection):
-        super().__init__(db_connection)
-        # Create SQLAlchemy session from raw connection
-        # Get the database file path from the connection
-        db_path = db_connection.execute('PRAGMA database_list').fetchone()[2]
-        self.engine = create_engine(f"sqlite:///{db_path}", echo=False)
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
+    def __init__(self, session):
+        # Accept SQLAlchemy session directly (passed by unified importer)
+        super().__init__(session)
     
     def get_expected_fields(self) -> Set[str]:
         # Complete field list from XML analysis
@@ -201,11 +194,6 @@ class InitiativasMapper(SchemaMapper):
             logger.error(f"Error processing initiative {ini_id}: {e}")
             return False
     
-    def _get_iniciativa_db_id(self, ini_id: int) -> int:
-        """Get database ID for initiative"""
-        self.cursor.execute("SELECT id FROM iniciativas_detalhadas WHERE ini_id = ?", (ini_id,))
-        result = self.cursor.fetchone()
-        return result[0] if result else None
     
     def _process_autores_outros(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process IniAutorOutros - Other authors (Government, etc.)"""
@@ -276,21 +264,23 @@ class InitiativasMapper(SchemaMapper):
                 tipo = self._get_text_value(proposta, 'tipo')
                 autor = self._get_text_value(proposta, 'autor')
                 
-                # Insert proposal
-                self.cursor.execute("""
-                    INSERT INTO iniciativas_propostas_alteracao (iniciativa_id, proposta_id, tipo, autor)
-                    VALUES (?, ?, ?, ?)
-                """, (iniciativa_db_id, proposta_id, tipo, autor))
-                
-                db_proposta_id = self.cursor.lastrowid
+                # Create proposal object
+                proposta_obj = IniciativaPropostaAlteracao(
+                    iniciativa_id=iniciativa_obj.id,
+                    proposta_id=proposta_id,
+                    tipo=tipo,
+                    autor=autor
+                )
+                self.session.add(proposta_obj)
+                self.session.flush()  # Get the ID
                 
                 # Process publications for this proposal
                 publicacao = proposta.find('publicacao')
                 if publicacao is not None:
                     for pub in publicacao.findall('pt_gov_ar_objectos_PublicacoesOut'):
-                        self._insert_proposta_publicacao(db_proposta_id, pub)
+                        self._insert_proposta_publicacao(proposta_obj, pub)
     
-    def _insert_proposta_publicacao(self, proposta_id: int, pub: ET.Element):
+    def _insert_proposta_publicacao(self, proposta_obj: IniciativaPropostaAlteracao, pub: ET.Element):
         """Insert publication data for amendment proposal"""
         pub_nr = self._get_int_value(pub, 'pubNr')
         pub_tipo = self._get_text_value(pub, 'pubTipo')
@@ -309,12 +299,19 @@ class InitiativasMapper(SchemaMapper):
             if string_elems:
                 pag_text = ', '.join([s.text for s in string_elems if s.text])
         
-        self.cursor.execute("""
-            INSERT INTO iniciativas_propostas_alteracao_publicacoes (
-                proposta_id, pub_nr, pub_tipo, pub_tp, pub_leg, pub_sl, 
-                pub_dt, pag, id_pag, url_diario
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (proposta_id, pub_nr, pub_tipo, pub_tp, pub_leg, pub_sl, pub_dt, pag_text, id_pag, url_diario))
+        publicacao_obj = IniciativaPropostaAlteracaoPublicacao(
+            proposta_id=proposta_obj.id,
+            pub_nr=pub_nr,
+            pub_tipo=pub_tipo,
+            pub_tp=pub_tp,
+            pub_leg=pub_leg,
+            pub_sl=pub_sl,
+            pub_dt=pub_dt,
+            pag=pag_text,
+            id_pag=id_pag,
+            url_diario=url_diario
+        )
+        self.session.add(publicacao_obj)
     
     def _process_eventos(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process IniEventos - Complete events timeline"""
@@ -325,11 +322,11 @@ class InitiativasMapper(SchemaMapper):
         eventos = iniciativa.find('IniEventos')
         if eventos is not None:
             for evento in eventos.findall('Pt_gov_ar_objectos_iniciativas_EventosOut'):
-                evento_db_id = self._process_single_evento(evento, iniciativa_db_id)
-                if evento_db_id:
-                    self._process_evento_details(evento, evento_db_id)
+                evento_obj = self._process_single_evento(evento, iniciativa_obj)
+                if evento_obj:
+                    self._process_evento_details(evento, evento_obj)
     
-    def _process_single_evento(self, evento: ET.Element, iniciativa_db_id: int) -> Optional[int]:
+    def _process_single_evento(self, evento: ET.Element, iniciativa_obj: IniciativaParlamentar) -> Optional[IniciativaEvento]:
         """Process single event core data"""
         oev_id = self._get_int_value(evento, 'OevId')
         data_fase = self._parse_date(self._get_text_value(evento, 'DataFase'))
@@ -341,46 +338,50 @@ class InitiativasMapper(SchemaMapper):
         oev_text_id = self._get_int_value(evento, 'OevTextId')
         textos_aprovados = self._get_text_value(evento, 'TextosAprovados')
         
-        self.cursor.execute("""
-            INSERT INTO iniciativas_eventos (
-                iniciativa_id, oev_id, data_fase, fase, evt_id, codigo_fase,
-                obs_fase, act_id, oev_text_id, textos_aprovados
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            iniciativa_db_id, oev_id, data_fase, fase, evt_id, codigo_fase,
-            obs_fase, act_id, oev_text_id, textos_aprovados
-        ))
-        
-        return self.cursor.lastrowid
+        evento_obj = IniciativaEvento(
+            iniciativa_id=iniciativa_obj.id,
+            oev_id=oev_id,
+            data_fase=data_fase,
+            fase=fase,
+            evt_id=evt_id,
+            codigo_fase=codigo_fase,
+            obs_fase=obs_fase,
+            act_id=act_id,
+            oev_text_id=oev_text_id,
+            textos_aprovados=textos_aprovados
+        )
+        self.session.add(evento_obj)
+        self.session.flush()  # Get the ID
+        return evento_obj
     
-    def _process_evento_details(self, evento: ET.Element, evento_db_id: int):
+    def _process_evento_details(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process all detailed structures for an event"""
         # Publications
-        self._process_evento_publicacoes(evento, evento_db_id)
+        self._process_evento_publicacoes(evento, evento_obj)
         
         # Voting
-        self._process_evento_votacao(evento, evento_db_id)
+        self._process_evento_votacao(evento, evento_obj)
         
         # Committees
-        self._process_evento_comissoes(evento, evento_db_id)
+        self._process_evento_comissoes(evento, evento_obj)
         
         # Resource groups
-        self._process_evento_recursos_gp(evento, evento_db_id)
+        self._process_evento_recursos_gp(evento, evento_obj)
         
         # Joint initiatives
-        self._process_evento_iniciativas_conjuntas(evento, evento_db_id)
+        self._process_evento_iniciativas_conjuntas(evento, evento_obj)
         
         # Interventions/debates
-        self._process_evento_intervencoes(evento, evento_db_id)
+        self._process_evento_intervencoes(evento, evento_obj)
     
-    def _process_evento_publicacoes(self, evento: ET.Element, evento_db_id: int):
+    def _process_evento_publicacoes(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process event publications"""
         publicacao_fase = evento.find('PublicacaoFase')
         if publicacao_fase is not None:
             for pub in publicacao_fase.findall('pt_gov_ar_objectos_PublicacoesOut'):
-                self._insert_evento_publicacao(evento_db_id, pub)
+                self._insert_evento_publicacao(evento_obj, pub)
     
-    def _insert_evento_publicacao(self, evento_id: int, pub: ET.Element):
+    def _insert_evento_publicacao(self, evento_obj: IniciativaEvento, pub: ET.Element):
         """Insert publication data for event"""
         pub_nr = self._get_int_value(pub, 'pubNr')
         pub_tipo = self._get_text_value(pub, 'pubTipo')
@@ -399,14 +400,21 @@ class InitiativasMapper(SchemaMapper):
             if string_elems:
                 pag_text = ', '.join([s.text for s in string_elems if s.text])
         
-        self.cursor.execute("""
-            INSERT INTO iniciativas_eventos_publicacoes (
-                evento_id, pub_nr, pub_tipo, pub_tp, pub_leg, pub_sl, 
-                pub_dt, pag, id_pag, url_diario
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (evento_id, pub_nr, pub_tipo, pub_tp, pub_leg, pub_sl, pub_dt, pag_text, id_pag, url_diario))
+        publicacao_obj = IniciativaEventoPublicacao(
+            evento_id=evento_obj.id,
+            pub_nr=pub_nr,
+            pub_tipo=pub_tipo,
+            pub_tp=pub_tp,
+            pub_leg=pub_leg,
+            pub_sl=pub_sl,
+            pub_dt=pub_dt,
+            pag=pag_text,
+            id_pag=id_pag,
+            url_diario=url_diario
+        )
+        self.session.add(publicacao_obj)
     
-    def _process_evento_votacao(self, evento: ET.Element, evento_db_id: int):
+    def _process_evento_votacao(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process voting data for event"""
         votacao = evento.find('Votacao')
         if votacao is not None:
@@ -419,18 +427,19 @@ class InitiativasMapper(SchemaMapper):
                 unanime = self._get_text_value(vot, 'unanime')
                 data_votacao = self._parse_date(self._get_text_value(vot, 'data'))
                 
-                # Insert voting record
-                self.cursor.execute("""
-                    INSERT INTO iniciativas_eventos_votacoes (
-                        evento_id, id_votacao, resultado, reuniao, tipo_reuniao,
-                        detalhe, unanime, data_votacao
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    evento_db_id, id_votacao, resultado, reuniao, tipo_reuniao,
-                    detalhe, unanime, data_votacao
-                ))
-                
-                votacao_db_id = self.cursor.lastrowid
+                # Create voting record
+                votacao_obj = IniciativaEventoVotacao(
+                    evento_id=evento_obj.id,
+                    id_votacao=id_votacao,
+                    resultado=resultado,
+                    reuniao=reuniao,
+                    tipo_reuniao=tipo_reuniao,
+                    detalhe=detalhe,
+                    unanime=unanime,
+                    data_votacao=data_votacao
+                )
+                self.session.add(votacao_obj)
+                self.session.flush()  # Get the ID
                 
                 # Process absences
                 ausencias = vot.find('ausencias')
@@ -438,24 +447,26 @@ class InitiativasMapper(SchemaMapper):
                     for string_elem in ausencias.findall('string'):
                         gp = string_elem.text
                         if gp:
-                            self.cursor.execute("""
-                                INSERT INTO iniciativas_votacoes_ausencias (votacao_id, grupo_parlamentar)
-                                VALUES (?, ?)
-                            """, (votacao_db_id, gp))
+                            ausencia_obj = IniciativaVotacaoAusencia(
+                                votacao_id=votacao_obj.id,
+                                grupo_parlamentar=gp
+                            )
+                            self.session.add(ausencia_obj)
     
-    def _process_evento_recursos_gp(self, evento: ET.Element, evento_db_id: int):
+    def _process_evento_recursos_gp(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process RecursoGP - Parliamentary group resources"""
         recurso_gp = evento.find('RecursoGP')
         if recurso_gp is not None:
             for string_elem in recurso_gp.findall('string'):
                 gp = string_elem.text
                 if gp:
-                    self.cursor.execute("""
-                        INSERT INTO iniciativas_eventos_recursos_gp (evento_id, grupo_parlamentar)
-                        VALUES (?, ?)
-                    """, (evento_db_id, gp))
+                    recurso_obj = IniciativaEventoRecursoGP(
+                        evento_id=evento_obj.id,
+                        grupo_parlamentar=gp
+                    )
+                    self.session.add(recurso_obj)
     
-    def _process_evento_comissoes(self, evento: ET.Element, evento_db_id: int):
+    def _process_evento_comissoes(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process committee data for event"""
         comissao = evento.find('Comissao')
         if comissao is not None:
@@ -469,27 +480,29 @@ class InitiativasMapper(SchemaMapper):
                 data_entrada = self._parse_date(self._get_text_value(com, 'DataEntrada'))
                 data_agendamento = self._get_text_value(com, 'DataAgendamentoPlenario')
                 
-                # Insert committee record
-                self.cursor.execute("""
-                    INSERT INTO iniciativas_eventos_comissoes (
-                        evento_id, acc_id, numero, id_comissao, nome,
-                        competente, data_distribuicao, data_entrada, data_agendamento_plenario
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    evento_db_id, acc_id, numero, id_comissao, nome,
-                    competente, data_distribuicao, data_entrada, data_agendamento
-                ))
-                
-                comissao_db_id = self.cursor.lastrowid
+                # Create committee record
+                comissao_obj = IniciativaEventoComissao(
+                    evento_id=evento_obj.id,
+                    acc_id=acc_id,
+                    numero=numero,
+                    id_comissao=id_comissao,
+                    nome=nome,
+                    competente=competente,
+                    data_distribuicao=data_distribuicao,
+                    data_entrada=data_entrada,
+                    data_agendamento_plenario=data_agendamento
+                )
+                self.session.add(comissao_obj)
+                self.session.flush()  # Get the ID
                 
                 # Process committee publications
                 for pub_type in ['Publicacao', 'PublicacaoRelatorio']:
                     pub_elem = com.find(pub_type)
                     if pub_elem is not None:
                         for pub in pub_elem.findall('pt_gov_ar_objectos_PublicacoesOut'):
-                            self._insert_comissao_publicacao(comissao_db_id, pub, pub_type)
+                            self._insert_comissao_publicacao(comissao_obj, pub, pub_type)
     
-    def _insert_comissao_publicacao(self, comissao_id: int, pub: ET.Element, tipo: str):
+    def _insert_comissao_publicacao(self, comissao_obj: IniciativaEventoComissao, pub: ET.Element, tipo: str):
         """Insert committee publication"""
         pub_nr = self._get_int_value(pub, 'pubNr')
         pub_tipo = self._get_text_value(pub, 'pubTipo')
@@ -507,14 +520,22 @@ class InitiativasMapper(SchemaMapper):
             if string_elems:
                 pag_text = ', '.join([s.text for s in string_elems if s.text])
         
-        self.cursor.execute("""
-            INSERT INTO iniciativas_comissoes_publicacoes (
-                comissao_id, tipo, pub_nr, pub_tipo, pub_tp, pub_leg, pub_sl,
-                pub_dt, pag, id_pag, url_diario
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (comissao_id, tipo, pub_nr, pub_tipo, pub_tp, pub_leg, pub_sl, pub_dt, pag_text, id_pag, url_diario))
+        publicacao_obj = IniciativaComissaoPublicacao(
+            comissao_id=comissao_obj.id,
+            tipo=tipo,
+            pub_nr=pub_nr,
+            pub_tipo=pub_tipo,
+            pub_tp=pub_tp,
+            pub_leg=pub_leg,
+            pub_sl=pub_sl,
+            pub_dt=pub_dt,
+            pag=pag_text,
+            id_pag=id_pag,
+            url_diario=url_diario
+        )
+        self.session.add(publicacao_obj)
     
-    def _process_evento_iniciativas_conjuntas(self, evento: ET.Element, evento_db_id: int):
+    def _process_evento_iniciativas_conjuntas(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process joint initiatives"""
         iniciativas_conjuntas = evento.find('IniciativasConjuntas')
         if iniciativas_conjuntas is not None:
@@ -527,23 +548,30 @@ class InitiativasMapper(SchemaMapper):
                 titulo = self._get_text_value(ini, 'titulo')
                 ini_id = self._get_int_value(ini, 'id')
                 
-                self.cursor.execute("""
-                    INSERT INTO iniciativas_conjuntas (
-                        evento_id, nr, tipo, desc_tipo, leg, sel, titulo, ini_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (evento_db_id, nr, tipo, desc_tipo, leg, sel, titulo, ini_id))
+                iniciativa_conjunta_obj = IniciativaConjunta(
+                    evento_id=evento_obj.id,
+                    nr=nr,
+                    tipo=tipo,
+                    desc_tipo=desc_tipo,
+                    leg=leg,
+                    sel=sel,
+                    titulo=titulo,
+                    ini_id=ini_id
+                )
+                self.session.add(iniciativa_conjunta_obj)
     
-    def _process_evento_intervencoes(self, evento: ET.Element, evento_db_id: int):
+    def _process_evento_intervencoes(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process interventions/debates"""
         intervencoes = evento.find('Intervencoesdebates')
         if intervencoes is not None:
             for int_elem in intervencoes.findall('pt_gov_ar_objectos_IntervencoesOut'):
                 data_reuniao = self._parse_date(self._get_text_value(int_elem, 'dataReuniaoPlenaria'))
                 
-                self.cursor.execute("""
-                    INSERT INTO iniciativas_intervencoes_debates (evento_id, data_reuniao_plenaria)
-                    VALUES (?, ?)
-                """, (evento_db_id, data_reuniao))
+                intervencao_debate_obj = IniciativaIntervencaoDebate(
+                    evento_id=evento_obj.id,
+                    data_reuniao_plenaria=data_reuniao
+                )
+                self.session.add(intervencao_debate_obj)
     
     def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
         """Get text value from XML element"""
