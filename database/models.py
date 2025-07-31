@@ -1293,6 +1293,7 @@ class ActividadeOut(Base):
     dados_legis_deputados = relationship("DadosLegisDeputado", back_populates="actividade_out", cascade="all, delete-orphan")
     audiencias = relationship("ActividadeAudiencia", back_populates="actividade_out", cascade="all, delete-orphan")
     audicoes = relationship("ActividadeAudicao", back_populates="actividade_out", cascade="all, delete-orphan")
+    intervencoes = relationship("ActividadeIntervencao", back_populates="actividade_out", cascade="all, delete-orphan")
 
 
 class DadosLegisDeputado(Base):
@@ -1340,6 +1341,38 @@ class ActividadesComissaoOut(Base):
     
     audiencia = relationship("ActividadeAudiencia", back_populates="actividades_comissao")
     audicao = relationship("ActividadeAudicao", back_populates="actividades_comissao")
+
+
+class ActividadeIntervencao(Base):
+    __tablename__ = 'actividade_intervencoes'
+    
+    id = Column(Integer, primary_key=True)
+    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    actividade_out = relationship("ActividadeOut", back_populates="intervencoes")
+    intervencoes_out = relationship("ActividadeIntervencaoOut", back_populates="actividade_intervencao", cascade="all, delete-orphan")
+
+
+class ActividadeIntervencaoOut(Base):
+    __tablename__ = 'actividade_intervencoes_out'
+    
+    id = Column(Integer, primary_key=True)
+    actividade_intervencao_id = Column(Integer, ForeignKey('actividade_intervencoes.id'), nullable=False)
+    
+    # IntervencoesOut fields from XML
+    int_id = Column(Integer)  # IntId
+    int_su = Column(Text)  # IntSu - Summary
+    pub_dar = Column(String(200))  # PubDar - Publication Diary
+    pub_dtreu = Column(Date)  # PubDtreu - Publication Date
+    pub_lg = Column(String(50))  # PubLg - Publication Legislature
+    pub_nr = Column(Integer)  # PubNr - Publication Number
+    pub_tp = Column(String(100))  # PubTp - Publication Type
+    tin_ds = Column(String(200))  # TinDs - Intervention Type Description
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    actividade_intervencao = relationship("ActividadeIntervencao", back_populates="intervencoes_out")
 
 
 class DeputadoSituacao(Base):

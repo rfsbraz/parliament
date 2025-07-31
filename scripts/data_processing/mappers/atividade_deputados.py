@@ -28,7 +28,7 @@ from database.models import (
     Deputado, AtividadeDeputado, AtividadeDeputadoList, ActividadeOut,
     DadosLegisDeputado, ActividadeAudiencia, ActividadeAudicao, 
     ActividadesComissaoOut, DeputadoSituacao, DadosSituacaoDeputado,
-    DepCargo, DadosCargoDeputado
+    DepCargo, DadosCargoDeputado, ActividadeIntervencao, ActividadeIntervencaoOut
 )
 
 logger = logging.getLogger(__name__)
@@ -95,7 +95,30 @@ class AtividadeDeputadosMapper(SchemaMapper):
             'ArrayOfAtividadeDeputado.AtividadeDeputado.Deputado.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.Deputado.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDes',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.Deputado.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carId',
-            'ArrayOfAtividadeDeputado.AtividadeDeputado.Deputado.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtInicio'
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.Deputado.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtInicio',
+            
+            # Deputy initiatives - III Legislature and others
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Ini',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Ini.IniciativasOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Ini.IniciativasOut.IniId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Ini.IniciativasOut.IniNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Ini.IniciativasOut.IniSelLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Ini.IniciativasOut.IniSelNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Ini.IniciativasOut.IniTi',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Ini.IniciativasOut.IniTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Ini.IniciativasOut.IniTpdesc',
+            
+            # Deputy interventions - IV Legislature and others
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.IntId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.IntSu',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubDar',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubDtreu',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.PubTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Intev.IntervencoesOut.TinDs'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -177,6 +200,8 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     self._process_dados_legis_deputado(actividade_out, actividade_out_id)
                     self._process_audiencias(actividade_out, actividade_out_id)
                     self._process_audicoes(actividade_out, actividade_out_id)
+                    self._process_initiatives(actividade_out, atividade_deputado_id)
+                    self._process_interventions(actividade_out, actividade_out_id)
             
             # Process deputy situations - REAL XML structure
             self._process_deputy_situacoes_real(deputado, atividade_deputado_id, strict_mode)
@@ -353,6 +378,95 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing audicoes: {e}")
+            self.session.rollback()
+    
+    def _process_initiatives(self, actividade_out: ET.Element, atividade_deputado_id: int):
+        """Process deputy initiatives using SQLAlchemy ORM"""
+        try:
+            # Import the model here to avoid circular imports
+            from database.models import DeputyInitiative
+            
+            ini_section = actividade_out.find('Ini')
+            if ini_section is not None:
+                # Process each IniciativasOut within Ini
+                for iniciativa in ini_section.findall('IniciativasOut'):
+                    # Extract initiative fields
+                    ini_id = self._safe_int(self._get_text_value(iniciativa, 'IniId'))
+                    ini_nr = self._get_text_value(iniciativa, 'IniNr')
+                    ini_sel_lg = self._get_text_value(iniciativa, 'IniSelLg')
+                    ini_sel_nr = self._get_text_value(iniciativa, 'IniSelNr')
+                    ini_ti = self._get_text_value(iniciativa, 'IniTi')
+                    ini_tp = self._get_text_value(iniciativa, 'IniTp')
+                    ini_tpdesc = self._get_text_value(iniciativa, 'IniTpdesc')
+                    
+                    # Skip if no essential data
+                    if not ini_id and not ini_nr:
+                        continue
+                    
+                    # Create DeputyInitiative record
+                    initiative = DeputyInitiative(
+                        deputy_activity_id=atividade_deputado_id,
+                        id_iniciativa=ini_id,
+                        numero=ini_nr,
+                        tipo=ini_ti,
+                        desc_tipo=ini_tpdesc,
+                        legislatura=ini_sel_lg,
+                        sessao=ini_sel_nr
+                    )
+                    
+                    self.session.add(initiative)
+                
+                self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing initiatives: {e}")
+            self.session.rollback()
+    
+    def _process_interventions(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process deputy interventions using SQLAlchemy ORM"""
+        try:
+            intev_section = actividade_out.find('Intev')
+            if intev_section is not None:
+                # Create ActividadeIntervencao record
+                actividade_intervencao = ActividadeIntervencao(
+                    actividade_out_id=actividade_out_id
+                )
+                
+                self.session.add(actividade_intervencao)
+                self.session.commit()
+                
+                # Process each IntervencoesOut within Intev
+                for intervencao in intev_section.findall('IntervencoesOut'):
+                    # Extract intervention fields
+                    int_id = self._safe_int(self._get_text_value(intervencao, 'IntId'))
+                    int_su = self._get_text_value(intervencao, 'IntSu')
+                    pub_dar = self._get_text_value(intervencao, 'PubDar')
+                    pub_dtreu_str = self._get_text_value(intervencao, 'PubDtreu')
+                    pub_dtreu = self._parse_date(pub_dtreu_str) if pub_dtreu_str else None
+                    pub_lg = self._get_text_value(intervencao, 'PubLg')
+                    pub_nr = self._safe_int(self._get_text_value(intervencao, 'PubNr'))
+                    pub_tp = self._get_text_value(intervencao, 'PubTp')
+                    tin_ds = self._get_text_value(intervencao, 'TinDs')
+                    
+                    # Create ActividadeIntervencaoOut record
+                    intervencao_out = ActividadeIntervencaoOut(
+                        actividade_intervencao_id=actividade_intervencao.id,
+                        int_id=int_id,
+                        int_su=int_su,
+                        pub_dar=pub_dar,
+                        pub_dtreu=pub_dtreu,
+                        pub_lg=pub_lg,
+                        pub_nr=pub_nr,
+                        pub_tp=pub_tp,
+                        tin_ds=tin_ds
+                    )
+                    
+                    self.session.add(intervencao_out)
+                
+                self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing interventions: {e}")
             self.session.rollback()
     
     def _process_deputy_situacoes_real(self, deputado: ET.Element, atividade_deputado_id: int, strict_mode: bool = False):
