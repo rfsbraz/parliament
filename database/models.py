@@ -3,10 +3,10 @@ SQLAlchemy Models for Portuguese Parliament Database
 ===================================================
 
 Comprehensive models for all parliamentary data with zero data loss.
-Supports both SQLite (development) and Aurora MySQL/PostgreSQL (production).
+Uses MySQL database with proper foreign key constraints and relationships.
 
 Author: Claude
-Version: 2.0 - Full Mapping Implementation
+Version: 3.0 - MySQL Implementation
 """
 
 from sqlalchemy import Column, Integer, String, Text, Date, DateTime, Boolean, ForeignKey, Index, UniqueConstraint, ForeignKeyConstraint
@@ -72,9 +72,11 @@ class Deputado(Base):
     id_cadastro = Column(Integer, unique=True, nullable=False)
     nome = Column(String(200), nullable=False)
     nome_completo = Column(String(300))
+    sexo = Column(String(1))  # M/F - cadSexo field
     profissao = Column(String(200))
     data_nascimento = Column(Date)
     naturalidade = Column(String(100))
+    estado_civil_cod = Column(String(10))  # cadEstadoCivilCod
     habilitacoes_academicas = Column(Text)
     biografia = Column(Text)
     foto_url = Column(String(500))
@@ -88,6 +90,13 @@ class Deputado(Base):
     # Relationships
     atividades = relationship("AtividadeDeputado", back_populates="deputado", cascade="all, delete-orphan")
     cargos = relationship("DepCargo", back_populates="deputado", cascade="all, delete-orphan")
+    habilitacoes = relationship("DeputadoHabilitacao", back_populates="deputado", cascade="all, delete-orphan")
+    cargos_funcoes = relationship("DeputadoCargoFuncao", back_populates="deputado", cascade="all, delete-orphan")
+    titulos = relationship("DeputadoTitulo", back_populates="deputado", cascade="all, delete-orphan")
+    condecoracoes = relationship("DeputadoCondecoracao", back_populates="deputado", cascade="all, delete-orphan")
+    obras_publicadas = relationship("DeputadoObraPublicada", back_populates="deputado", cascade="all, delete-orphan")
+    mandatos_legislativos = relationship("DeputadoMandatoLegislativo", back_populates="deputado", cascade="all, delete-orphan")
+    registo_interesses_v2 = relationship("RegistoInteressesV2", back_populates="deputado", cascade="all, delete-orphan")
 
 
 class DepCargo(Base):
@@ -700,8 +709,8 @@ class AgendaParlamentar(Base):
     tema_nome = Column(Text)
     grupo_parlamentar = Column(Text)
     data_evento = Column(Date, nullable=False)
-    hora_inicio = Column(Text)  # TIME in SQLite shows as TEXT
-    hora_fim = Column(Text)     # TIME in SQLite shows as TEXT
+    hora_inicio = Column(Text)  # TIME field stored as TEXT
+    hora_fim = Column(Text)     # TIME field stored as TEXT
     evento_dia_inteiro = Column(Boolean, default=False)
     titulo = Column(Text, nullable=False)
     subtitulo = Column(Text)
@@ -710,15 +719,15 @@ class AgendaParlamentar(Base):
     link_externo = Column(Text)
     pos_plenario = Column(Boolean, default=False)
     estado = Column(Text, default='agendado')
-    created_at = Column(Text, default='CURRENT_TIMESTAMP')  # TIMESTAMP in SQLite
-    updated_at = Column(Text, default='CURRENT_TIMESTAMP')  # TIMESTAMP in SQLite
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     secao_parlamentar_id = Column(Integer, ForeignKey('secoes_parlamentares.id'))
     tema_parlamentar_id = Column(Integer, ForeignKey('temas_parlamentares.id'))
     
     __table_args__ = (
         Index('idx_agenda_data', 'data_evento'),
         Index('idx_agenda_legislatura_data', 'legislatura_id', 'data_evento'),
-        Index('idx_agenda_grupo', 'grupo_parlamentar'),
+        # Index('idx_agenda_grupo', 'grupo_parlamentar'),  # Removed - TEXT column cannot be indexed without key length
         UniqueConstraint('id_externo', 'legislatura_id'),
         ForeignKeyConstraint(['legislatura_id'], ['legislaturas.id']),
     )
@@ -922,6 +931,16 @@ class OrganMeeting(Base):
     reu_hora = Column(String(10))
     reu_tipo = Column(String(100))
     reu_estado = Column(String(50))
+    
+    # Extended meeting fields (III Legislature)
+    reu_id = Column(Integer)  # Meeting ID from XML
+    reu_numero = Column(Integer)  # Meeting number
+    reu_data_hora = Column(String(50))  # Combined date/time string
+    reu_final_plenario = Column(Boolean)  # Final plenary indicator
+    reu_tir_des = Column(String(200))  # Meeting type description
+    leg_des = Column(String(50))  # Legislature description
+    sel_numero = Column(String(50))  # Session number
+    
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
@@ -929,6 +948,31 @@ class OrganMeeting(Base):
     work_group = relationship("WorkGroup", back_populates="meetings")
     permanent_committee = relationship("PermanentCommittee", back_populates="meetings")
     sub_committee = relationship("SubCommittee", back_populates="meetings")
+    attendances = relationship("MeetingAttendance", back_populates="meeting", cascade="all, delete-orphan")
+
+
+class MeetingAttendance(Base):
+    """Meeting attendance data (Presencas) - tracks deputy attendance at meetings"""
+    __tablename__ = 'meeting_attendances'
+    
+    id = Column(Integer, primary_key=True)
+    meeting_id = Column(Integer, ForeignKey('organ_meetings.id'), nullable=False)
+    
+    # Deputy information
+    dep_id = Column(Integer)
+    dep_cad_id = Column(Integer)
+    dep_nome_parlamentar = Column(String(200))
+    
+    # Attendance details
+    pres_tipo = Column(String(50))  # Presence type (present, absent, etc.)
+    pres_justificacao = Column(Text)  # Justification for absence
+    dt_reuniao = Column(Date)  # Meeting date for this attendance record
+    tipo_reuniao = Column(String(100))  # Type of meeting
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    meeting = relationship("OrganMeeting", back_populates="attendances")
 
 
 # Historical Composition Models
@@ -1225,7 +1269,7 @@ class ImportStatus(Base):
     __tablename__ = 'import_status'
     
     id = Column(Integer, primary_key=True)
-    file_url = Column(String(1000), nullable=False, unique=True)
+    file_url = Column(String(1000), nullable=False)
     file_path = Column(String(500))
     file_name = Column(String(200), nullable=False)
     file_type = Column(String(20), nullable=False)  # 'JSON', 'XML', 'PDF', 'Archive'
@@ -1246,7 +1290,7 @@ class ImportStatus(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
     __table_args__ = (
-        Index('idx_import_status_url', 'file_url'),
+        # Index('idx_import_status_url', 'file_url'),  # Removed - VARCHAR(1000) too long for MySQL index
         Index('idx_import_status_hash', 'file_hash'),
         Index('idx_import_status_status', 'status'),
         Index('idx_import_status_category', 'category'),
@@ -3352,4 +3396,129 @@ class RelatoresContasPublicasOut(Base):
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
-    relatores_contas_publicas = relationship("RelatoresContasPublicas", back_populates="relatores")
+    relatores_contas_publicas = relationship("RelatoresContasPublicas", back_populates="relatores")# I Legislature Biographical Models - to be appended to models.py
+
+# =====================================================
+# I LEGISLATURE BIOGRAPHICAL DATA MODELS - COMPREHENSIVE
+# =====================================================
+
+class DeputadoHabilitacao(Base):
+    """Deputy Academic Qualifications (cadHabilitacoes)"""
+    __tablename__ = 'deputado_habilitacoes'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    hab_id = Column(Integer)  # habId - qualification ID
+    hab_des = Column(String(500))  # habDes - qualification description
+    hab_tipo_id = Column(Integer)  # habTipoId - qualification type ID
+    hab_estado = Column(String(50))  # habEstado - qualification state/status
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    deputado = relationship("Deputado", back_populates="habilitacoes")
+
+
+class DeputadoCargoFuncao(Base):
+    """Deputy Positions/Functions (cadCargosFuncoes)"""
+    __tablename__ = 'deputado_cargos_funcoes'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    fun_id = Column(Integer)  # funId - function ID
+    fun_des = Column(Text)  # funDes - function description
+    fun_ordem = Column(Integer)  # funOrdem - function order
+    fun_antiga = Column(String(1))  # funAntiga - S/N whether it's an old function
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    deputado = relationship("Deputado", back_populates="cargos_funcoes")
+
+
+class DeputadoTitulo(Base):
+    """Deputy Titles/Awards (cadTitulos)"""
+    __tablename__ = 'deputado_titulos'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    tit_id = Column(Integer)  # titId - title ID
+    tit_des = Column(Text)  # titDes - title description
+    tit_ordem = Column(Integer)  # titOrdem - title order
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    deputado = relationship("Deputado", back_populates="titulos")
+
+
+class DeputadoCondecoracao(Base):
+    """Deputy Decorations/Honors (cadCondecoracoes)"""
+    __tablename__ = 'deputado_condecoracoes'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    cod_id = Column(Integer)  # codId - decoration ID
+    cod_des = Column(Text)  # codDes - decoration description
+    cod_ordem = Column(Integer)  # codOrdem - decoration order
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    deputado = relationship("Deputado", back_populates="condecoracoes")
+
+
+class DeputadoObraPublicada(Base):
+    """Deputy Published Works (cadObrasPublicadas)"""
+    __tablename__ = 'deputado_obras_publicadas'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    pub_id = Column(Integer)  # pubId - publication ID
+    pub_des = Column(Text)  # pubDes - publication description
+    pub_ordem = Column(Integer)  # pubOrdem - publication order
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    deputado = relationship("Deputado", back_populates="obras_publicadas")
+
+
+class DeputadoMandatoLegislativo(Base):
+    """Deputy Legislative Mandates (cadDeputadoLegis) - Enhanced with all fields"""
+    __tablename__ = 'deputado_mandatos_legislativos'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    
+    # Core mandate data
+    dep_nome_parlamentar = Column(String(200))  # depNomeParlamentar
+    leg_des = Column(String(50))  # legDes - legislature designation (IA, IB, II, etc.)
+    ce_des = Column(String(100))  # ceDes - electoral circle description
+    par_sigla = Column(String(20))  # parSigla - party acronym
+    par_des = Column(String(200))  # parDes - party description
+    gp_sigla = Column(String(20))  # gpSigla - parliamentary group acronym
+    gp_des = Column(String(200))  # gpDes - parliamentary group description
+    ind_des = Column(String(200))  # indDes - indication description
+    url_video_biografia = Column(String(500))  # urlVideoBiografia - biography video URL
+    ind_data = Column(Date)  # indData - indication date
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    deputado = relationship("Deputado", back_populates="mandatos_legislativos")
+
+
+class RegistoInteressesV2(Base):
+    """Interest Registry V2 (RegistoInteressesV2List)"""
+    __tablename__ = 'registo_interesses_v2'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    
+    # All V2 fields based on the unmapped field structure
+    cad_id = Column(Integer)  # cadId - deputy cadastral ID
+    cad_estado_civil_cod = Column(String(10))  # cadEstadoCivilCod - marital status code
+    cad_nome_completo = Column(String(200))  # cadNomeCompleto - full name
+    cad_actividade_profissional = Column(Text)  # cadActividadeProfissional - professional activity
+    cad_estado_civil_des = Column(String(50))  # cadEstadoCivilDes - marital status description
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    deputado = relationship("Deputado", back_populates="registo_interesses_v2")

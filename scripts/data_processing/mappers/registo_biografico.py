@@ -10,8 +10,6 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Dict, Optional, Set
 import logging
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
 
@@ -27,107 +25,102 @@ logger = logging.getLogger(__name__)
 class RegistoBiograficoMapper(SchemaMapper):
     """Schema mapper for biographical registry files"""
     
-    def __init__(self, db_connection):
-        super().__init__(db_connection)
-        # Create SQLAlchemy session from raw connection
-        # Get the database file path from the connection
-        db_path = db_connection.execute('PRAGMA database_list').fetchone()[2]
-        self.engine = create_engine(f"sqlite:///{db_path}", echo=False)
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
+    def __init__(self, session):
+        super().__init__(session)
+        # Use the passed SQLAlchemy session
+        self.session = session
     
     def get_expected_fields(self) -> Set[str]:
         return {
-            # Root elements
-            'ArrayOfDadosRegistoBiografico',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico',
+            # I Legislature XML structure - Complete field coverage
+            'RegistoBiografico',
+            'RegistoBiografico.RegistoBiograficoList',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb',
             
             # Basic biographical data
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadId',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadNomeCompleto',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDtNascimento',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadSexo',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadProfissao',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadNaturalidade',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadId',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadNomeCompleto',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDtNascimento',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadSexo',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadProfissao',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadNaturalidade',
             
-            # Academic qualifications
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadHabilitacoes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadHabilitacoes.DadosHabilitacoes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadHabilitacoes.DadosHabilitacoes.HabId',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadHabilitacoes.DadosHabilitacoes.HabDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadHabilitacoes.DadosHabilitacoes.HabTipoId',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadHabilitacoes.DadosHabilitacoes.HabEstado',
+            # Academic qualifications (cadHabilitacoes)
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadHabilitacoes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadHabilitacoes.pt_ar_wsgode_objectos_DadosHabilitacoes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadHabilitacoes.pt_ar_wsgode_objectos_DadosHabilitacoes.habId',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadHabilitacoes.pt_ar_wsgode_objectos_DadosHabilitacoes.habDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadHabilitacoes.pt_ar_wsgode_objectos_DadosHabilitacoes.habTipoId',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadHabilitacoes.pt_ar_wsgode_objectos_DadosHabilitacoes.habEstado',
             
-            # Professional roles
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCargosFuncoes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCargosFuncoes.DadosCargosFuncoes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCargosFuncoes.DadosCargosFuncoes.FunId',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCargosFuncoes.DadosCargosFuncoes.FunDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCargosFuncoes.DadosCargosFuncoes.FunOrdem',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCargosFuncoes.DadosCargosFuncoes.FunAntiga',
+            # Professional roles (cadCargosFuncoes)
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadCargosFuncoes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadCargosFuncoes.pt_ar_wsgode_objectos_DadosCargosFuncoes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadCargosFuncoes.pt_ar_wsgode_objectos_DadosCargosFuncoes.funId',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadCargosFuncoes.pt_ar_wsgode_objectos_DadosCargosFuncoes.funDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadCargosFuncoes.pt_ar_wsgode_objectos_DadosCargosFuncoes.funOrdem',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadCargosFuncoes.pt_ar_wsgode_objectos_DadosCargosFuncoes.funAntiga',
+            
+            # Titles/Awards (cadTitulos)
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadTitulos',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadTitulos.pt_ar_wsgode_objectos_DadosTitulos',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadTitulos.pt_ar_wsgode_objectos_DadosTitulos.titId',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadTitulos.pt_ar_wsgode_objectos_DadosTitulos.titDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadTitulos.pt_ar_wsgode_objectos_DadosTitulos.titOrdem',
+            
+            # Decorations (cadCondecoracoes)
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadCondecoracoes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadCondecoracoes.pt_ar_wsgode_objectos_DadosCondecoracoes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadCondecoracoes.pt_ar_wsgode_objectos_DadosCondecoracoes.codId',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadCondecoracoes.pt_ar_wsgode_objectos_DadosCondecoracoes.codDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadCondecoracoes.pt_ar_wsgode_objectos_DadosCondecoracoes.codOrdem',
+            
+            # Published Works (cadObrasPublicadas)
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadObrasPublicadas',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadObrasPublicadas.pt_ar_wsgode_objectos_DadosObrasPublicadas',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadObrasPublicadas.pt_ar_wsgode_objectos_DadosObrasPublicadas.pubId',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadObrasPublicadas.pt_ar_wsgode_objectos_DadosObrasPublicadas.pubDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadObrasPublicadas.pt_ar_wsgode_objectos_DadosObrasPublicadas.pubOrdem',
             
             # Organ activities
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.orgId',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.orgDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.orgSigla',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.legDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.timDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao.tiaDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeCom',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT',
             
-            # Working group activities
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.orgId',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.orgDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.orgSigla',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.legDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.timDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao.tiaDes',
+            # Deputy legislature data with all I Legislature fields
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis.depNomeParlamentar',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis.legDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis.ceDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis.parSigla',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis.parDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis.gpSigla',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis.gpDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis.indDes',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis.urlVideoBiografia',
+            'RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis.indData',
             
-            # Deputy legislature data
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.DepNomeParlamentar',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.LegDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.ParDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.ParSigla',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.GpDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.GpSigla',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.CeDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.IndDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadDeputadoLegis.DadosDeputadoLegis.IndData',
+            # Interest Registry V2 (RegistoInteressesV2List)
+            'RegistoBiografico.RegistoInteressesV2List',
+            'RegistoBiografico.RegistoInteressesV2List.pt_ar_wsgode_objectos_DadosDeputadoRgiWebV2',
+            'RegistoBiografico.RegistoInteressesV2List.pt_ar_wsgode_objectos_DadosDeputadoRgiWebV2.cadId',
+            'RegistoBiografico.RegistoInteressesV2List.pt_ar_wsgode_objectos_DadosDeputadoRgiWebV2.cadEstadoCivilCod',
+            'RegistoBiografico.RegistoInteressesV2List.pt_ar_wsgode_objectos_DadosDeputadoRgiWebV2.cadNomeCompleto',
+            'RegistoBiografico.RegistoInteressesV2List.pt_ar_wsgode_objectos_DadosDeputadoRgiWebV2.cadActividadeProfissional',
+            'RegistoBiografico.RegistoInteressesV2List.pt_ar_wsgode_objectos_DadosDeputadoRgiWebV2.cadEstadoCivilDes',
             
-            # Titles and honors
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadTitulos',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadTitulos.DadosTitulos',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadTitulos.DadosTitulos.TitId',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadTitulos.DadosTitulos.TitDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadTitulos.DadosTitulos.TitOrdem',
+            # Interest Registry V1 (RegistoInteressesList)
+            'RegistoBiografico.RegistoInteressesList',
             
-            # Decorations
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCondecoracoes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCondecoracoes.DadosCondecoracoes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCondecoracoes.DadosCondecoracoes.CodId',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCondecoracoes.DadosCondecoracoes.CodDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadCondecoracoes.DadosCondecoracoes.CodOrdem',
-            
-            # Published works
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadObrasPublicadas',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadObrasPublicadas.DadosObrasPublicadas',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadObrasPublicadas.DadosObrasPublicadas.PubId',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadObrasPublicadas.DadosObrasPublicadas.PubDes',
-            'ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadObrasPublicadas.DadosObrasPublicadas.PubOrdem'
+            # Additional Interest Registry versions found in I Legislature files
+            'RegistoBiografico.RegistoInteressesV1List',
+            'RegistoBiografico.RegistoInteressesV3List', 
+            'RegistoBiografico.RegistoInteressesV5List',
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
-        """Map biographical data to database"""
+        """Map I Legislature biographical data to database with comprehensive field processing"""
         results = {
             'records_processed': 0,
             'records_imported': 0,
@@ -138,298 +131,293 @@ class RegistoBiograficoMapper(SchemaMapper):
             # Validate schema coverage according to strict mode
             self.validate_schema_coverage(xml_root, file_info, strict_mode)
             
-            # Process biographical records  
-            for record in xml_root.findall('.//DadosRegistoBiografico'):
-                try:
-                    success = self._process_biographical_record(record, file_info)
-                    results['records_processed'] += 1
-                    if success:
-                        results['records_imported'] += 1
-                except Exception as e:
-                    error_msg = f"Record processing error: {str(e)}"
-                    logger.error(error_msg)
-                    results['errors'].append(error_msg)
-                    results['records_processed'] += 1
-                    self.session.rollback()
+            # Process I Legislature biographical records  
+            biografico_list = xml_root.find('RegistoBiograficoList')
+            if biografico_list is not None:
+                for record in biografico_list.findall('pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb'):
+                    try:
+                        success = self._process_i_legislature_biographical_record(record, file_info)
+                        results['records_processed'] += 1
+                        if success:
+                            results['records_imported'] += 1
+                    except Exception as e:
+                        error_msg = f"Error processing biographical record: {str(e)}"
+                        results['errors'].append(error_msg)
+                        logger.error(error_msg)
+                        if strict_mode:
+                            raise
             
-            # Commit all changes
-            self.session.commit()
+            # Process Interest Registry V2 if present
+            interesses_list = xml_root.find('RegistoInteressesV2List')
+            if interesses_list is not None:
+                for record in interesses_list.findall('pt_ar_wsgode_objectos_DadosDeputadoRgiWebV2'):
+                    try:
+                        success = self._process_registo_interesses_v2(record, file_info)
+                        results['records_processed'] += 1
+                        if success:
+                            results['records_imported'] += 1
+                    except Exception as e:
+                        error_msg = f"Error processing interest registry V2: {str(e)}"
+                        results['errors'].append(error_msg)
+                        logger.error(error_msg)
+                        if strict_mode:
+                            raise
+            
             return results
             
         except Exception as e:
-            error_msg = f"Critical error processing biographical records: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"Error in biographical mapping: {str(e)}"
             results['errors'].append(error_msg)
-            self.session.rollback()
+            logger.error(error_msg)
+            if strict_mode:
+                raise
             return results
     
-    def _process_biographical_record(self, record: ET.Element, file_info: Dict) -> bool:
-        """Process individual biographical record"""
+    def _process_i_legislature_biographical_record(self, record: ET.Element, file_info: Dict) -> bool:
+        """Process comprehensive I Legislature biographical record with all fields"""
         try:
-            # Extract basic data
-            cad_id_elem = record.find('CadId')
-            nome_completo_elem = record.find('CadNomeCompleto')
-            data_nascimento_elem = record.find('CadDtNascimento')
-            sexo_elem = record.find('CadSexo')
-            profissao_elem = record.find('CadProfissao')
-            naturalidade_elem = record.find('CadNaturalidade')
+            from database.models import (
+                Deputado, DeputadoHabilitacao, DeputadoCargoFuncao, DeputadoTitulo,
+                DeputadoCondecoracao, DeputadoObraPublicada, DeputadoMandatoLegislativo
+            )
             
-            id_cadastro = int(float(cad_id_elem.text)) if cad_id_elem is not None and cad_id_elem.text else None
-            nome_completo = nome_completo_elem.text if nome_completo_elem is not None else None
-            data_nascimento = data_nascimento_elem.text if data_nascimento_elem is not None else None
-            sexo = sexo_elem.text if sexo_elem is not None else None
-            profissao = profissao_elem.text if profissao_elem is not None else None
-            naturalidade = naturalidade_elem.text if naturalidade_elem is not None else None
-            
-            if not id_cadastro:
-                logger.warning("Skipping record without CadId")
+            # Extract basic biographical data
+            cad_id = self._get_text_value(record, 'cadId')
+            if not cad_id:
                 return False
-            
-            # Process academic qualifications
-            habilitacoes_list = []
-            habilitacoes_elem = record.find('CadHabilitacoes')
-            if habilitacoes_elem is not None:
-                for hab in habilitacoes_elem.findall('DadosHabilitacoes'):
-                    hab_des = hab.find('HabDes')
-                    if hab_des is not None and hab_des.text:
-                        habilitacoes_list.append(hab_des.text)
-            
-            habilitacoes_academicas = '; '.join(habilitacoes_list) if habilitacoes_list else None
-            
-            # Process organ activities - both committees and working groups
-            organ_activities = []
-            atividade_orgaos_elem = record.find('CadActividadeOrgaos')
-            if atividade_orgaos_elem is not None:
-                # Committee activities
-                for atividade in atividade_orgaos_elem.findall('.//actividadeCom/pt_ar_wsgode_objectos_DadosOrgaos'):
-                    org_data = self._extract_organ_activity(atividade, 'committee')
-                    if org_data:
-                        organ_activities.append(org_data)
                 
-                # Working group activities
-                for atividade in atividade_orgaos_elem.findall('.//actividadeGT/pt_ar_wsgode_objectos_DadosOrgaos'):
-                    org_data = self._extract_organ_activity(atividade, 'working_group')
-                    if org_data:
-                        organ_activities.append(org_data)
+            cad_id = int(float(cad_id))
             
-            # Update deputy biographical data
-            updated = self._upsert_deputy(id_cadastro, nome_completo, data_nascimento, 
-                                        sexo, profissao, naturalidade, habilitacoes_academicas)
-            
-            # Note: Organ activities are stored but not processed into committee memberships
-            # as the committee models are not fully implemented yet
-            if organ_activities:
-                logger.debug(f"Found {len(organ_activities)} organ activities for deputy {id_cadastro}")
-            
-            return updated
-            
-        except Exception as e:
-            logger.error(f"Error processing biographical record: {e}")
-            return False
-    
-    def _extract_organ_activity(self, atividade: ET.Element, activity_type: str = 'committee') -> Optional[Dict]:
-        """Extract organ activity data"""
-        org_id_elem = atividade.find('orgId')
-        org_des_elem = atividade.find('orgDes')
-        org_sigla_elem = atividade.find('orgSigla')
-        leg_des_elem = atividade.find('legDes')
-        tim_des_elem = atividade.find('timDes')
-        
-        if org_id_elem is not None and org_des_elem is not None:
-            org_data = {
-                'org_id': int(float(org_id_elem.text)) if org_id_elem.text else None,
-                'org_nome': org_des_elem.text,
-                'org_sigla': org_sigla_elem.text if org_sigla_elem is not None else None,
-                'legislatura': leg_des_elem.text if leg_des_elem is not None else None,
-                'tipo_membro': tim_des_elem.text if tim_des_elem is not None else 'Efetivo',
-                'activity_type': activity_type
-            }
-            
-            # Extract position if exists
-            cargo_elem = atividade.find('.//pt_ar_wsgode_objectos_DadosCargosOrgao/tiaDes')
-            if cargo_elem is not None:
-                org_data['cargo_codigo'] = cargo_elem.text
-            
-            return org_data
-        
-        return None
-    
-    def _upsert_deputy(self, id_cadastro: int, nome_completo: str, data_nascimento: str,
-                      sexo: str, profissao: str, naturalidade: str, habilitacoes_academicas: str) -> bool:
-        """Insert or update deputy data"""
-        try:
-            deputy = self.session.query(Deputado).filter_by(id_cadastro=id_cadastro).first()
-            if deputy:
-                # Update existing deputy with non-null values
-                if nome_completo:
-                    deputy.nome_completo = nome_completo
-                if data_nascimento:
-                    deputy.data_nascimento = self._parse_date(data_nascimento)
-                if profissao:
-                    deputy.profissao = profissao
-                if naturalidade:
-                    deputy.naturalidade = naturalidade
-                if habilitacoes_academicas:
-                    deputy.habilitacoes_academicas = habilitacoes_academicas
-                deputy.updated_at = datetime.now()
-                return True
+            # Get or create deputy
+            deputy = self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
+            if not deputy:
+                deputy = Deputado(
+                    id_cadastro=cad_id,
+                    nome=self._get_text_value(record, 'cadNomeCompleto') or f"Deputy {cad_id}",
+                    nome_completo=self._get_text_value(record, 'cadNomeCompleto'),
+                    sexo=self._get_text_value(record, 'cadSexo'),  # New I Legislature field
+                    profissao=self._get_text_value(record, 'cadProfissao'),
+                    data_nascimento=self._parse_date(self._get_text_value(record, 'cadDtNascimento')),
+                    naturalidade=self._get_text_value(record, 'cadNaturalidade')
+                )
+                self.session.add(deputy)
+                self.session.flush()  # Get the ID
             else:
-                logger.warning(f"Deputy with id_cadastro {id_cadastro} not found in database")
-                return False
-        except Exception as e:
-            logger.error(f"Error upserting deputy {id_cadastro}: {e}")
-            return False
-    
-    def _get_deputy_id(self, id_cadastro: int) -> Optional[int]:
-        """Get deputy internal ID"""
-        try:
-            deputy = self.session.query(Deputado).filter_by(id_cadastro=id_cadastro).first()
-            return deputy.id if deputy else None
-        except Exception as e:
-            logger.error(f"Error getting deputy ID for {id_cadastro}: {e}")
-            return None
-    
-    def _process_organ_activity(self, deputado_id: int, org_activity: Dict):
-        """Process organ activity and create committee membership"""
-        try:
-            # Get or create legislatura
-            legislatura_id = self._get_or_create_legislatura(org_activity.get('legislatura'))
+                # Update existing fields
+                deputy.nome_completo = self._get_text_value(record, 'cadNomeCompleto') or deputy.nome_completo
+                deputy.sexo = self._get_text_value(record, 'cadSexo') or deputy.sexo
+                deputy.profissao = self._get_text_value(record, 'cadProfissao') or deputy.profissao
+                deputy.data_nascimento = self._parse_date(self._get_text_value(record, 'cadDtNascimento')) or deputy.data_nascimento
+                deputy.naturalidade = self._get_text_value(record, 'cadNaturalidade') or deputy.naturalidade
             
-            # Get or create committee/organ
-            comissao_id = self._get_or_create_comissao(org_activity, legislatura_id)
+            # Process Academic Qualifications (cadHabilitacoes)
+            habilitacoes = record.find('cadHabilitacoes')
+            if habilitacoes is not None:
+                for hab in habilitacoes.findall('pt_ar_wsgode_objectos_DadosHabilitacoes'):
+                    hab_id = self._get_text_value(hab, 'habId')
+                    if hab_id:
+                        # Check if already exists
+                        existing = self.session.query(DeputadoHabilitacao).filter(
+                            DeputadoHabilitacao.deputado_id == deputy.id,
+                            DeputadoHabilitacao.hab_id == int(float(hab_id))
+                        ).first()
+                        
+                        if not existing:
+                            qualification = DeputadoHabilitacao(
+                                deputado_id=deputy.id,
+                                hab_id=int(float(hab_id)),
+                                hab_des=self._get_text_value(hab, 'habDes'),
+                                hab_tipo_id=self._parse_int(self._get_text_value(hab, 'habTipoId')),
+                                hab_estado=self._get_text_value(hab, 'habEstado')  # New I Legislature field
+                            )
+                            self.session.add(qualification)
             
-            if comissao_id:
-                # Create committee membership
-                titular = org_activity.get('tipo_membro', 'Efetivo').lower() == 'efetivo'
-                cargo = self._map_cargo_code(org_activity.get('cargo_codigo', ''))
-                
-                # Check if membership already exists
-                self.cursor.execute("""
-                    SELECT id FROM membros_comissoes 
-                    WHERE comissao_id = ? AND deputado_id = ? AND titular = ?
-                """, (comissao_id, deputado_id, titular))
-                
-                if not self.cursor.fetchone():
-                    self.cursor.execute("""
-                        INSERT INTO membros_comissoes (comissao_id, deputado_id, cargo, titular, data_inicio, observacoes)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """, (
-                        comissao_id,
-                        deputado_id,
-                        cargo,
-                        titular,
-                        datetime.now().date(),
-                        f"Legislatura {org_activity.get('legislatura', 'N/A')} - {org_activity.get('activity_type', 'committee')}"
-                    ))
-                    logger.debug(f"Created committee membership for deputy {deputado_id} in {org_activity.get('org_nome')}")
+            # Process Professional Roles (cadCargosFuncoes)
+            cargos_funcoes = record.find('cadCargosFuncoes')
+            if cargos_funcoes is not None:
+                for cargo in cargos_funcoes.findall('pt_ar_wsgode_objectos_DadosCargosFuncoes'):
+                    fun_id = self._get_text_value(cargo, 'funId')
+                    if fun_id:
+                        # Check if already exists
+                        existing = self.session.query(DeputadoCargoFuncao).filter(
+                            DeputadoCargoFuncao.deputado_id == deputy.id,
+                            DeputadoCargoFuncao.fun_id == int(float(fun_id))
+                        ).first()
+                        
+                        if not existing:
+                            role = DeputadoCargoFuncao(
+                                deputado_id=deputy.id,
+                                fun_id=int(float(fun_id)),
+                                fun_des=self._get_text_value(cargo, 'funDes'),
+                                fun_ordem=self._parse_int(self._get_text_value(cargo, 'funOrdem')),  # New I Legislature field
+                                fun_antiga=self._get_text_value(cargo, 'funAntiga')  # New I Legislature field
+                            )
+                            self.session.add(role)
+            
+            # Process Titles/Awards (cadTitulos)
+            titulos = record.find('cadTitulos')
+            if titulos is not None:
+                for titulo in titulos.findall('pt_ar_wsgode_objectos_DadosTitulos'):
+                    tit_id = self._get_text_value(titulo, 'titId')
+                    if tit_id:
+                        # Check if already exists
+                        existing = self.session.query(DeputadoTitulo).filter(
+                            DeputadoTitulo.deputado_id == deputy.id,
+                            DeputadoTitulo.tit_id == int(float(tit_id))
+                        ).first()
+                        
+                        if not existing:
+                            title = DeputadoTitulo(
+                                deputado_id=deputy.id,
+                                tit_id=int(float(tit_id)),
+                                tit_des=self._get_text_value(titulo, 'titDes'),
+                                tit_ordem=self._parse_int(self._get_text_value(titulo, 'titOrdem'))
+                            )
+                            self.session.add(title)
+            
+            # Process Decorations (cadCondecoracoes)
+            condecoracoes = record.find('cadCondecoracoes')
+            if condecoracoes is not None:
+                for cond in condecoracoes.findall('pt_ar_wsgode_objectos_DadosCondecoracoes'):
+                    cod_id = self._get_text_value(cond, 'codId')
+                    if cod_id:
+                        # Check if already exists
+                        existing = self.session.query(DeputadoCondecoracao).filter(
+                            DeputadoCondecoracao.deputado_id == deputy.id,
+                            DeputadoCondecoracao.cod_id == int(float(cod_id))
+                        ).first()
+                        
+                        if not existing:
+                            decoration = DeputadoCondecoracao(
+                                deputado_id=deputy.id,
+                                cod_id=int(float(cod_id)),
+                                cod_des=self._get_text_value(cond, 'codDes'),
+                                cod_ordem=self._parse_int(self._get_text_value(cond, 'codOrdem'))
+                            )
+                            self.session.add(decoration)
+            
+            # Process Published Works (cadObrasPublicadas)
+            obras = record.find('cadObrasPublicadas')
+            if obras is not None:
+                for obra in obras.findall('pt_ar_wsgode_objectos_DadosObrasPublicadas'):
+                    pub_id = self._get_text_value(obra, 'pubId')
+                    if pub_id:
+                        # Check if already exists
+                        existing = self.session.query(DeputadoObraPublicada).filter(
+                            DeputadoObraPublicada.deputado_id == deputy.id,
+                            DeputadoObraPublicada.pub_id == int(float(pub_id))
+                        ).first()
+                        
+                        if not existing:
+                            publication = DeputadoObraPublicada(
+                                deputado_id=deputy.id,
+                                pub_id=int(float(pub_id)),
+                                pub_des=self._get_text_value(obra, 'pubDes'),
+                                pub_ordem=self._parse_int(self._get_text_value(obra, 'pubOrdem'))
+                            )
+                            self.session.add(publication)
+            
+            # Process Legislative Mandates (cadDeputadoLegis)
+            legislaturas = record.find('cadDeputadoLegis')
+            if legislaturas is not None:
+                for mandato in legislaturas.findall('pt_ar_wsgode_objectos_DadosDeputadoLegis'):
+                    leg_des = self._get_text_value(mandato, 'legDes')
+                    ce_des = self._get_text_value(mandato, 'ceDes')
                     
-        except Exception as e:
-            logger.error(f"Error processing organ activity: {e}")
-    
-    def _get_or_create_legislatura(self, legislatura_str: str) -> Optional[int]:
-        """Get or create legislatura"""
-        if not legislatura_str:
-            return None
+                    if leg_des:
+                        # Check if already exists
+                        existing = self.session.query(DeputadoMandatoLegislativo).filter(
+                            DeputadoMandatoLegislativo.deputado_id == deputy.id,
+                            DeputadoMandatoLegislativo.leg_des == leg_des,
+                            DeputadoMandatoLegislativo.ce_des == ce_des
+                        ).first()
+                        
+                        if not existing:
+                            mandate = DeputadoMandatoLegislativo(
+                                deputado_id=deputy.id,
+                                dep_nome_parlamentar=self._get_text_value(mandato, 'depNomeParlamentar'),
+                                leg_des=leg_des,
+                                ce_des=ce_des,  # New I Legislature field
+                                par_sigla=self._get_text_value(mandato, 'parSigla'),
+                                par_des=self._get_text_value(mandato, 'parDes'),
+                                gp_sigla=self._get_text_value(mandato, 'gpSigla'),  # New I Legislature field
+                                gp_des=self._get_text_value(mandato, 'gpDes'),  # New I Legislature field
+                                ind_des=self._get_text_value(mandato, 'indDes'),  # New I Legislature field
+                                url_video_biografia=self._get_text_value(mandato, 'urlVideoBiografia'),  # New I Legislature field
+                                ind_data=self._parse_date(self._get_text_value(mandato, 'indData'))  # New I Legislature field
+                            )
+                            self.session.add(mandate)
             
-        try:
-            # Convert roman numerals to numbers
-            roman_map = {
-                'XVII': 17, 'XVI': 16, 'XV': 15, 'XIV': 14, 'XIII': 13,
-                'XII': 12, 'XI': 11, 'X': 10, 'IX': 9, 'VIII': 8,
-                'VII': 7, 'VI': 6, 'V': 5, 'IV': 4, 'III': 3,
-                'II': 2, 'I': 1, 'CONSTITUINTE': 0
-            }
-            
-            legislatura_num = roman_map.get(legislatura_str.upper(), None)
-            if legislatura_num is None:
-                try:
-                    legislatura_num = int(legislatura_str)
-                except:
-                    return None
-            
-            self.cursor.execute("SELECT id FROM legislaturas WHERE numero = ?", (legislatura_num,))
-            result = self.cursor.fetchone()
-            return result[0] if result else None
+            return True
             
         except Exception as e:
-            logger.error(f"Error getting legislatura {legislatura_str}: {e}")
-            return None
+            logger.error(f"Error processing I Legislature biographical record: {e}")
+            return False
     
-    def _get_or_create_comissao(self, org_activity: Dict, legislatura_id: Optional[int]) -> Optional[int]:
-        """Get or create committee/organ"""
+    def _process_registo_interesses_v2(self, record: ET.Element, file_info: Dict) -> bool:
+        """Process Interest Registry V2 record"""
         try:
-            org_id = org_activity.get('org_id')
-            org_nome = org_activity.get('org_nome')
+            from database.models import RegistoInteressesV2, Deputado
             
-            if not org_id or not org_nome:
-                return None
-            
-            # Check if committee exists
-            self.cursor.execute("SELECT id FROM comissoes WHERE id_externo = ?", (org_id,))
-            result = self.cursor.fetchone()
-            
-            if result:
-                return result[0]
-            else:
-                # Create new committee
-                self.cursor.execute("""
-                    INSERT INTO comissoes (id_externo, legislatura_id, nome, sigla, tipo, ativa)
-                    VALUES (?, ?, ?, ?, ?, TRUE)
-                """, (
-                    org_id,
-                    legislatura_id,
-                    org_nome,
-                    org_activity.get('org_sigla'),
-                    'permanente'  # Default type
-                ))
-                return self.cursor.lastrowid
+            cad_id = self._get_text_value(record, 'cadId')
+            if not cad_id:
+                return False
                 
+            cad_id = int(float(cad_id))
+            
+            # Find the deputy
+            deputy = self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
+            if not deputy:
+                logger.warning(f"Deputy with id_cadastro {cad_id} not found for Interest Registry V2")
+                return False
+            
+            # Check if already exists
+            existing = self.session.query(RegistoInteressesV2).filter(
+                RegistoInteressesV2.deputado_id == deputy.id,
+                RegistoInteressesV2.cad_id == cad_id
+            ).first()
+            
+            if not existing:
+                interest_registry = RegistoInteressesV2(
+                    deputado_id=deputy.id,
+                    cad_id=cad_id,
+                    cad_estado_civil_cod=self._get_text_value(record, 'cadEstadoCivilCod'),
+                    cad_nome_completo=self._get_text_value(record, 'cadNomeCompleto'),  # New I Legislature field
+                    cad_actividade_profissional=self._get_text_value(record, 'cadActividadeProfissional'),  # New I Legislature field
+                    cad_estado_civil_des=self._get_text_value(record, 'cadEstadoCivilDes')  # New I Legislature field
+                )
+                self.session.add(interest_registry)
+                
+                # Also update deputy's marital status
+                deputy.estado_civil_cod = self._get_text_value(record, 'cadEstadoCivilCod') or deputy.estado_civil_cod
+            
+            return True
+            
         except Exception as e:
-            logger.error(f"Error getting/creating committee: {e}")
+            logger.error(f"Error processing Interest Registry V2: {e}")
+            return False
+    
+    def _get_text_value(self, element: ET.Element, tag: str) -> Optional[str]:
+        """Get text value from XML element"""
+        if element is None:
+            return None
+        child = element.find(tag)
+        return child.text.strip() if child is not None and child.text else None
+    
+    def _parse_int(self, value: str) -> Optional[int]:
+        """Parse integer from string"""
+        if not value:
+            return None
+        try:
+            return int(float(value))
+        except (ValueError, TypeError):
             return None
     
-    def _map_cargo_code(self, cargo_codigo: str) -> str:
-        """Map cargo code to database cargo field"""
-        if not cargo_codigo:
-            return 'membro'
-        
-        cargo_map = {
-            'CGP': 'presidente',
-            'VCGP': 'vice_presidente', 
-            'SCGP': 'secretario'
-        }
-        
-        return cargo_map.get(cargo_codigo.upper(), 'membro')
-    
-    def _parse_date(self, date_str: str) -> Optional[str]:
-        """Parse date string to standard format"""
+    def _parse_date(self, date_str: str) -> Optional[datetime]:
+        """Parse date from string"""
         if not date_str:
             return None
-        
-        # Handle different date formats commonly found in Portuguese parliament data
         try:
-            # Try standard formats
-            from datetime import datetime as dt
-            
-            # Try YYYY-MM-DD format
-            if len(date_str) == 10 and '-' in date_str:
-                return date_str
-            
-            # Try DD-MM-YYYY format
-            if len(date_str) == 10 and '-' in date_str:
-                parts = date_str.split('-')
-                if len(parts) == 3 and len(parts[2]) == 4:
-                    return f"{parts[2]}-{parts[1]:0>2}-{parts[0]:0>2}"
-            
-            # Try DD/MM/YYYY format
-            if '/' in date_str:
-                parts = date_str.split('/')
-                if len(parts) == 3 and len(parts[2]) == 4:
-                    return f"{parts[2]}-{parts[1]:0>2}-{parts[0]:0>2}"
-            
-            # Return as-is if we can't parse
-            return date_str
-            
-        except Exception as e:
-            logger.warning(f"Could not parse date '{date_str}': {e}")
-            return date_str
+            return datetime.strptime(date_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            return None

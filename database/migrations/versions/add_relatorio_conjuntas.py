@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic
-revision = 'add_relatorio_iniciativas_conjuntas'
+revision = 'add_relatorio_conjuntas'
 down_revision = 'add_artigo_field_to_debates'
 branch_labels = None
 depends_on = None

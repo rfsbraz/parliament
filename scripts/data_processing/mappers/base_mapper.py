@@ -20,9 +20,8 @@ class SchemaError(Exception):
 class SchemaMapper:
     """Base class for file type schema mappers"""
     
-    def __init__(self, db_connection):
-        self.db = db_connection
-        self.cursor = db_connection.cursor()
+    def __init__(self, session):
+        self.session = session
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Validate XML structure and map to database schema"""

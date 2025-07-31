@@ -14,8 +14,6 @@ import re
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
 
@@ -29,7 +27,7 @@ from database.models import (
     AdministrativeCouncilHistoricalComposition, LeaderConferenceHistoricalComposition,
     CommissionHistoricalComposition, ARBoardHistoricalComposition,
     WorkGroupHistoricalComposition, PermanentCommitteeHistoricalComposition,
-    SubCommitteeHistoricalComposition, Deputado, Legislatura
+    SubCommitteeHistoricalComposition, OrganMeeting, MeetingAttendance, Deputado, Legislatura
 )
 
 logger = logging.getLogger(__name__)
@@ -38,14 +36,10 @@ logger = logging.getLogger(__name__)
 class ComposicaoOrgaosMapper(SchemaMapper):
     """Schema mapper for parliamentary organ composition files"""
     
-    def __init__(self, db_connection):
-        super().__init__(db_connection)
-        # Create SQLAlchemy session from raw connection
-        # Get the database file path from the connection
-        db_path = db_connection.execute('PRAGMA database_list').fetchone()[2]
-        self.engine = create_engine(f"sqlite:///{db_path}", echo=False)
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
+    def __init__(self, session):
+        super().__init__(session)
+        # Use the passed SQLAlchemy session
+        self.session = session
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -71,22 +65,114 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             'OrganizacaoAR.MesaAR',
             'OrganizacaoAR.ConferenciaLideres',
             'OrganizacaoAR.GruposTrabalho',
+            'OrganizacaoAR.Comissoes',
+            'OrganizacaoAR.SubComissoes',
+            'OrganizacaoAR.ConferenciaPresidentesComissoes',
+            'OrganizacaoAR.ConselhoAdministracao',
+            'OrganizacaoAR.ComissaoPermanente',
+            'OrganizacaoAR.Plenario',
+            
+            # MesaAR detailed mappings
+            'OrganizacaoAR.MesaAR.DetalheOrgao',
+            'OrganizacaoAR.MesaAR.DetalheOrgao.numeroOrgao',
+            'OrganizacaoAR.MesaAR.DetalheOrgao.idOrgao',
+            'OrganizacaoAR.MesaAR.DetalheOrgao.siglaLegislatura',
+            'OrganizacaoAR.MesaAR.DetalheOrgao.siglaOrgao',
+            'OrganizacaoAR.MesaAR.DetalheOrgao.nomeSigla',
+            'OrganizacaoAR.MesaAR.Composicao',
+            
+            # Plenario detailed mappings
+            'OrganizacaoAR.Plenario.DetalheOrgao',
             'OrganizacaoAR.Plenario.DetalheOrgao.numeroOrgao',
             'OrganizacaoAR.Plenario.DetalheOrgao.idOrgao',
+            'OrganizacaoAR.Plenario.DetalheOrgao.siglaOrgao',
+            'OrganizacaoAR.Plenario.DetalheOrgao.siglaLegislatura',
+            'OrganizacaoAR.Plenario.DetalheOrgao.nomeSigla',
+            'OrganizacaoAR.Plenario.Composicao',
+            'OrganizacaoAR.Plenario.Reunioes',
+            
+            # Deputy data in plenary - full paths
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario',
             'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepId',
             'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepCadId',
             'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepCPId',
-            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpSigla',
-            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtInicio',
-            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtFim',
-            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDes',
             'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepNomeParlamentar',
             'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepNomeCompleto',
             'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepCPDes',
             'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.LegDes',
+            
+            # Parliamentary group data - full paths
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepGP',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepGP.pt_ar_wsgode_objectos_DadosSituacaoGP',
             'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpId',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpSigla',
             'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtInicio',
-            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtFim'
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepGP.pt_ar_wsgode_objectos_DadosSituacaoGP.gpDtFim',
+            
+            # Deputy situation data - full paths
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDes',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtInicio',
+            'OrganizacaoAR.Plenario.Composicao.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtFim',
+            
+            # III Legislature additional mappings - extended structure
+            # ComissaoPermanente detailed mappings
+            'OrganizacaoAR.ComissaoPermanente.DetalheOrgao.siglaLegislatura',
+            'OrganizacaoAR.ComissaoPermanente.DetalheOrgao.numeroOrgao',
+            
+            # Comissoes extended structure
+            'OrganizacaoAR.Comissoes.OrgaoBase',
+            'OrganizacaoAR.Comissoes.OrgaoBase.DetalheOrgao',
+            'OrganizacaoAR.Comissoes.OrgaoBase.DetalheOrgao.numeroOrgao',
+            'OrganizacaoAR.Comissoes.OrgaoBase.DetalheOrgao.idOrgao',
+            'OrganizacaoAR.Comissoes.OrgaoBase.DetalheOrgao.siglaOrgao',
+            'OrganizacaoAR.Comissoes.OrgaoBase.DetalheOrgao.nomeSigla',
+            'OrganizacaoAR.Comissoes.OrgaoBase.DetalheOrgao.siglaLegislatura',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Composicao',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes',
+            
+            # Meeting data structures
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTarId',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTirDes',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuLocal',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuData',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuHora',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTipo',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuEstado',
+            
+            # Plenary meeting structures - III Legislature
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.selNumero',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.reuData',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.reuHora',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.reuLocal',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.reuTipo',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.reuEstado',
+            
+            # Presencas (attendance) structures
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.tipoReuniao',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.pt_ar_wsgode_objectos_DadosPresenca',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.pt_ar_wsgode_objectos_DadosPresenca.depId',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.pt_ar_wsgode_objectos_DadosPresenca.depCadId',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.pt_ar_wsgode_objectos_DadosPresenca.depNomeParlamentar',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.pt_ar_wsgode_objectos_DadosPresenca.presTipo',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.pt_ar_wsgode_objectos_DadosPresenca.presJustificacao',
+            
+            # Additional missing III Legislature fields
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Presencas.dtReuniao',
+            'OrganizacaoAR.ComissaoPermanente.DetalheOrgao.nomeSigla',
+            'OrganizacaoAR.ComissaoPermanente.DetalheOrgao.idOrgao',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuDataHora',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuNumero',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuFinalPlenario',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.reuTirDes',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.legDes',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.reuDataHora',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.reuId'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -101,20 +187,87 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
             legislatura = self._get_or_create_legislatura(legislatura_sigla)
         
+            # Process MesaAR (AR Board)
+            mesa_ar = xml_root.find('.//MesaAR')
+            if mesa_ar is not None:
+                try:
+                    success = self._process_mesa_ar(mesa_ar, legislatura)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"MesaAR processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
+            
+            # Process ConselhoAdministracao (Administrative Council)
+            conselho_admin = xml_root.find('.//ConselhoAdministracao')
+            if conselho_admin is not None:
+                try:
+                    success = self._process_conselho_administracao(conselho_admin, legislatura)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"ConselhoAdministracao processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
+            
+            # Process ComissaoPermanente (Permanent Committee)
+            comissao_permanente = xml_root.find('.//ComissaoPermanente')
+            if comissao_permanente is not None:
+                try:
+                    success = self._process_comissao_permanente(comissao_permanente, legislatura)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"ComissaoPermanente processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
+            
+            # Process ConferenciaLideres (Leader Conference)
+            conferencia_lideres = xml_root.find('.//ConferenciaLideres')
+            if conferencia_lideres is not None:
+                try:
+                    success = self._process_conferencia_lideres(conferencia_lideres, legislatura)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"ConferenciaLideres processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
+
             # Process plenary composition
             plenario = xml_root.find('.//Plenario')
             if plenario is not None:
-                success = self._process_plenario(plenario, legislatura)
-                results['records_processed'] += 1
-                if success:
-                    results['records_imported'] += 1
+                try:
+                    success = self._process_plenario(plenario, legislatura)
+                    results['records_processed'] += 1
+                    if success:
+                        results['records_imported'] += 1
+                except Exception as e:
+                    error_msg = f"Plenario processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results['errors'].append(error_msg)
+                    results['records_processed'] += 1
         
             # Process committees
             comissoes = xml_root.find('.//Comissoes')
             if comissoes is not None:
+                # Handle both direct committee structure and OrgaoBase structure
                 for comissao in comissoes:
                     try:
-                        success = self._process_comissao(comissao, legislatura)
+                        # Check if this is an OrgaoBase structure (III Legislature)
+                        if comissao.tag == 'OrgaoBase':
+                            success = self._process_orgao_base(comissao, legislatura)
+                        else:
+                            success = self._process_comissao(comissao, legislatura)
                         results['records_processed'] += 1
                         if success:
                             results['records_imported'] += 1
@@ -217,6 +370,17 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             if composicao is not None:
                 for deputado_data in composicao.findall('DadosDeputadoOrgaoPlenario'):
                     self._process_deputy_plenary_membership(deputado_data, plenary)
+            
+            # Process meetings (Reunioes) - handle both simple and ReuniaoPlenario structures
+            reunioes = plenario.find('Reunioes')
+            if reunioes is not None:
+                # Handle simple Reuniao structure
+                for reuniao in reunioes.findall('Reuniao'):
+                    self._process_organ_meeting(reuniao, plenary=plenary)
+                
+                # Handle ReuniaoPlenario structure (III Legislature)
+                for reuniao_plenario in reunioes.findall('ReuniaoPlenario'):
+                    self._process_reuniao_plenario(reuniao_plenario, plenary)
             
             return True
             
@@ -664,6 +828,634 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         self.session.flush()  # Get the ID
         return legislatura
     
+    def _process_mesa_ar(self, mesa_ar: ET.Element, legislatura: Legislatura) -> bool:
+        """Process AR Board (Mesa da Assembleia da República)"""
+        try:
+            detalhe_orgao = mesa_ar.find('DetalheOrgao')
+            if detalhe_orgao is None:
+                return False
+            
+            id_orgao = self._get_text_value(detalhe_orgao, 'idOrgao')
+            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao') or 'MAR'
+            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla') or 'Mesa da Assembleia da República'
+            numero_orgao = self._get_text_value(detalhe_orgao, 'numeroOrgao')
+            
+            if not id_orgao:
+                return False
+            
+            # Create or get AR Board record
+            ar_board = self._get_or_create_ar_board(
+                int(float(id_orgao)), sigla_orgao, nome_sigla, numero_orgao, legislatura
+            )
+            
+            # Process members
+            composicao = mesa_ar.find('Composicao')
+            if composicao is not None:
+                for deputado_data in composicao.findall('DadosDeputadoOrgao'):
+                    self._process_deputy_ar_board_membership(deputado_data, ar_board)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing Mesa AR: {e}")
+            return False
+    
+    def _process_conselho_administracao(self, conselho: ET.Element, legislatura: Legislatura) -> bool:
+        """Process Administrative Council"""
+        try:
+            detalhe_orgao = conselho.find('DetalheOrgao')
+            if detalhe_orgao is None:
+                return False
+            
+            id_orgao = self._get_text_value(detalhe_orgao, 'idOrgao')
+            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao') or 'CA'
+            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla') or 'Conselho de Administração'
+            numero_orgao = self._get_text_value(detalhe_orgao, 'numeroOrgao')
+            
+            if not id_orgao:
+                return False
+            
+            # Create or get Administrative Council record
+            admin_council = self._get_or_create_administrative_council(
+                int(float(id_orgao)), sigla_orgao, nome_sigla, numero_orgao, legislatura
+            )
+            
+            # Process members
+            composicao = conselho.find('Composicao')
+            if composicao is not None:
+                for deputado_data in composicao.findall('DadosDeputadoOrgao'):
+                    self._process_deputy_admin_council_membership(deputado_data, admin_council)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing Administrative Council: {e}")
+            return False
+    
+    def _process_comissao_permanente(self, comissao: ET.Element, legislatura: Legislatura) -> bool:
+        """Process Permanent Committee"""
+        try:
+            detalhe_orgao = comissao.find('DetalheOrgao')
+            if detalhe_orgao is None:
+                return False
+            
+            id_orgao = self._get_text_value(detalhe_orgao, 'idOrgao')
+            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao') or 'CP'
+            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla') or 'Comissão Permanente'
+            numero_orgao = self._get_text_value(detalhe_orgao, 'numeroOrgao')
+            
+            if not id_orgao:
+                return False
+            
+            # Create or get Permanent Committee record
+            permanent_committee = self._get_or_create_permanent_committee(
+                int(float(id_orgao)), sigla_orgao, nome_sigla, numero_orgao, legislatura
+            )
+            
+            # Process members
+            composicao = comissao.find('Composicao')
+            if composicao is not None:
+                for deputado_data in composicao.findall('DadosDeputadoOrgao'):
+                    self._process_deputy_permanent_committee_membership(deputado_data, permanent_committee)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing Permanent Committee: {e}")
+            return False
+    
+    def _process_conferencia_lideres(self, conferencia: ET.Element, legislatura: Legislatura) -> bool:
+        """Process Leader Conference"""
+        try:
+            detalhe_orgao = conferencia.find('DetalheOrgao')
+            if detalhe_orgao is None:
+                return False
+            
+            id_orgao = self._get_text_value(detalhe_orgao, 'idOrgao')
+            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao') or 'CL'
+            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla') or 'Conferência de Líderes'
+            numero_orgao = self._get_text_value(detalhe_orgao, 'numeroOrgao')
+            
+            if not id_orgao:
+                return False
+            
+            # Create or get Leader Conference record
+            leader_conference = self._get_or_create_leader_conference(
+                int(float(id_orgao)), sigla_orgao, nome_sigla, numero_orgao, legislatura
+            )
+            
+            # Process members
+            composicao = conferencia.find('Composicao')
+            if composicao is not None:
+                for deputado_data in composicao.findall('DadosDeputadoOrgao'):
+                    self._process_deputy_leader_conference_membership(deputado_data, leader_conference)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing Leader Conference: {e}")
+            return False
+    
+    def _process_organ_meeting(self, reuniao: ET.Element, **kwargs) -> bool:
+        """Process organ meeting (Reuniao) - can be associated with different organ types"""
+        try:
+            # Extract meeting data
+            reu_tar_sigla = self._get_text_value(reuniao, 'ReuTarSigla')
+            reu_local = self._get_text_value(reuniao, 'ReuLocal')
+            reu_data_str = self._get_text_value(reuniao, 'ReuData')
+            reu_hora = self._get_text_value(reuniao, 'ReuHora')
+            reu_tipo = self._get_text_value(reuniao, 'ReuTipo')
+            reu_estado = self._get_text_value(reuniao, 'ReuEstado')
+            
+            # Parse date
+            reu_data = None
+            if reu_data_str:
+                try:
+                    # Assume format DD/MM/YYYY or similar
+                    if '/' in reu_data_str:
+                        day, month, year = reu_data_str.split('/')
+                        from datetime import date
+                        reu_data = date(int(year), int(month), int(day))
+                    elif '-' in reu_data_str:
+                        # ISO format YYYY-MM-DD
+                        from datetime import date
+                        year, month, day = reu_data_str.split('-')
+                        reu_data = date(int(year), int(month), int(day))
+                except (ValueError, IndexError):
+                    logger.warning(f"Could not parse meeting date: {reu_data_str}")
+            
+            # Create meeting record - determine which organ type this is for
+            meeting = OrganMeeting(
+                commission_id=kwargs.get('commission').id if kwargs.get('commission') else None,
+                work_group_id=kwargs.get('work_group').id if kwargs.get('work_group') else None,
+                permanent_committee_id=kwargs.get('permanent_committee').id if kwargs.get('permanent_committee') else None,
+                sub_committee_id=kwargs.get('sub_committee').id if kwargs.get('sub_committee') else None,
+                # Note: Plenary meetings would need a separate field in the model
+                reu_tar_sigla=reu_tar_sigla,
+                reu_local=reu_local,
+                reu_data=reu_data,
+                reu_hora=reu_hora,
+                reu_tipo=reu_tipo,
+                reu_estado=reu_estado
+            )
+            
+            self.session.add(meeting)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing organ meeting: {e}")
+            return False
+    
+    def _process_orgao_base(self, orgao_base: ET.Element, legislatura: Legislatura) -> bool:
+        """Process OrgaoBase structure (III Legislature committees)"""
+        try:
+            detalhe_orgao = orgao_base.find('DetalheOrgao')
+            if detalhe_orgao is None:
+                return False
+            
+            id_orgao = self._get_text_value(detalhe_orgao, 'idOrgao')
+            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao')
+            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla')
+            numero_orgao = self._get_text_value(detalhe_orgao, 'numeroOrgao')
+            
+            if not id_orgao or not sigla_orgao:
+                return False
+            
+            # Create or get committee record
+            committee = self._get_or_create_committee(
+                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, legislatura
+            )
+            
+            # Process members
+            composicao = orgao_base.find('Composicao')
+            if composicao is not None:
+                for deputado_data in composicao.findall('DadosDeputadoOrgaoComissao'):
+                    self._process_deputy_committee_membership(deputado_data, committee)
+            
+            # Process meetings with namespace structure
+            reunioes = orgao_base.find('Reunioes')
+            if reunioes is not None:
+                for dados_reuniao in reunioes.findall('pt_ar_wsgode_objectos_DadosReuniao'):
+                    self._process_organ_meeting_namespace(dados_reuniao, committee=committee)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing OrgaoBase: {e}")
+            return False
+    
+    def _process_reuniao_plenario(self, reuniao_plenario: ET.Element, plenary) -> bool:
+        """Process ReuniaoPlenario structure (III Legislature plenary meetings)"""
+        try:
+            # Process the main meeting data
+            reuniao = reuniao_plenario.find('Reuniao')
+            if reuniao is not None:
+                # Extract meeting information
+                sel_numero = self._get_text_value(reuniao, 'selNumero')
+                reu_data_str = self._get_text_value(reuniao, 'reuData')
+                reu_hora = self._get_text_value(reuniao, 'reuHora')
+                reu_local = self._get_text_value(reuniao, 'reuLocal')
+                reu_tipo = self._get_text_value(reuniao, 'reuTipo')
+                reu_estado = self._get_text_value(reuniao, 'reuEstado')
+                
+                # Parse date
+                reu_data = None
+                if reu_data_str:
+                    try:
+                        if '/' in reu_data_str:
+                            day, month, year = reu_data_str.split('/')
+                            from datetime import date
+                            reu_data = date(int(year), int(month), int(day))
+                        elif '-' in reu_data_str:
+                            from datetime import date
+                            year, month, day = reu_data_str.split('-')
+                            reu_data = date(int(year), int(month), int(day))
+                    except (ValueError, IndexError):
+                        logger.warning(f"Could not parse plenary meeting date: {reu_data_str}")
+                
+                # Extract additional III Legislature fields
+                reu_id = self._get_int_value(reuniao, 'reuId')
+                reu_data_hora = self._get_text_value(reuniao, 'reuDataHora')
+                reu_tir_des = self._get_text_value(reuniao, 'reuTirDes')
+                leg_des = self._get_text_value(reuniao, 'legDes')
+                
+                # Create meeting record with all available fields
+                meeting = OrganMeeting(
+                    # Basic fields
+                    reu_tar_sigla=sel_numero,  # Use selNumero as identifier
+                    reu_local=reu_local,
+                    reu_data=reu_data,
+                    reu_hora=reu_hora,
+                    reu_tipo=reu_tipo,
+                    reu_estado=reu_estado,
+                    
+                    # Extended III Legislature fields
+                    reu_id=reu_id,
+                    reu_data_hora=reu_data_hora,
+                    reu_tir_des=reu_tir_des,
+                    leg_des=leg_des,
+                    sel_numero=sel_numero
+                )
+                
+                self.session.add(meeting)
+                self.session.flush()
+                
+                # Process attendance data (Presencas)
+                presencas = reuniao_plenario.find('Presencas')
+                if presencas is not None:
+                    self._process_meeting_attendance(presencas, meeting)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing ReuniaoPlenario: {e}")
+            return False
+    
+    def _process_organ_meeting_namespace(self, dados_reuniao: ET.Element, **kwargs) -> bool:
+        """Process meeting data with pt_ar_wsgode_objectos namespace structure"""
+        try:
+            # Extract meeting data from namespace structure
+            reu_tar_id = self._get_text_value(dados_reuniao, 'reuTarId')
+            reu_tir_des = self._get_text_value(dados_reuniao, 'reuTirDes')
+            reu_local = self._get_text_value(dados_reuniao, 'reuLocal')
+            reu_data_str = self._get_text_value(dados_reuniao, 'reuData')
+            reu_hora = self._get_text_value(dados_reuniao, 'reuHora')
+            reu_tipo = self._get_text_value(dados_reuniao, 'reuTipo')
+            reu_estado = self._get_text_value(dados_reuniao, 'reuEstado')
+            
+            # Parse date
+            reu_data = None
+            if reu_data_str:
+                try:
+                    if '/' in reu_data_str:
+                        day, month, year = reu_data_str.split('/')
+                        from datetime import date
+                        reu_data = date(int(year), int(month), int(day))
+                    elif '-' in reu_data_str:
+                        from datetime import date
+                        year, month, day = reu_data_str.split('-')
+                        reu_data = date(int(year), int(month), int(day))
+                except (ValueError, IndexError):
+                    logger.warning(f"Could not parse meeting date: {reu_data_str}")
+            
+            # Extract additional III Legislature namespace fields
+            reu_numero = self._get_int_value(dados_reuniao, 'reuNumero')
+            reu_data_hora = self._get_text_value(dados_reuniao, 'reuDataHora')
+            reu_final_plenario = self._get_boolean_value(dados_reuniao, 'reuFinalPlenario')
+            
+            # Create meeting record with all available fields
+            meeting = OrganMeeting(
+                # Organ associations
+                commission_id=kwargs.get('committee').id if kwargs.get('committee') else None,
+                work_group_id=kwargs.get('work_group').id if kwargs.get('work_group') else None,
+                permanent_committee_id=kwargs.get('permanent_committee').id if kwargs.get('permanent_committee') else None,
+                sub_committee_id=kwargs.get('sub_committee').id if kwargs.get('sub_committee') else None,
+                
+                # Basic fields
+                reu_tar_sigla=reu_tar_id,  # Use tar_id as identifier
+                reu_local=reu_local,
+                reu_data=reu_data,
+                reu_hora=reu_hora,
+                reu_tipo=reu_tipo,
+                reu_estado=reu_estado,
+                
+                # Extended III Legislature fields
+                reu_numero=reu_numero,
+                reu_data_hora=reu_data_hora,
+                reu_final_plenario=reu_final_plenario,
+                reu_tir_des=reu_tir_des
+            )
+            
+            self.session.add(meeting)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing namespace meeting data: {e}")
+            return False
+    
+    def _process_meeting_attendance(self, presencas: ET.Element, meeting: OrganMeeting) -> bool:
+        """Process meeting attendance data (Presencas) - now stores in MeetingAttendance model"""
+        try:
+            tipo_reuniao = self._get_text_value(presencas, 'tipoReuniao')
+            dt_reuniao_str = self._get_text_value(presencas, 'dtReuniao')
+            
+            # Parse meeting date for attendance
+            dt_reuniao = None
+            if dt_reuniao_str:
+                try:
+                    if '/' in dt_reuniao_str:
+                        day, month, year = dt_reuniao_str.split('/')
+                        from datetime import date
+                        dt_reuniao = date(int(year), int(month), int(day))
+                    elif '-' in dt_reuniao_str:
+                        from datetime import date
+                        year, month, day = dt_reuniao_str.split('-')
+                        dt_reuniao = date(int(year), int(month), int(day))
+                except (ValueError, IndexError):
+                    logger.warning(f"Could not parse attendance date: {dt_reuniao_str}")
+            
+            attendance_count = 0
+            for dados_presenca in presencas.findall('pt_ar_wsgode_objectos_DadosPresenca'):
+                dep_id = self._get_int_value(dados_presenca, 'depId')
+                dep_cad_id = self._get_int_value(dados_presenca, 'depCadId')
+                dep_nome = self._get_text_value(dados_presenca, 'depNomeParlamentar')
+                pres_tipo = self._get_text_value(dados_presenca, 'presTipo')
+                pres_justificacao = self._get_text_value(dados_presenca, 'presJustificacao')
+                
+                # Create attendance record
+                attendance = MeetingAttendance(
+                    meeting_id=meeting.id,
+                    dep_id=dep_id,
+                    dep_cad_id=dep_cad_id,
+                    dep_nome_parlamentar=dep_nome,
+                    pres_tipo=pres_tipo,
+                    pres_justificacao=pres_justificacao,
+                    dt_reuniao=dt_reuniao,
+                    tipo_reuniao=tipo_reuniao
+                )
+                
+                self.session.add(attendance)
+                attendance_count += 1
+            
+            logger.info(f"Stored {attendance_count} attendance records for meeting {meeting.id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing meeting attendance: {e}")
+            return False
+    
+    def _get_or_create_ar_board(self, id_orgao: int, sigla: str, nome: str, numero: str, legislatura: Legislatura):
+        """Get or create AR Board record"""
+        # First get or create parliamentary organization
+        organization = self._get_or_create_parliamentary_organization(legislatura)
+        
+        ar_board = self.session.query(ARBoard).filter_by(
+            id_orgao=id_orgao,
+            organization_id=organization.id
+        ).first()
+        
+        if ar_board:
+            return ar_board
+        
+        ar_board = ARBoard(
+            organization_id=organization.id,
+            id_orgao=id_orgao,
+            sigla_orgao=sigla,
+            nome_sigla=nome,
+            numero_orgao=int(numero) if numero and numero.isdigit() else None,
+            sigla_legislatura=legislatura.numero
+        )
+        
+        self.session.add(ar_board)
+        self.session.flush()
+        return ar_board
+    
+    def _get_or_create_administrative_council(self, id_orgao: int, sigla: str, nome: str, numero: str, legislatura: Legislatura):
+        """Get or create Administrative Council record"""
+        # First get or create parliamentary organization
+        organization = self._get_or_create_parliamentary_organization(legislatura)
+        
+        admin_council = self.session.query(AdministrativeCouncil).filter_by(
+            id_orgao=id_orgao,
+            organization_id=organization.id
+        ).first()
+        
+        if admin_council:
+            return admin_council
+        
+        admin_council = AdministrativeCouncil(
+            organization_id=organization.id,
+            id_orgao=id_orgao,
+            sigla_orgao=sigla,
+            nome_sigla=nome,
+            numero_orgao=int(numero) if numero and numero.isdigit() else None,
+            sigla_legislatura=legislatura.numero
+        )
+        
+        self.session.add(admin_council)
+        self.session.flush()
+        return admin_council
+    
+    def _get_or_create_permanent_committee(self, id_orgao: int, sigla: str, nome: str, numero: str, legislatura: Legislatura):
+        """Get or create Permanent Committee record"""
+        # First get or create parliamentary organization
+        organization = self._get_or_create_parliamentary_organization(legislatura)
+        
+        permanent_committee = self.session.query(PermanentCommittee).filter_by(
+            id_orgao=id_orgao,
+            organization_id=organization.id
+        ).first()
+        
+        if permanent_committee:
+            return permanent_committee
+        
+        permanent_committee = PermanentCommittee(
+            organization_id=organization.id,
+            id_orgao=id_orgao,
+            sigla_orgao=sigla,
+            nome_sigla=nome,
+            numero_orgao=int(numero) if numero and numero.isdigit() else None,
+            sigla_legislatura=legislatura.numero
+        )
+        
+        self.session.add(permanent_committee)
+        self.session.flush()
+        return permanent_committee
+    
+    def _get_or_create_leader_conference(self, id_orgao: int, sigla: str, nome: str, numero: str, legislatura: Legislatura):
+        """Get or create Leader Conference record"""
+        # First get or create parliamentary organization
+        organization = self._get_or_create_parliamentary_organization(legislatura)
+        
+        leader_conference = self.session.query(LeaderConference).filter_by(
+            id_orgao=id_orgao,
+            organization_id=organization.id
+        ).first()
+        
+        if leader_conference:
+            return leader_conference
+        
+        leader_conference = LeaderConference(
+            organization_id=organization.id,
+            id_orgao=id_orgao,
+            sigla_orgao=sigla,
+            nome_sigla=nome,
+            numero_orgao=int(numero) if numero and numero.isdigit() else None,
+            sigla_legislatura=legislatura.numero
+        )
+        
+        self.session.add(leader_conference)
+        self.session.flush()
+        return leader_conference
+    
+    def _process_deputy_ar_board_membership(self, deputado_data: ET.Element, ar_board) -> bool:
+        """Process deputy membership in AR Board"""
+        try:
+            # Create historical composition record
+            composition = ARBoardHistoricalComposition(
+                board_id=ar_board.id,
+                leg_des=self._get_text_value(deputado_data, 'LegDes'),
+                dep_id=self._get_int_value(deputado_data, 'DepId'),
+                dep_cad_id=self._get_int_value(deputado_data, 'DepCadId'),
+                dep_nome_parlamentar=self._get_text_value(deputado_data, 'DepNomeParlamentar'),
+                org_id=ar_board.id_orgao
+            )
+            
+            self.session.add(composition)
+            self.session.flush()
+            
+            # Process parliamentary group situations
+            dep_gp = deputado_data.find('DepGP')
+            if dep_gp is not None:
+                self._process_gp_situations(dep_gp, ar_board_composition=composition)
+            
+            # Process deputy situations
+            dep_situacao = deputado_data.find('DepSituacao')
+            if dep_situacao is not None:
+                self._process_deputy_situations(dep_situacao, ar_board_composition=composition)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing AR Board deputy membership: {e}")
+            return False
+    
+    def _process_deputy_admin_council_membership(self, deputado_data: ET.Element, admin_council) -> bool:
+        """Process deputy membership in Administrative Council"""
+        try:
+            # Create historical composition record
+            composition = AdministrativeCouncilHistoricalComposition(
+                council_id=admin_council.id,
+                leg_des=self._get_text_value(deputado_data, 'LegDes'),
+                dep_id=self._get_int_value(deputado_data, 'DepId'),
+                dep_cad_id=self._get_int_value(deputado_data, 'DepCadId'),
+                dep_nome_parlamentar=self._get_text_value(deputado_data, 'DepNomeParlamentar'),
+                org_id=admin_council.id_orgao
+            )
+            
+            self.session.add(composition)
+            self.session.flush()
+            
+            # Process parliamentary group situations
+            dep_gp = deputado_data.find('DepGP')
+            if dep_gp is not None:
+                self._process_gp_situations(dep_gp, admin_council_composition=composition)
+            
+            # Process deputy situations
+            dep_situacao = deputado_data.find('DepSituacao')
+            if dep_situacao is not None:
+                self._process_deputy_situations(dep_situacao, admin_council_composition=composition)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing Administrative Council deputy membership: {e}")
+            return False
+    
+    def _process_deputy_permanent_committee_membership(self, deputado_data: ET.Element, permanent_committee) -> bool:
+        """Process deputy membership in Permanent Committee"""
+        try:
+            # Create historical composition record
+            composition = PermanentCommitteeHistoricalComposition(
+                permanent_committee_id=permanent_committee.id,
+                leg_des=self._get_text_value(deputado_data, 'LegDes'),
+                dep_id=self._get_int_value(deputado_data, 'DepId'),
+                dep_cad_id=self._get_int_value(deputado_data, 'DepCadId'),
+                dep_nome_parlamentar=self._get_text_value(deputado_data, 'DepNomeParlamentar'),
+                org_id=permanent_committee.id_orgao
+            )
+            
+            self.session.add(composition)
+            self.session.flush()
+            
+            # Process parliamentary group situations
+            dep_gp = deputado_data.find('DepGP')
+            if dep_gp is not None:
+                self._process_gp_situations(dep_gp, permanent_committee_composition=composition)
+            
+            # Process deputy situations
+            dep_situacao = deputado_data.find('DepSituacao')
+            if dep_situacao is not None:
+                self._process_deputy_situations(dep_situacao, permanent_committee_composition=composition)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing Permanent Committee deputy membership: {e}")
+            return False
+    
+    def _process_deputy_leader_conference_membership(self, deputado_data: ET.Element, leader_conference) -> bool:
+        """Process deputy membership in Leader Conference"""
+        try:
+            # Create historical composition record
+            composition = LeaderConferenceHistoricalComposition(
+                leader_conference_id=leader_conference.id,
+                leg_des=self._get_text_value(deputado_data, 'LegDes'),
+                dep_id=self._get_int_value(deputado_data, 'DepId'),
+                dep_cad_id=self._get_int_value(deputado_data, 'DepCadId'),
+                dep_nome_parlamentar=self._get_text_value(deputado_data, 'DepNomeParlamentar'),
+                org_id=leader_conference.id_orgao
+            )
+            
+            self.session.add(composition)
+            self.session.flush()
+            
+            # Process parliamentary group situations
+            dep_gp = deputado_data.find('DepGP')
+            if dep_gp is not None:
+                self._process_gp_situations(dep_gp, leader_conference_composition=composition)
+            
+            # Process deputy situations
+            dep_situacao = deputado_data.find('DepSituacao')
+            if dep_situacao is not None:
+                self._process_deputy_situations(dep_situacao, leader_conference_composition=composition)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing Leader Conference deputy membership: {e}")
+            return False
+    
     def _convert_roman_to_int(self, roman: str) -> int:
         """Convert Roman numeral to integer"""
         roman_numerals = {
@@ -671,3 +1463,10 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             'XI': 11, 'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17, 'CONSTITUINTE': 0
         }
         return roman_numerals.get(roman, 17)
+    
+    def _get_boolean_value(self, parent: ET.Element, tag_name: str) -> bool:
+        """Get boolean value from XML element"""
+        text_value = self._get_text_value(parent, tag_name)
+        if text_value:
+            return text_value.lower() in ('true', '1', 'yes', 'sim')
+        return False

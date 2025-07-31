@@ -29,7 +29,7 @@ import sys
 import json
 import argparse
 import hashlib
-import sqlite3
+from sqlalchemy import text
 import xml.etree.ElementTree as ET
 
 # Add project root to path for config import
@@ -207,6 +207,39 @@ class FileTypeResolver:
 class UnifiedImporter:
     """Main importer class that orchestrates the entire import process"""
     
+    # Import order respecting foreign key dependencies
+    IMPORT_ORDER = [
+        # 1. Foundation data (no dependencies)
+        'registo_biografico',      # Creates: Deputado, Legislatura, CirculoEleitoral, Partido
+        
+        # 2. Basic organizational structure
+        'composicao_orgaos',       # Creates: OrganMeeting, Committee data (depends on Deputado, Legislatura)
+        
+        # 3. Deputy activities (depends on Deputado)
+        'atividade_deputados',     # Creates: AtividadeDeputado, DeputySituations (depends on Deputado)
+        
+        # 4. Parliamentary activities (depends on Deputado, Legislatura)
+        'atividades',              # Creates: AtividadeParlamentar (depends on Deputado, Legislatura) 
+        'agenda_parlamentar',      # Creates: AgendaParlamentar (depends on Legislatura)
+        
+        # 5. Complex activities (depends on previous activities)
+        'iniciativas',             # Creates: IniciativaParlamentar (depends on Deputado, Legislatura)
+        'intervencoes',            # Creates: IntervencaoParlamentar (depends on Deputado, activities)
+        
+        # 6. Related processes (depends on initiatives/activities)
+        'peticoes',               # Creates: PeticaoParlamentar (depends on Deputado, committees)
+        'perguntas_requerimentos', # Creates: PerguntaRequerimento (depends on Deputado, Legislatura)
+        'diplomas_aprovados',      # Creates: DiplomaAprovado (depends on initiatives)
+        
+        # 7. Cooperative and delegation activities (depends on deputies/committees)
+        'cooperacao',             # Creates: CooperacaoParlamentar (depends on Deputado)
+        'delegacao_eventual',     # Creates: DelegacaoEventual (depends on Deputado)
+        'delegacao_permanente',   # Creates: DelegacaoPermanente (depends on Deputado)
+        
+        # 8. Interest registrations (depends on Deputado)
+        'registo_interesses',     # Creates: RegistoInteresses (depends on Deputado)
+    ]
+    
     def __init__(self, db_path: str = None):
         # Get script directory and resolve paths
         script_dir = Path(__file__).parent
@@ -238,18 +271,11 @@ class UnifiedImporter:
     
     def init_database(self):
         """Initialize database with import_status table"""
-        with sqlite3.connect(self.db_path) as conn:
-            # Read and execute the migration
-            script_dir = Path(__file__).parent
-            migration_path = script_dir / "../../database/migrations/create_import_status.sql"
-            migration_path = migration_path.resolve()
-            
-            if migration_path.exists():
-                with open(migration_path, 'r', encoding='utf-8') as f:
-                    conn.executescript(f.read())
-                logger.info("Import status table initialized")
-            else:
-                logger.error(f"Migration file not found at: {migration_path}")
+        from database.connection import get_engine
+        
+        engine = get_engine()
+        # Import status table is now handled by Alembic migrations
+        logger.info("Using centralized MySQL database connection")
     
     def calculate_file_hash(self, file_path: str) -> str:
         """Calculate SHA1 hash of file content"""
@@ -264,66 +290,83 @@ class UnifiedImporter:
             return ""
     
     def process_files(self, file_type_filter: str = None, limit: int = None, force_reimport: bool = False, legislatura_filter: str = None, strict_mode: bool = False):
-        """Process files directly from source directories"""
+        """Process files directly from source directories in dependency order"""
         logger.info("Starting file processing...")
         if strict_mode:
             logger.warning("STRICT MODE ENABLED: Will exit on first unmapped field, schema warning, or processing error")
         if legislatura_filter:
             logger.info(f"Filtering for Legislatura: {legislatura_filter}")
+        
+        # Determine import order
+        if file_type_filter:
+            # Single file type - use as specified
+            file_types_to_process = [file_type_filter]
+            logger.info(f"Processing single file type: {file_type_filter}")
+        else:
+            # Multiple file types - use dependency order
+            file_types_to_process = self.IMPORT_ORDER
+            logger.info(f"Processing all file types in dependency order: {' -> '.join(file_types_to_process)}")
+        
         total_files = 0
         processed_files = 0
         
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            
-            for data_root in self.data_roots:
-                if not os.path.exists(data_root):
-                    logger.warning(f"Data root not found: {data_root}")
-                    continue
-                
-                logger.info(f"Processing files from: {data_root}")
-                
-                for root, dirs, files in os.walk(data_root):
-                    for file in files:
-                        if file.endswith(('.xml', '.json')) or file.endswith('_json.txt'):
-                            file_path = os.path.join(root, file)
-                            total_files += 1
-                            
-                            # Check if we should process this file
-                            if self._should_process_file(cursor, file_path, file_type_filter, force_reimport, legislatura_filter, strict_mode):
-                                success = self._process_file(cursor, file_path, strict_mode)
-                                if success:
-                                    processed_files += 1
-                                elif strict_mode:
-                                    # Check if this is just a corrupted file we should skip
-                                    if not success and os.path.exists(file_path):
-                                        try:
-                                            with open(file_path, 'rb') as f:
-                                                first_bytes = f.read(10)
-                                            # If file looks corrupted (non-XML bytes), skip it
-                                            if not first_bytes.startswith(b'<?xml') and not first_bytes.startswith(b'<'):
-                                                logger.warning(f"STRICT MODE: Skipping corrupted file {file_path}")
-                                                continue
-                                        except:
-                                            logger.warning(f"STRICT MODE: Skipping unreadable file {file_path}")
-                                            continue
-                                    
-                                    logger.error(f"STRICT MODE: Exiting due to processing error in {file_path}")
-                                    conn.commit()
-                                    sys.exit(1)
-                                
-                                if processed_files % 10 == 0:
-                                    logger.info(f"Processed {processed_files} files so far...")
-                                
-                                # Check limit
-                                if limit and processed_files >= limit:
-                                    logger.info(f"Reached limit of {limit} files")
-                                    conn.commit()
-                                    return
-            
-            conn.commit()
+        from database.connection import DatabaseSession
         
-        logger.info(f"Processing complete: {total_files} files found, {processed_files} processed")
+        with DatabaseSession() as session:
+            # Process each file type in dependency order
+            for file_type in file_types_to_process:
+                logger.info(f"Processing file type: {file_type}")
+                files_for_type = []
+                
+                # Collect all files for this type
+                for data_root in self.data_roots:
+                    if not os.path.exists(data_root):
+                        logger.warning(f"Data root not found: {data_root}")
+                        continue
+                    
+                    for root, dirs, files in os.walk(data_root):
+                        for file in files:
+                            if file.endswith(('.xml', '.json')) or file.endswith('_json.txt'):
+                                file_path = os.path.join(root, file)
+                                detected_type = self.file_type_resolver.resolve_file_type(file_path)
+                                
+                                if detected_type == file_type:
+                                    # Apply legislatura filter if specified
+                                    if legislatura_filter and legislatura_filter.upper() not in file_path.upper():
+                                        continue
+                                    
+                                    files_for_type.append(file_path)
+                
+                logger.info(f"Found {len(files_for_type)} files for {file_type}")
+                total_files += len(files_for_type)
+                
+                # Process files for this type
+                for file_path in files_for_type:
+                    if self._should_process_file(session, file_path, force_reimport, strict_mode):
+                        success = self._process_file(session, file_path, strict_mode)
+                        if success:
+                            processed_files += 1
+                        elif strict_mode:
+                            logger.error(f"STRICT MODE: Exiting due to processing error in {file_path}")
+                            session.commit()
+                            sys.exit(1)
+                        
+                        if processed_files % 10 == 0:
+                            logger.info(f"Processed {processed_files} files so far...")
+                        
+                        # Check limit
+                        if limit and processed_files >= limit:
+                            logger.info(f"Reached limit of {limit} files")
+                            session.commit()
+                            return
+                
+                # Commit after each file type to ensure data integrity
+                session.commit()
+                logger.info(f"Completed processing {file_type}: {len([f for f in files_for_type if self._should_process_file(session, f, force_reimport, strict_mode)])} files processed")
+            
+            session.commit()
+            logger.info(f"Processing complete: {total_files} files found, {processed_files} processed")
+            
     
     def _parse_xml_with_bom_handling(self, file_path: str) -> ET.Element:
         """Parse XML file with BOM (Byte Order Mark) handling"""
@@ -361,39 +404,12 @@ class UnifiedImporter:
             except UnicodeDecodeError:
                 return ET.fromstring(content.decode('latin-1'))
     
-    def _should_process_file(self, cursor, file_path: str, file_type_filter: str = None, force_reimport: bool = False, legislatura_filter: str = None, strict_mode: bool = False) -> bool:
+    def _should_process_file(self, session, file_path: str, force_reimport: bool = False, strict_mode: bool = False) -> bool:
         """Check if file should be processed"""
         # Check file type filter
         file_type = self.file_type_resolver.resolve_file_type(file_path)
         if not file_type:
             return False
-        
-        if file_type_filter and file_type != file_type_filter:
-            return False
-        
-        # Check legislatura filter
-        if legislatura_filter:
-            legislatura = self.file_type_resolver.extract_legislatura(file_path)
-            if not legislatura:
-                # If we can't extract legislatura, skip the file
-                return False
-            
-            # Convert roman numerals to numbers for comparison
-            if legislatura_filter.upper() in ['XVII', 'XVI', 'XV', 'XIV', 'XIII', 'XII', 'XI', 'X', 'IX', 'VIII', 'VII', 'VI', 'V', 'IV', 'III', 'II', 'I', 'CONSTITUINTE']:
-                # User provided roman numeral
-                if legislatura != legislatura_filter.upper():
-                    return False
-            else:
-                # User provided number, convert legislatura to number for comparison
-                roman_to_num = {
-                    'XVII': '17', 'XVI': '16', 'XV': '15', 'XIV': '14', 'XIII': '13',
-                    'XII': '12', 'XI': '11', 'X': '10', 'IX': '9', 'VIII': '8',
-                    'VII': '7', 'VI': '6', 'V': '5', 'IV': '4', 'III': '3',
-                    'II': '2', 'I': '1', 'CONSTITUINTE': '0'
-                }
-                leg_num = roman_to_num.get(legislatura, legislatura)
-                if leg_num != legislatura_filter:
-                    return False
         
         # Check if we have a mapper for this file type
         if file_type not in self.schema_mappers:
@@ -415,14 +431,16 @@ class UnifiedImporter:
         if not file_hash:
             return False
         
-        cursor.execute("""
-            SELECT status FROM import_status 
-            WHERE file_path = ? AND file_hash = ? AND status = 'completed'
-        """, (file_path, file_hash))
+        from database.models import ImportStatus
+        existing = session.query(ImportStatus).filter(
+            ImportStatus.file_path == file_path,
+            ImportStatus.file_hash == file_hash,
+            ImportStatus.status == 'completed'
+        ).first()
         
-        return cursor.fetchone() is None
+        return existing is None
     
-    def _process_file(self, cursor, file_path: str, strict_mode: bool = False) -> bool:
+    def _process_file(self, session, file_path: str, strict_mode: bool = False) -> bool:
         """Process a single file"""
         try:
             # Determine file type
@@ -436,22 +454,33 @@ class UnifiedImporter:
             file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
             
             # Update import status to processing
-            cursor.execute("""
-                INSERT OR REPLACE INTO import_status 
-                (file_url, file_path, file_name, file_type, category, file_hash, file_size, status, processing_started_at, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'processing', ?, ?, ?)
-            """, (
-                file_path,  # Using file_path as URL for local files
-                file_path,
-                os.path.basename(file_path),
-                file_type,
-                file_type.replace('_', ' ').title(),
-                file_hash,
-                file_size,
-                datetime.now().isoformat(),
-                datetime.now().isoformat(),
-                datetime.now().isoformat()
-            ))
+            from database.models import ImportStatus
+            
+            # Check if record exists
+            import_status = session.query(ImportStatus).filter(
+                ImportStatus.file_path == file_path,
+                ImportStatus.file_hash == file_hash
+            ).first()
+            
+            if import_status:
+                import_status.status = 'processing'
+                import_status.processing_started_at = datetime.now()
+                import_status.updated_at = datetime.now()
+            else:
+                import_status = ImportStatus(
+                    file_url=file_path,  # Using file_path as URL for local files
+                    file_path=file_path,
+                    file_name=os.path.basename(file_path),
+                    file_type=file_type,
+                    category=file_type.replace('_', ' ').title(),
+                    file_hash=file_hash,
+                    file_size=file_size,
+                    status='processing',
+                    processing_started_at=datetime.now(),
+                    created_at=datetime.now(),
+                    updated_at=datetime.now()
+                )
+                session.add(import_status)
             
             # Process the file
             mapper_class = self.schema_mappers[file_type]
@@ -466,14 +495,12 @@ class UnifiedImporter:
                 }
             except Exception as e:
                 error_msg = f"XML parsing error: {str(e)}"
-                cursor.execute("""
-                    UPDATE import_status 
-                    SET status = 'failed', processing_completed_at = ?, error_message = ?
-                    WHERE file_path = ? AND file_hash = ?
-                """, (datetime.now().isoformat(), error_msg, file_path, file_hash))
+                import_status.status = 'failed'
+                import_status.processing_completed_at = datetime.now()
+                import_status.error_message = error_msg
                 
                 # Commit the status update
-                cursor.connection.commit()
+                session.commit()
                 
                 logger.error(f"Failed to parse XML {file_path}: {error_msg}")
                 if strict_mode:
@@ -487,37 +514,28 @@ class UnifiedImporter:
                 return False
             
             # Commit the status update before processing to avoid locks
-            cursor.connection.commit()
+            session.commit()
             
             # Create database connection for the mapper with proper isolation
             try:
-                with sqlite3.connect(self.db_path, timeout=30.0) as mapper_conn:
-                    # Enable WAL mode for better concurrency
-                    mapper_conn.execute("PRAGMA journal_mode=WAL")
-                    mapper_conn.execute("PRAGMA synchronous=NORMAL")
-                    mapper_conn.execute("PRAGMA busy_timeout=30000")
-                    
-                    mapper = mapper_class(mapper_conn)
+                from database.connection import DatabaseSession
+                
+                # Use a separate session for the mapper to avoid conflicts
+                with DatabaseSession() as mapper_session:
+                    mapper = mapper_class(mapper_session)
                     results = mapper.validate_and_map(xml_root, file_info, strict_mode)
                     
                     # Commit mapper changes
-                    mapper_conn.commit()
+                    mapper_session.commit()
                     
                     # Update status to completed
-                    cursor.execute("""
-                        UPDATE import_status 
-                        SET status = 'completed', processing_completed_at = ?, 
-                            records_imported = ?, error_message = ?
-                        WHERE file_path = ? AND file_hash = ?
-                    """, (
-                        datetime.now().isoformat(),
-                        results.get('records_imported', 0),
-                        '; '.join(results.get('errors', [])) if results.get('errors') else None,
-                        file_path, file_hash
-                    ))
+                    import_status.status = 'completed'
+                    import_status.processing_completed_at = datetime.now()
+                    import_status.records_imported = results.get('records_imported', 0)
+                    import_status.error_message = '; '.join(results.get('errors', [])) if results.get('errors') else None
                     
                     # Commit the status update
-                    cursor.connection.commit()
+                    session.commit()
                     
                     logger.info(f"Successfully processed {file_path}: {results.get('records_imported', 0)} records imported")
                     return True
@@ -525,14 +543,12 @@ class UnifiedImporter:
             except Exception as e:
                 # Update status to failed
                 error_msg = f"Processing error: {str(e)}"
-                cursor.execute("""
-                    UPDATE import_status 
-                    SET status = 'failed', processing_completed_at = ?, error_message = ?
-                    WHERE file_path = ? AND file_hash = ?
-                """, (datetime.now().isoformat(), error_msg, file_path, file_hash))
+                import_status.status = 'failed'
+                import_status.processing_completed_at = datetime.now()
+                import_status.error_message = error_msg
                 
                 # Commit the status update
-                cursor.connection.commit()
+                session.commit()
                 
                 logger.error(f"Failed to process {file_path}: {error_msg}")
                 
@@ -568,41 +584,37 @@ class UnifiedImporter:
     
     def show_status(self):
         """Show import status summary"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            
+        from database.connection import DatabaseSession
+        from database.models import ImportStatus
+        from sqlalchemy import func, case
+        
+        with DatabaseSession() as session:
             # Overall status summary
-            cursor.execute("""
-                SELECT status, COUNT(*) as count, SUM(records_imported) as total_imported
-                FROM import_status 
-                GROUP BY status
-                ORDER BY count DESC
-            """)
+            status_summary = session.query(
+                ImportStatus.status,
+                func.count().label('count'),
+                func.coalesce(func.sum(ImportStatus.records_imported), 0).label('total_imported')
+            ).group_by(ImportStatus.status).order_by(func.count().desc()).all()
             
             print("\\n" + "="*80)
             print("IMPORT STATUS SUMMARY")
             print("="*80)
             
-            for row in cursor.fetchall():
-                status, count, imported = row
-                imported = imported or 0
+            for status, count, imported in status_summary:
                 print(f"{status.upper():20} {count:>8} files    {imported:>10} records")
             
             # File type breakdown
-            cursor.execute("""
-                SELECT file_type, COUNT(*) as count, 
-                       SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
-                FROM import_status 
-                GROUP BY file_type
-                ORDER BY count DESC
-            """)
+            file_type_summary = session.query(
+                ImportStatus.file_type,
+                func.count().label('count'),
+                func.sum(case([(ImportStatus.status == 'completed', 1)], else_=0)).label('completed')
+            ).group_by(ImportStatus.file_type).order_by(func.count().desc()).all()
             
             print("\\n" + "-"*80)
             print("FILE TYPE BREAKDOWN")
             print("-"*80)
             
-            for row in cursor.fetchall():
-                file_type, total, completed = row
+            for file_type, total, completed in file_type_summary:
                 completion_rate = (completed / total * 100) if total > 0 else 0
                 print(f"{file_type:25} {total:>6} total    {completed:>6} done    {completion_rate:>5.1f}%")
     
@@ -613,67 +625,49 @@ class UnifiedImporter:
         pass
     
     def cleanup_database(self):
-        """Create timestamped backup and truncate all tables"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = f"{self.db_path}.backup_{timestamp}"
-        
+        """Drop all tables and recreate schema from models"""
         try:
-            # Create backup
-            logger.info(f"Creating database backup: {backup_path}")
-            shutil.copy2(self.db_path, backup_path)
-            logger.info(f"Backup created successfully: {backup_path}")
+            logger.info("Starting database cleanup...")
             
-            # Get all table names and truncate them
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                
-                # Get all user tables (excluding sqlite_* system tables)
-                cursor.execute("""
-                    SELECT name FROM sqlite_master 
-                    WHERE type='table' AND name NOT LIKE 'sqlite_%'
-                    ORDER BY name
-                """)
-                tables = [row[0] for row in cursor.fetchall()]
-                
-                logger.info(f"Found {len(tables)} tables to truncate")
-                
-                # Disable foreign key constraints temporarily
-                cursor.execute("PRAGMA foreign_keys=OFF")
-                
-                # Truncate all tables
-                for table in tables:
-                    try:
-                        cursor.execute(f"DELETE FROM {table}")
-                        logger.info(f"Truncated table: {table}")
-                    except Exception as e:
-                        logger.warning(f"Failed to truncate table {table}: {e}")
-                
-                # Re-enable foreign key constraints
-                cursor.execute("PRAGMA foreign_keys=ON")
-                
-                conn.commit()
-                logger.info("Tables truncated successfully")
+            from database.connection import get_engine
+            from sqlalchemy import text
             
-            # Vacuum to reclaim space (must be done outside transaction)
-            logger.info("Vacuuming database to reclaim space...")
-            conn = sqlite3.connect(self.db_path)
-            conn.execute("VACUUM")
-            conn.close()
-            logger.info("Database vacuum completed successfully")
+            # Use centralized database connection
+            engine = get_engine()
+            connection = engine.connect()
             
-            # Show final statistics
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
-                table_count = cursor.fetchone()[0]
+            try:
+                # Disable foreign key checks for MySQL
+                connection.execute(text('SET FOREIGN_KEY_CHECKS = 0'))
                 
-                logger.info(f"Database cleaned: {table_count} tables truncated")
-                logger.info(f"Backup available at: {backup_path}")
+                # Get all table names
+                result = connection.execute(text('SHOW TABLES'))
+                tables = [row[0] for row in result.fetchall()]
+                
+                logger.info(f"Found {len(tables)} tables to drop")
+                
+                # Drop all tables except alembic_version
+                for table_name in tables:
+                    if table_name != 'alembic_version':  # Don't delete migration history
+                        connection.execute(text(f'DROP TABLE IF EXISTS {table_name}'))
+                        logger.info(f"Dropped table: {table_name}")
+                
+                # Re-enable foreign key checks
+                connection.execute(text('SET FOREIGN_KEY_CHECKS = 1'))
+                
+                # Recreate schema from models
+                from database.models import Base
+                Base.metadata.create_all(engine)
+                logger.info("Database schema recreated from models")
+                
+                connection.commit()
+                logger.info(f"Database cleanup completed successfully. Dropped {len([t for t in tables if t != 'alembic_version'])} tables")
+                
+            finally:
+                connection.close()
                 
         except Exception as e:
             logger.error(f"Database cleanup failed: {e}")
-            if os.path.exists(backup_path):
-                logger.info(f"Backup file preserved: {backup_path}")
             raise
 
 

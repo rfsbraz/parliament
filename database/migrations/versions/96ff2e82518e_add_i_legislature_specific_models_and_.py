@@ -76,7 +76,8 @@ def upgrade() -> None:
     )
     op.add_column('actividades_comissao_outs', sa.Column('evento_id', sa.Integer(), nullable=True))
     op.add_column('actividades_comissao_outs', sa.Column('act_loc', sa.String(length=500), nullable=True))
-    # Note: Foreign key constraint for evento_id will be enforced at application level for SQLite
+    # Add foreign key constraint for evento_id (MySQL supports this)
+    op.create_foreign_key(None, 'actividades_comissao_outs', 'eventos', ['evento_id'], ['id'])
     op.add_column('delegacoes_eventuais_out', sa.Column('dev_tp', sa.String(length=100), nullable=True))
     op.add_column('subcomissoes_grupos_trabalho_out', sa.Column('cms_situacao', sa.String(length=200), nullable=True))
     # ### end Alembic commands ###

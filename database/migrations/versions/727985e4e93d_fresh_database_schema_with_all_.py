@@ -77,13 +77,12 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('file_url')
     )
     op.create_index('idx_import_status_category', 'import_status', ['category'], unique=False)
     op.create_index('idx_import_status_hash', 'import_status', ['file_hash'], unique=False)
     op.create_index('idx_import_status_legislatura', 'import_status', ['legislatura'], unique=False)
     op.create_index('idx_import_status_status', 'import_status', ['status'], unique=False)
-    op.create_index('idx_import_status_url', 'import_status', ['file_url'], unique=False)
+    # op.create_index('idx_import_status_url', 'import_status', ['file_url'], unique=False)  # Index removed due to MySQL key length limit
     op.create_table('legislaturas',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('numero', sa.String(length=20), nullable=False),
@@ -183,7 +182,7 @@ def upgrade() -> None:
     sa.UniqueConstraint('id_externo', 'legislatura_id')
     )
     op.create_index('idx_agenda_data', 'agenda_parlamentar', ['data_evento'], unique=False)
-    op.create_index('idx_agenda_grupo', 'agenda_parlamentar', ['grupo_parlamentar'], unique=False)
+    # op.create_index('idx_agenda_grupo', 'agenda_parlamentar', ['grupo_parlamentar'], unique=False)  # Index removed - TEXT column cannot be indexed without key length
     op.create_index('idx_agenda_legislatura_data', 'agenda_parlamentar', ['legislatura_id', 'data_evento'], unique=False)
     op.create_table('ar_boards',
     sa.Column('id', sa.Integer(), nullable=False),

@@ -24,7 +24,7 @@ def upgrade() -> None:
     op.add_column('actividades_comissao_outs', sa.Column('act_dtdes1', sa.String(length=50), nullable=True))
     op.add_column('actividades_comissao_outs', sa.Column('act_sl', sa.String(length=20), nullable=True))
     op.add_column('actividades_comissao_outs', sa.Column('tev_tp', sa.String(length=100), nullable=True))
-    # Note: Foreign key constraints for evento_id and deslocacao_id will be enforced at application level for SQLite
+    # MySQL supports foreign key constraints
     op.add_column('comissoes_out', sa.Column('cms_situacao', sa.String(length=200), nullable=True))
     op.add_column('dados_deputado_parlamento_jovens', sa.Column('legislatura', sa.String(length=20), nullable=True))
     op.add_column('relatores_ini_europeias_out', sa.Column('ine_data_relatorio', sa.String(length=50), nullable=True))
@@ -39,7 +39,7 @@ def downgrade() -> None:
     op.drop_column('relatores_ini_europeias_out', 'ine_data_relatorio')
     op.drop_column('dados_deputado_parlamento_jovens', 'legislatura')
     op.drop_column('comissoes_out', 'cms_situacao')
-    # Note: No foreign key constraints to drop for SQLite
+    # MySQL supports foreign key constraints
     op.drop_column('actividades_comissao_outs', 'tev_tp')
     op.drop_column('actividades_comissao_outs', 'act_sl')
     op.drop_column('actividades_comissao_outs', 'act_dtdes1')

@@ -16,8 +16,6 @@ import os
 import re
 from typing import Dict, Optional, Set, List
 import logging
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from .base_mapper import SchemaMapper, SchemaError
 
@@ -53,14 +51,10 @@ logger = logging.getLogger(__name__)
 class AtividadeDeputadosMapper(SchemaMapper):
     """Schema mapper for deputy activity files - REAL XML STRUCTURE VERSION WITH ORM"""
     
-    def __init__(self, db_connection):
-        super().__init__(db_connection)
-        # Create SQLAlchemy session from raw connection
-        # Get the database file path from the connection
-        db_path = db_connection.execute('PRAGMA database_list').fetchone()[2]
-        self.engine = create_engine(f"sqlite:///{db_path}", echo=False)
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
+    def __init__(self, session):
+        super().__init__(session)
+        # Use the passed SQLAlchemy session
+        self.session = session
     
     def get_expected_fields(self) -> Set[str]:
         """Return actual XML paths for complete coverage of AtividadeDeputado files"""
