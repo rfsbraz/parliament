@@ -118,6 +118,8 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             
             # III Legislature additional mappings - extended structure
             # ComissaoPermanente detailed mappings
+            'OrganizacaoAR.ComissaoPermanente.DetalheOrgao',
+            'OrganizacaoAR.ComissaoPermanente.DetalheOrgao.siglaOrgao',
             'OrganizacaoAR.ComissaoPermanente.DetalheOrgao.siglaLegislatura',
             'OrganizacaoAR.ComissaoPermanente.DetalheOrgao.numeroOrgao',
             
@@ -134,7 +136,10 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             
             # Meeting data structures
             'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuId',
             'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTarId',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTarSigla',
+            'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTarDes',
             'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuTirDes',
             'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuLocal',
             'OrganizacaoAR.Comissoes.OrgaoBase.Reunioes.pt_ar_wsgode_objectos_DadosReuniao.reuData',
@@ -145,6 +150,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             # Plenary meeting structures - III Legislature
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario',
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao',
+            'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.reuNumero',
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.selNumero',
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.reuData',
             'OrganizacaoAR.Plenario.Reunioes.ReuniaoPlenario.Reuniao.reuHora',
