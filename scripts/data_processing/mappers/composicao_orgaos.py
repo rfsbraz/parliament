@@ -15,7 +15,11 @@ from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
 
-from .base_mapper import SchemaMapper, SchemaError
+from .enhanced_base_mapper import EnhancedSchemaMapper, SchemaError
+from .common_utilities import (
+    DataValidationUtils, LegislatureUtils, XMLPathUtils, 
+    ErrorHandlingUtils, ParliamentConstants
+)
 
 # Import our comprehensive OrganizacaoAR models
 import sys
@@ -34,13 +38,11 @@ from database.models import (
 logger = logging.getLogger(__name__)
 
 
-class ComposicaoOrgaosMapper(SchemaMapper):
+class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
     """Schema mapper for parliamentary organ composition files"""
     
-    def __init__(self, session):
-        super().__init__(session)
-        # Use the passed SQLAlchemy session
-        self.session = session
+    def __init__(self, db_connection_or_session):
+        super().__init__(db_connection_or_session)
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -521,7 +523,7 @@ class ComposicaoOrgaosMapper(SchemaMapper):
         """Map parliamentary organ composition to database"""
         # Store strict_mode for use in nested methods
         self.strict_mode = strict_mode
-        results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
+        results = self.create_processing_results()
         
         try:
             # Validate schema coverage according to strict mode
@@ -668,42 +670,14 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                         error_msg = f"I Legislature working group processing error: {str(e)}"
                         self._handle_processing_error(error_msg, results, strict_mode)
             
-            # Commit all changes
-            self.session.commit()
-            return results
+            # Finalize processing with commit
+            return self.finalize_processing(results)
             
         except Exception as e:
-            self.session.rollback()
+            self.rollback_transaction()
             error_msg = f"Error in validate_and_map: {e}"
             self._handle_processing_error(error_msg, results, strict_mode)
     
-    def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
-        """Extract legislatura from filename or XML content"""
-        # Try filename first
-        filename = os.path.basename(file_path)
-        leg_match = re.search(r'(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)', filename)
-        if leg_match:
-            return leg_match.group(1)
-        
-        # Try XML content - look for siglaLegislatura
-        sigla_leg = xml_root.find('.//siglaLegislatura')
-        if sigla_leg is not None and sigla_leg.text:
-            leg_text = sigla_leg.text.strip()
-            # Convert abbreviations
-            if leg_text.lower() == 'cons':
-                return 'CONSTITUINTE'
-            # Convert number to roman if needed
-            if leg_text.isdigit():
-                num_to_roman = {
-                    '0': 'CONSTITUINTE', '1': 'I', '2': 'II', '3': 'III', '4': 'IV', '5': 'V', 
-                    '6': 'VI', '7': 'VII', '8': 'VIII', '9': 'IX', '10': 'X', '11': 'XI', 
-                    '12': 'XII', '13': 'XIII', '14': 'XIV', '15': 'XV', '16': 'XVI', '17': 'XVII'
-                }
-                return num_to_roman.get(leg_text, leg_text)
-            return leg_text
-        
-        # Default to XVII
-        return 'XVII'
     
     def _process_plenario(self, plenario: ET.Element, legislatura: Legislatura) -> bool:
         """Process plenary composition"""
@@ -1396,53 +1370,17 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             return 'membro'
     
     def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
-        """Get text value from XML element"""
+        """Extract text content from XML child element with safe handling"""
         element = parent.find(tag_name)
-        if element is not None and element.text:
-            return element.text.strip()
-        return None
+        return self.safe_text_extract(element) or None
     
     def _parse_date(self, date_str: str) -> Optional[str]:
-        """Parse date string to ISO format"""
+        """Parse date string to ISO format - using common utilities"""
         if not date_str:
             return None
-        
-        try:
-            # Try ISO format first
-            if re.match(r'\d{4}-\d{2}-\d{2}', date_str):
-                return date_str
-            
-            # Try DD/MM/YYYY format
-            if '/' in date_str:
-                parts = date_str.split('/')
-                if len(parts) == 3:
-                    day, month, year = parts
-                    return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
-            
-        except (ValueError, IndexError):
-            logger.warning(f"Could not parse date: {date_str}")
-        
-        return None
+        parsed_date = DataValidationUtils.parse_date_flexible(date_str)
+        return parsed_date.strftime('%Y-%m-%d') if parsed_date else None
     
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
-        """Get or create legislatura record"""
-        legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
-        
-        if legislatura:
-            return legislatura
-        
-        # Create new legislatura if it doesn't exist
-        numero_int = self._convert_roman_to_int(legislatura_sigla)
-        
-        legislatura = Legislatura(
-            numero=legislatura_sigla,
-            designacao=f"{numero_int}.ª Legislatura",
-            ativa=False
-        )
-        
-        self.session.add(legislatura)
-        self.session.flush()  # Get the ID
-        return legislatura
     
     def _process_mesa_ar(self, mesa_ar: ET.Element, legislatura: Legislatura) -> bool:
         """Process AR Board (Mesa da Assembleia da República)"""
