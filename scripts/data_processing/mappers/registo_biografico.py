@@ -242,8 +242,10 @@ class RegistoBiograficoMapper(SchemaMapper):
             
             # Determine XML structure and process accordingly
             if xml_root.tag == 'ArrayOfDadosRegistoBiografico':
-                # VIII Legislature structure
-                logger.info(f"Processing VIII Legislature biographical structure")
+                # ArrayOfDadosRegistoBiografico structure (used by multiple legislatures)
+                # Extract legislature from file path for accurate logging
+                legislature_name = self._extract_legislature_from_path(file_info.get('file_path', ''))
+                logger.info(f"Processing {legislature_name} biographical structure (ArrayOfDadosRegistoBiografico format)")
                 for record in xml_root.findall('DadosRegistoBiografico'):
                     try:
                         success = self._process_viii_legislature_biographical_record(record, file_info)
@@ -258,7 +260,8 @@ class RegistoBiograficoMapper(SchemaMapper):
                             raise
             else:
                 # I Legislature structure
-                logger.info(f"Processing I Legislature biographical structure")
+                legislature_name = self._extract_legislature_from_path(file_info.get('file_path', ''))
+                logger.info(f"Processing {legislature_name} biographical structure (I Legislature format)")
                 biografico_list = xml_root.find('RegistoBiograficoList')
                 if biografico_list is not None:
                     for record in biografico_list.findall('pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb'):
@@ -777,3 +780,23 @@ class RegistoBiograficoMapper(SchemaMapper):
             return datetime.strptime(date_str, '%Y-%m-%d').date()
         except (ValueError, TypeError):
             return None
+    
+    def _extract_legislature_from_path(self, file_path: str) -> str:
+        """Extract legislature name from file path for accurate logging"""
+        if not file_path:
+            return "Unknown Legislature"
+        
+        import re
+        # Try to match patterns like "V_Legislatura", "XIII_Legislatura", "RegistoBiograficoXIII.xml", etc.
+        legislature_match = re.search(r'([IVX]+)_Legislatura|RegistoBiografico([IVX]+)\.xml|Legislatura_([IVX]+)', file_path, re.IGNORECASE)
+        
+        if legislature_match:
+            # Get the first non-None group
+            legislature_roman = legislature_match.group(1) or legislature_match.group(2) or legislature_match.group(3)
+            return f"{legislature_roman} Legislature"
+        
+        # Try to match patterns like "Constituinte"
+        if re.search(r'Constituinte', file_path, re.IGNORECASE):
+            return "Constituinte"
+            
+        return "Unknown Legislature"
