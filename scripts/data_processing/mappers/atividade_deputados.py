@@ -395,6 +395,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.pubSl',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.pubTp',
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.tinDs',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.intev.pt_gov_ar_wsar_objectos_IntervencoesOut.intTe',
             
             # Parliamentary Activities (ActP) - namespace variant
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.pt_gov_ar_wsar_objectos_ActividadeOut.actP',
@@ -474,14 +475,10 @@ class AtividadeDeputadosMapper(SchemaMapper):
             dep_cad_id_text = self._get_text_value(deputado, 'DepCadId')
             dep_nome = self._get_text_value(deputado, 'DepNomeParlamentar')
             
-            if not (dep_cad_id_text and dep_nome):
-                logger.warning("Missing required deputy fields")
-                return False
-                
-            dep_cad_id = self._safe_int(dep_cad_id_text)
-            if not dep_cad_id:
-                logger.warning(f"Invalid deputy cadastro ID: {dep_cad_id_text}")
-                return False
+            # Use default values if fields are missing - don't skip the record
+            dep_cad_id = self._safe_int(dep_cad_id_text) if dep_cad_id_text else 0
+            if not dep_nome:
+                dep_nome = "Unknown Deputy"
             
             # Find or create deputado record in our database
             deputado_db_id = self._get_or_create_deputado(dep_cad_id, dep_nome, deputado)
