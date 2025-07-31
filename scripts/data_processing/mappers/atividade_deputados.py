@@ -39,7 +39,12 @@ from database.models import (
     RelatoresPeticoes, RelatoresPeticoesOut,
     RelatoresIniciativas, RelatoresIniciativasOut,
     ReunioesDelegacoesPermanentes,
-    Comissoes, ComissoesOut
+    Comissoes, ComissoesOut,
+    # I Legislature models
+    AutoresPareceresIncImu, AutoresPareceresIncImuOut,
+    RelatoresIniEuropeias, RelatoresIniEuropeiasOut,
+    ParlamentoJovens, DadosDeputadoParlamentoJovens,
+    Eventos, Deslocacoes, RelatoresContasPublicas, RelatoresContasPublicasOut
 )
 
 logger = logging.getLogger(__name__)
@@ -268,7 +273,80 @@ class AtividadeDeputadosMapper(SchemaMapper):
             
             # IX Legislature - Final 2 fields for absolute complete coverage
             'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniciativas.RelatoresIniciativasOut.IniTp',
-            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.DepSelNr'
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlP.DelegacoesPermanentesOut.DepSelNr',
+            
+            # I Legislature - Specific fields for First Legislature
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.AutoresPareceresIncImu',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.AutoresPareceresIncImu.AutoresPareceresIncImuOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.AutoresPareceresIncImu.AutoresPareceresIncImuOut.ActTpDesc',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniEuropeias',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniEuropeias.RelatoresIniEuropeiasOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniEuropeias.RelatoresIniEuropeiasOut.IneId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ParlamentoJovens',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ParlamentoJovens.DadosDeputado',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ParlamentoJovens.DadosDeputado.TipoReuniao',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ParlamentoJovens.DadosDeputado.CirculoEleitoral',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.ActLoc',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.CmsNo',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.ActLg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.DlE.DelegacoesEventuaisOut.DevTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Scgt.SubComissoesGruposTrabalhoOut.CmsSituacao',
+            
+            # I Legislature - Additional unmapped fields from second validation
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Cms.ComissoesOut.CmsSubCargo',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.CmsAb',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.AutoresPareceresIncImu.AutoresPareceresIncImuOut.ActId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.CmsAb',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.ActDtdes2',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.ActId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresContasPublicas',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.ActDtent',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Gpa.GruposParlamentaresAmizadeOut.CgaDtfim',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresContasPublicas.RelatoresContasPublicasOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresContasPublicas.RelatoresContasPublicasOut.CtaId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresContasPublicas.RelatoresContasPublicasOut.CtaNo',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.ActId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.ActAs',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.AccDtaud',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.ActTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.ActDtent',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.ActNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.ActTpdesc',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.NomeEntidadeExterna',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.CmsNo',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.ActLg',
+            
+            # I Legislature - Third validation additional unmapped fields
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniEuropeias.RelatoresIniEuropeiasOut.IneDataRelatorio',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.ActDtdes1',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.ActTpdesc',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.TevTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut.ActLoc',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ParlamentoJovens.DadosDeputado.Legislatura',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.ActSl',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Cms.ComissoesOut.CmsSituacao',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniEuropeias.RelatoresIniEuropeiasOut.Leg',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Deslocacoes.ActividadesComissaoOut',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.AccDtaud',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.ActNr',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.ActTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.ActAs',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Eventos.ActividadesComissaoOut.NomeEntidadeExterna',
+            
+            # I Legislature - Fourth validation final unmapped fields
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniEuropeias.RelatoresIniEuropeiasOut.IneReferencia',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ParlamentoJovens.DadosDeputado.Data',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresContasPublicas.RelatoresContasPublicasOut.ActId',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresIniEuropeias.RelatoresIniEuropeiasOut.IneTitulo',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresContasPublicas.RelatoresContasPublicasOut.ActAs',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.AutoresPareceresIncImu.AutoresPareceresIncImuOut.ActAs',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ParlamentoJovens.DadosDeputado.Sessao',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.RelatoresContasPublicas.RelatoresContasPublicasOut.ActTp',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.ParlamentoJovens.DadosDeputado.Estabelecimento',
+            'ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList.ActividadeOut.Rel.AutoresPareceresIncImu.AutoresPareceresIncImuOut.ActSelLg'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -363,6 +441,14 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     self._process_petition_rapporteurs(actividade_out, actividade_out_id)
                     self._process_initiative_rapporteurs(actividade_out, actividade_out_id)
                     self._process_committees(actividade_out, actividade_out_id)
+                    
+                    # I Legislature specific processing
+                    self._process_autores_pareceres_inc_imu(actividade_out, actividade_out_id)
+                    self._process_relatores_ini_europeias(actividade_out, actividade_out_id)
+                    self._process_parlamento_jovens(actividade_out, actividade_out_id)
+                    self._process_eventos(actividade_out, actividade_out_id)
+                    self._process_deslocacoes(actividade_out, actividade_out_id)
+                    self._process_relatores_contas_publicas(actividade_out, actividade_out_id)
             
             # Process deputy situations - REAL XML structure
             self._process_deputy_situacoes_real(deputado, atividade_deputado_id, strict_mode)
@@ -781,6 +867,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     gpl_sel_lg = self._get_text_value(grupo, 'GplSelLg')
                     cga_crg = self._get_text_value(grupo, 'CgaCrg')
                     cga_dtini = self._get_text_value(grupo, 'CgaDtini')
+                    cga_dtfim = self._get_text_value(grupo, 'CgaDtfim')
                     
                     grupo_out = GruposParlamentaresAmizadeOut(
                         grupos_parlamentares_amizade_id=grupos_parlamentares_amizade.id,
@@ -788,7 +875,8 @@ class AtividadeDeputadosMapper(SchemaMapper):
                         gpl_no=gpl_no,
                         gpl_sel_lg=gpl_sel_lg,
                         cga_crg=cga_crg,
-                        cga_dtini=cga_dtini
+                        cga_dtini=cga_dtini,
+                        cga_dtfim=cga_dtfim
                     )
                     
                     self.session.add(grupo_out)
@@ -874,6 +962,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
                 for delegacao in dle_section.findall('DelegacoesEventuaisOut'):
                     dev_id = self._safe_int(self._get_text_value(delegacao, 'DevId'))
                     dev_no = self._get_text_value(delegacao, 'DevNo')
+                    dev_tp = self._get_text_value(delegacao, 'DevTp')  # I Legislature field
                     dev_dtini = self._get_text_value(delegacao, 'DevDtini')
                     dev_dtfim = self._get_text_value(delegacao, 'DevDtfim')
                     dev_sel_nr = self._get_text_value(delegacao, 'DevSelNr')
@@ -884,6 +973,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
                         delegacoes_eventuais_id=delegacoes_eventuais.id,
                         dev_id=dev_id,
                         dev_no=dev_no,
+                        dev_tp=dev_tp,
                         dev_dtini=dev_dtini,
                         dev_dtfim=dev_dtfim,
                         dev_sel_nr=dev_sel_nr,
@@ -962,6 +1052,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     scm_cd = self._get_text_value(subcomissao, 'ScmCd')
                     scm_com_cd = self._get_text_value(subcomissao, 'ScmComCd')
                     ccm_dscom = self._get_text_value(subcomissao, 'CcmDscom')
+                    cms_situacao = self._get_text_value(subcomissao, 'CmsSituacao')  # I Legislature field
                     cms_cargo = self._get_text_value(subcomissao, 'CmsCargo')
                     scm_com_lg = self._get_text_value(subcomissao, 'ScmComLg')
                     
@@ -970,6 +1061,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
                         scm_cd=scm_cd,
                         scm_com_cd=scm_com_cd,
                         ccm_dscom=ccm_dscom,
+                        cms_situacao=cms_situacao,
                         cms_cargo=cms_cargo,
                         scm_com_lg=scm_com_lg
                     )
@@ -1088,13 +1180,17 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     cms_cd = self._get_text_value(comissao, 'CmsCd')
                     cms_lg = self._get_text_value(comissao, 'CmsLg')
                     cms_cargo = self._get_text_value(comissao, 'CmsCargo')
+                    cms_sub_cargo = self._get_text_value(comissao, 'CmsSubCargo')
+                    cms_situacao = self._get_text_value(comissao, 'CmsSituacao')
                     
                     comissao_out = ComissoesOut(
                         comissoes_id=comissoes.id,
                         cms_no=cms_no,
                         cms_cd=cms_cd,
                         cms_lg=cms_lg,
-                        cms_cargo=cms_cargo
+                        cms_cargo=cms_cargo,
+                        cms_sub_cargo=cms_sub_cargo,
+                        cms_situacao=cms_situacao
                     )
                     
                     self.session.add(comissao_out)
@@ -1103,6 +1199,271 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing committees: {e}")
+            self.session.rollback()
+
+    def _process_autores_pareceres_inc_imu(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process I Legislature Authors of Incompatibility/Immunity Opinions (Rel.AutoresPareceresIncImu)"""
+        try:
+            rel_section = actividade_out.find('Rel')
+            if rel_section is not None:
+                autores_section = rel_section.find('AutoresPareceresIncImu')
+                if autores_section is not None:
+                    # Create authors record
+                    autores_pareceres_inc_imu = AutoresPareceresIncImu(
+                        actividade_out_id=actividade_out_id
+                    )
+                    
+                    self.session.add(autores_pareceres_inc_imu)
+                    self.session.commit()
+                    
+                    # Process each AutoresPareceresIncImuOut
+                    for autor in autores_section.findall('AutoresPareceresIncImuOut'):
+                        act_id = self._safe_int(self._get_text_value(autor, 'ActId'))
+                        act_as = self._get_text_value(autor, 'ActAs')
+                        act_sel_lg = self._get_text_value(autor, 'ActSelLg')
+                        act_tp_desc = self._get_text_value(autor, 'ActTpDesc')
+                        
+                        autor_out = AutoresPareceresIncImuOut(
+                            autores_pareceres_inc_imu_id=autores_pareceres_inc_imu.id,
+                            act_id=act_id,
+                            act_as=act_as,
+                            act_sel_lg=act_sel_lg,
+                            act_tp_desc=act_tp_desc
+                        )
+                        
+                        self.session.add(autor_out)
+                    
+                    self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing authors of incompatibility/immunity opinions: {e}")
+            self.session.rollback()
+
+    def _process_relatores_ini_europeias(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process I Legislature European Initiative Rapporteurs (Rel.RelatoresIniEuropeias)"""
+        try:
+            rel_section = actividade_out.find('Rel')
+            if rel_section is not None:
+                relatores_section = rel_section.find('RelatoresIniEuropeias')
+                if relatores_section is not None:
+                    # Create European initiative rapporteurs record
+                    relatores_ini_europeias = RelatoresIniEuropeias(
+                        actividade_out_id=actividade_out_id
+                    )
+                    
+                    self.session.add(relatores_ini_europeias)
+                    self.session.commit()
+                    
+                    # Process each RelatoresIniEuropeiasOut
+                    for relator in relatores_section.findall('RelatoresIniEuropeiasOut'):
+                        ine_id = self._safe_int(self._get_text_value(relator, 'IneId'))
+                        ine_data_relatorio = self._get_text_value(relator, 'IneDataRelatorio')
+                        ine_referencia = self._get_text_value(relator, 'IneReferencia')
+                        ine_titulo = self._get_text_value(relator, 'IneTitulo')
+                        leg = self._get_text_value(relator, 'Leg')
+                        
+                        relator_out = RelatoresIniEuropeiasOut(
+                            relatores_ini_europeias_id=relatores_ini_europeias.id,
+                            ine_id=ine_id,
+                            ine_data_relatorio=ine_data_relatorio,
+                            ine_referencia=ine_referencia,
+                            ine_titulo=ine_titulo,
+                            leg=leg
+                        )
+                        
+                        self.session.add(relator_out)
+                    
+                    self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing European initiative rapporteurs: {e}")
+            self.session.rollback()
+
+    def _process_parlamento_jovens(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process I Legislature Youth Parliament (ParlamentoJovens)"""
+        try:
+            pj_section = actividade_out.find('ParlamentoJovens')
+            if pj_section is not None:
+                # Create youth parliament record
+                parlamento_jovens = ParlamentoJovens(
+                    actividade_out_id=actividade_out_id
+                )
+                
+                self.session.add(parlamento_jovens)
+                self.session.commit()
+                
+                # Process DadosDeputado
+                dados_deputado = pj_section.find('DadosDeputado')
+                if dados_deputado is not None:
+                    tipo_reuniao = self._get_text_value(dados_deputado, 'TipoReuniao')
+                    circulo_eleitoral = self._get_text_value(dados_deputado, 'CirculoEleitoral')
+                    legislatura = self._get_text_value(dados_deputado, 'Legislatura')
+                    data = self._get_text_value(dados_deputado, 'Data')
+                    sessao = self._get_text_value(dados_deputado, 'Sessao')
+                    estabelecimento = self._get_text_value(dados_deputado, 'Estabelecimento')
+                    
+                    dados_out = DadosDeputadoParlamentoJovens(
+                        parlamento_jovens_id=parlamento_jovens.id,
+                        tipo_reuniao=tipo_reuniao,
+                        circulo_eleitoral=circulo_eleitoral,
+                        legislatura=legislatura,
+                        data=data,
+                        sessao=sessao,
+                        estabelecimento=estabelecimento
+                    )
+                    
+                    self.session.add(dados_out)
+                
+                self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing youth parliament: {e}")
+            self.session.rollback()
+
+    def _process_eventos(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process I Legislature Events (Eventos)"""
+        try:
+            eventos_section = actividade_out.find('Eventos')
+            if eventos_section is not None:
+                # Create events record
+                eventos = Eventos(
+                    actividade_out_id=actividade_out_id
+                )
+                
+                self.session.add(eventos)
+                self.session.commit()
+                
+                # Process each ActividadesComissaoOut within Events
+                for actividade_comissao in eventos_section.findall('ActividadesComissaoOut'):
+                    act_id = self._safe_int(self._get_text_value(actividade_comissao, 'ActId'))
+                    act_as = self._get_text_value(actividade_comissao, 'ActAs')
+                    act_loc = self._get_text_value(actividade_comissao, 'ActLoc')
+                    act_dtent = self._get_text_value(actividade_comissao, 'ActDtent')
+                    act_tpdesc = self._get_text_value(actividade_comissao, 'ActTpdesc')
+                    act_sl = self._get_text_value(actividade_comissao, 'ActSl')
+                    act_tp = self._get_text_value(actividade_comissao, 'ActTp')
+                    act_nr = self._get_text_value(actividade_comissao, 'ActNr')
+                    acc_dtaud = self._get_text_value(actividade_comissao, 'AccDtaud')
+                    tev_tp = self._get_text_value(actividade_comissao, 'TevTp')
+                    nome_entidade_externa = self._get_text_value(actividade_comissao, 'NomeEntidadeExterna')
+                    cms_no = self._get_text_value(actividade_comissao, 'CmsNo')
+                    cms_ab = self._get_text_value(actividade_comissao, 'CmsAb')
+                    act_lg = self._get_text_value(actividade_comissao, 'ActLg')
+                    
+                    actividade_out = ActividadesComissaoOut(
+                        evento_id=eventos.id,
+                        act_id=act_id,
+                        act_as=act_as,
+                        act_loc=act_loc,
+                        act_dtent=act_dtent,
+                        act_tpdesc=act_tpdesc,
+                        act_sl=act_sl,
+                        act_tp=act_tp,
+                        act_nr=act_nr,
+                        acc_dtaud=acc_dtaud,
+                        tev_tp=tev_tp,
+                        nome_entidade_externa=nome_entidade_externa,
+                        cms_no=cms_no,
+                        cms_ab=cms_ab,
+                        act_lg=act_lg
+                    )
+                    
+                    self.session.add(actividade_out)
+                
+                self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing events: {e}")
+            self.session.rollback()
+
+    def _process_deslocacoes(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process I Legislature Displacements (Deslocacoes)"""
+        try:
+            deslocacoes_section = actividade_out.find('Deslocacoes')
+            if deslocacoes_section is not None:
+                # Create displacements record
+                deslocacoes = Deslocacoes(
+                    actividade_out_id=actividade_out_id
+                )
+                
+                self.session.add(deslocacoes)
+                self.session.commit()
+                
+                # Process each ActividadesComissaoOut within Deslocacoes
+                for actividade_comissao in deslocacoes_section.findall('ActividadesComissaoOut'):
+                    act_id = self._safe_int(self._get_text_value(actividade_comissao, 'ActId'))
+                    act_as = self._get_text_value(actividade_comissao, 'ActAs')
+                    act_loc = self._get_text_value(actividade_comissao, 'ActLoc')
+                    act_dtdes1 = self._get_text_value(actividade_comissao, 'ActDtdes1')
+                    act_dtdes2 = self._get_text_value(actividade_comissao, 'ActDtdes2')
+                    act_dtent = self._get_text_value(actividade_comissao, 'ActDtent')
+                    acc_dtaud = self._get_text_value(actividade_comissao, 'AccDtaud')
+                    act_tp = self._get_text_value(actividade_comissao, 'ActTp')
+                    act_nr = self._get_text_value(actividade_comissao, 'ActNr')
+                    act_tpdesc = self._get_text_value(actividade_comissao, 'ActTpdesc')
+                    nome_entidade_externa = self._get_text_value(actividade_comissao, 'NomeEntidadeExterna')
+                    cms_no = self._get_text_value(actividade_comissao, 'CmsNo')
+                    cms_ab = self._get_text_value(actividade_comissao, 'CmsAb')
+                    act_lg = self._get_text_value(actividade_comissao, 'ActLg')
+                    
+                    actividade_out = ActividadesComissaoOut(
+                        deslocacao_id=deslocacoes.id,
+                        act_id=act_id,
+                        act_as=act_as,
+                        act_loc=act_loc,
+                        act_dtdes1=act_dtdes1,
+                        act_dtdes2=act_dtdes2,
+                        act_dtent=act_dtent,
+                        acc_dtaud=acc_dtaud,
+                        act_tp=act_tp,
+                        act_nr=act_nr,
+                        act_tpdesc=act_tpdesc,
+                        nome_entidade_externa=nome_entidade_externa,
+                        cms_no=cms_no,
+                        cms_ab=cms_ab,
+                        act_lg=act_lg
+                    )
+                    
+                    self.session.add(actividade_out)
+                
+                self.session.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error processing displacements: {e}")
+            self.session.rollback()
+
+    def _process_relatores_contas_publicas(self, actividade_out: ET.Element, actividade_out_id: int):
+        """Process I Legislature Public Accounts Rapporteurs (Rel.RelatoresContasPublicas)"""
+        try:
+            rel_section = actividade_out.find('Rel')
+            if rel_section is not None:
+                rcp_section = rel_section.find('RelatoresContasPublicas')
+                if rcp_section is not None:
+                    relatores_contas_publicas = RelatoresContasPublicas(
+                        actividade_out_id=actividade_out_id
+                    )
+                    self.session.add(relatores_contas_publicas)
+                    self.session.commit()
+                    
+                    for relator in rcp_section.findall('RelatoresContasPublicasOut'):
+                        act_id = self._safe_int(self._get_text_value(relator, 'ActId'))
+                        act_as = self._get_text_value(relator, 'ActAs')
+                        act_tp = self._get_text_value(relator, 'ActTp')
+                        cta_id = self._safe_int(self._get_text_value(relator, 'CtaId'))
+                        cta_no = self._get_text_value(relator, 'CtaNo')
+                        
+                        relator_out = RelatoresContasPublicasOut(
+                            relatores_contas_publicas_id=relatores_contas_publicas.id,
+                            act_id=act_id,
+                            act_as=act_as,
+                            act_tp=act_tp,
+                            cta_id=cta_id,
+                            cta_no=cta_no
+                        )
+                        self.session.add(relator_out)
+                    self.session.commit()
+        except Exception as e:
+            logger.error(f"Error processing public accounts rapporteurs: {e}")
             self.session.rollback()
 
     def _parse_datetime(self, datetime_str: str) -> Optional[object]:

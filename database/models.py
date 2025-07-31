@@ -1305,6 +1305,12 @@ class ActividadeOut(Base):
     relatores_peticoes = relationship("RelatoresPeticoes", back_populates="actividade_out", cascade="all, delete-orphan")
     relatores_iniciativas = relationship("RelatoresIniciativas", back_populates="actividade_out", cascade="all, delete-orphan")
     comissoes = relationship("Comissoes", back_populates="actividade_out", cascade="all, delete-orphan")
+    
+    # I Legislature relationships
+    autores_pareceres_inc_imu = relationship("AutoresPareceresIncImu", back_populates="actividade_out", cascade="all, delete-orphan")
+    relatores_ini_europeias = relationship("RelatoresIniEuropeias", back_populates="actividade_out", cascade="all, delete-orphan")
+    parlamento_jovens = relationship("ParlamentoJovens", back_populates="actividade_out", cascade="all, delete-orphan")
+    eventos = relationship("Eventos", back_populates="actividade_out", cascade="all, delete-orphan")
 
 
 class DadosLegisDeputado(Base):
@@ -1348,6 +1354,8 @@ class ActividadesComissaoOut(Base):
     id = Column(Integer, primary_key=True)
     audiencia_id = Column(Integer, ForeignKey('actividade_audiencias.id'), nullable=True)
     audicao_id = Column(Integer, ForeignKey('actividade_audicoes.id'), nullable=True)
+    evento_id = Column(Integer, ForeignKey('eventos.id'), nullable=True)  # I Legislature Events
+    deslocacao_id = Column(Integer, ForeignKey('deslocacoes.id'), nullable=True)  # I Legislature Displacements
     
     # IX Legislature additional fields
     act_id = Column(Integer)  # ActId
@@ -1358,6 +1366,13 @@ class ActividadesComissaoOut(Base):
     act_tpdesc = Column(String(200))  # ActTpdesc - type description
     act_nr = Column(String(50))  # ActNr - activity number
     act_lg = Column(String(20))  # ActLg - legislature
+    act_loc = Column(String(500))  # ActLoc - activity location (I Legislature Events/Deslocacoes)
+    act_dtdes1 = Column(String(50))  # ActDtdes1 - first displacement date
+    act_dtdes2 = Column(String(50))  # ActDtdes2 - second displacement date
+    act_dtent = Column(String(50))  # ActDtent - entry date (for Events section)
+    act_tpdesc = Column(String(200))  # ActTpdesc - activity type description (for Events)
+    act_sl = Column(String(20))  # ActSl - session legislature
+    tev_tp = Column(String(100))  # TevTp - event type
     nome_entidade_externa = Column(Text)  # NomeEntidadeExterna
     cms_no = Column(String(500))  # CmsNo - committee name
     cms_ab = Column(String(20))  # CmsAb - committee abbreviation
@@ -1366,6 +1381,8 @@ class ActividadesComissaoOut(Base):
     
     audiencia = relationship("ActividadeAudiencia", back_populates="actividades_comissao")
     audicao = relationship("ActividadeAudicao", back_populates="actividades_comissao")
+    evento = relationship("Eventos", back_populates="actividades_comissao")
+    deslocacao = relationship("Deslocacoes", back_populates="actividades_comissao")
 
 
 class ActividadeIntervencao(Base):
@@ -2906,6 +2923,7 @@ class GruposParlamentaresAmizadeOut(Base):
     gpl_sel_lg = Column(String(20))  # GplSelLg - group session legislature
     cga_crg = Column(String(200))  # CgaCrg - group charge/responsibility
     cga_dtini = Column(String(50))  # CgaDtini - group start date
+    cga_dtfim = Column(String(50))  # CgaDtfim - group end date
     
     created_at = Column(DateTime, default=func.now())
     
@@ -2970,6 +2988,7 @@ class DelegacoesEventuaisOut(Base):
     # Core fields from XML
     dev_id = Column(Integer)  # DevId - delegation ID
     dev_no = Column(String(500))  # DevNo - delegation name
+    dev_tp = Column(String(100))  # DevTp - delegation type (I Legislature)
     dev_dtini = Column(String(50))  # DevDtIni - start date
     dev_dtfim = Column(String(50))  # DevDtfim - end date
     dev_sel_nr = Column(String(20))  # DevSelNr - session number
@@ -3042,6 +3061,7 @@ class SubComissoesGruposTrabalhoOut(Base):
     scm_cd = Column(String(20))  # ScmCd - sub-committee code
     scm_com_cd = Column(String(20))  # ScmComCd - committee code
     ccm_dscom = Column(Text)  # CcmDscom - committee description
+    cms_situacao = Column(String(200))  # CmsSituacao - committee situation (I Legislature)
     cms_cargo = Column(String(200))  # CmsCargo - committee position
     scm_com_lg = Column(String(20))  # ScmComLg - committee legislature
     
@@ -3110,6 +3130,8 @@ class ComissoesOut(Base):
     cms_cd = Column(String(20))  # CmsCd - committee code
     cms_lg = Column(String(20))  # CmsLg - committee legislature
     cms_cargo = Column(String(200))  # CmsCargo - committee position
+    cms_sub_cargo = Column(String(200))  # CmsSubCargo - committee sub-position
+    cms_situacao = Column(String(200))  # CmsSituacao - committee situation
     
     created_at = Column(DateTime, default=func.now())
     
@@ -3169,3 +3191,165 @@ class ReunioesDelegacoesPermanentes(Base):
     
     # Relationships
     delegacoes_permanentes_out = relationship("DelegacoesPermanentesOut", back_populates="reunioes")
+
+
+# =====================================================
+# I LEGISLATURE SPECIFIC MODELS
+# =====================================================
+
+class AutoresPareceresIncImu(Base):
+    """Authors of Incompatibility/Immunity Opinions - I Legislature Rel.AutoresPareceresIncImu section"""
+    __tablename__ = 'autores_pareceres_inc_imu'
+    
+    id = Column(Integer, primary_key=True)
+    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    actividade_out = relationship("ActividadeOut")
+    autores = relationship("AutoresPareceresIncImuOut", back_populates="autores_pareceres_inc_imu", cascade="all, delete-orphan")
+
+
+class AutoresPareceresIncImuOut(Base):
+    """Individual Authors of Incompatibility/Immunity Opinions"""
+    __tablename__ = 'autores_pareceres_inc_imu_out'
+    
+    id = Column(Integer, primary_key=True)
+    autores_pareceres_inc_imu_id = Column(Integer, ForeignKey('autores_pareceres_inc_imu.id'), nullable=False)
+    
+    # Core fields from XML
+    act_id = Column(Integer)  # ActId - activity ID
+    act_as = Column(Text)  # ActAs - activity subject
+    act_sel_lg = Column(String(20))  # ActSelLg - activity session legislature
+    act_tp_desc = Column(String(200))  # ActTpDesc - activity type description
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    autores_pareceres_inc_imu = relationship("AutoresPareceresIncImu", back_populates="autores")
+
+
+class RelatoresIniEuropeias(Base):
+    """European Initiative Rapporteurs - I Legislature Rel.RelatoresIniEuropeias section"""
+    __tablename__ = 'relatores_ini_europeias'
+    
+    id = Column(Integer, primary_key=True)
+    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    actividade_out = relationship("ActividadeOut")
+    relatores = relationship("RelatoresIniEuropeiasOut", back_populates="relatores_ini_europeias", cascade="all, delete-orphan")
+
+
+class RelatoresIniEuropeiasOut(Base):
+    """Individual European Initiative Rapporteurs"""
+    __tablename__ = 'relatores_ini_europeias_out'
+    
+    id = Column(Integer, primary_key=True)
+    relatores_ini_europeias_id = Column(Integer, ForeignKey('relatores_ini_europeias.id'), nullable=False)
+    
+    # Core fields from XML
+    ine_id = Column(Integer)  # IneId - European initiative ID
+    ine_data_relatorio = Column(String(50))  # IneDataRelatorio - report date
+    ine_referencia = Column(String(200))  # IneReferencia - reference
+    ine_titulo = Column(Text)  # IneTitulo - title
+    leg = Column(String(20))  # Leg - legislature
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    relatores_ini_europeias = relationship("RelatoresIniEuropeias", back_populates="relatores")
+
+
+class ParlamentoJovens(Base):
+    """Youth Parliament - I Legislature ParlamentoJovens section"""
+    __tablename__ = 'parlamento_jovens'
+    
+    id = Column(Integer, primary_key=True)
+    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    actividade_out = relationship("ActividadeOut")
+    dados_deputado = relationship("DadosDeputadoParlamentoJovens", back_populates="parlamento_jovens", cascade="all, delete-orphan")
+
+
+class DadosDeputadoParlamentoJovens(Base):
+    """Youth Parliament Deputy Data"""
+    __tablename__ = 'dados_deputado_parlamento_jovens'
+    
+    id = Column(Integer, primary_key=True)
+    parlamento_jovens_id = Column(Integer, ForeignKey('parlamento_jovens.id'), nullable=False)
+    
+    # Core fields from XML
+    tipo_reuniao = Column(String(200))  # TipoReuniao - meeting type
+    circulo_eleitoral = Column(String(200))  # CirculoEleitoral - electoral district
+    legislatura = Column(String(20))  # Legislatura - legislature
+    data = Column(String(50))  # Data - date
+    sessao = Column(String(100))  # Sessao - session
+    estabelecimento = Column(String(500))  # Estabelecimento - establishment
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    parlamento_jovens = relationship("ParlamentoJovens", back_populates="dados_deputado")
+
+
+class Eventos(Base):
+    """Events - I Legislature Eventos section"""
+    __tablename__ = 'eventos'
+    
+    id = Column(Integer, primary_key=True)
+    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    actividade_out = relationship("ActividadeOut")
+    actividades_comissao = relationship("ActividadesComissaoOut", back_populates="evento", cascade="all, delete-orphan")
+
+
+class Deslocacoes(Base):
+    """Displacements - I Legislature Deslocacoes section"""
+    __tablename__ = 'deslocacoes'
+    
+    id = Column(Integer, primary_key=True)
+    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    actividade_out = relationship("ActividadeOut")
+    actividades_comissao = relationship("ActividadesComissaoOut", back_populates="deslocacao", cascade="all, delete-orphan")
+
+
+class RelatoresContasPublicas(Base):
+    """Public Accounts Rapporteurs - I Legislature Rel.RelatoresContasPublicas section"""
+    __tablename__ = 'relatores_contas_publicas'
+    
+    id = Column(Integer, primary_key=True)
+    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    actividade_out = relationship("ActividadeOut")
+    relatores = relationship("RelatoresContasPublicasOut", back_populates="relatores_contas_publicas", cascade="all, delete-orphan")
+
+
+class RelatoresContasPublicasOut(Base):
+    """Individual Public Accounts Rapporteurs"""
+    __tablename__ = 'relatores_contas_publicas_out'
+    
+    id = Column(Integer, primary_key=True)
+    relatores_contas_publicas_id = Column(Integer, ForeignKey('relatores_contas_publicas.id'), nullable=False)
+    
+    # Core fields from XML - based on similar structure to other rapporteur models
+    act_id = Column(Integer)  # ActId - activity ID
+    act_as = Column(Text)  # ActAs - activity subject
+    act_tp = Column(String(10))  # ActTp - activity type
+    cta_id = Column(Integer)  # CtaId - account ID
+    cta_no = Column(String(500))  # CtaNo - account name
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    relatores_contas_publicas = relationship("RelatoresContasPublicas", back_populates="relatores")
