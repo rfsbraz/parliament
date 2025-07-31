@@ -44,6 +44,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from config.settings import DOWNLOADS_DIR, PARLIAMENT_DATA_DIR
+from database.models import ImportStatus
+
+# Constants
+CORRUPTED_FILE_PREFIX = "CORRUPTED FILE:"
 
 # Configure logging
 logging.basicConfig(
@@ -379,11 +383,19 @@ class UnifiedImporter:
                         if success:
                             processed_files += 1
                         elif strict_mode:
-                            logger.error(
-                                f"STRICT MODE: Exiting due to processing error in {file_path}"
-                            )
-                            session.commit()
-                            sys.exit(1)
+                            # Check if this was a corrupted file that we should skip
+                            import_status = session.query(ImportStatus).filter_by(
+                                file_path=file_path
+                            ).first()
+                            if import_status and import_status.status == "corrupted":
+                                logger.info(f"STRICT MODE: Skipping corrupted file {file_path}")
+                                processed_files += 1  # Count as processed since we handled it
+                            else:
+                                logger.error(
+                                    f"STRICT MODE: Exiting due to processing error in {file_path}"
+                                )
+                                session.commit()
+                                sys.exit(1)
 
                         if processed_files % 10 == 0:
                             logger.info(f"Processed {processed_files} files so far...")
@@ -562,6 +574,13 @@ class UnifiedImporter:
                 if strict_mode:
                     # In strict mode, only exit for schema violations, not corrupted files
                     if "not well-formed" in error_msg or "invalid token" in error_msg:
+                        import_status.status = "corrupted"
+                        import_status.error_message = f"{CORRUPTED_FILE_PREFIX}: {error_msg}"
+                        try:
+                            session.commit()
+                        except Exception as commit_error:
+                            logger.warning(f"Failed to commit corrupted status: {commit_error}")
+                            session.rollback()
                         logger.warning(
                             f"STRICT MODE: Skipping corrupted XML file {file_path}"
                         )
@@ -628,11 +647,25 @@ class UnifiedImporter:
                         if not first_bytes.startswith(
                             b"<?xml"
                         ) and not first_bytes.startswith(b"<"):
+                            import_status.status = "corrupted"
+                            import_status.error_message = f"{CORRUPTED_FILE_PREFIX}: File contains non-XML binary data"
+                            try:
+                                session.commit()
+                            except Exception as commit_error:
+                                logger.warning(f"Failed to commit corrupted status: {commit_error}")
+                                session.rollback()
                             logger.warning(
                                 f"STRICT MODE: Skipping corrupted file {file_path}"
                             )
                             return False
                     except:
+                        import_status.status = "corrupted"
+                        import_status.error_message = f"{CORRUPTED_FILE_PREFIX}: File is unreadable or has access issues"
+                        try:
+                            session.commit()
+                        except Exception as commit_error:
+                            logger.warning(f"Failed to commit corrupted status: {commit_error}")
+                            session.rollback()
                         logger.warning(
                             f"STRICT MODE: Skipping unreadable file {file_path}"
                         )
