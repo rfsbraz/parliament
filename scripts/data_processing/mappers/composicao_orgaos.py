@@ -523,12 +523,15 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             # Process committees
             comissoes = xml_root.find('.//Comissoes')
             if comissoes is not None:
-                # Handle both direct committee structure and OrgaoBase structure
+                # Handle different committee structures by legislature
                 for comissao in comissoes:
                     try:
-                        # Check if this is an OrgaoBase structure (III Legislature)
+                        # Check if this is an OrgaoBase structure (III Legislature and later)
                         if comissao.tag == 'OrgaoBase':
                             success = self._process_orgao_base(comissao, legislatura)
+                        # Check if this is an Orgao structure (I Legislature)
+                        elif comissao.tag == 'Orgao':
+                            success = self._process_i_legislature_orgao(comissao, legislatura)
                         else:
                             success = self._process_comissao(comissao, legislatura)
                         results['records_processed'] += 1
@@ -566,6 +569,21 @@ class ComposicaoOrgaosMapper(SchemaMapper):
                             results['records_imported'] += 1
                     except Exception as e:
                         error_msg = f"Working group processing error: {str(e)}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                        results['records_processed'] += 1
+            
+            # Process I Legislature working groups (GruposTrabalhoAR)
+            grupos_trabalho_ar = xml_root.find('.//GruposTrabalhoAR')
+            if grupos_trabalho_ar is not None:
+                for grupo in grupos_trabalho_ar:
+                    try:
+                        success = self._process_grupo_trabalho(grupo, legislatura)
+                        results['records_processed'] += 1
+                        if success:
+                            results['records_imported'] += 1
+                    except Exception as e:
+                        error_msg = f"I Legislature working group processing error: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
                         results['records_processed'] += 1
@@ -1045,6 +1063,39 @@ class ComposicaoOrgaosMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing deputy situation record: {e}")
+            return False
+    
+    def _process_i_legislature_orgao(self, orgao: ET.Element, legislatura: Legislatura) -> bool:
+        """Process I Legislature Orgao structure (committee)"""
+        try:
+            # Extract organ details from I Legislature structure
+            detalhe_orgao = orgao.find('DetalheOrgao')
+            if detalhe_orgao is None:
+                return False
+            
+            # I Legislature uses different field names
+            id_orgao = self._get_text_value(detalhe_orgao, 'idOrgao')
+            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao')
+            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla')
+            numero_orgao = self._get_text_value(detalhe_orgao, 'numeroOrgao')
+            sigla_legislatura = self._get_text_value(detalhe_orgao, 'siglaLegislatura')
+            
+            if not id_orgao or not nome_sigla:
+                return False
+            
+            # Create or get committee record using I Legislature data
+            committee = self._get_or_create_committee(
+                int(float(id_orgao)), 
+                sigla_orgao or f"CO{numero_orgao}" if numero_orgao else 'CO', 
+                nome_sigla, 
+                legislatura
+            )
+            
+            logger.info(f"Processed I Legislature committee: {nome_sigla} (ID: {id_orgao})")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing I Legislature Orgao: {e}")
             return False
     
     def _get_or_create_plenary(self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura) -> Plenary:
