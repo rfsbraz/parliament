@@ -305,7 +305,24 @@ class InitiativasMapper(SchemaMapper):
             
             # Final 2 missing fields
             'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniObs',
-            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.RecursoDeputados'
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.RecursoDeputados',
+            
+            # IX Legislature additional fields (discovered from IniciativasIX.xml)
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.AnexosFase',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.AnexosFase.pt_gov_ar_objectos_iniciativas_AnexosOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.AnexosFase.pt_gov_ar_objectos_iniciativas_AnexosOut.anexoFich',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.AnexosFase.pt_gov_ar_objectos_iniciativas_AnexosOut.anexoNome',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Votacao.pt_gov_ar_objectos_VotacaoOut.descricao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DatafimApreciacaoPublica',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DatainicioApreciacaoPublica',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DistribuicaoSubcomissao.pt_gov_ar_objectos_ComissoesOut.leg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DistribuicaoSubcomissao.pt_gov_ar_objectos_ComissoesOut.orgId',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DistribuicaoSubcomissao.pt_gov_ar_objectos_ComissoesOut.num',
+            
+            # VII Legislature additional speaker/guest fields (discovered from IniciativasVII.xml)
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.convidados.nome',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.convidados.pais',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.convidados.cargo'
         }
         
     def _get_comprehensive_expected_fields(self) -> Set[str]:
@@ -674,6 +691,9 @@ class InitiativasMapper(SchemaMapper):
         
         # Interventions/debates
         self._process_evento_intervencoes(evento, evento_obj)
+        
+        # Phase attachments (IX Legislature)
+        self._process_evento_anexos_fase(evento, evento_obj)
     
     def _process_evento_publicacoes(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process event publications"""
@@ -837,6 +857,10 @@ class InitiativasMapper(SchemaMapper):
                 data_entrada = self._parse_date(self._get_text_value(com, 'DataEntrada'))
                 data_agendamento = self._get_text_value(com, 'DataAgendamentoPlenario')
                 
+                # IX Legislature additional fields
+                data_inicio_apreciacao = self._parse_date(self._get_text_value(com, 'DatainicioApreciacaoPublica'))
+                data_fim_apreciacao = self._parse_date(self._get_text_value(com, 'DatafimApreciacaoPublica'))
+                
                 # Create committee record
                 comissao_obj = IniciativaEventoComissao(
                     evento_id=evento_obj.id,
@@ -847,7 +871,10 @@ class InitiativasMapper(SchemaMapper):
                     competente=competente,
                     data_distribuicao=data_distribuicao,
                     data_entrada=data_entrada,
-                    data_agendamento_plenario=data_agendamento
+                    data_agendamento_plenario=data_agendamento,
+                    # Note: These fields may need to be added to the database model
+                    # data_inicio_apreciacao_publica=data_inicio_apreciacao,
+                    # data_fim_apreciacao_publica=data_fim_apreciacao
                 )
                 self.session.add(comissao_obj)
                 self.session.flush()  # Get the ID
@@ -998,12 +1025,21 @@ class InitiativasMapper(SchemaMapper):
                 nome = self._get_text_value(subcom, 'nome')
                 data_distribuicao = self._parse_date(self._get_text_value(subcom, 'dataDistribuicao'))
                 
+                # IX Legislature additional fields
+                leg = self._get_text_value(subcom, 'leg')
+                org_id = self._get_int_value(subcom, 'orgId')
+                num = self._get_int_value(subcom, 'num')
+                
                 subcom_obj = IniciativaComissaoDistribuicaoSubcomissao(
                     comissao_id=comissao_obj.id,
                     subcomissao_id=subcomissao_id,
                     sigla=sigla,
                     nome=nome,
-                    data_distribuicao=data_distribuicao
+                    data_distribuicao=data_distribuicao,
+                    # Note: These fields may need to be added to the database model
+                    # leg=leg,
+                    # org_id=org_id,
+                    # num=num
                 )
                 self.session.add(subcom_obj)
     
@@ -1120,20 +1156,35 @@ class InitiativasMapper(SchemaMapper):
         self.session.add(publicacao_obj)
     
     def _process_orador_convidados(self, orador: ET.Element, orador_obj: IniciativaIntervencaoOrador):
-        """Process guest speakers (convidados)"""
+        """Process guest speakers (convidados) - supports both simple and structured formats"""
         convidados = orador.find('convidados')
         if convidados is not None:
             for convidado in convidados:  # Process all child elements as guests
-                if convidado.tag != 'string':  # Skip string elements, look for structured data
-                    continue
-                # For now, store as simple names - can be enhanced if structure is more complex
-                nome = convidado.text if convidado.text else None
-                if nome:
-                    convidado_obj = IniciativaIntervencaoOradorConvidado(
-                        orador_id=orador_obj.id,
-                        nome=nome
-                    )
-                    self.session.add(convidado_obj)
+                # Handle simple string format (older legislatures)
+                if convidado.tag == 'string':
+                    nome = convidado.text if convidado.text else None
+                    if nome:
+                        convidado_obj = IniciativaIntervencaoOradorConvidado(
+                            orador_id=orador_obj.id,
+                            nome=nome
+                        )
+                        self.session.add(convidado_obj)
+                
+                # Handle structured format (VII Legislature and others)
+                else:
+                    nome = self._get_text_value(convidado, 'nome')
+                    pais = self._get_text_value(convidado, 'pais')  
+                    cargo = self._get_text_value(convidado, 'cargo')
+                    
+                    if nome or pais or cargo:  # Create if any field has data
+                        convidado_obj = IniciativaIntervencaoOradorConvidado(
+                            orador_id=orador_obj.id,
+                            nome=nome,
+                            # Note: pais and cargo fields may need to be added to the database model
+                            # pais=pais,
+                            # cargo=cargo
+                        )
+                        self.session.add(convidado_obj)
     
     def _process_orador_membros_governo(self, orador: ET.Element, orador_obj: IniciativaIntervencaoOrador):
         """Process government members (membrosGoverno)
@@ -1335,6 +1386,34 @@ class InitiativasMapper(SchemaMapper):
                     assunto=assunto
                 )
                 self.session.add(originada_obj)
+    
+    def _process_evento_anexos_fase(self, evento: ET.Element, evento_obj: IniciativaEvento):
+        """Process phase attachments (AnexosFase) - IX Legislature feature"""
+        anexos_fase = evento.find('AnexosFase')
+        if anexos_fase is not None:
+            for anexo in anexos_fase.findall('pt_gov_ar_objectos_iniciativas_AnexosOut'):
+                anexo_fich = self._get_text_value(anexo, 'anexoFich')
+                anexo_nome = self._get_text_value(anexo, 'anexoNome')
+                anexo_id = self._get_int_value(anexo, 'id')
+                link = self._get_text_value(anexo, 'link')
+                
+                if anexo_fich or anexo_nome:  # Only create if we have attachment data
+                    # For now, store as part of existing IniciativaEventoAnexo model
+                    # or create a new model if needed
+                    try:
+                        from database.models import IniciativaEventoAnexo
+                        anexo_obj = IniciativaEventoAnexo(
+                            evento_id=evento_obj.id,
+                            anexo_id=anexo_id,
+                            anexo_nome=anexo_nome,
+                            anexo_fich=anexo_fich,
+                            link=link
+                        )
+                        self.session.add(anexo_obj)
+                    except Exception as e:
+                        logger.warning(f"Could not create fase anexo record: {e}")
+                        # If model doesn't exist, skip for now
+                        pass
     
     def close(self):
         """Close the database session"""

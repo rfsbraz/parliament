@@ -2064,8 +2064,18 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
             attendance_count = 0
             
+            # Check if this Presencas element contains only metadata (date, type) but no actual attendance records
+            child_tags = [child.tag for child in presencas]
+            has_only_metadata = set(child_tags).issubset({'dtReuniao', 'tipoReuniao'})
+            
+            if has_only_metadata:
+                logger.debug(f"Meeting {meeting.id} has Presencas with only metadata (no attendance records) - this is valid")
+                return True
+            
             # Process standard pt_ar_wsgode_objectos_DadosPresenca structure
-            for dados_presenca in presencas.findall('pt_ar_wsgode_objectos_DadosPresenca'):
+            dados_presenca_list = presencas.findall('pt_ar_wsgode_objectos_DadosPresenca')
+            
+            for dados_presenca in dados_presenca_list:
                 dep_id = self._get_int_value(dados_presenca, 'depId')
                 dep_cad_id = self._get_int_value(dados_presenca, 'depCadId')
                 dep_nome = self._get_text_value(dados_presenca, 'depNomeParlamentar')
@@ -2090,7 +2100,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process alternative pt_gov_ar_wsgode_objectos_Presencas structure (IX Legislature)
             presencas_alt = presencas.find('presencas')
             if presencas_alt is not None:
-                for dados_presenca_alt in presencas_alt.findall('pt_gov_ar_wsgode_objectos_Presencas'):
+                dados_presenca_alt_list = presencas_alt.findall('pt_gov_ar_wsgode_objectos_Presencas')
+                
+                for dados_presenca_alt in dados_presenca_alt_list:
                     nome_deputado = self._get_text_value(dados_presenca_alt, 'nomeDeputado')
                     sigla_grupo = self._get_text_value(dados_presenca_alt, 'siglaGrupo')
                     sigla_falta = self._get_text_value(dados_presenca_alt, 'siglaFalta')
@@ -2113,7 +2125,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                     self.session.add(attendance)
                     attendance_count += 1
             
-            logger.info(f"Stored {attendance_count} attendance records for meeting {meeting.id}")
+            # Only log if we actually processed some attendance records
+            if attendance_count > 0:
+                logger.info(f"Stored {attendance_count} attendance records for meeting {meeting.id}")
+            else:
+                logger.debug(f"No attendance records found for meeting {meeting.id} (this is valid for some meetings)")
+            
             return True
             
         except Exception as e:

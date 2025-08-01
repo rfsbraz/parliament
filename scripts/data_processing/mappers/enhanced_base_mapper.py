@@ -74,11 +74,11 @@ class LegislatureHandlerMixin:
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content with comprehensive fallback"""
-        # Try filename first - most reliable
+        # Try filename first - most reliable (case-insensitive)
         filename = os.path.basename(file_path)
-        leg_match = re.search(r'(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)', filename)
+        leg_match = re.search(r'(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)', filename, re.IGNORECASE)
         if leg_match:
-            return leg_match.group(1)
+            return leg_match.group(1).upper()
         
         # Try XML content - multiple possible locations
         xml_patterns = [
@@ -104,10 +104,10 @@ class LegislatureHandlerMixin:
                 if leg_text.upper() in self.ROMAN_TO_NUMBER:
                     return leg_text.upper()
         
-        # Final fallback - extract from directory structure
-        path_match = re.search(r'/(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)/', file_path)
+        # Final fallback - extract from directory structure (case-insensitive)
+        path_match = re.search(r'[/\\\\](XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)[/\\\\]', file_path, re.IGNORECASE)
         if path_match:
-            return path_match.group(1)
+            return path_match.group(1).upper()
         
         logger.warning(f"Could not extract legislatura from {file_path}, defaulting to XVII")
         return "XVII"  # Current legislature as fallback

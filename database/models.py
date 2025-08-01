@@ -929,7 +929,7 @@ class OrganMeeting(Base):
     sub_committee_id = Column(Integer, ForeignKey('sub_committees.id'))
     
     # Meeting data
-    reu_tar_sigla = Column(String(20))
+    reu_tar_sigla = Column(String(50))  # Increased from 20 to handle longer meeting type descriptions
     reu_local = Column(String(200))
     reu_data = Column(Date)
     reu_hora = Column(String(10))
@@ -2493,6 +2493,7 @@ class IniciativaEvento(Base):
     recursos_deputados = relationship("IniciativaEventoRecursoDeputado", back_populates="evento", cascade="all, delete-orphan")
     iniciativas_conjuntas = relationship("IniciativaConjunta", back_populates="evento", cascade="all, delete-orphan")
     intervencoes_debates = relationship("IniciativaIntervencaoDebate", back_populates="evento", cascade="all, delete-orphan")
+    anexos_fase = relationship("IniciativaEventoAnexo", back_populates="evento", cascade="all, delete-orphan")
 
 class IniciativaEventoPublicacao(Base):
     __tablename__ = 'iniciativas_eventos_publicacoes'
@@ -2732,6 +2733,22 @@ class IniciativaEventoRecursoDeputado(Base):
     
     # Relationships
     evento = relationship("IniciativaEvento", back_populates="recursos_deputados")
+
+class IniciativaEventoAnexo(Base):
+    """Phase attachments for initiative events (AnexosFase) - IX Legislature feature"""
+    __tablename__ = 'iniciativas_eventos_anexos'
+    
+    id = Column(Integer, primary_key=True)
+    evento_id = Column(Integer, ForeignKey('iniciativas_eventos.id'), nullable=False)
+    
+    # Attachment fields from AnexosFase.pt_gov_ar_objectos_iniciativas_AnexosOut
+    anexo_id = Column(Integer)  # Internal attachment ID
+    anexo_nome = Column(Text)  # Attachment name/title
+    anexo_fich = Column(Text)  # File path/name
+    link = Column(Text)  # Link to attachment
+    
+    # Relationships
+    evento = relationship("IniciativaEvento", back_populates="anexos_fase")
 
 class IniciativaConjunta(Base):
     __tablename__ = 'iniciativas_conjuntas'
