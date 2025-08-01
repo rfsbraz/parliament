@@ -1162,7 +1162,7 @@ class InitiativasMapper(SchemaMapper):
                     self.session.add(membro_obj)
                 except Exception as e:
                     logger.warning(f"Failed to create government member record: {e}")
-                    continue
+                    return
     
     def _process_orador_video_links(self, orador: ET.Element, orador_obj: IniciativaIntervencaoOrador):
         """Process video links for speakers (linkVideo)"""
