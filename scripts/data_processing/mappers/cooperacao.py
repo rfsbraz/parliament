@@ -36,11 +36,28 @@ class CooperacaoMapper(SchemaMapper):
     
     def get_expected_fields(self) -> Set[str]:
         return {
-            'ArrayOfCooperacaoOut', 'CooperacaoOut', 'Id', 'Tipo', 'Nome', 
-            'Legislatura', 'Sessao', 'Data', 'Local', 'Programas', 'Atividades',
+            # Root elements
+            'ArrayOfCooperacaoOut',
+            'ArrayOfCooperacaoOut.CooperacaoOut',
+            
+            # Main cooperation fields
+            'ArrayOfCooperacaoOut.CooperacaoOut.Id',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Tipo',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Nome',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Legislatura',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Sessao',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Data',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Local',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades',
+            
             # Cooperation activities
-            'CooperacaoAtividade', 'TipoAtividade', 'DataInicio', 'DataFim', 
-            'Participantes', 'RelacoesExternasParticipantes'
+            'ArrayOfCooperacaoOut.CooperacaoOut.CooperacaoAtividade',
+            'ArrayOfCooperacaoOut.CooperacaoOut.CooperacaoAtividade.TipoAtividade',
+            'ArrayOfCooperacaoOut.CooperacaoOut.CooperacaoAtividade.DataInicio',
+            'ArrayOfCooperacaoOut.CooperacaoOut.CooperacaoAtividade.DataFim',
+            'ArrayOfCooperacaoOut.CooperacaoOut.CooperacaoAtividade.Participantes',
+            'ArrayOfCooperacaoOut.CooperacaoOut.CooperacaoAtividade.RelacoesExternasParticipantes'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:

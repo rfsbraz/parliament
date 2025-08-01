@@ -2386,6 +2386,7 @@ class IniciativaParlamentar(Base):
     ini_titulo = Column(Text)
     ini_texto_subst = Column(Text)
     ini_link_texto = Column(Text)
+    ini_obs = Column(Text)
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     updated_at = Column(DateTime, default=func.now, onupdate=func.now)
     
@@ -2396,6 +2397,8 @@ class IniciativaParlamentar(Base):
     autores_grupos = relationship("IniciativaAutorGrupoParlamentar", back_populates="iniciativa", cascade="all, delete-orphan")
     propostas_alteracao = relationship("IniciativaPropostaAlteracao", back_populates="iniciativa", cascade="all, delete-orphan")
     eventos = relationship("IniciativaEvento", back_populates="iniciativa", cascade="all, delete-orphan")
+    origens = relationship("IniciativaOrigem", back_populates="iniciativa", cascade="all, delete-orphan")
+    originadas = relationship("IniciativaOriginada", back_populates="iniciativa", cascade="all, delete-orphan")
 
 class IniciativaAutorOutro(Base):
     __tablename__ = 'iniciativas_autores_outros'
@@ -2482,6 +2485,7 @@ class IniciativaEvento(Base):
     votacoes = relationship("IniciativaEventoVotacao", back_populates="evento", cascade="all, delete-orphan")
     comissoes = relationship("IniciativaEventoComissao", back_populates="evento", cascade="all, delete-orphan")
     recursos_gp = relationship("IniciativaEventoRecursoGP", back_populates="evento", cascade="all, delete-orphan")
+    recursos_deputados = relationship("IniciativaEventoRecursoDeputado", back_populates="evento", cascade="all, delete-orphan")
     iniciativas_conjuntas = relationship("IniciativaConjunta", back_populates="evento", cascade="all, delete-orphan")
     intervencoes_debates = relationship("IniciativaIntervencaoDebate", back_populates="evento", cascade="all, delete-orphan")
 
@@ -2498,6 +2502,7 @@ class IniciativaEventoPublicacao(Base):
     pub_dt = Column(Date)
     pag = Column(Text)
     id_pag = Column(Integer)
+    id_int = Column(Integer)  # Internal ID field
     url_diario = Column(Text)
     
     # Relationships
@@ -2515,10 +2520,12 @@ class IniciativaEventoVotacao(Base):
     detalhe = Column(Text)
     unanime = Column(Text)
     data_votacao = Column(Date)
+    descricao = Column(Text)  # Voting description
     
     # Relationships
     evento = relationship("IniciativaEvento", back_populates="votacoes")
     ausencias = relationship("IniciativaVotacaoAusencia", back_populates="votacao", cascade="all, delete-orphan")
+    publicacoes = relationship("IniciativaVotacaoPublicacao", back_populates="votacao", cascade="all, delete-orphan")
 
 class IniciativaVotacaoAusencia(Base):
     __tablename__ = 'iniciativas_votacoes_ausencias'
@@ -2529,6 +2536,27 @@ class IniciativaVotacaoAusencia(Base):
     
     # Relationships
     votacao = relationship("IniciativaEventoVotacao", back_populates="ausencias")
+
+class IniciativaVotacaoPublicacao(Base):
+    """Publications associated with voting records in legislative initiatives"""
+    __tablename__ = 'iniciativas_votacoes_publicacoes'
+    
+    id = Column(Integer, primary_key=True)
+    votacao_id = Column(Integer, ForeignKey('iniciativas_eventos_votacoes.id'), nullable=False)
+    
+    # Publication fields from publicacao.pt_gov_ar_objectos_PublicacoesOut
+    pub_nr = Column(Integer)  # Publication number
+    pub_tipo = Column(Text)  # Publication type (e.g., "DAR I série")
+    pub_tp = Column(Text)  # Publication type code (e.g., "D")
+    pub_leg = Column(Text)  # Legislature (e.g., "II")
+    pub_sl = Column(Integer)  # Session number
+    pub_dt = Column(Date)  # Publication date
+    pag = Column(Text)  # Page numbers (can be range like "73-74")
+    id_pag = Column(Integer)  # Internal page ID
+    url_diario = Column(Text)  # URL to parliamentary diary
+    
+    # Relationships
+    votacao = relationship("IniciativaEventoVotacao", back_populates="publicacoes")
 
 class IniciativaEventoComissao(Base):
     __tablename__ = 'iniciativas_eventos_comissoes'
@@ -2547,13 +2575,15 @@ class IniciativaEventoComissao(Base):
     # Relationships
     evento = relationship("IniciativaEvento", back_populates="comissoes")
     publicacoes = relationship("IniciativaComissaoPublicacao", back_populates="comissao", cascade="all, delete-orphan")
+    relatores = relationship("IniciativaComissaoRelator", back_populates="comissao", cascade="all, delete-orphan")
+    remessas = relationship("IniciativaComissaoRemessa", back_populates="comissao", cascade="all, delete-orphan")
 
 class IniciativaComissaoPublicacao(Base):
     __tablename__ = 'iniciativas_comissoes_publicacoes'
     
     id = Column(Integer, primary_key=True)
     comissao_id = Column(Integer, ForeignKey('iniciativas_eventos_comissoes.id'), nullable=False)
-    tipo = Column(Text)
+    tipo = Column(Text)  # Publication type (e.g., "Publicacao", "PublicacaoRelatorio")
     pub_nr = Column(Integer)
     pub_tipo = Column(Text)
     pub_tp = Column(Text)
@@ -2562,10 +2592,120 @@ class IniciativaComissaoPublicacao(Base):
     pub_dt = Column(Date)
     pag = Column(Text)
     id_pag = Column(Integer)
+    id_int = Column(Integer)  # Internal ID field
     url_diario = Column(Text)
+    obs = Column(Text)  # Observatory field found in PublicacaoRelatorio
     
     # Relationships
     comissao = relationship("IniciativaEventoComissao", back_populates="publicacoes")
+
+class IniciativaComissaoRelator(Base):
+    """Committee reporters for legislative initiatives - tracks who reports on initiatives in committees"""
+    __tablename__ = 'iniciativas_comissoes_relatores'
+    
+    id = Column(Integer, primary_key=True)
+    comissao_id = Column(Integer, ForeignKey('iniciativas_eventos_comissoes.id'), nullable=False)
+    
+    # Reporter fields from Relatores.pt_gov_ar_objectos_RelatoresOut
+    relator_id = Column(Integer)  # Internal reporter ID
+    nome = Column(Text)  # Reporter name
+    gp = Column(Text)  # Parliamentary group (e.g., "PS", "PSD")
+    data_nomeacao = Column(Date)  # Appointment date
+    data_cessacao = Column(Date)  # End date of appointment
+    
+    # Relationships
+    comissao = relationship("IniciativaEventoComissao", back_populates="relatores")
+
+class IniciativaComissaoRemessa(Base):
+    """Committee dispatches/referrals for legislative initiatives - tracks official communications"""
+    __tablename__ = 'iniciativas_comissoes_remessas'
+    
+    id = Column(Integer, primary_key=True)
+    comissao_id = Column(Integer, ForeignKey('iniciativas_eventos_comissoes.id'), nullable=False)
+    
+    # Dispatch fields from Remessas.pt_gov_ar_objectos_RemessasOut
+    numero_oficio = Column(Text)  # Official document number
+    data_remessa = Column(Date)  # Dispatch date
+    destinatario = Column(Text)  # Recipient of the dispatch
+    
+    # Relationships
+    comissao = relationship("IniciativaEventoComissao", back_populates="remessas")
+
+
+class IniciativaIntervencaoOrador(Base):
+    """Speakers data for legislative initiative interventions - detailed session speaker info"""
+    __tablename__ = 'iniciativas_intervencoes_oradores'
+    
+    id = Column(Integer, primary_key=True)
+    intervencao_id = Column(Integer, ForeignKey('iniciativas_intervencoes_debates.id'), nullable=False)
+    
+    # Speaker timing and session details from pt_gov_ar_objectos_peticoes_OradoresOut
+    hora_inicio = Column(Text)  # Starting time
+    hora_termo = Column(Text)  # Ending time  
+    fase_sessao = Column(Text)  # Session phase
+    sumario = Column(Text)  # Summary of intervention
+    
+    # Relationships
+    intervencao = relationship("IniciativaIntervencaoDebate", back_populates="oradores")
+    publicacoes = relationship("IniciativaIntervencaoOradorPublicacao", back_populates="orador", cascade="all, delete-orphan")
+    convidados = relationship("IniciativaIntervencaoOradorConvidado", back_populates="orador", cascade="all, delete-orphan")
+    membros_governo = relationship("IniciativaIntervencaoOradorMembroGoverno", back_populates="orador", cascade="all, delete-orphan")
+
+
+class IniciativaIntervencaoOradorPublicacao(Base):
+    """Publications associated with speaker interventions in legislative initiatives"""
+    __tablename__ = 'iniciativas_intervencoes_oradores_publicacoes'
+    
+    id = Column(Integer, primary_key=True)
+    orador_id = Column(Integer, ForeignKey('iniciativas_intervencoes_oradores.id'), nullable=False)
+    
+    # Publication fields from nested publicacao.pt_gov_ar_objectos_PublicacoesOut
+    pub_nr = Column(Integer)  # Publication number
+    pub_tipo = Column(Text)  # Publication type
+    pub_tp = Column(Text)  # Publication subtype
+    pub_leg = Column(Text)  # Legislature
+    pub_sl = Column(Integer)  # Session or series number  
+    pub_dt = Column(Date)  # Publication date
+    pag = Column(Text)  # Page numbers (comma-separated)
+    id_pag = Column(Integer)  # Page ID
+    id_int = Column(Integer)  # Internal ID field
+    url_diario = Column(Text)  # Parliamentary diary URL
+    
+    # Relationships
+    orador = relationship("IniciativaIntervencaoOrador", back_populates="publicacoes")
+
+
+class IniciativaIntervencaoOradorConvidado(Base):
+    """Guest speakers in legislative initiative interventions"""
+    __tablename__ = 'iniciativas_intervencoes_oradores_convidados'
+    
+    id = Column(Integer, primary_key=True)
+    orador_id = Column(Integer, ForeignKey('iniciativas_intervencoes_oradores.id'), nullable=False)
+    
+    # Guest details from convidados structure
+    nome = Column(Text)  # Guest name
+    cargo = Column(Text)  # Position/role
+    entidade = Column(Text)  # Organization/entity
+    
+    # Relationships
+    orador = relationship("IniciativaIntervencaoOrador", back_populates="convidados")
+
+
+class IniciativaIntervencaoOradorMembroGoverno(Base):
+    """Government members speaking in legislative initiative interventions"""
+    __tablename__ = 'iniciativas_intervencoes_oradores_membros_governo'
+    
+    id = Column(Integer, primary_key=True)
+    orador_id = Column(Integer, ForeignKey('iniciativas_intervencoes_oradores.id'), nullable=False)
+    
+    # Government member details from membrosGoverno structure
+    nome = Column(Text)  # Member name
+    cargo = Column(Text)  # Government position
+    governo = Column(Text)  # Government/Ministry
+    
+    # Relationships  
+    orador = relationship("IniciativaIntervencaoOrador", back_populates="membros_governo")
+
 
 class IniciativaEventoRecursoGP(Base):
     __tablename__ = 'iniciativas_eventos_recursos_gp'
@@ -2576,6 +2716,17 @@ class IniciativaEventoRecursoGP(Base):
     
     # Relationships
     evento = relationship("IniciativaEvento", back_populates="recursos_gp")
+
+
+class IniciativaEventoRecursoDeputado(Base):
+    __tablename__ = 'iniciativas_eventos_recursos_deputados'
+    
+    id = Column(Integer, primary_key=True)
+    evento_id = Column(Integer, ForeignKey('iniciativas_eventos.id'), nullable=False)
+    deputado_info = Column(Text)  # String information about deputy
+    
+    # Relationships
+    evento = relationship("IniciativaEvento", back_populates="recursos_deputados")
 
 class IniciativaConjunta(Base):
     __tablename__ = 'iniciativas_conjuntas'
@@ -2602,6 +2753,78 @@ class IniciativaIntervencaoDebate(Base):
     
     # Relationships
     evento = relationship("IniciativaEvento", back_populates="intervencoes_debates")
+    oradores = relationship("IniciativaIntervencaoOrador", back_populates="intervencao", cascade="all, delete-orphan")
+
+
+class IniciativaAnexo(Base):
+    """Attachments/Annexes for legislative initiatives"""
+    __tablename__ = 'iniciativas_anexos'
+    
+    id = Column(Integer, primary_key=True)
+    iniciativa_id = Column(Integer, ForeignKey('iniciativas_detalhadas.id'), nullable=False)
+    
+    # Attachment fields from IniAnexos.pt_gov_ar_objectos_iniciativas_AnexosOut
+    anexo_id = Column(Integer)  # Internal attachment ID
+    anexo_nome = Column(Text)  # Attachment name
+    anexo_fich = Column(Text)  # File path/name
+    link = Column(Text)  # Link to attachment
+    
+    # Relationships
+    iniciativa = relationship("IniciativaParlamentar", backref="anexos")
+
+
+class IniciativaOradorVideoLink(Base):
+    """Video links for speaker interventions in legislative initiatives"""
+    __tablename__ = 'iniciativas_oradores_video_links'
+    
+    id = Column(Integer, primary_key=True)
+    orador_id = Column(Integer, ForeignKey('iniciativas_intervencoes_oradores.id'), nullable=False)
+    
+    # Video link fields from linkVideo.pt_gov_ar_objectos_peticoes_LinksVideos
+    link_url = Column(Text)  # Video URL
+    descricao = Column(Text)  # Video description
+    
+    # Relationships
+    orador = relationship("IniciativaIntervencaoOrador", backref="video_links")
+
+
+class IniciativaComissaoDistribuicaoSubcomissao(Base):
+    """Subcommission distribution data for legislative initiative committees"""
+    __tablename__ = 'iniciativas_comissoes_distribuicao_subcomissao'
+    
+    id = Column(Integer, primary_key=True)
+    comissao_id = Column(Integer, ForeignKey('iniciativas_eventos_comissoes.id'), nullable=False)
+    
+    # Subcommission distribution fields from DistribuicaoSubcomissao.pt_gov_ar_objectos_ComissoesOut
+    subcomissao_id = Column(Integer)  # Subcommission ID
+    sigla = Column(Text)  # Subcommission abbreviation
+    nome = Column(Text)  # Subcommission name
+    data_distribuicao = Column(Date)  # Distribution date
+    
+    # Relationships
+    comissao = relationship("IniciativaEventoComissao", backref="distribuicoes_subcomissao")
+
+
+class IniciativaEventoComissaoVotacao(Base):
+    """Committee voting data for legislative initiative events"""
+    __tablename__ = 'iniciativas_eventos_comissoes_votacoes'
+    
+    id = Column(Integer, primary_key=True)
+    comissao_id = Column(Integer, ForeignKey('iniciativas_eventos_comissoes.id'), nullable=False)
+    
+    # Committee voting fields from Comissao.Votacao.pt_gov_ar_objectos_VotacaoOut
+    id_votacao = Column(Integer)  # Voting ID
+    resultado = Column(Text)  # Voting result
+    reuniao = Column(Integer)  # Meeting number
+    tipo_reuniao = Column(Text)  # Meeting type
+    detalhe = Column(Text)  # Voting details
+    unanime = Column(Text)  # Unanimous vote indicator
+    data_votacao = Column(Date)  # Voting date
+    ausencias = Column(Text)  # Absences data
+    descricao = Column(Text)  # Voting description
+    
+    # Relationships
+    comissao = relationship("IniciativaEventoComissao", backref="votacoes")
 
 
 # Petition models
@@ -3594,3 +3817,53 @@ class RegistoInteressesV2(Base):
     
     # Relationships
     deputado = relationship("Deputado", back_populates="registo_interesses_v2")
+
+
+class IniciativaOrigem(Base):
+    """Initiative that originated from another initiative"""
+    __tablename__ = 'iniciativas_origem'
+    
+    id = Column(Integer, primary_key=True)
+    iniciativa_id = Column(Integer, ForeignKey('iniciativas_detalhadas.id'), nullable=False)
+    
+    # Fields from pt_gov_ar_objectos_iniciativas_DadosGeraisOut
+    origem_id = Column(Integer)  # id
+    leg = Column(String(20))
+    numero = Column(String(50))
+    sel = Column(String(10))
+    tipo = Column(String(100))
+    titulo = Column(Text)
+    desc_tipo = Column(String(200))  # descTipo
+    legislatura = Column(String(20))
+    sessao = Column(String(50))
+    assunto = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    iniciativa = relationship("IniciativaParlamentar", back_populates="origens")
+
+
+class IniciativaOriginada(Base):
+    """Initiative that was originated from this initiative"""
+    __tablename__ = 'iniciativas_originadas'
+    
+    id = Column(Integer, primary_key=True)
+    iniciativa_id = Column(Integer, ForeignKey('iniciativas_detalhadas.id'), nullable=False)
+    
+    # Fields from pt_gov_ar_objectos_iniciativas_DadosGeraisOut
+    originada_id = Column(Integer)  # id
+    leg = Column(String(20))
+    numero = Column(String(50))
+    sel = Column(String(10))
+    tipo = Column(String(100))
+    titulo = Column(Text)
+    desc_tipo = Column(String(200))  # descTipo
+    legislatura = Column(String(20))
+    sessao = Column(String(50))
+    assunto = Column(Text)
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    iniciativa = relationship("IniciativaParlamentar", back_populates="originadas")

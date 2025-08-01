@@ -39,91 +39,78 @@ class IntervencoesMapper(SchemaMapper):
     def get_expected_fields(self) -> Set[str]:
         return {
             # Root elements
-            'ArrayOfDadosPesquisaIntervencoesOut', 'DadosPesquisaIntervencoesOut',
+            'ArrayOfDadosPesquisaIntervencoesOut',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut',
             
             # Main intervention fields
-            'Id', 'DataReuniaoPlenaria', 'TipoIntervencao', 'Resumo', 'Sumario',
-            'Legislatura', 'Sessao', 'Qualidade', 'FaseSessao', 'FaseDebate',
-            'IdDebate', 'Debate', 'ActividadeId',
-            
-            # Deputy fields (both old and new structures)
-            'Deputados', 'DadosDeputado', 'DepId', 'DepNome', 'idCadastro', 'nome', 'GP',
-            
-            # Government members
-            'MembrosGoverno', 'governo', 'cargo',
-            
-            # Guests
-            'Convidados',
-            
-            # Publication fields
-            'Publicacao', 'pt_gov_ar_objectos_PublicacoesOut', 'pubdt', 'pubLeg', 
-            'pubNr', 'pubSL', 'pubTipo', 'pubTp', 'idInt', 'URLDiario', 'pag', 'string',
-            
-            # Related activities
-            'ActividadesRelacionadas', 'id', 'tipo',
-            
-            # Initiatives
-            'Iniciativas', 'pt_gov_ar_objectos_intervencoes_IniciativasOut', 'fase',
-            
-            # Audiovisual (old and new)
-            'VideoAudio', 'VideoUrl', 'DadosAudiovisual', 
-            'pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut',
-            'duracao', 'assunto', 'url', 'tipoIntervencao',
-            
-            # Additional field paths from all legislatura files
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno.nome',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut.fase',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Convidados.cargo',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.IdDebate',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno.governo',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Id',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DataReuniaoPlenaria',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Sumario',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.TipoIntervencao',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadesRelacionadas.id',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados.GP',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadeId',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut.tipo',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Resumo',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Sumario',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Legislatura',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Convidados',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Sessao',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Qualidade',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados.idCadastro',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.FaseSessao',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Convidados.nome',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Resumo',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadesRelacionadas.tipo',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados.nome',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idInt',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadesRelacionadas',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Debate',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno.cargo',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut.id',
-            
-            # Additional fields from other legislaturas
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.FaseDebate',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.IdDebate',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Debate',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadeId',
+            
+            # Deputy fields
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados.idCadastro',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados.nome',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados.GP',
+            
+            # Government members
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno.nome',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno.cargo',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno.governo',
+            
+            # Guests
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Convidados',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Convidados.nome',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Convidados.cargo',
+            
+            # Publication fields
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idInt',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            
+            # Related activities
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadesRelacionadas',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadesRelacionadas.id',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadesRelacionadas.tipo',
+            
+            # Initiatives
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut.id',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut.tipo',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut.fase',
+            
+            # Audiovisual data
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.tipoIntervencao',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.duracao',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.assunto',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.url'
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.url',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.tipoIntervencao',
+            
+            # Legacy audiovisual structure (for backward compatibility)
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.VideoAudio',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.VideoAudio.VideoUrl'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:

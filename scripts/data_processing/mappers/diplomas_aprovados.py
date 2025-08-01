@@ -32,15 +32,51 @@ class DiplomasAprovadosMapper(SchemaMapper):
     
     def get_expected_fields(self) -> Set[str]:
         return {
-            'ArrayOfDiplomaOut', 'DiplomaOut', 'Id', 'Numero', 'Titulo', 'Tipo', 
-            'Legislatura', 'Sessao', 'AnoCivil', 'LinkTexto', 'Numero2', 'Observacoes',
-            'Tp', 'Actividades', 'string',
+            # Root elements
+            'ArrayOfDiplomaOut',
+            'ArrayOfDiplomaOut.DiplomaOut',
+            
+            # Main diploma fields
+            'ArrayOfDiplomaOut.DiplomaOut.Id',
+            'ArrayOfDiplomaOut.DiplomaOut.Numero',
+            'ArrayOfDiplomaOut.DiplomaOut.Titulo',
+            'ArrayOfDiplomaOut.DiplomaOut.Tipo',
+            'ArrayOfDiplomaOut.DiplomaOut.Legislatura',
+            'ArrayOfDiplomaOut.DiplomaOut.Sessao',
+            'ArrayOfDiplomaOut.DiplomaOut.AnoCivil',
+            'ArrayOfDiplomaOut.DiplomaOut.LinkTexto',
+            'ArrayOfDiplomaOut.DiplomaOut.Numero2',
+            'ArrayOfDiplomaOut.DiplomaOut.Observacoes',
+            'ArrayOfDiplomaOut.DiplomaOut.Tp',
+            
+            # Activities
+            'ArrayOfDiplomaOut.DiplomaOut.Actividades',
+            'ArrayOfDiplomaOut.DiplomaOut.Actividades.string',
+            
             # Publication data
-            'Publicacao', 'pt_gov_ar_objectos_PublicacoesOut', 'pubNr', 'pubTipo', 
-            'pubTp', 'pubLeg', 'pubSL', 'pubdt', 'pag', 'idPag', 'URLDiario', 
-            'supl', 'obs', 'pagFinalDiarioSupl',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.supl',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl',
+            
             # Initiative data
-            'Iniciativas', 'DiplomaIniciativaOut', 'IniNr', 'IniTipo', 'IniLinkTexto', 'IniId'
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas',
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut',
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniNr',
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniTipo',
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniLinkTexto',
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniId'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:

@@ -35,20 +35,60 @@ class PerguntasRequerimentosMapper(SchemaMapper):
     
     def get_expected_fields(self) -> Set[str]:
         return {
-            'ArrayOfRequerimentoOut', 'RequerimentoOut', 'Id', 'Tipo', 'Nr', 'ReqTipo', 
-            'Legislatura', 'Sessao', 'Assunto', 'DtEntrada', 'DataEnvio', 'Observacoes',
-            'Publicacao', 'Ficheiro', 'Destinatarios', 'Autores',
-            # Publication related
-            'pt_gov_ar_objectos_PublicacoesOut', 'pubNr', 'pubTipo', 'pubTp', 
-            'pubLeg', 'pubSL', 'pubdt', 'idPag', 'URLDiario', 'pag', 'supl', 'obs',
-            'pagFinalDiarioSupl',
-            # Recipients and responses
-            'pt_gov_ar_objectos_requerimentos_DestinatariosOut', 'nomeEntidade', 'dataEnvio',
-            'respostas', 'pt_gov_ar_objectos_requerimentos_RespostasOut', 'entidade', 
-            'dataResposta', 'ficheiro', 'docRemetida',
-            # Authors
-            'pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut', 'idCadastro', 'nome', 'GP',
-            'string'
+            # Root elements
+            'ArrayOfRequerimentoOut',
+            'ArrayOfRequerimentoOut.RequerimentoOut',
+            
+            # Main request fields
+            'ArrayOfRequerimentoOut.RequerimentoOut.Id',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Tipo',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Nr',
+            'ArrayOfRequerimentoOut.RequerimentoOut.ReqTipo',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Legislatura',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Sessao',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Assunto',
+            'ArrayOfRequerimentoOut.RequerimentoOut.DtEntrada',
+            'ArrayOfRequerimentoOut.RequerimentoOut.DataEnvio',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Observacoes',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Ficheiro',
+            
+            # Publication section
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.supl',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl',
+            
+            # Recipients section
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.nomeEntidade',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.dataEnvio',
+            
+            # Responses section
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas.pt_gov_ar_objectos_requerimentos_RespostasOut',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas.pt_gov_ar_objectos_requerimentos_RespostasOut.entidade',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas.pt_gov_ar_objectos_requerimentos_RespostasOut.dataResposta',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas.pt_gov_ar_objectos_requerimentos_RespostasOut.ficheiro',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas.pt_gov_ar_objectos_requerimentos_RespostasOut.docRemetida',
+            
+            # Authors section
+            'ArrayOfRequerimentoOut.RequerimentoOut.Autores',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Autores.pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Autores.pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut.idCadastro',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Autores.pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut.nome',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Autores.pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut.GP'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:

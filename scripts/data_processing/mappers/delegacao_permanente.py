@@ -35,10 +35,26 @@ class DelegacaoPermanenteMapper(SchemaMapper):
     
     def get_expected_fields(self) -> Set[str]:
         return {
-            'ArrayOfDelegacaoPermanenteOut', 'DelegacaoPermanenteOut', 'Id', 'Nome', 
-            'Legislatura', 'Sessao', 'DataEleicao', 'Composicao', 'Comissoes', 'Reunioes',
+            # Root elements
+            'ArrayOfDelegacaoPermanenteOut',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut',
+            
+            # Main delegation fields
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Id',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Nome',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Legislatura',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Sessao',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.DataEleicao',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Composicao',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Comissoes',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Reunioes',
+            
             # Members
-            'DelegacaoPermanenteMembroOut', 'Gp', 'Cargo', 'DataInicio', 'DataFim'
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.DelegacaoPermanenteMembroOut',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.DelegacaoPermanenteMembroOut.Gp',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.DelegacaoPermanenteMembroOut.Cargo',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.DelegacaoPermanenteMembroOut.DataInicio',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.DelegacaoPermanenteMembroOut.DataFim'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:

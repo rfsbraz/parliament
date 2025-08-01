@@ -34,9 +34,25 @@ class DelegacaoEventualMapper(SchemaMapper):
     
     def get_expected_fields(self) -> Set[str]:
         return {
-            'ArrayOfDelegacaoEventualReuniao', 'DelegacaoEventualReuniao', 
-            'Id', 'Nome', 'Local', 'Legislatura', 'Sessao', 'DataInicio', 'DataFim',
-            'Participantes', 'RelacoesExternasParticipantes', 'Tipo', 'Gp', 'Leg'
+            # Root elements
+            'ArrayOfDelegacaoEventualReuniao',
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao',
+            
+            # Main delegation fields
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Id',
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Nome',
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Local',
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Legislatura',
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Sessao',
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.DataInicio',
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.DataFim',
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Tipo',
+            
+            # Participants
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Participantes',
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Participantes.RelacoesExternasParticipantes',
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Participantes.RelacoesExternasParticipantes.Gp',
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Participantes.RelacoesExternasParticipantes.Leg'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:

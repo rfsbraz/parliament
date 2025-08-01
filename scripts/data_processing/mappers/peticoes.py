@@ -45,36 +45,123 @@ class PeticoesMapper(SchemaMapper):
         super().__init__(session)
     
     def get_expected_fields(self) -> Set[str]:
-        # Complete field list from XML analysis
+        # Complete field list with full XML hierarchy paths to avoid field name conflicts
         return {
             # Root elements
-            'ArrayOfPeticaoOut', 'PeticaoOut',
-            # Core petition fields
-            'PetId', 'PetNr', 'PetLeg', 'PetSel', 'PetAssunto', 'PetSituacao', 
-            'PetNrAssinaturas', 'PetDataEntrada', 'PetActividadeId', 'PetAutor',
-            'DataDebate',
-            # Publications
-            'PublicacaoPeticao', 'PublicacaoDebate', 'pt_gov_ar_objectos_PublicacoesOut', 
-            'pubNr', 'pubTipo', 'pubTp', 'pubLeg', 'pubSL', 'pubdt', 'pag', 'string',
-            'idPag', 'URLDiario', 'idInt',
-            # Committee data
-            'DadosComissao', 'ComissoesPetOut', 'Legislatura', 'Numero', 'IdComissao', 
-            'Nome', 'Admissibilidade', 'DataAdmissibilidade', 'DataEnvioPAR', 'DataArquivo', 
-            'Situacao', 'DataReaberta', 'DataBaixaComissao', 'Transitada',
-            # Reporters
-            'Relatores', 'pt_gov_ar_objectos_RelatoresOut', 'nome', 'gp', 
-            'dataNomeacao', 'dataCessacao', 'id',
-            # Final reports
-            'DadosRelatorioFinal', 'pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut', 
-            'data', 'votacao', 'RelatorioFinal',
-            # Documents
-            'Documentos', 'DocumentosPeticao', 'PeticaoDocsOut', 'DocsRelatorioFinal', 
-            'PeticaoDocsRelatorioFinal', 'TituloDocumento', 'DataDocumento', 
-            'TipoDocumento', 'URL',
-            # Interventions
-            'Intervencoes', 'PeticaoIntervencoesOut', 'DataReuniaoPlenaria', 'Oradores', 
-            'PeticaoOradoresOut', 'FaseSessao', 'Sumario', 'Publicacao', 'Convidados', 
-            'MembrosGoverno'
+            'ArrayOfPeticaoOut',
+            'ArrayOfPeticaoOut.PeticaoOut',
+            
+            # Core petition fields - with full hierarchy
+            'ArrayOfPeticaoOut.PeticaoOut.PetId',
+            'ArrayOfPeticaoOut.PeticaoOut.PetNr', 
+            'ArrayOfPeticaoOut.PeticaoOut.PetLeg',
+            'ArrayOfPeticaoOut.PeticaoOut.PetSel',
+            'ArrayOfPeticaoOut.PeticaoOut.PetAssunto',
+            'ArrayOfPeticaoOut.PeticaoOut.PetSituacao',
+            'ArrayOfPeticaoOut.PeticaoOut.PetNrAssinaturas',
+            'ArrayOfPeticaoOut.PeticaoOut.PetDataEntrada',
+            'ArrayOfPeticaoOut.PeticaoOut.PetActividadeId',
+            'ArrayOfPeticaoOut.PeticaoOut.PetAutor',
+            'ArrayOfPeticaoOut.PeticaoOut.DataDebate',
+            
+            # Publications - with full hierarchy
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            
+            # Committee data - with full hierarchy
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Legislatura',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Numero',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.IdComissao',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Nome',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Admissibilidade',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DataAdmissibilidade',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DataEnvioPAR',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DataArquivo',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Situacao',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DataReaberta',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DataBaixaComissao',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Transitada',
+            
+            # Reporters - with full hierarchy
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Relatores',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Relatores.pt_gov_ar_objectos_RelatoresOut',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Relatores.pt_gov_ar_objectos_RelatoresOut.id',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Relatores.pt_gov_ar_objectos_RelatoresOut.nome',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Relatores.pt_gov_ar_objectos_RelatoresOut.gp',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Relatores.pt_gov_ar_objectos_RelatoresOut.dataNomeacao',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Relatores.pt_gov_ar_objectos_RelatoresOut.dataCessacao',
+            
+            # Final reports - with full hierarchy
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.data',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.votacao',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.RelatorioFinal',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.RelatorioFinal.string',
+            
+            # Documents - with full hierarchy
+            'ArrayOfPeticaoOut.PeticaoOut.Documentos',
+            'ArrayOfPeticaoOut.PeticaoOut.Documentos.PeticaoDocsOut',
+            'ArrayOfPeticaoOut.PeticaoOut.Documentos.PeticaoDocsOut.TituloDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.Documentos.PeticaoDocsOut.DataDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.Documentos.PeticaoDocsOut.TipoDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.Documentos.PeticaoDocsOut.URL',
+            
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRelatorioFinal',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRelatorioFinal.PeticaoDocsRelatorioFinal',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRelatorioFinal.PeticaoDocsRelatorioFinal.TituloDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRelatorioFinal.PeticaoDocsRelatorioFinal.DataDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRelatorioFinal.PeticaoDocsRelatorioFinal.TipoDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRelatorioFinal.PeticaoDocsRelatorioFinal.URL',
+            
+            # Interventions - with full hierarchy
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.DataReuniaoPlenaria',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.FaseSessao',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Sumario',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Convidados',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.MembrosGoverno',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idInt',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:

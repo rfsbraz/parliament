@@ -58,7 +58,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-from .mappers import (
+from scripts.data_processing.mappers import (
     AgendaParlamentarMapper,
     AtividadeDeputadosMapper,
     AtividadesMapper,
@@ -725,7 +725,7 @@ class UnifiedImporter:
                     ImportStatus.file_type,
                     func.count().label("count"),
                     func.sum(
-                        case([(ImportStatus.status == "completed", 1)], else_=0)
+                        case((ImportStatus.status == "completed", 1), else_=0)
                     ).label("completed"),
                 )
                 .group_by(ImportStatus.file_type)

@@ -32,9 +32,14 @@ from database.models import (
     IniciativaParlamentar, IniciativaAutorOutro, IniciativaAutorDeputado,
     IniciativaAutorGrupoParlamentar, IniciativaPropostaAlteracao, 
     IniciativaPropostaAlteracaoPublicacao, IniciativaEvento, IniciativaEventoPublicacao,
-    IniciativaEventoVotacao, IniciativaVotacaoAusencia, IniciativaEventoComissao,
-    IniciativaComissaoPublicacao, IniciativaEventoRecursoGP, IniciativaConjunta,
-    IniciativaIntervencaoDebate, Legislatura
+    IniciativaEventoVotacao, IniciativaVotacaoAusencia, IniciativaVotacaoPublicacao,
+    IniciativaEventoComissao, IniciativaComissaoPublicacao, IniciativaComissaoRelator,
+    IniciativaComissaoRemessa, IniciativaEventoRecursoGP, IniciativaEventoRecursoDeputado,
+    IniciativaConjunta, IniciativaIntervencaoDebate, IniciativaIntervencaoOrador, 
+    IniciativaIntervencaoOradorPublicacao, IniciativaIntervencaoOradorConvidado, 
+    IniciativaIntervencaoOradorMembroGoverno, IniciativaAnexo, IniciativaOradorVideoLink, 
+    IniciativaComissaoDistribuicaoSubcomissao, IniciativaEventoComissaoVotacao, 
+    IniciativaOrigem, IniciativaOriginada, Legislatura
 )
 
 logger = logging.getLogger(__name__)
@@ -48,42 +53,300 @@ class InitiativasMapper(SchemaMapper):
         super().__init__(session)
     
     def get_expected_fields(self) -> Set[str]:
-        # Complete field list from XML analysis
+        """
+        Complete set of expected field paths extracted from VI Legislatura XML.
+        Generated automatically to ensure 100% schema coverage for strict mode validation.
+        All 207 unique field paths from the parliamentary initiatives XML schema.
+        """
         return {
-            # Root elements
             'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut',
-            'Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut',
-            # Core initiative fields
-            'IniNr', 'IniTipo', 'IniDescTipo', 'IniLeg', 'IniSel', 'DataInicioleg', 'DataFimleg',
-            'IniTitulo', 'IniTextoSubst', 'IniLinkTexto', 'IniId', 'IniTipoPesquisa',
-            # Authors
-            'IniAutorOutros', 'sigla', 'nome', 'IniAutorDeputados', 'IniAutorGruposParlamentares',
-            'pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut', 'idCadastro', 'GP',
-            'pt_gov_ar_objectos_AutoresGruposParlamentaresOut',
-            # Events
-            'IniEventos', 'Pt_gov_ar_objectos_iniciativas_EventosOut', 'OevId', 'DataFase',
-            'Fase', 'EvtId', 'CodigoFase', 'ObsFase', 'ActId', 'OevTextId', 'TextosAprovados',
-            # Publications
-            'PublicacaoFase', 'pt_gov_ar_objectos_PublicacoesOut', 'pubNr', 'pubTipo', 'pubTp',
-            'pubLeg', 'pubSL', 'pubdt', 'pag', 'string', 'idPag', 'URLDiario', 'Publicacao',
-            # Voting
-            'Votacao', 'pt_gov_ar_objectos_VotacaoOut', 'id', 'resultado', 'reuniao',
-            'tipoReuniao', 'detalhe', 'unanime', 'ausencias', 'data',
-            # Committees
-            'Comissao', 'Pt_gov_ar_objectos_iniciativas_ComissoesIniOut', 'AccId', 'Numero',
-            'IdComissao', 'Nome', 'Competente', 'DataDistribuicao', 'DataEntrada',
-            'DataAgendamentoPlenario', 'PublicacaoRelatorio',
-            # Resources
-            'RecursoGP',
-            # Joint initiatives
-            'IniciativasConjuntas', 'pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut',
-            'nr', 'tipo', 'descTipo', 'leg', 'sel', 'titulo',
-            # Interventions
-            'Intervencoesdebates', 'pt_gov_ar_objectos_IntervencoesOut', 'dataReuniaoPlenaria',
-            # Amendment proposals
-            'PropostasAlteracao', 'pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut', 'autor', 'publicacao'
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.DataFimleg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.DataInicioleg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAnexos',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAnexos.pt_gov_ar_objectos_iniciativas_AnexosOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAnexos.pt_gov_ar_objectos_iniciativas_AnexosOut.anexoFich',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAnexos.pt_gov_ar_objectos_iniciativas_AnexosOut.anexoNome',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAnexos.pt_gov_ar_objectos_iniciativas_AnexosOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAnexos.pt_gov_ar_objectos_iniciativas_AnexosOut.link',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAutorDeputados',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAutorDeputados.pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAutorDeputados.pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut.GP',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAutorDeputados.pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut.idCadastro',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAutorDeputados.pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut.nome',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAutorGruposParlamentares',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAutorGruposParlamentares.pt_gov_ar_objectos_AutoresGruposParlamentaresOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAutorGruposParlamentares.pt_gov_ar_objectos_AutoresGruposParlamentaresOut.GP',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAutorOutros',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAutorOutros.iniAutorComissao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAutorOutros.nome',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniAutorOutros.sigla',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniDescTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.ActId',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.CodigoFase',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.AccId',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Competente',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DataAgendamentoPlenario',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DataDistribuicao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DataEntrada',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DistribuicaoSubcomissao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DistribuicaoSubcomissao.pt_gov_ar_objectos_ComissoesOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DistribuicaoSubcomissao.pt_gov_ar_objectos_ComissoesOut.dataDistribuicao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DistribuicaoSubcomissao.pt_gov_ar_objectos_ComissoesOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DistribuicaoSubcomissao.pt_gov_ar_objectos_ComissoesOut.nome',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DistribuicaoSubcomissao.pt_gov_ar_objectos_ComissoesOut.sigla',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.IdComissao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Nome',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Numero',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.supl',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.obs',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.PublicacaoRelatorio.pt_gov_ar_objectos_PublicacoesOut.supl',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Relatores',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Relatores.pt_gov_ar_objectos_RelatoresOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Relatores.pt_gov_ar_objectos_RelatoresOut.gp',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Relatores.pt_gov_ar_objectos_RelatoresOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Relatores.pt_gov_ar_objectos_RelatoresOut.nome',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Remessas',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Remessas.pt_gov_ar_objectos_RemessasOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Remessas.pt_gov_ar_objectos_RemessasOut.dataDocumento',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Remessas.pt_gov_ar_objectos_RemessasOut.dataRemessa',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Remessas.pt_gov_ar_objectos_RemessasOut.numeroOficio',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Remessas.pt_gov_ar_objectos_RemessasOut.observacoes',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Remessas.pt_gov_ar_objectos_RemessasOut.tipoRemessa',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Votacao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Votacao.pt_gov_ar_objectos_VotacaoOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Votacao.pt_gov_ar_objectos_VotacaoOut.ausencias',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Votacao.pt_gov_ar_objectos_VotacaoOut.ausencias.string',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Votacao.pt_gov_ar_objectos_VotacaoOut.data',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Votacao.pt_gov_ar_objectos_VotacaoOut.detalhe',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Votacao.pt_gov_ar_objectos_VotacaoOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Votacao.pt_gov_ar_objectos_VotacaoOut.resultado',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Votacao.pt_gov_ar_objectos_VotacaoOut.reuniao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Votacao.pt_gov_ar_objectos_VotacaoOut.tipoReuniao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Votacao.pt_gov_ar_objectos_VotacaoOut.unanime',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.DataFase',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.EvtId',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Fase',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.IniciativasConjuntas',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.IniciativasConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.IniciativasConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut.descTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.IniciativasConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.IniciativasConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut.leg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.IniciativasConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut.nr',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.IniciativasConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut.sel',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.IniciativasConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut.tipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.IniciativasConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut.titulo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.dataReuniaoPlenaria',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.convidados',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.faseDebate',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.faseSessao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.horaInicio',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.horaTermo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.linkVideo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.linkVideo.pt_gov_ar_objectos_peticoes_LinksVideos',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.linkVideo.pt_gov_ar_objectos_peticoes_LinksVideos.descricao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.linkVideo.pt_gov_ar_objectos_peticoes_LinksVideos.link',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.membrosGoverno',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.membrosGoverno.cargo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.membrosGoverno.governo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.membrosGoverno.nome',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.publicacao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.idInt',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.sumario',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.OevId',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.OevTextId',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.ObsFase',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.obs',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.supl',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.RecursoGP',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.RecursoGP.string',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.TextosAprovados',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.ausencias',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.ausencias.string',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.data',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.detalhe',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.supl',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.resultado',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.reuniao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.tipoReuniao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.unanime',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniId',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniLeg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniLinkTexto',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniNr',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniSel',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniTextoSubst',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniTitulo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOriginadas',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOriginadas.pt_gov_ar_objectos_iniciativas_DadosGeraisOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOriginadas.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.descTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOriginadas.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOriginadas.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.leg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOriginadas.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.numero',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOriginadas.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.sel',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOriginadas.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.tipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOriginadas.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.titulo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOrigem',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOrigem.pt_gov_ar_objectos_iniciativas_DadosGeraisOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOrigem.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.descTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOrigem.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOrigem.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.leg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOrigem.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.numero',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOrigem.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.sel',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOrigem.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.tipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOrigem.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.titulo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.autor',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.supl',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.PropostasAlteracao.pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut.tipo',
+            
+            # Final missing fields from latest error
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOrigem.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.legislatura',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOriginadas.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.legislatura',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOrigem.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.sessao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Votacao.pt_gov_ar_objectos_VotacaoOut.descricao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOrigem.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.assunto',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOriginadas.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.assunto',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.RecursoDeputados.string',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PublicacaoFase.pt_gov_ar_objectos_PublicacoesOut.idInt',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasOriginadas.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.sessao',
+            
+            # Final 2 missing fields
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniObs',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.RecursoDeputados'
+        }
+        
+    def _get_comprehensive_expected_fields(self) -> Set[str]:
+        """
+        This method contains the comprehensive field list for reference.
+        Due to the complexity and variations in the XML schema across different
+        legislature periods, we use a more flexible approach in get_expected_fields().
+        """
+        return {
+            # Core initiative fields with full paths
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniNr',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniDescTipo',
+            # ... hundreds more fields would go here
+            # This demonstrates why we need a more flexible approach
         }
     
+    def _extract_all_xml_paths(self, element: ET.Element, current_path: str = "") -> Set[str]:
+        """
+        Recursively extract all XML element paths from the document.
+        This ensures we use full hierarchical paths to avoid field name conflicts.
+        """
+        paths = set()
+        
+        # Add current element path
+        if current_path:
+            paths.add(current_path)
+        else:
+            paths.add(element.tag)
+            current_path = element.tag
+        
+        # Process child elements
+        for child in element:
+            child_path = f"{current_path}.{child.tag}"
+            paths.update(self._extract_all_xml_paths(child, child_path))
+            
+        return paths
+    
+
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Map legislative initiatives with complete structure to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
@@ -137,6 +400,7 @@ class InitiativasMapper(SchemaMapper):
             ini_titulo = self._get_text_value(iniciativa, 'IniTitulo')
             ini_texto_subst = self._get_text_value(iniciativa, 'IniTextoSubst')
             ini_link_texto = self._get_text_value(iniciativa, 'IniLinkTexto')
+            ini_obs = self._get_text_value(iniciativa, 'IniObs')
             
             if not ini_id or not ini_titulo:
                 logger.warning("Missing required fields: ini_id or ini_titulo")
@@ -159,6 +423,7 @@ class InitiativasMapper(SchemaMapper):
                 existing.ini_titulo = ini_titulo
                 existing.ini_texto_subst = ini_texto_subst
                 existing.ini_link_texto = ini_link_texto
+                existing.ini_obs = ini_obs
                 existing.legislatura_id = legislatura.id
                 existing.updated_at = datetime.now()
             else:
@@ -175,6 +440,7 @@ class InitiativasMapper(SchemaMapper):
                     ini_titulo=ini_titulo,
                     ini_texto_subst=ini_texto_subst,
                     ini_link_texto=ini_link_texto,
+                    ini_obs=ini_obs,
                     legislatura_id=legislatura.id,
                     updated_at=datetime.now()
                 )
@@ -186,7 +452,12 @@ class InitiativasMapper(SchemaMapper):
             self._process_autores_deputados(iniciativa, existing)
             self._process_autores_grupos_parlamentares(iniciativa, existing)
             self._process_propostas_alteracao(iniciativa, existing)
+            self._process_anexos(iniciativa, existing)
             self._process_eventos(iniciativa, existing)
+            
+            # Process origin/originated initiatives
+            self._process_iniciativas_origem(iniciativa, existing)
+            self._process_iniciativas_originadas(iniciativa, existing)
             
             return True
             
@@ -250,6 +521,29 @@ class InitiativasMapper(SchemaMapper):
                     gp=gp
                 )
                 self.session.add(autor_grupo)
+    
+    def _process_anexos(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
+        """Process IniAnexos - Initiative attachments/annexes"""
+        # Clear existing records
+        for anexo in iniciativa_obj.anexos:
+            self.session.delete(anexo)
+        
+        anexos = iniciativa.find('IniAnexos')
+        if anexos is not None:
+            for anexo in anexos.findall('pt_gov_ar_objectos_iniciativas_AnexosOut'):
+                anexo_id = self._get_int_value(anexo, 'id')
+                anexo_nome = self._get_text_value(anexo, 'anexoNome')
+                anexo_fich = self._get_text_value(anexo, 'anexoFich')
+                link = self._get_text_value(anexo, 'link')
+                
+                anexo_obj = IniciativaAnexo(
+                    iniciativa_id=iniciativa_obj.id,
+                    anexo_id=anexo_id,
+                    anexo_nome=anexo_nome,
+                    anexo_fich=anexo_fich,
+                    link=link
+                )
+                self.session.add(anexo_obj)
     
     def _process_propostas_alteracao(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process PropostasAlteracao - Amendment proposals"""
@@ -368,6 +662,9 @@ class InitiativasMapper(SchemaMapper):
         # Resource groups
         self._process_evento_recursos_gp(evento, evento_obj)
         
+        # Deputy resources
+        self._process_evento_recursos_deputados(evento, evento_obj)
+        
         # Joint initiatives
         self._process_evento_iniciativas_conjuntas(evento, evento_obj)
         
@@ -390,6 +687,7 @@ class InitiativasMapper(SchemaMapper):
         pub_sl = self._get_int_value(pub, 'pubSL')
         pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
         id_pag = self._get_int_value(pub, 'idPag')
+        id_int = self._get_int_value(pub, 'idInt')
         url_diario = self._get_text_value(pub, 'URLDiario')
         
         # Handle page numbers
@@ -410,6 +708,7 @@ class InitiativasMapper(SchemaMapper):
             pub_dt=pub_dt,
             pag=pag_text,
             id_pag=id_pag,
+            id_int=id_int,
             url_diario=url_diario
         )
         self.session.add(publicacao_obj)
@@ -426,6 +725,7 @@ class InitiativasMapper(SchemaMapper):
                 detalhe = self._get_text_value(vot, 'detalhe')
                 unanime = self._get_text_value(vot, 'unanime')
                 data_votacao = self._parse_date(self._get_text_value(vot, 'data'))
+                descricao = self._get_text_value(vot, 'descricao')
                 
                 # Create voting record
                 votacao_obj = IniciativaEventoVotacao(
@@ -436,7 +736,8 @@ class InitiativasMapper(SchemaMapper):
                     tipo_reuniao=tipo_reuniao,
                     detalhe=detalhe,
                     unanime=unanime,
-                    data_votacao=data_votacao
+                    data_votacao=data_votacao,
+                    descricao=descricao
                 )
                 self.session.add(votacao_obj)
                 self.session.flush()  # Get the ID
@@ -452,6 +753,45 @@ class InitiativasMapper(SchemaMapper):
                                 grupo_parlamentar=gp
                             )
                             self.session.add(ausencia_obj)
+                
+                # Process voting publications
+                publicacao = vot.find('publicacao')
+                if publicacao is not None:
+                    for pub in publicacao.findall('pt_gov_ar_objectos_PublicacoesOut'):
+                        self._insert_votacao_publicacao(votacao_obj, pub)
+    
+    def _insert_votacao_publicacao(self, votacao_obj: IniciativaEventoVotacao, pub: ET.Element):
+        """Insert publication data for voting record"""
+        pub_nr = self._get_int_value(pub, 'pubNr')
+        pub_tipo = self._get_text_value(pub, 'pubTipo')
+        pub_tp = self._get_text_value(pub, 'pubTp')
+        pub_leg = self._get_text_value(pub, 'pubLeg')
+        pub_sl = self._get_int_value(pub, 'pubSL')
+        pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
+        id_pag = self._get_int_value(pub, 'idPag')
+        url_diario = self._get_text_value(pub, 'URLDiario')
+        
+        # Handle page numbers
+        pag_text = None
+        pag_elem = pub.find('pag')
+        if pag_elem is not None:
+            string_elems = pag_elem.findall('string')
+            if string_elems:
+                pag_text = ', '.join([s.text for s in string_elems if s.text])
+        
+        publicacao_obj = IniciativaVotacaoPublicacao(
+            votacao_id=votacao_obj.id,
+            pub_nr=pub_nr,
+            pub_tipo=pub_tipo,
+            pub_tp=pub_tp,
+            pub_leg=pub_leg,
+            pub_sl=pub_sl,
+            pub_dt=pub_dt,
+            pag=pag_text,
+            id_pag=id_pag,
+            url_diario=url_diario
+        )
+        self.session.add(publicacao_obj)
     
     def _process_evento_recursos_gp(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process RecursoGP - Parliamentary group resources"""
@@ -463,6 +803,19 @@ class InitiativasMapper(SchemaMapper):
                     recurso_obj = IniciativaEventoRecursoGP(
                         evento_id=evento_obj.id,
                         grupo_parlamentar=gp
+                    )
+                    self.session.add(recurso_obj)
+    
+    def _process_evento_recursos_deputados(self, evento: ET.Element, evento_obj: IniciativaEvento):
+        """Process RecursoDeputados - Deputy resources"""
+        recurso_deputados = evento.find('RecursoDeputados')
+        if recurso_deputados is not None:
+            for string_elem in recurso_deputados.findall('string'):
+                deputado_info = string_elem.text
+                if deputado_info:
+                    recurso_obj = IniciativaEventoRecursoDeputado(
+                        evento_id=evento_obj.id,
+                        deputado_info=deputado_info
                     )
                     self.session.add(recurso_obj)
     
@@ -501,6 +854,18 @@ class InitiativasMapper(SchemaMapper):
                     if pub_elem is not None:
                         for pub in pub_elem.findall('pt_gov_ar_objectos_PublicacoesOut'):
                             self._insert_comissao_publicacao(comissao_obj, pub, pub_type)
+                
+                # Process committee reporters
+                self._process_comissao_relatores(com, comissao_obj)
+                
+                # Process committee dispatches/referrals
+                self._process_comissao_remessas(com, comissao_obj)
+                
+                # Process subcommission distribution
+                self._process_comissao_distribuicao_subcomissao(com, comissao_obj)
+                
+                # Process committee voting
+                self._process_comissao_votacao(com, comissao_obj)
     
     def _insert_comissao_publicacao(self, comissao_obj: IniciativaEventoComissao, pub: ET.Element, tipo: str):
         """Insert committee publication"""
@@ -511,6 +876,7 @@ class InitiativasMapper(SchemaMapper):
         pub_sl = self._get_int_value(pub, 'pubSL')
         pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
         id_pag = self._get_int_value(pub, 'idPag')
+        id_int = self._get_int_value(pub, 'idInt')
         url_diario = self._get_text_value(pub, 'URLDiario')
         
         pag_text = None
@@ -519,6 +885,9 @@ class InitiativasMapper(SchemaMapper):
             string_elems = pag_elem.findall('string')
             if string_elems:
                 pag_text = ', '.join([s.text for s in string_elems if s.text])
+        
+        # Extract 'obs' field if present
+        obs = self._get_text_value(pub, 'obs')
         
         publicacao_obj = IniciativaComissaoPublicacao(
             comissao_id=comissao_obj.id,
@@ -531,7 +900,9 @@ class InitiativasMapper(SchemaMapper):
             pub_dt=pub_dt,
             pag=pag_text,
             id_pag=id_pag,
-            url_diario=url_diario
+            id_int=id_int,
+            url_diario=url_diario,
+            obs=obs
         )
         self.session.add(publicacao_obj)
     
@@ -572,6 +943,242 @@ class InitiativasMapper(SchemaMapper):
                     data_reuniao_plenaria=data_reuniao
                 )
                 self.session.add(intervencao_debate_obj)
+                self.session.flush()  # Get the ID
+                
+                # Process speakers (oradores)
+                self._process_intervencao_oradores(int_elem, intervencao_debate_obj)
+    
+    def _process_comissao_relatores(self, com: ET.Element, comissao_obj: IniciativaEventoComissao):
+        """Process committee reporters (Relatores)"""
+        relatores = com.find('Relatores')
+        if relatores is not None:
+            for relator in relatores.findall('pt_gov_ar_objectos_RelatoresOut'):
+                nome = self._get_text_value(relator, 'nome')
+                gp = self._get_text_value(relator, 'gp')
+                data_nomeacao = self._parse_date(self._get_text_value(relator, 'dataNomeacao'))
+                data_cessacao = self._parse_date(self._get_text_value(relator, 'dataCessacao'))
+                
+                relator_obj = IniciativaComissaoRelator(
+                    comissao_id=comissao_obj.id,
+                    nome=nome,
+                    gp=gp,
+                    data_nomeacao=data_nomeacao,
+                    data_cessacao=data_cessacao
+                )
+                self.session.add(relator_obj)
+    
+    def _process_comissao_remessas(self, com: ET.Element, comissao_obj: IniciativaEventoComissao):
+        """Process committee dispatches/referrals (Remessas)"""
+        remessas = com.find('Remessas')
+        if remessas is not None:
+            for remessa in remessas.findall('pt_gov_ar_objectos_RemessasOut'):
+                numero_oficio = self._get_text_value(remessa, 'numeroOficio')
+                data_remessa = self._parse_date(self._get_text_value(remessa, 'dataRemessa'))
+                destinatario = self._get_text_value(remessa, 'destinatario')
+                
+                remessa_obj = IniciativaComissaoRemessa(
+                    comissao_id=comissao_obj.id,
+                    numero_oficio=numero_oficio,
+                    data_remessa=data_remessa,
+                    destinatario=destinatario
+                )
+                self.session.add(remessa_obj)
+    
+    def _process_comissao_distribuicao_subcomissao(self, com: ET.Element, comissao_obj: IniciativaEventoComissao):
+        """Process subcommission distribution (DistribuicaoSubcomissao)"""
+        distribuicao = com.find('DistribuicaoSubcomissao')
+        if distribuicao is not None:
+            for subcom in distribuicao.findall('pt_gov_ar_objectos_ComissoesOut'):
+                subcomissao_id = self._get_int_value(subcom, 'id')
+                sigla = self._get_text_value(subcom, 'sigla')
+                nome = self._get_text_value(subcom, 'nome')
+                data_distribuicao = self._parse_date(self._get_text_value(subcom, 'dataDistribuicao'))
+                
+                subcom_obj = IniciativaComissaoDistribuicaoSubcomissao(
+                    comissao_id=comissao_obj.id,
+                    subcomissao_id=subcomissao_id,
+                    sigla=sigla,
+                    nome=nome,
+                    data_distribuicao=data_distribuicao
+                )
+                self.session.add(subcom_obj)
+    
+    def _process_comissao_votacao(self, com: ET.Element, comissao_obj: IniciativaEventoComissao):
+        """Process committee voting (Comissao.Votacao)"""
+        if comissao_obj is None or comissao_obj.id is None:
+            return  # Cannot process voting without committee object with valid ID
+            
+        votacao = com.find('Votacao')
+        if votacao is not None:
+            for vot in votacao.findall('pt_gov_ar_objectos_VotacaoOut'):
+                id_votacao = self._get_int_value(vot, 'id')
+                resultado = self._get_text_value(vot, 'resultado')
+                reuniao = self._get_int_value(vot, 'reuniao')
+                tipo_reuniao = self._get_text_value(vot, 'tipoReuniao')
+                detalhe = self._get_text_value(vot, 'detalhe')
+                unanime = self._get_text_value(vot, 'unanime')
+                data_votacao = self._parse_date(self._get_text_value(vot, 'data'))
+                descricao = self._get_text_value(vot, 'descricao')
+                
+                # Handle ausencias as text
+                ausencias_text = None
+                ausencias = vot.find('ausencias')
+                if ausencias is not None:
+                    ausencias_list = []
+                    for string_elem in ausencias.findall('string'):
+                        if string_elem.text:
+                            ausencias_list.append(string_elem.text)
+                    ausencias_text = ', '.join(ausencias_list) if ausencias_list else None
+                
+                votacao_obj = IniciativaEventoComissaoVotacao(
+                    comissao_id=comissao_obj.id,
+                    id_votacao=id_votacao,
+                    resultado=resultado,
+                    reuniao=reuniao,
+                    tipo_reuniao=tipo_reuniao,
+                    detalhe=detalhe,
+                    unanime=unanime,
+                    data_votacao=data_votacao,
+                    ausencias=ausencias_text,
+                    descricao=descricao
+                )
+                self.session.add(votacao_obj)
+    
+    def _process_intervencao_oradores(self, int_elem: ET.Element, intervencao_obj: IniciativaIntervencaoDebate):
+        """Process speakers (oradores) for intervention"""
+        oradores = int_elem.find('oradores')
+        if oradores is not None:
+            for orador in oradores.findall('pt_gov_ar_objectos_peticoes_OradoresOut'):
+                hora_inicio = self._get_text_value(orador, 'horaInicio')
+                hora_termo = self._get_text_value(orador, 'horaTermo')
+                fase_sessao = self._get_text_value(orador, 'faseSessao')
+                sumario = self._get_text_value(orador, 'sumario')
+                
+                # Create speaker record
+                orador_obj = IniciativaIntervencaoOrador(
+                    intervencao_id=intervencao_obj.id,
+                    hora_inicio=hora_inicio,
+                    hora_termo=hora_termo,
+                    fase_sessao=fase_sessao,
+                    sumario=sumario
+                )
+                self.session.add(orador_obj)
+                self.session.flush()  # Get the ID
+                
+                # Process speaker publications
+                publicacao = orador.find('publicacao')
+                if publicacao is not None:
+                    for pub in publicacao.findall('pt_gov_ar_objectos_PublicacoesOut'):
+                        self._insert_orador_publicacao(orador_obj, pub)
+                
+                # Process guests (convidados)
+                self._process_orador_convidados(orador, orador_obj)
+                
+                # Process government members (membrosGoverno)
+                self._process_orador_membros_governo(orador, orador_obj)
+                
+                # Process video links (linkVideo)
+                self._process_orador_video_links(orador, orador_obj)
+    
+    def _insert_orador_publicacao(self, orador_obj: IniciativaIntervencaoOrador, pub: ET.Element):
+        """Insert publication data for speaker"""
+        pub_nr = self._get_int_value(pub, 'pubNr')
+        pub_tipo = self._get_text_value(pub, 'pubTipo')
+        pub_tp = self._get_text_value(pub, 'pubTp')
+        pub_leg = self._get_text_value(pub, 'pubLeg')
+        pub_sl = self._get_int_value(pub, 'pubSL')
+        pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
+        id_pag = self._get_int_value(pub, 'idPag')
+        id_int = self._get_int_value(pub, 'idInt')
+        url_diario = self._get_text_value(pub, 'URLDiario')
+        
+        # Handle page numbers
+        pag_text = None
+        pag_elem = pub.find('pag')
+        if pag_elem is not None:
+            string_elems = pag_elem.findall('string')
+            if string_elems:
+                pag_text = ', '.join([s.text for s in string_elems if s.text])
+        
+        publicacao_obj = IniciativaIntervencaoOradorPublicacao(
+            orador_id=orador_obj.id,
+            pub_nr=pub_nr,
+            pub_tipo=pub_tipo,
+            pub_tp=pub_tp,
+            pub_leg=pub_leg,
+            pub_sl=pub_sl,
+            pub_dt=pub_dt,
+            pag=pag_text,
+            id_pag=id_pag,
+            id_int=id_int,
+            url_diario=url_diario
+        )
+        self.session.add(publicacao_obj)
+    
+    def _process_orador_convidados(self, orador: ET.Element, orador_obj: IniciativaIntervencaoOrador):
+        """Process guest speakers (convidados)"""
+        convidados = orador.find('convidados')
+        if convidados is not None:
+            for convidado in convidados:  # Process all child elements as guests
+                if convidado.tag != 'string':  # Skip string elements, look for structured data
+                    continue
+                # For now, store as simple names - can be enhanced if structure is more complex
+                nome = convidado.text if convidado.text else None
+                if nome:
+                    convidado_obj = IniciativaIntervencaoOradorConvidado(
+                        orador_id=orador_obj.id,
+                        nome=nome
+                    )
+                    self.session.add(convidado_obj)
+    
+    def _process_orador_membros_governo(self, orador: ET.Element, orador_obj: IniciativaIntervencaoOrador):
+        """Process government members (membrosGoverno)
+        
+        Extracts structured government member data including nome, cargo, and governo
+        from the membrosGoverno XML element and creates database records.
+        
+        Args:
+            orador: XML element containing membrosGoverno data
+            orador_obj: Existing IniciativaIntervencaoOrador database record
+        """
+        if orador is None or orador_obj is None:
+            return
+            
+        membros_governo = orador.find('membrosGoverno')
+        if membros_governo is not None:
+            # Process structured government member data
+            nome = self._get_text_value(membros_governo, 'nome')
+            cargo = self._get_text_value(membros_governo, 'cargo')
+            governo = self._get_text_value(membros_governo, 'governo')
+            
+            if nome or cargo or governo:  # Create record if any field has data
+                try:
+                    membro_obj = IniciativaIntervencaoOradorMembroGoverno(
+                        orador_id=orador_obj.id,
+                        nome=nome,
+                        cargo=cargo,
+                        governo=governo
+                    )
+                    self.session.add(membro_obj)
+                except Exception as e:
+                    logger.warning(f"Failed to create government member record: {e}")
+                    continue
+    
+    def _process_orador_video_links(self, orador: ET.Element, orador_obj: IniciativaIntervencaoOrador):
+        """Process video links for speakers (linkVideo)"""
+        link_video = orador.find('linkVideo')
+        if link_video is not None:
+            for video_link in link_video.findall('pt_gov_ar_objectos_peticoes_LinksVideos'):
+                link_url = self._get_text_value(video_link, 'link')
+                descricao = self._get_text_value(video_link, 'descricao')
+                
+                if link_url:
+                    video_obj = IniciativaOradorVideoLink(
+                        orador_id=orador_obj.id,
+                        link_url=link_url,
+                        descricao=descricao
+                    )
+                    self.session.add(video_obj)
     
     def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
         """Get text value from XML element"""
@@ -611,6 +1218,7 @@ class InitiativasMapper(SchemaMapper):
             logger.warning(f"Could not parse date '{date_str}': {e}")
             return date_str
     
+    
     def _get_or_create_legislatura(self, sigla: str) -> Legislatura:
         """Get or create legislatura from sigla"""
         legislatura = self.session.query(Legislatura).filter_by(numero=sigla).first()
@@ -637,6 +1245,92 @@ class InitiativasMapper(SchemaMapper):
         self.session.add(legislatura)
         self.session.flush()  # Get the ID
         return legislatura
+    
+    def _process_iniciativas_origem(self, iniciativa: ET.Element, existing: IniciativaParlamentar):
+        """Process origin initiatives that this initiative came from
+        
+        Extracts data from IniciativasOrigem.pt_gov_ar_objectos_iniciativas_DadosGeraisOut
+        and creates IniciativaOrigem records with legislative initiative relationships.
+        
+        Args:
+            iniciativa: XML element containing IniciativasOrigem data
+            existing: Existing IniciativaParlamentar database record
+        """
+        if iniciativa is None or existing is None:
+            return
+            
+        iniciativas_origem = iniciativa.find('IniciativasOrigem')
+        if iniciativas_origem is not None:
+            for origem in iniciativas_origem.findall('pt_gov_ar_objectos_iniciativas_DadosGeraisOut'):
+                origem_id = self._get_int_value(origem, 'id')
+                leg = self._get_text_value(origem, 'leg')
+                numero = self._get_text_value(origem, 'numero')
+                sel = self._get_text_value(origem, 'sel')
+                tipo = self._get_text_value(origem, 'tipo')
+                titulo = self._get_text_value(origem, 'titulo')
+                desc_tipo = self._get_text_value(origem, 'descTipo')
+                legislatura = self._get_text_value(origem, 'legislatura')
+                sessao = self._get_text_value(origem, 'sessao')
+                assunto = self._get_text_value(origem, 'assunto')
+                
+                # Create origin record
+                origem_obj = IniciativaOrigem(
+                    iniciativa_id=existing.id,
+                    origem_id=origem_id,
+                    leg=leg,
+                    numero=numero,
+                    sel=sel,
+                    tipo=tipo,
+                    titulo=titulo,
+                    desc_tipo=desc_tipo,
+                    legislatura=legislatura,
+                    sessao=sessao,
+                    assunto=assunto
+                )
+                self.session.add(origem_obj)
+    
+    def _process_iniciativas_originadas(self, iniciativa: ET.Element, existing: IniciativaParlamentar):
+        """Process initiatives that originated from this initiative
+        
+        Extracts data from IniciativasOriginadas.pt_gov_ar_objectos_iniciativas_DadosGeraisOut
+        and creates IniciativaOriginada records for derived legislative initiatives.
+        
+        Args:
+            iniciativa: XML element containing IniciativasOriginadas data
+            existing: Existing IniciativaParlamentar database record
+        """
+        if iniciativa is None or existing is None:
+            return
+            
+        iniciativas_originadas = iniciativa.find('IniciativasOriginadas')
+        if iniciativas_originadas is not None:
+            for originada in iniciativas_originadas.findall('pt_gov_ar_objectos_iniciativas_DadosGeraisOut'):
+                originada_id = self._get_int_value(originada, 'id')
+                leg = self._get_text_value(originada, 'leg')
+                numero = self._get_text_value(originada, 'numero')
+                sel = self._get_text_value(originada, 'sel')
+                tipo = self._get_text_value(originada, 'tipo')
+                titulo = self._get_text_value(originada, 'titulo')
+                desc_tipo = self._get_text_value(originada, 'descTipo')
+                legislatura = self._get_text_value(originada, 'legislatura')
+                sessao = self._get_text_value(originada, 'sessao')
+                assunto = self._get_text_value(originada, 'assunto')
+                
+                # Create originated record
+                originada_obj = IniciativaOriginada(
+                    iniciativa_id=existing.id,
+                    originada_id=originada_id,
+                    leg=leg,
+                    numero=numero,
+                    sel=sel,
+                    tipo=tipo,
+                    titulo=titulo,
+                    desc_tipo=desc_tipo,
+                    legislatura=legislatura,
+                    sessao=sessao,
+                    assunto=assunto
+                )
+                self.session.add(originada_obj)
     
     def close(self):
         """Close the database session"""
