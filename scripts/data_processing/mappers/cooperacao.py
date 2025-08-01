@@ -119,7 +119,9 @@ class CooperacaoMapper(SchemaMapper):
                 logger.error(error_msg)
                 results['errors'].append(error_msg)
                 results['records_processed'] += 1
-                self.session.rollback()
+                logger.error("Data integrity issue detected - exiting immediately")
+                import sys
+                sys.exit(1)
         
         # Commit all changes
         self.session.commit()

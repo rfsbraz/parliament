@@ -464,7 +464,9 @@ class AtividadesMapper(SchemaMapper):
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
                         results['records_processed'] += 1
-                        self.session.rollback()
+                        logger.error("Data integrity issue detected - exiting immediately")
+                        import sys
+                        sys.exit(1)
                         if strict_mode:
                             logger.error(f"STRICT MODE: Exiting due to activity processing exception")
                             raise
@@ -488,7 +490,9 @@ class AtividadesMapper(SchemaMapper):
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
                         results['records_processed'] += 1
-                        self.session.rollback()
+                        logger.error("Data integrity issue detected - exiting immediately")
+                        import sys
+                        sys.exit(1)
                         if strict_mode:
                             logger.error(f"STRICT MODE: Exiting due to debate processing exception")
                             raise
@@ -512,7 +516,9 @@ class AtividadesMapper(SchemaMapper):
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
                         results['records_processed'] += 1
-                        self.session.rollback()
+                        logger.error("Data integrity issue detected - exiting immediately")
+                        import sys
+                        sys.exit(1)
                         if strict_mode:
                             logger.error(f"STRICT MODE: Exiting due to report processing exception")
                             raise
@@ -536,7 +542,9 @@ class AtividadesMapper(SchemaMapper):
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
                         results['records_processed'] += 1
-                        self.session.rollback()
+                        logger.error("Data integrity issue detected - exiting immediately")
+                        import sys
+                        sys.exit(1)
                         if strict_mode:
                             logger.error(f"STRICT MODE: Exiting due to budget/account processing exception")
                             raise
@@ -553,7 +561,9 @@ class AtividadesMapper(SchemaMapper):
                 error_msg = f"XIII Legislature structures processing error: {str(e)}"
                 logger.error(error_msg)
                 results['errors'].append(error_msg)
-                self.session.rollback()
+                logger.error("Data integrity issue detected - exiting immediately")
+                import sys
+                sys.exit(1)
                 if strict_mode:
                     logger.error(f"STRICT MODE: Exiting due to XIII Legislature processing exception")
                     raise
@@ -566,7 +576,9 @@ class AtividadesMapper(SchemaMapper):
             error_msg = f"Critical error processing activities: {str(e)}"
             logger.error(error_msg)
             results['errors'].append(error_msg)
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             
             # In strict mode, re-raise the exception to trigger immediate exit
             if strict_mode:
@@ -708,7 +720,9 @@ class AtividadesMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing activity: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return False
     
     def _process_debate(self, debate: ET.Element, legislatura: Legislatura) -> bool:
@@ -809,7 +823,9 @@ class AtividadesMapper(SchemaMapper):
                 # Exit the process to prevent further errors
                 raise SystemExit(f"CRITICAL: Database schema mismatch - {error_msg}")
             
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return False
     
     def _process_relatorio(self, relatorio: ET.Element, legislatura: Legislatura) -> bool:
@@ -881,7 +897,9 @@ class AtividadesMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing report: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return False
     
     def _map_activity_type(self, tipo: str) -> Optional[str]:
@@ -1126,7 +1144,9 @@ class AtividadesMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing budget/account entry: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return False
     
     def _process_relatorio_documentos(self, relatorio: ET.Element, relatorio_parlamentar_id: int) -> bool:

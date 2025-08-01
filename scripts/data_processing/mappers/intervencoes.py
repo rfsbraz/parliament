@@ -141,7 +141,9 @@ class IntervencoesMapper(SchemaMapper):
                     logger.error(error_msg)
                     results['errors'].append(error_msg)
                     results['records_processed'] += 1
-                    self.session.rollback()
+                    logger.error("Data integrity issue detected - exiting immediately")
+                    import sys
+                    sys.exit(1)
             
             # Commit all changes
             self.session.commit()
@@ -151,7 +153,9 @@ class IntervencoesMapper(SchemaMapper):
             error_msg = f"Critical error processing interventions: {str(e)}"
             logger.error(error_msg)
             results['errors'].append(error_msg)
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return results
     
     def _process_intervencao_record(self, intervencao: ET.Element, legislatura: Legislatura, filename: str = None) -> bool:

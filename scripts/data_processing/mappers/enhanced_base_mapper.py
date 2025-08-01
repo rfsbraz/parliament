@@ -49,12 +49,15 @@ class DatabaseSessionMixin:
         try:
             self.session.commit()
         except Exception as e:
-            self.session.rollback()
-            raise
+            logger.error(f"Transaction commit failed: {str(e)}")
+            import sys
+            sys.exit(1)
     
     def rollback_transaction(self):
-        """Rollback current transaction"""
-        self.session.rollback()
+        """Exit immediately instead of rolling back"""
+        logger.error("Data integrity issue detected - exiting immediately")
+        import sys
+        sys.exit(1)
 
 
 class LegislatureHandlerMixin:
@@ -231,8 +234,9 @@ class EnhancedSchemaMapper(DatabaseSessionMixin, LegislatureHandlerMixin, XMLPro
         except Exception as e:
             error_msg = f"{error_context} processing error: {str(e)}"
             logger.error(error_msg)
-            self.rollback_transaction()
-            return False
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
     
     def create_processing_results(self) -> Dict:
         """Create standard results dictionary"""
@@ -260,7 +264,9 @@ class EnhancedSchemaMapper(DatabaseSessionMixin, LegislatureHandlerMixin, XMLPro
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit with proper cleanup"""
         if exc_type:
-            self.rollback_transaction()
+            logger.error("Exception occurred in context manager - exiting immediately")
+            import sys
+            sys.exit(1)
         self.close_session()
 
 

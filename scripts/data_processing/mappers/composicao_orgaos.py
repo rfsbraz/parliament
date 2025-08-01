@@ -756,7 +756,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             return self.finalize_processing(results)
             
         except Exception as e:
-            self.rollback_transaction()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             error_msg = f"Error in validate_and_map: {e}"
             self._handle_processing_error(error_msg, results, strict_mode)
     
@@ -1045,7 +1047,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing deputy committee membership: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return False
     
     def _process_deputy_subcommittee_membership(self, deputado_data: ET.Element, subcommittee: SubCommittee) -> bool:
@@ -1086,7 +1090,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing deputy subcommittee membership: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return False
     
     def _process_deputy_work_group_membership(self, deputado_data: ET.Element, work_group: WorkGroup) -> bool:
@@ -1127,7 +1133,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing deputy work group membership: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return False
     
     def _process_i_legislature_deputy_composition(self, deputado_data: ET.Element, plenary: Plenary, legislatura: Legislatura) -> bool:
@@ -1178,7 +1186,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing I Legislature deputy composition: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return False
     
     def _process_gp_situations(self, dep_gp: ET.Element, **kwargs) -> bool:

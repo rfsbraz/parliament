@@ -196,7 +196,9 @@ class AgendaParlamentarMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error processing agenda item: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return False
     
     def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
@@ -288,7 +290,9 @@ class AgendaParlamentarMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error creating legislatura: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return None
     
     def __del__(self):

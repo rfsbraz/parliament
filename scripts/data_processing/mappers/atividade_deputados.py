@@ -562,7 +562,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error creating deputado record: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return None
     
     def _create_atividade_deputado(self, deputado_id: int, dep_cad_id: int, 
@@ -584,7 +586,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error creating atividade deputado record: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return None
     
     def _create_atividade_deputado_list(self, atividade_deputado_id: int) -> Optional[int]:
@@ -601,7 +605,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error creating atividade deputado list record: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return None
     
     def _create_actividade_out(self, atividade_list_id: int, actividade_out_elem: ET.Element) -> Optional[int]:
@@ -621,7 +627,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
             
         except Exception as e:
             logger.error(f"Error creating actividade out record: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return None
     
     def _process_dados_legis_deputado(self, actividade_out: ET.Element, actividade_out_id: int):
@@ -647,7 +655,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing dados legis deputado: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
     
     def _process_audiencias(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process Audiencias using SQLAlchemy ORM"""
@@ -697,7 +707,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing audiencias: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
     
     def _process_audicoes(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process Audicoes using SQLAlchemy ORM"""
@@ -743,7 +755,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing audicoes: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
     
     def _process_initiatives(self, actividade_out: ET.Element, atividade_deputado_id: int):
         """Process deputy initiatives using SQLAlchemy ORM"""
@@ -785,7 +799,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing initiatives: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
     
     def _process_interventions(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process deputy interventions using SQLAlchemy ORM"""
@@ -836,7 +852,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing interventions: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
     
     def _process_deputy_situacoes_real(self, deputado: ET.Element, atividade_deputado_id: int, strict_mode: bool = False):
         """Process deputy situations using SQLAlchemy ORM"""
@@ -889,7 +907,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing deputy situacoes: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             if strict_mode:
                 raise SchemaError(f"Deputy situations processing failed in strict mode: {e}")
     
@@ -938,7 +958,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing parliamentary activities: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_friendship_groups(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process IX Legislature Friendship Groups (Gpa)"""
@@ -978,7 +1000,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing friendship groups: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_permanent_delegations(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process IX Legislature Permanent Delegations (DlP)"""
@@ -1036,7 +1060,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing permanent delegations: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_occasional_delegations(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process IX Legislature Occasional Delegations (DlE)"""
@@ -1080,7 +1106,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing occasional delegations: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_requirements(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process IX Legislature Requirements (Req)"""
@@ -1125,7 +1153,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing requirements: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_subcommittees_working_groups(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process IX Legislature Sub-committees/Working Groups (Scgt)"""
@@ -1165,7 +1195,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing sub-committees/working groups: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_petition_rapporteurs(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process IX Legislature Petition Rapporteurs (Rel.RelatoresPeticoes)"""
@@ -1207,7 +1239,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing petition rapporteurs: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_initiative_rapporteurs(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process IX Legislature Initiative Rapporteurs (Rel.RelatoresIniciativas)"""
@@ -1252,7 +1286,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing initiative rapporteurs: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_committees(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process IX Legislature Committees (Cms)"""
@@ -1292,7 +1328,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing committees: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_autores_pareceres_inc_imu(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process I Legislature Authors of Incompatibility/Immunity Opinions (Rel.AutoresPareceresIncImu)"""
@@ -1330,7 +1368,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing authors of incompatibility/immunity opinions: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_relatores_ini_europeias(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process I Legislature European Initiative Rapporteurs (Rel.RelatoresIniEuropeias)"""
@@ -1370,7 +1410,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing European initiative rapporteurs: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_parlamento_jovens(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process I Legislature Youth Parliament (ParlamentoJovens)"""
@@ -1411,7 +1453,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing youth parliament: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_eventos(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process I Legislature Events (Eventos)"""
@@ -1467,7 +1511,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing events: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_deslocacoes(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process I Legislature Displacements (Deslocacoes)"""
@@ -1523,7 +1569,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     
         except Exception as e:
             logger.error(f"Error processing displacements: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _process_relatores_contas_publicas(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process I Legislature Public Accounts Rapporteurs (Rel.RelatoresContasPublicas)"""
@@ -1557,7 +1605,9 @@ class AtividadeDeputadosMapper(SchemaMapper):
                     self.session.commit()
         except Exception as e:
             logger.error(f"Error processing public accounts rapporteurs: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
 
     def _parse_datetime(self, datetime_str: str) -> Optional[object]:
         """Parse datetime string to Python datetime object"""
@@ -1661,4 +1711,6 @@ class AtividadeDeputadosMapper(SchemaMapper):
                 
         except Exception as e:
             logger.error(f"Error processing DepCargo: {e}")
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)

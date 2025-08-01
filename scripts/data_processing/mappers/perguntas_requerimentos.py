@@ -115,7 +115,9 @@ class PerguntasRequerimentosMapper(SchemaMapper):
                     logger.error(error_msg)
                     results['errors'].append(error_msg)
                     results['records_processed'] += 1
-                    self.session.rollback()
+                    logger.error("Data integrity issue detected - exiting immediately")
+                    import sys
+                    sys.exit(1)
             
             # Commit all changes
             self.session.commit()
@@ -125,7 +127,9 @@ class PerguntasRequerimentosMapper(SchemaMapper):
             error_msg = f"Critical error processing requests: {str(e)}"
             logger.error(error_msg)
             results['errors'].append(error_msg)
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return results
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:

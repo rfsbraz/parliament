@@ -121,7 +121,9 @@ class RegistoInteressesMapper(SchemaMapper):
                         error_msg = f"Error processing V3 conflicts record: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
-                        self.session.rollback()
+                        logger.error("Data integrity issue detected - exiting immediately")
+                        import sys
+                        sys.exit(1)
                         
                 elif registo_v2 is not None:
                     # Handle V2 schema (XII, XIII)
@@ -152,7 +154,9 @@ class RegistoInteressesMapper(SchemaMapper):
                         error_msg = f"Error processing V2 conflicts record: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
-                        self.session.rollback()
+                        logger.error("Data integrity issue detected - exiting immediately")
+                        import sys
+                        sys.exit(1)
                         
                 elif registo_v1 is not None:
                     # Handle V1 schema (XI)
@@ -178,7 +182,9 @@ class RegistoInteressesMapper(SchemaMapper):
                         error_msg = f"Error processing V1 conflicts record: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
-                        self.session.rollback()
+                        logger.error("Data integrity issue detected - exiting immediately")
+                        import sys
+                        sys.exit(1)
             
             # Commit all changes
             self.session.commit()
@@ -188,7 +194,9 @@ class RegistoInteressesMapper(SchemaMapper):
             error_msg = f"Critical error processing conflicts file {file_info['file_path']}: {str(e)}"
             logger.error(error_msg)
             results['errors'].append(error_msg)
-            self.session.rollback()
+            logger.error("Data integrity issue detected - exiting immediately")
+            import sys
+            sys.exit(1)
             return results
         
         return results
