@@ -418,8 +418,7 @@ class IntervencoesMapper(SchemaMapper):
         if video_url or duracao or assunto or tipo_intervencao:
             audiovisual = IntervencaoAudiovisual(
                 intervencao_id=intervention.id,
-                url_video=video_url,
-                thumbnail_url=thumbnail_url,
+                video_url=video_url,
                 duracao=duracao,
                 assunto=assunto,
                 tipo_intervencao=tipo_intervencao
