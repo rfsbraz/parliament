@@ -51,13 +51,49 @@ class CooperacaoMapper(SchemaMapper):
             'ArrayOfCooperacaoOut.CooperacaoOut.Programas',
             'ArrayOfCooperacaoOut.CooperacaoOut.Atividades',
             
-            # Cooperation activities
-            'ArrayOfCooperacaoOut.CooperacaoOut.CooperacaoAtividade',
-            'ArrayOfCooperacaoOut.CooperacaoOut.CooperacaoAtividade.TipoAtividade',
-            'ArrayOfCooperacaoOut.CooperacaoOut.CooperacaoAtividade.DataInicio',
-            'ArrayOfCooperacaoOut.CooperacaoOut.CooperacaoAtividade.DataFim',
-            'ArrayOfCooperacaoOut.CooperacaoOut.CooperacaoAtividade.Participantes',
-            'ArrayOfCooperacaoOut.CooperacaoOut.CooperacaoAtividade.RelacoesExternasParticipantes'
+            # Nested programs within Programas
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Id',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Tipo',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Nome',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Legislatura',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Sessao',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Data',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Local',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades',
+            
+            # Activities within nested programs
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade.Id',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade.Nome',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade.DataInicio',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade.DataFim',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade.Tipo',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade.TipoAtividade',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade.Local',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade.Participantes',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade.RelacoesExternasParticipantes',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade.Participantes.RelacoesExternasParticipantes',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade.Participantes.RelacoesExternasParticipantes.Id',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Atividades.CooperacaoAtividade.Participantes.RelacoesExternasParticipantes.Nome',
+            
+            # Nested programs within nested programs
+            'ArrayOfCooperacaoOut.CooperacaoOut.Programas.CooperacaoOut.Programas',
+            
+            # Direct activities under main cooperation
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade.Id',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade.Nome',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade.DataInicio',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade.DataFim',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade.Tipo',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade.TipoAtividade',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade.Local',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade.Participantes',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade.RelacoesExternasParticipantes',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade.Participantes.RelacoesExternasParticipantes',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade.Participantes.RelacoesExternasParticipantes.Id',
+            'ArrayOfCooperacaoOut.CooperacaoOut.Atividades.CooperacaoAtividade.Participantes.RelacoesExternasParticipantes.Nome'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -170,13 +206,13 @@ class CooperacaoMapper(SchemaMapper):
             programas = cooperacao_item.find('Programas')
             if programas is not None:
                 for programa in programas.findall('CooperacaoOut'):
-                    self._process_cooperacao_item(programa, legislatura_id)
+                    self._process_cooperacao_item(programa, legislatura)
             
             # Process nested activities  
             atividades = cooperacao_item.find('Atividades')
             if atividades is not None:
                 for atividade in atividades.findall('CooperacaoAtividade'):
-                    self._process_cooperacao_atividade(atividade, legislatura_id)
+                    self._process_cooperacao_atividade(atividade, existing)
             
             return True
             
@@ -294,16 +330,26 @@ class CooperacaoMapper(SchemaMapper):
         atividades = cooperacao_item.find('Atividades')
         if atividades is not None:
             for atividade in atividades.findall('CooperacaoAtividade'):
+                atividade_id = self._get_int_value(atividade, 'Id')
+                nome = self._get_text_value(atividade, 'Nome')
                 tipo_atividade = self._get_text_value(atividade, 'TipoAtividade')
+                tipo = self._get_text_value(atividade, 'Tipo')
+                local = self._get_text_value(atividade, 'Local')
                 data_inicio = self._parse_date(self._get_text_value(atividade, 'DataInicio'))
                 data_fim = self._parse_date(self._get_text_value(atividade, 'DataFim'))
                 descricao = self._get_text_value(atividade, 'Descricao')
                 
+                # Use TipoAtividade if available, otherwise use Tipo
+                tipo_final = tipo_atividade if tipo_atividade else tipo
+                
                 atividade_record = CooperacaoAtividade(
                     cooperacao_id=cooperacao.id,
-                    tipo_atividade=tipo_atividade,
+                    atividade_id=atividade_id,
+                    nome=nome,
+                    tipo_atividade=tipo_final,
                     data_inicio=data_inicio,
                     data_fim=data_fim,
+                    local=local,
                     descricao=descricao
                 )
                 self.session.add(atividade_record)
@@ -317,25 +363,72 @@ class CooperacaoMapper(SchemaMapper):
         # Process internal participants
         participantes = atividade.find('Participantes')
         if participantes is not None:
-            for participante in participantes:
-                nome = participante.text if participante.text else participante.tag
-                if nome:
-                    participante_record = CooperacaoParticipante(
-                        atividade_id=atividade_record.id,
-                        nome=nome,
-                        tipo_participante='interno'
-                    )
-                    self.session.add(participante_record)
+            # Check for structured participant data
+            externos_nested = participantes.find('RelacoesExternasParticipantes')
+            if externos_nested is not None:
+                for externo in externos_nested:
+                    participante_id = self._get_int_value(externo, 'Id')
+                    nome = self._get_text_value(externo, 'Nome')
+                    if nome:
+                        participante_record = CooperacaoParticipante(
+                            atividade_id=atividade_record.id,
+                            participante_id=participante_id,
+                            nome=nome,
+                            tipo_participante='externo'
+                        )
+                        self.session.add(participante_record)
+            else:
+                # Process simple participant data
+                for participante in participantes:
+                    nome = participante.text if participante.text else participante.tag
+                    if nome:
+                        participante_record = CooperacaoParticipante(
+                            atividade_id=atividade_record.id,
+                            nome=nome,
+                            tipo_participante='interno'
+                        )
+                        self.session.add(participante_record)
         
-        # Process external participants
+        # Process direct external participants
         externos = atividade.find('RelacoesExternasParticipantes')
         if externos is not None:
             for externo in externos:
-                nome = externo.text if externo.text else externo.tag
+                participante_id = self._get_int_value(externo, 'Id')
+                nome = self._get_text_value(externo, 'Nome')
                 if nome:
                     participante_record = CooperacaoParticipante(
                         atividade_id=atividade_record.id,
+                        participante_id=participante_id,
                         nome=nome,
                         tipo_participante='externo'
                     )
                     self.session.add(participante_record)
+    
+    def _process_cooperacao_atividade(self, atividade: ET.Element, cooperacao: CooperacaoParlamentar):
+        """Process individual cooperation activity directly nested under main cooperation item"""
+        atividade_id = self._get_int_value(atividade, 'Id')
+        nome = self._get_text_value(atividade, 'Nome')
+        tipo_atividade = self._get_text_value(atividade, 'TipoAtividade')
+        tipo = self._get_text_value(atividade, 'Tipo')
+        local = self._get_text_value(atividade, 'Local')
+        data_inicio = self._parse_date(self._get_text_value(atividade, 'DataInicio'))
+        data_fim = self._parse_date(self._get_text_value(atividade, 'DataFim'))
+        
+        # Use TipoAtividade if available, otherwise use Tipo
+        tipo_final = tipo_atividade if tipo_atividade else tipo
+        
+        if tipo_final or nome:
+            atividade_record = CooperacaoAtividade(
+                cooperacao_id=cooperacao.id,
+                atividade_id=atividade_id,
+                nome=nome,
+                tipo_atividade=tipo_final,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                local=local
+            )
+            self.session.add(atividade_record)
+            self.session.flush()  # Get the ID
+            
+            # Process participants
+            self._process_cooperation_participants(atividade, atividade_record)

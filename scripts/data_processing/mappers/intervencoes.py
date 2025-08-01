@@ -263,14 +263,14 @@ class IntervencoesMapper(SchemaMapper):
                 
                 publicacao = IntervencaoPublicacao(
                     intervencao_id=intervention.id,
-                    pub_numero=pub_numero.text if pub_numero is not None else None,
+                    pub_nr=pub_numero.text if pub_numero is not None else None,
                     pub_tipo=pub_tipo.text if pub_tipo is not None else None,
                     pub_tp=pub_tp.text if pub_tp is not None else None,
-                    pub_legislatura=pub_leg.text if pub_leg is not None else None,
-                    pub_serie_legislatura=pub_sl.text if pub_sl is not None else None,
-                    pub_data=self._parse_date(pub_data.text) if pub_data is not None else None,
-                    paginas=paginas,
-                    id_interno=self._safe_int(id_interno.text) if id_interno is not None else None,
+                    pub_leg=pub_leg.text if pub_leg is not None else None,
+                    pub_sl=self._safe_int(pub_sl.text) if pub_sl is not None else None,
+                    pub_dt=self._parse_date(pub_data.text) if pub_data is not None else None,
+                    pag=paginas,
+                    id_int=self._safe_int(id_interno.text) if id_interno is not None else None,
                     url_diario=url_diario.text if url_diario is not None else None
                 )
                 self.session.add(publicacao)
@@ -289,7 +289,7 @@ class IntervencoesMapper(SchemaMapper):
                     intervencao_id=intervention.id,
                     id_cadastro=self._safe_int(id_cadastro_elem.text) if id_cadastro_elem is not None else None,
                     nome=nome_elem.text if nome_elem is not None else None,
-                    grupo_parlamentar=gp_elem.text if gp_elem is not None else None
+                    gp=gp_elem.text if gp_elem is not None else None
                 )
                 self.session.add(deputado)
     

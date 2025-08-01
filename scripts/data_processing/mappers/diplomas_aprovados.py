@@ -147,6 +147,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
             # Extract basic fields
             diploma_id = self._get_int_value(diploma, 'Id')
             numero = self._get_int_value(diploma, 'Numero')
+            numero2 = self._get_text_value(diploma, 'Numero2')  # Missing field from schema
             titulo = self._get_text_value(diploma, 'Titulo')
             tipo = self._get_text_value(diploma, 'Tipo')
             sessao = self._get_int_value(diploma, 'Sessao')
@@ -169,6 +170,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
             if existing:
                 # Update existing record
                 existing.numero = numero
+                existing.numero2 = numero2
                 existing.titulo = titulo
                 existing.tipo = tipo
                 existing.sessao = sessao
@@ -182,6 +184,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                 diploma_record = DiplomaAprovado(
                     diploma_id=diploma_id,
                     numero=numero,
+                    numero2=numero2,
                     titulo=titulo,
                     tipo=tipo,
                     sessao=sessao,

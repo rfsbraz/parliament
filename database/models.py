@@ -1575,6 +1575,7 @@ class DiplomaAprovado(Base):
     # Core diploma fields
     diploma_id = Column(Integer, unique=True)  # External ID
     numero = Column(Integer)
+    numero2 = Column(String(50))  # Secondary diploma number
     titulo = Column(Text)
     tipo = Column(String(100))
     sessao = Column(Integer)
@@ -1771,10 +1772,13 @@ class CooperacaoAtividade(Base):
     
     id = Column(Integer, primary_key=True)
     cooperacao_id = Column(Integer, ForeignKey('cooperacao_parlamentar.id'), nullable=False)
+    atividade_id = Column(Integer)  # External activity ID from XML
     
+    nome = Column(String(255))
     tipo_atividade = Column(String(100))
     data_inicio = Column(Date)
     data_fim = Column(Date)
+    local = Column(String(255))
     descricao = Column(Text)
     
     created_at = Column(DateTime, default=func.now())
@@ -1788,6 +1792,7 @@ class CooperacaoParticipante(Base):
     
     id = Column(Integer, primary_key=True)
     atividade_id = Column(Integer, ForeignKey('cooperacao_atividades.id'), nullable=False)
+    participante_id = Column(Integer)  # External participant ID from XML
     
     nome = Column(String(200))
     cargo = Column(String(100))
@@ -3088,7 +3093,7 @@ class IntervencaoAtividadeRelacionada(Base):
     intervencao_id = Column(Integer, ForeignKey('intervencao_parlamentar.id'), nullable=False)
     
     atividade_id = Column(Integer)
-    tipo = Column(String(100))
+    tipo = Column(Text)  # Changed from String(100) to Text for long initiative lists
     
     created_at = Column(DateTime, default=func.now())
     
