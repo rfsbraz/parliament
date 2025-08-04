@@ -759,6 +759,11 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
     def _process_registo_interesses_v2(self, record: ET.Element, file_info: Dict) -> bool:
         """Process Interest Registry V2 record"""
         try:
+            # Safety check - ensure record is not None
+            if record is None:
+                logger.warning("Received None record in Interest Registry V2 processing")
+                return False
+                
             from database.models import RegistoInteressesV2, Deputado
             
             cad_id = self._get_text_value(record, 'cadId')
