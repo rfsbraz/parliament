@@ -18,7 +18,10 @@ from .base_mapper import SchemaMapper, SchemaError
 # Import our models
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-from database.models import RegistoInteresses, Deputado, Legislatura
+from database.models import (
+    RegistoInteresses, RegistoInteressesV2, RegistoInteressesAtividade, 
+    RegistoInteressesSociedade, RegistoInteressesCargo, Deputado, Legislatura
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +49,7 @@ class RegistoInteressesMapper(SchemaMapper):
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.Exclusivity',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.DGFNumber',
             
-            # V2 Schema (XII, XIII)
+            # V2 Schema (XII, XIII) - Basic fields
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadId',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadNomeCompleto',
@@ -56,6 +59,51 @@ class RegistoInteressesMapper(SchemaMapper):
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadFamId',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadNomeConjuge',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi',
+            
+            # V2 Schema - Detailed nested structure (XIII Legislature)
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiId',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiCargoDes',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiLegDes',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiDataVersao',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiRegimeBensId',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiRegimeBensDes',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiCargoData',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiApoiosBeneficios',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiServicosPrestados',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiCadId',
+            
+            # Activities
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiActividades',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiActividades.pt_ar_wsgode_objectos_DadosRgiActividades',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiActividades.pt_ar_wsgode_objectos_DadosRgiActividades.rgaId',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiActividades.pt_ar_wsgode_objectos_DadosRgiActividades.rgaActividade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiActividades.pt_ar_wsgode_objectos_DadosRgiActividades.rgaDataInicio',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiActividades.pt_ar_wsgode_objectos_DadosRgiActividades.rgaDataFim',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiActividades.pt_ar_wsgode_objectos_DadosRgiActividades.rgaRemunerada',
+            
+            # Societies
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiSociedades',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiSociedades.pt_ar_wsgode_objectos_DadosRgiSociedades',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiSociedades.pt_ar_wsgode_objectos_DadosRgiSociedades.rgsId',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiSociedades.pt_ar_wsgode_objectos_DadosRgiSociedades.rgsEntidade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiSociedades.pt_ar_wsgode_objectos_DadosRgiSociedades.rgsAreaActividade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiSociedades.pt_ar_wsgode_objectos_DadosRgiSociedades.rgsLocalSede',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiSociedades.pt_ar_wsgode_objectos_DadosRgiSociedades.rgsPartiSocial',
+            
+            # Social Positions
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiCargosSociais',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiCargosSociais.pt_ar_wsgode_objectos_DadosRgiCargosSociaisV2',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiCargosSociais.pt_ar_wsgode_objectos_DadosRgiCargosSociaisV2.rgcId',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiCargosSociais.pt_ar_wsgode_objectos_DadosRgiCargosSociaisV2.rgcCargo',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiCargosSociais.pt_ar_wsgode_objectos_DadosRgiCargosSociaisV2.rgcEntidade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiCargosSociais.pt_ar_wsgode_objectos_DadosRgiCargosSociaisV2.rgcAreaActividade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiCargosSociais.pt_ar_wsgode_objectos_DadosRgiCargosSociaisV2.rgcLocalSede',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiCargosSociais.pt_ar_wsgode_objectos_DadosRgiCargosSociaisV2.rgcDataInicio',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiCargosSociais.pt_ar_wsgode_objectos_DadosRgiCargosSociaisV2.rgcDataFim',
+            
+            # Other Situations - this appears to be a text field, not a nested structure
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2.rgiOutrasSituacoes',
             
             # V1 Schema (XI)
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1',
@@ -121,9 +169,12 @@ class RegistoInteressesMapper(SchemaMapper):
                         error_msg = f"Error processing V3 conflicts record: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
-                        logger.error("Data integrity issue detected - exiting immediately")
-                        import sys
-                        sys.exit(1)
+                        results['records_processed'] += 1
+                        self.session.rollback()
+                        if strict_mode:
+                            logger.error("STRICT MODE: Exiting due to V3 record processing error")
+                            raise SchemaError(f"V3 conflicts record processing failed in strict mode: {e}")
+                        continue
                         
                 elif registo_v2 is not None:
                     # Handle V2 schema (XII, XIII)
@@ -145,7 +196,7 @@ class RegistoInteressesMapper(SchemaMapper):
                         
                         success = self._process_v2_record(
                             record_id, full_name, marital_status_desc, spouse_name,
-                            matrimonial_regime, exclusivity, dgf_number, legislatura
+                            matrimonial_regime, exclusivity, dgf_number, legislatura, registo_v2
                         )
                         if success:
                             results['records_imported'] += 1
@@ -154,9 +205,12 @@ class RegistoInteressesMapper(SchemaMapper):
                         error_msg = f"Error processing V2 conflicts record: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
-                        logger.error("Data integrity issue detected - exiting immediately")
-                        import sys
-                        sys.exit(1)
+                        results['records_processed'] += 1
+                        self.session.rollback()
+                        if strict_mode:
+                            logger.error("STRICT MODE: Exiting due to V2 record processing error")
+                            raise SchemaError(f"V2 conflicts record processing failed in strict mode: {e}")
+                        continue
                         
                 elif registo_v1 is not None:
                     # Handle V1 schema (XI)
@@ -182,9 +236,12 @@ class RegistoInteressesMapper(SchemaMapper):
                         error_msg = f"Error processing V1 conflicts record: {str(e)}"
                         logger.error(error_msg)
                         results['errors'].append(error_msg)
-                        logger.error("Data integrity issue detected - exiting immediately")
-                        import sys
-                        sys.exit(1)
+                        results['records_processed'] += 1
+                        self.session.rollback()
+                        if strict_mode:
+                            logger.error("STRICT MODE: Exiting due to V1 record processing error")
+                            raise SchemaError(f"V1 conflicts record processing failed in strict mode: {e}")
+                        continue
             
             # Commit all changes
             self.session.commit()
@@ -194,10 +251,8 @@ class RegistoInteressesMapper(SchemaMapper):
             error_msg = f"Critical error processing conflicts file {file_info['file_path']}: {str(e)}"
             logger.error(error_msg)
             results['errors'].append(error_msg)
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-            sys.exit(1)
-            return results
+            self.session.rollback()
+            raise SchemaError(f"Critical interest registry processing error: {e}")
         
         return results
     
@@ -233,33 +288,7 @@ class RegistoInteressesMapper(SchemaMapper):
         
         return None
     
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
-        """Get or create legislatura record"""
-        legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
-        
-        if legislatura:
-            return legislatura
-        
-        # Create new legislatura if it doesn't exist
-        numero_int = self._convert_roman_to_int(legislatura_sigla)
-        
-        legislatura = Legislatura(
-            numero=legislatura_sigla,
-            designacao=f"{numero_int}.ª Legislatura",
-            ativa=False
-        )
-        
-        self.session.add(legislatura)
-        self.session.flush()  # Get the ID
-        return legislatura
-    
-    def _convert_roman_to_int(self, roman: str) -> int:
-        """Convert Roman numeral to integer"""
-        roman_numerals = {
-            'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10,
-            'XI': 11, 'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17, 'CONSTITUINTE': 0
-        }
-        return roman_numerals.get(roman, 17)
+    # Legislatura and roman numeral methods now inherited from base class
     
     def _get_or_create_deputado(self, record_id: int, full_name: str) -> Deputado:
         """Get or create deputy record"""
@@ -336,8 +365,8 @@ class RegistoInteressesMapper(SchemaMapper):
     
     def _process_v2_record(self, record_id: str, full_name: str, marital_status_desc: str,
                           spouse_name: str, matrimonial_regime: str, exclusivity: str,
-                          dgf_number: str, legislatura: Legislatura) -> bool:
-        """Process V2 schema record"""
+                          dgf_number: str, legislatura: Legislatura, registo_v2_elem: ET.Element) -> bool:
+        """Process V2 schema record with detailed nested structures"""
         try:
             if not record_id or not full_name:
                 return False
@@ -345,33 +374,42 @@ class RegistoInteressesMapper(SchemaMapper):
             cad_id = int(record_id) if record_id.isdigit() else 0
             deputado = self._get_or_create_deputado(cad_id, full_name)
             
-            # Check if record already exists
-            existing = self.session.query(RegistoInteresses).filter_by(
+            # Extract additional V2 fields
+            cad_actividade_profissional = self._get_text(registo_v2_elem, 'cadActividadeProfissional')
+            cad_estado_civil_cod = self._get_text(registo_v2_elem, 'cadEstadoCivilCod')
+            
+            # Check if V2 record already exists
+            existing_v2 = self.session.query(RegistoInteressesV2).filter_by(
                 deputado_id=deputado.id,
-                legislatura_id=legislatura.id,
                 cad_id=cad_id
             ).first()
             
-            if existing:
-                # Update existing record
-                existing.cad_nome_completo = full_name
-                existing.cad_estado_civil_des = marital_status_desc
-                existing.cad_nome_conjuge = spouse_name
-                existing.cad_rgi = matrimonial_regime
-                existing.schema_version = "V2"
+            if existing_v2:
+                # Update existing V2 record
+                existing_v2.cad_nome_completo = full_name
+                existing_v2.cad_estado_civil_des = marital_status_desc
+                existing_v2.cad_actividade_profissional = cad_actividade_profissional
+                existing_v2.cad_estado_civil_cod = cad_estado_civil_cod
+                registo_v2 = existing_v2
             else:
-                # Create new record
-                registo = RegistoInteresses(
+                # Create new V2 record
+                registo_v2 = RegistoInteressesV2(
                     deputado_id=deputado.id,
-                    legislatura_id=legislatura.id,
                     cad_id=cad_id,
                     cad_nome_completo=full_name,
                     cad_estado_civil_des=marital_status_desc,
-                    cad_nome_conjuge=spouse_name,
-                    cad_rgi=matrimonial_regime,
-                    schema_version="V2"
+                    cad_actividade_profissional=cad_actividade_profissional,
+                    cad_estado_civil_cod=cad_estado_civil_cod
                 )
-                self.session.add(registo)
+                self.session.add(registo_v2)
+                self.session.flush()  # Get the ID for nested records
+            
+            # Process detailed nested data from cadRgi
+            rgi_elem = registo_v2_elem.find('cadRgi/pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2')
+            if rgi_elem is not None:
+                self._process_v2_activities(rgi_elem, registo_v2)
+                self._process_v2_societies(rgi_elem, registo_v2)
+                self._process_v2_social_positions(rgi_elem, registo_v2)
             
             return True
             
@@ -421,3 +459,96 @@ class RegistoInteressesMapper(SchemaMapper):
         except Exception as e:
             logger.error(f"Error processing V1 record: {e}")
             return False
+    
+    def _process_v2_activities(self, rgi_elem: ET.Element, registo_v2: RegistoInteressesV2):
+        """Process activities from V2 detailed structure"""
+        atividades_elem = rgi_elem.find('rgiActividades')
+        if atividades_elem is not None:
+            for atividade in atividades_elem.findall('pt_ar_wsgode_objectos_DadosRgiActividades'):
+                rga_id = self._get_int_text(atividade, 'rgaId')
+                rga_atividade = self._get_text(atividade, 'rgaActividade')
+                rga_data_inicio = self._parse_date(self._get_text(atividade, 'rgaDataInicio'))
+                rga_data_fim = self._parse_date(self._get_text(atividade, 'rgaDataFim'))
+                rga_remunerada = self._get_text(atividade, 'rgaRemunerada')
+                rga_entidade = self._get_text(atividade, 'rgaEntidade')
+                rga_valor = self._get_text(atividade, 'rgaValor')
+                rga_observacoes = self._get_text(atividade, 'rgaObservacoes')
+                
+                if any([rga_atividade, rga_entidade, rga_data_inicio, rga_data_fim]):
+                    atividade_record = RegistoInteressesAtividade(
+                        registo_id=registo_v2.id,
+                        rga_id=rga_id,
+                        rga_atividade=rga_atividade,
+                        rga_data_inicio=rga_data_inicio,
+                        rga_data_fim=rga_data_fim,
+                        rga_remunerada=rga_remunerada,
+                        rga_entidade=rga_entidade,
+                        rga_valor=rga_valor,
+                        rga_observacoes=rga_observacoes
+                    )
+                    self.session.add(atividade_record)
+    
+    def _process_v2_societies(self, rgi_elem: ET.Element, registo_v2: RegistoInteressesV2):
+        """Process societies from V2 detailed structure"""
+        sociedades_elem = rgi_elem.find('rgiSociedades')
+        if sociedades_elem is not None:
+            for sociedade in sociedades_elem.findall('pt_ar_wsgode_objectos_DadosRgiSociedades'):
+                rgs_id = self._get_int_text(sociedade, 'rgsId')
+                rgs_entidade = self._get_text(sociedade, 'rgsEntidade')
+                rgs_area_atividade = self._get_text(sociedade, 'rgsAreaActividade')
+                rgs_local_sede = self._get_text(sociedade, 'rgsLocalSede')
+                rgs_parti_social = self._get_text(sociedade, 'rgsPartiSocial')
+                rgs_valor = self._get_text(sociedade, 'rgsValor')
+                rgs_observacoes = self._get_text(sociedade, 'rgsObservacoes')
+                
+                if any([rgs_entidade, rgs_area_atividade, rgs_local_sede]):
+                    sociedade_record = RegistoInteressesSociedade(
+                        registo_id=registo_v2.id,
+                        rgs_id=rgs_id,
+                        rgs_entidade=rgs_entidade,
+                        rgs_area_atividade=rgs_area_atividade,
+                        rgs_local_sede=rgs_local_sede,
+                        rgs_parti_social=rgs_parti_social,
+                        rgs_valor=rgs_valor,
+                        rgs_observacoes=rgs_observacoes
+                    )
+                    self.session.add(sociedade_record)
+    
+    def _process_v2_social_positions(self, rgi_elem: ET.Element, registo_v2: RegistoInteressesV2):
+        """Process social positions from V2 detailed structure"""
+        cargos_elem = rgi_elem.find('rgiCargosSociais')
+        if cargos_elem is not None:
+            for cargo in cargos_elem.findall('pt_ar_wsgode_objectos_DadosRgiCargosSociaisV2'):
+                rgc_id = self._get_int_text(cargo, 'rgcId')
+                rgc_cargo = self._get_text(cargo, 'rgcCargo')
+                rgc_entidade = self._get_text(cargo, 'rgcEntidade')
+                rgc_area_atividade = self._get_text(cargo, 'rgcAreaActividade')
+                rgc_local_sede = self._get_text(cargo, 'rgcLocalSede')
+                rgc_data_inicio = self._parse_date(self._get_text(cargo, 'rgcDataInicio'))
+                rgc_data_fim = self._parse_date(self._get_text(cargo, 'rgcDataFim'))
+                rgc_valor = self._get_text(cargo, 'rgcValor')
+                rgc_observacoes = self._get_text(cargo, 'rgcObservacoes')
+                
+                if any([rgc_cargo, rgc_entidade, rgc_area_atividade]):
+                    cargo_record = RegistoInteressesCargo(
+                        registo_id=registo_v2.id,
+                        rgc_id=rgc_id,
+                        rgc_cargo=rgc_cargo,
+                        rgc_entidade=rgc_entidade,
+                        rgc_area_atividade=rgc_area_atividade,
+                        rgc_local_sede=rgc_local_sede,
+                        rgc_data_inicio=rgc_data_inicio,
+                        rgc_data_fim=rgc_data_fim,
+                        rgc_valor=rgc_valor,
+                        rgc_observacoes=rgc_observacoes
+                    )
+                    self.session.add(cargo_record)
+    
+    def _get_int_text(self, parent: ET.Element, tag: str) -> Optional[int]:
+        """Get integer value from text content, return None if not found or invalid"""
+        text = self._get_text(parent, tag)
+        if text and text.isdigit():
+            return int(text)
+        return None
+    
+    # _parse_date method now inherited from base class

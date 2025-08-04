@@ -1793,7 +1793,7 @@ class CooperacaoAtividade(Base):
     cooperacao_id = Column(Integer, ForeignKey('cooperacao_parlamentar.id'), nullable=False)
     atividade_id = Column(Integer)  # External activity ID from XML
     
-    nome = Column(String(255))
+    nome = Column(Text)
     tipo_atividade = Column(String(100))
     data_inicio = Column(Date)
     data_fim = Column(Date)
@@ -1901,6 +1901,45 @@ class DelegacaoPermanenteMembro(Base):
     
     delegacao = relationship("DelegacaoPermanente", back_populates="membros")
     deputado = relationship("Deputado", backref="delegacoes_permanentes_participacao")
+
+
+class DelegacaoPermanenteComissao(Base):
+    """Commission data for permanent delegations - XIII Legislature structure"""
+    __tablename__ = 'delegacao_permanente_comissoes'
+    
+    id = Column(Integer, primary_key=True)
+    delegacao_id = Column(Integer, ForeignKey('delegacao_permanente.id'), nullable=False)
+    
+    # Commission fields with XML namespace support
+    nome = Column(Text)  # Commission name
+    composicao = Column(Text)  # Commission composition details
+    subcomissoes = Column(Text)  # Subcommissions data
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    delegacao = relationship("DelegacaoPermanente", backref="comissoes")
+    membros = relationship("DelegacaoPermanenteComissaoMembro", back_populates="comissao", cascade="all, delete-orphan")
+
+
+class DelegacaoPermanenteComissaoMembro(Base):
+    """Commission member data for permanent delegations - XI Legislature nested structure"""
+    __tablename__ = 'delegacao_permanente_comissao_membros'
+    
+    id = Column(Integer, primary_key=True)
+    comissao_id = Column(Integer, ForeignKey('delegacao_permanente_comissoes.id'), nullable=False)
+    
+    # Member fields with XML namespace support
+    nome = Column(Text)  # Member name (can be long)
+    gp = Column(String(50))  # Parliamentary group
+    cargo = Column(Text)  # Position/role (can be long)
+    data_inicio = Column(Date)  # Start date
+    data_fim = Column(Date)  # End date
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    comissao = relationship("DelegacaoPermanenteComissao", back_populates="membros")
 
 
 class AtividadeParlamentar(Base):
@@ -4114,6 +4153,78 @@ class RegistoInteressesV2(Base):
     
     # Relationships
     deputado = relationship("Deputado", back_populates="registo_interesses_v2")
+    atividades = relationship("RegistoInteressesAtividade", back_populates="registo", cascade="all, delete-orphan")
+    sociedades = relationship("RegistoInteressesSociedade", back_populates="registo", cascade="all, delete-orphan")
+    cargos_sociais = relationship("RegistoInteressesCargo", back_populates="registo", cascade="all, delete-orphan")
+
+
+class RegistoInteressesAtividade(Base):
+    """Activities declared in interest registry (V2 detailed structure)"""
+    __tablename__ = 'registo_interesses_atividades'
+    
+    id = Column(Integer, primary_key=True)
+    registo_id = Column(Integer, ForeignKey('registo_interesses_v2.id'), nullable=False)
+    
+    # Activity fields from pt_ar_wsgode_objectos_DadosRgiActividades
+    rga_id = Column(Integer)  # rgaId - Activity ID
+    rga_atividade = Column(Text)  # rgaActividade - Activity description
+    rga_data_inicio = Column(Date)  # rgaDataInicio - Start date
+    rga_data_fim = Column(Date)  # rgaDataFim - End date
+    rga_remunerada = Column(String(10))  # rgaRemunerada - Whether remunerated (Y/N)
+    rga_entidade = Column(Text)  # rgaEntidade - Entity/organization
+    rga_valor = Column(Text)  # rgaValor - Value/compensation (can be descriptive)
+    rga_observacoes = Column(Text)  # rgaObservacoes - Observations
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    registo = relationship("RegistoInteressesV2", back_populates="atividades")
+
+
+class RegistoInteressesSociedade(Base):
+    """Societies/companies declared in interest registry (V2 detailed structure)"""
+    __tablename__ = 'registo_interesses_sociedades'
+    
+    id = Column(Integer, primary_key=True)
+    registo_id = Column(Integer, ForeignKey('registo_interesses_v2.id'), nullable=False)
+    
+    # Society fields from pt_ar_wsgode_objectos_DadosRgiSociedades
+    rgs_id = Column(Integer)  # rgsId - Society ID
+    rgs_entidade = Column(Text)  # rgsEntidade - Entity/company name
+    rgs_area_atividade = Column(Text)  # rgsAreaActividade - Activity area
+    rgs_local_sede = Column(Text)  # rgsLocalSede - Headquarters location
+    rgs_parti_social = Column(Text)  # rgsPartiSocial - Social participation/shareholding
+    rgs_valor = Column(Text)  # rgsValor - Value (can be descriptive)
+    rgs_observacoes = Column(Text)  # rgsObservacoes - Observations
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    registo = relationship("RegistoInteressesV2", back_populates="sociedades")
+
+
+class RegistoInteressesCargo(Base):
+    """Social positions declared in interest registry (V2 detailed structure)"""
+    __tablename__ = 'registo_interesses_cargos'
+    
+    id = Column(Integer, primary_key=True)
+    registo_id = Column(Integer, ForeignKey('registo_interesses_v2.id'), nullable=False)
+    
+    # Social position fields from pt_ar_wsgode_objectos_DadosRgiCargosSociaisV2
+    rgc_id = Column(Integer)  # rgcId - Position ID
+    rgc_cargo = Column(Text)  # rgcCargo - Position/role
+    rgc_entidade = Column(Text)  # rgcEntidade - Entity/organization
+    rgc_area_atividade = Column(Text)  # rgcAreaActividade - Activity area
+    rgc_local_sede = Column(Text)  # rgcLocalSede - Headquarters location
+    rgc_data_inicio = Column(Date)  # rgcDataInicio - Start date
+    rgc_data_fim = Column(Date)  # rgcDataFim - End date
+    rgc_valor = Column(Text)  # rgcValor - Value/compensation (can be descriptive)
+    rgc_observacoes = Column(Text)  # rgcObservacoes - Observations
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    registo = relationship("RegistoInteressesV2", back_populates="cargos_sociais")
 
 
 class IniciativaOrigem(Base):

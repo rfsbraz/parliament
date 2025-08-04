@@ -118,9 +118,11 @@ class DiplomasAprovadosMapper(SchemaMapper):
                     logger.error(error_msg)
                     results['errors'].append(error_msg)
                     results['records_processed'] += 1
-                    logger.error("Data integrity issue detected - exiting immediately")
-                    import sys
-                    sys.exit(1)
+                    self.session.rollback()
+                    if strict_mode:
+                        logger.error("STRICT MODE: Exiting due to diploma processing error")
+                        raise SchemaError(f"Diploma processing failed in strict mode: {e}")
+                    continue
             
             # Commit all changes
             self.session.commit()
@@ -130,10 +132,8 @@ class DiplomasAprovadosMapper(SchemaMapper):
             error_msg = f"Critical error processing diplomas: {str(e)}"
             logger.error(error_msg)
             results['errors'].append(error_msg)
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-            sys.exit(1)
-            return results
+            self.session.rollback()
+            raise SchemaError(f"Critical diploma processing error: {e}")
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""

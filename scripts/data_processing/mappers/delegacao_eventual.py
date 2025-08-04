@@ -82,9 +82,11 @@ class DelegacaoEventualMapper(SchemaMapper):
                     logger.error(error_msg)
                     results['errors'].append(error_msg)
                     results['records_processed'] += 1
-                    logger.error("Data integrity issue detected - exiting immediately")
-                    import sys
-                    sys.exit(1)
+                    self.session.rollback()
+                    if strict_mode:
+                        logger.error("STRICT MODE: Exiting due to delegation event processing error")
+                        raise SchemaError(f"Delegation event processing failed in strict mode: {e}")
+                    continue
             
             # Commit all changes
             self.session.commit()
@@ -94,10 +96,8 @@ class DelegacaoEventualMapper(SchemaMapper):
             error_msg = f"Critical error processing delegation events: {str(e)}"
             logger.error(error_msg)
             results['errors'].append(error_msg)
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-            sys.exit(1)
-            return results
+            self.session.rollback()
+            raise SchemaError(f"Critical delegation processing error: {e}")
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
@@ -270,9 +270,7 @@ class DelegacaoEventualMapper(SchemaMapper):
                     participante_record = DelegacaoEventualParticipante(
                         delegacao_id=delegacao.id,
                         nome=nome,
-                        tipo=tipo,
                         gp=gp,
-                        leg=leg,
                         tipo_participante='interno'
                     )
                     self.session.add(participante_record)
@@ -287,7 +285,6 @@ class DelegacaoEventualMapper(SchemaMapper):
                 nome = self._get_text_value(relacoes_externas, 'Nome')
                 tipo = self._get_text_value(relacoes_externas, 'Tipo')
                 gp = self._get_text_value(relacoes_externas, 'Gp')
-                leg = self._get_text_value(relacoes_externas, 'Leg')
                 
                 if nome or participante_id:
                     participante_record = DelegacaoEventualParticipante(

@@ -20,7 +20,8 @@ from .base_mapper import SchemaMapper, SchemaError
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 from database.models import (
-    DelegacaoPermanente, DelegacaoPermanenteMembro, Deputado, Legislatura
+    DelegacaoPermanente, DelegacaoPermanenteMembro, DelegacaoPermanenteComissao, 
+    DelegacaoPermanenteComissaoMembro, Deputado, Legislatura
 )
 
 logger = logging.getLogger(__name__)
@@ -49,12 +50,28 @@ class DelegacaoPermanenteMapper(SchemaMapper):
             'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Comissoes',
             'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Reunioes',
             
-            # Members
-            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.DelegacaoPermanenteMembroOut',
-            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.DelegacaoPermanenteMembroOut.Gp',
-            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.DelegacaoPermanenteMembroOut.Cargo',
-            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.DelegacaoPermanenteMembroOut.DataInicio',
-            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.DelegacaoPermanenteMembroOut.DataFim'
+            # Members (IX Legislature composition structure)
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Composicao.DelegacaoPermanenteMembroOut',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Composicao.DelegacaoPermanenteMembroOut.Id',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Composicao.DelegacaoPermanenteMembroOut.Nome',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Composicao.DelegacaoPermanenteMembroOut.Gp',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Composicao.DelegacaoPermanenteMembroOut.Cargo',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Composicao.DelegacaoPermanenteMembroOut.DataInicio',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Composicao.DelegacaoPermanenteMembroOut.DataFim',
+            
+            # XIII Legislature commission structure with XML namespace
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Comissoes.Comissao',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Comissoes.Comissao.{http://parlamento.pt/AP/svc/}nome',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Comissoes.Comissao.{http://parlamento.pt/AP/svc/}composicao',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Comissoes.Comissao.{http://parlamento.pt/AP/svc/}subcomissoes',
+            
+            # XI Legislature deeper nested commission member structure with XML namespace
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Comissoes.Comissao.{http://parlamento.pt/AP/svc/}composicao.{http://parlamento.pt/AP/svc/}Membro',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Comissoes.Comissao.{http://parlamento.pt/AP/svc/}composicao.{http://parlamento.pt/AP/svc/}Membro.{http://parlamento.pt/AP/svc/}nome',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Comissoes.Comissao.{http://parlamento.pt/AP/svc/}composicao.{http://parlamento.pt/AP/svc/}Membro.{http://parlamento.pt/AP/svc/}gp',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Comissoes.Comissao.{http://parlamento.pt/AP/svc/}composicao.{http://parlamento.pt/AP/svc/}Membro.{http://parlamento.pt/AP/svc/}cargo',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Comissoes.Comissao.{http://parlamento.pt/AP/svc/}composicao.{http://parlamento.pt/AP/svc/}Membro.{http://parlamento.pt/AP/svc/}dataInicio',
+            'ArrayOfDelegacaoPermanenteOut.DelegacaoPermanenteOut.Comissoes.Comissao.{http://parlamento.pt/AP/svc/}composicao.{http://parlamento.pt/AP/svc/}Membro.{http://parlamento.pt/AP/svc/}dataFim'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -81,9 +98,11 @@ class DelegacaoPermanenteMapper(SchemaMapper):
                     logger.error(error_msg)
                     results['errors'].append(error_msg)
                     results['records_processed'] += 1
-                    logger.error("Data integrity issue detected - exiting immediately")
-                    import sys
-                    sys.exit(1)
+                    self.session.rollback()
+                    if strict_mode:
+                        logger.error("STRICT MODE: Exiting due to permanent delegation processing error")
+                        raise SchemaError(f"Permanent delegation processing failed in strict mode: {e}")
+                    continue
             
             # Commit all changes
             self.session.commit()
@@ -93,10 +112,8 @@ class DelegacaoPermanenteMapper(SchemaMapper):
             error_msg = f"Critical error processing permanent delegations: {str(e)}"
             logger.error(error_msg)
             results['errors'].append(error_msg)
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-            sys.exit(1)
-            return results
+            self.session.rollback()
+            raise SchemaError(f"Critical permanent delegation processing error: {e}")
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
@@ -171,6 +188,12 @@ class DelegacaoPermanenteMapper(SchemaMapper):
                 for member in composicao.findall('DelegacaoPermanenteMembroOut'):
                     self._process_delegation_member(member, existing)
             
+            # Process commissions (XIII Legislature)
+            comissoes = delegation.find('Comissoes')
+            if comissoes is not None:
+                for comissao in comissoes.findall('Comissao'):
+                    self._process_delegation_commission(comissao, existing)
+            
             return True
             
         except Exception as e:
@@ -229,75 +252,68 @@ class DelegacaoPermanenteMapper(SchemaMapper):
             logger.error(f"Error processing delegation member: {e}")
             return False
     
-    def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
-        """Get text value from XML element"""
-        element = parent.find(tag_name)
-        if element is not None and element.text:
-            return element.text.strip()
-        return None
-    
-    def _get_int_value(self, parent: ET.Element, tag_name: str) -> Optional[int]:
-        """Get integer value from XML element"""
-        text_value = self._get_text_value(parent, tag_name)
-        if text_value:
-            try:
-                return int(text_value)
-            except ValueError:
-                return None
-        return None
-    
-    def _parse_date(self, date_str: str) -> Optional[str]:
-        """Parse date string to ISO format"""
-        if not date_str:
-            return None
-        
+    def _process_delegation_commission(self, comissao: ET.Element, delegacao: DelegacaoPermanente) -> bool:
+        """Process delegation commission (XIII Legislature with XML namespace)"""
         try:
-            # Handle datetime format: DD/MM/YYYY HH:MM:SS
-            if ' ' in date_str:
-                date_part = date_str.split(' ')[0]
-            else:
-                date_part = date_str
+            # Extract commission fields with namespace using base class methods
+            nome = self._get_namespaced_text(comissao, 'ap', 'nome')
+            composicao = self._get_namespaced_text(comissao, 'ap', 'composicao')
+            subcomissoes = self._get_namespaced_text(comissao, 'ap', 'subcomissoes')
             
-            # Try DD/MM/YYYY format
-            if '/' in date_part:
-                parts = date_part.split('/')
-                if len(parts) == 3:
-                    day, month, year = parts
-                    return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+            # Create commission record if there's meaningful data
+            comissao_record = None
+            if any([nome, composicao, subcomissoes]):
+                comissao_record = DelegacaoPermanenteComissao(
+                    delegacao_id=delegacao.id,
+                    nome=nome,
+                    composicao=composicao,
+                    subcomissoes=subcomissoes
+                )
+                self.session.add(comissao_record)
+                self.session.flush()  # Get the ID for nested members
             
-            # Try ISO format
-            if re.match(r'\d{4}-\d{2}-\d{2}', date_part):
-                return date_part
+            # Process nested commission members (XI Legislature)
+            composicao_elem = self._get_namespaced_element(comissao, 'ap', 'composicao')
+            if composicao_elem is not None and comissao_record is not None:
+                for membro in composicao_elem.findall('.//{http://parlamento.pt/AP/svc/}Membro'):
+                    self._process_commission_member(membro, comissao_record)
             
-        except (ValueError, IndexError):
-            logger.warning(f"Could not parse date: {date_str}")
-        
-        return None
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing delegation commission: {e}")
+            return False
     
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
-        """Get or create legislatura record"""
-        legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
-        
-        if legislatura:
-            return legislatura
-        
-        # Create new legislatura if it doesn't exist
-        numero_int = self._convert_roman_to_int(legislatura_sigla)
-        
-        legislatura = Legislatura(
-            numero=legislatura_sigla,
-            designacao=f"{numero_int}.ª Legislatura",
-            ativa=False
-        )
-        
-        self.session.add(legislatura)
-        self.session.flush()  # Get the ID
-        return legislatura
+    def _process_commission_member(self, membro: ET.Element, comissao: DelegacaoPermanenteComissao) -> bool:
+        """Process commission member (XI Legislature nested structure with XML namespace)"""
+        try:
+            # Extract member fields with namespace using base class methods
+            nome = self._get_namespaced_text(membro, 'ap', 'nome')
+            gp = self._get_namespaced_text(membro, 'ap', 'gp')
+            cargo = self._get_namespaced_text(membro, 'ap', 'cargo')
+            data_inicio_str = self._get_namespaced_text(membro, 'ap', 'dataInicio')
+            data_fim_str = self._get_namespaced_text(membro, 'ap', 'dataFim')
+            
+            # Parse dates
+            data_inicio = self._parse_date(data_inicio_str) if data_inicio_str else None
+            data_fim = self._parse_date(data_fim_str) if data_fim_str else None
+            
+            # Create member record if there's meaningful data
+            if any([nome, gp, cargo, data_inicio, data_fim]):
+                membro_record = DelegacaoPermanenteComissaoMembro(
+                    comissao_id=comissao.id,
+                    nome=nome,
+                    gp=gp,
+                    cargo=cargo,
+                    data_inicio=data_inicio,
+                    data_fim=data_fim
+                )
+                self.session.add(membro_record)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing commission member: {e}")
+            return False
     
-    def _convert_roman_to_int(self, roman: str) -> int:
-        """Convert Roman numeral to integer"""
-        roman_numerals = {
-            'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10,
-            'XI': 11, 'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17, 'CONSTITUINTE': 0
-        }
-        return roman_numerals.get(roman, 17)
+    # Utility methods now inherited from base class
