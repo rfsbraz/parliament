@@ -51,7 +51,7 @@ CORRUPTED_FILE_PREFIX = "CORRUPTED FILE:"
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.ERROR,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.FileHandler("unified_importer.log"), logging.StreamHandler()],
 )
