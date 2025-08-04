@@ -234,4 +234,12 @@ def safe_int(value: Optional[str]) -> Optional[int]:
 
 def safe_log_text(text: Optional[str]) -> str:
     """Backward compatibility wrapper for Unicode-safe logging"""
-    return DataValidationUtils.safe_text_for_logging(text)
+    if not text:
+        return 'Unknown'
+    
+    try:
+        # Try to encode as ASCII, replacing non-ASCII characters
+        return text.encode('ascii', 'replace').decode('ascii')
+    except (UnicodeEncodeError, UnicodeDecodeError, AttributeError):
+        # Fallback for any encoding issues
+        return 'Unknown'
