@@ -18,7 +18,7 @@ from .base_mapper import SchemaMapper, SchemaError
 # Import our models
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-from database.models import DiplomaAprovado, DiplomaPublicacao, DiplomaIniciativa, Legislatura
+from database.models import DiplomaAprovado, DiplomaPublicacao, DiplomaIniciativa, DiplomaOrcamContasGerencia, Legislatura
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,21 @@ class DiplomasAprovadosMapper(SchemaMapper):
             'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniNr',
             'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniTipo',
             'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniLinkTexto',
-            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniId'
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniId',
+            
+            # XIII Legislature fields
+            # Attachments
+            'ArrayOfDiplomaOut.DiplomaOut.Anexos',
+            'ArrayOfDiplomaOut.DiplomaOut.Anexos.string',
+            
+            # Budget/Management Accounts
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia',
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut',
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.id',
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.leg',
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.tp',
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.titulo',
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.tipo'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -162,6 +176,9 @@ class DiplomasAprovadosMapper(SchemaMapper):
             tp = self._get_text_value(diploma, 'Tp')
             versao = self._get_text_value(diploma, 'Versao')
             
+            # XIII Legislature fields
+            anexos = self._extract_string_array(diploma, 'Anexos')
+            
             if not titulo:
                 logger.warning("Missing required field: titulo")
                 return False
@@ -185,6 +202,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                 existing.observacoes = observacoes
                 existing.tp = tp
                 existing.versao = versao
+                existing.anexos = anexos
                 existing.legislatura_id = legislatura.id
             else:
                 # Create new diploma record
@@ -200,6 +218,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                     observacoes=observacoes,
                     tp=tp,
                     versao=versao,
+                    anexos=anexos,
                     legislatura_id=legislatura.id
                 )
                 self.session.add(diploma_record)
@@ -212,11 +231,25 @@ class DiplomasAprovadosMapper(SchemaMapper):
             # Process initiatives
             self._process_diploma_initiatives(diploma, existing)
             
+            # Process budget/management accounts (XIII Legislature)
+            self._process_orcam_contas_gerencia(diploma, existing)
+            
             return True
             
         except Exception as e:
             logger.error(f"Error processing diploma: {e}")
             return False
+    
+    def _extract_string_array(self, parent: ET.Element, tag_name: str) -> Optional[str]:
+        """Extract string array from XML element and return as comma-separated string"""
+        element = parent.find(tag_name)
+        if element is not None:
+            strings = element.findall('string')
+            if strings:
+                return ', '.join([s.text for s in strings if s.text])
+            elif element.text:
+                return element.text
+        return None
     
     def _map_diploma_type(self, tipo: str, tp: str) -> str:
         """Map diploma type to standard activity type"""
@@ -341,6 +374,29 @@ class DiplomasAprovadosMapper(SchemaMapper):
                     ini_id=ini_id
                 )
                 self.session.add(iniciativa_record)
+    
+    def _process_orcam_contas_gerencia(self, diploma: ET.Element, diploma_record: DiplomaAprovado):
+        """Process budget/management accounts for diploma (XIII Legislature)"""
+        orcam_contas = diploma.find('OrcamContasGerencia')
+        if orcam_contas is not None:
+            for orcam in orcam_contas.findall('pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut'):
+                orcam_id = self._get_int_value(orcam, 'id')
+                leg = self._get_text_value(orcam, 'leg')
+                tp = self._get_text_value(orcam, 'tp')
+                titulo = self._get_text_value(orcam, 'titulo')
+                tipo = self._get_text_value(orcam, 'tipo')
+                
+                # Create record if there's meaningful data
+                if any([orcam_id, leg, tp, titulo, tipo]):
+                    orcam_record = DiplomaOrcamContasGerencia(
+                        diploma_id=diploma_record.id,
+                        orcam_id=orcam_id,
+                        leg=leg,
+                        tp=tp,
+                        titulo=titulo,
+                        tipo=tipo
+                    )
+                    self.session.add(orcam_record)
     
     def _parse_date(self, date_str: str) -> Optional[datetime]:
         """Parse date string to datetime"""

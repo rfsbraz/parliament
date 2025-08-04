@@ -1584,6 +1584,7 @@ class DiplomaAprovado(Base):
     observacoes = Column(Text)
     tp = Column(String(50))
     versao = Column(String(50))  # Versao field from IV Legislature
+    anexos = Column(Text)  # Anexos field from XIII Legislature (comma-separated)
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -1591,6 +1592,23 @@ class DiplomaAprovado(Base):
     legislatura = relationship("Legislatura", backref="diplomas_aprovados")
     publicacoes = relationship("DiplomaPublicacao", back_populates="diploma", cascade="all, delete-orphan")
     iniciativas = relationship("DiplomaIniciativa", back_populates="diploma", cascade="all, delete-orphan")
+    orcam_contas_gerencia = relationship("DiplomaOrcamContasGerencia", back_populates="diploma", cascade="all, delete-orphan")
+
+
+class DiplomaOrcamContasGerencia(Base):
+    """Budget/Management Accounts associated with diplomas (XIII Legislature)"""
+    __tablename__ = 'diploma_orcam_contas_gerencia'
+    
+    id = Column(Integer, primary_key=True)
+    diploma_id = Column(Integer, ForeignKey('diplomas_aprovados.id'), nullable=False)
+    orcam_id = Column(Integer)  # id from OrcamentoContasGerenciaOut
+    leg = Column(String(50))  # leg field  
+    tp = Column(String(50))  # tp field
+    titulo = Column(Text)  # titulo field
+    tipo = Column(String(100))  # tipo field
+    
+    # Relationships
+    diploma = relationship("DiplomaAprovado", back_populates="orcam_contas_gerencia")
 
 
 class DiplomaPublicacao(Base):
