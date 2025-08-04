@@ -1851,6 +1851,7 @@ class DelegacaoEventualParticipante(Base):
     id = Column(Integer, primary_key=True)
     delegacao_id = Column(Integer, ForeignKey('delegacao_eventual.id'), nullable=False)
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=True)
+    participante_id = Column(Integer)  # External participant ID from XML (IX Legislature)
     
     nome = Column(String(200))
     cargo = Column(String(100))

@@ -52,7 +52,10 @@ class DelegacaoEventualMapper(SchemaMapper):
             'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Participantes',
             'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Participantes.RelacoesExternasParticipantes',
             'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Participantes.RelacoesExternasParticipantes.Gp',
-            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Participantes.RelacoesExternasParticipantes.Leg'
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Participantes.RelacoesExternasParticipantes.Leg',
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Participantes.RelacoesExternasParticipantes.Id',  # IX Legislature
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Participantes.RelacoesExternasParticipantes.Nome',  # IX Legislature
+            'ArrayOfDelegacaoEventualReuniao.DelegacaoEventualReuniao.Participantes.RelacoesExternasParticipantes.Tipo'  # IX Legislature
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -274,15 +277,24 @@ class DelegacaoEventualMapper(SchemaMapper):
                     )
                     self.session.add(participante_record)
         
-        # Process external participants
-        externos = delegation_event.find('RelacoesExternasParticipantes')
-        if externos is not None:
-            for externo in externos:
-                nome = externo.text if externo.text else externo.tag
-                if nome:
+        # Process external participants (enhanced for IX Legislature)
+        participantes_elem = delegation_event.find('Participantes')
+        if participantes_elem is not None:
+            relacoes_externas = participantes_elem.find('RelacoesExternasParticipantes')
+            if relacoes_externas is not None:
+                # IX Legislature structure with Id, Nome, Tipo fields
+                participante_id = self._get_int_value(relacoes_externas, 'Id')
+                nome = self._get_text_value(relacoes_externas, 'Nome')
+                tipo = self._get_text_value(relacoes_externas, 'Tipo')
+                gp = self._get_text_value(relacoes_externas, 'Gp')
+                leg = self._get_text_value(relacoes_externas, 'Leg')
+                
+                if nome or participante_id:
                     participante_record = DelegacaoEventualParticipante(
                         delegacao_id=delegacao.id,
+                        participante_id=participante_id,
                         nome=nome,
-                        tipo_participante='externo'
+                        gp=gp,
+                        tipo_participante=tipo or 'externo'
                     )
                     self.session.add(participante_record)
