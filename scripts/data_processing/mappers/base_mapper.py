@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 NAMESPACES = {
     'ap': 'http://parlamento.pt/AP/svc/',
     'ar': 'http://ar.parlamento.pt',
-    'wsgode': 'http://ar.parlamento.pt/wsgode'
+    'wsgode': 'http://ar.parlamento.pt/wsgode',
+    'tempuri': 'http://tempuri.org/'
 }
 
 

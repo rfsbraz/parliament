@@ -115,6 +115,76 @@ class RegistoInteressesMapper(SchemaMapper):
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadFamId',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadNomeConjuge',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi',
+            
+            # V5 Schema (XV Legislature) - Complex structure with tempuri namespace
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}Categoria',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}Exclusividade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}Exclusividade.{http://tempuri.org/}Id',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}Exclusividade.{http://tempuri.org/}Designacao',
+            
+            # Declaration Facts
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}FactoDeclaracao',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}FactoDeclaracao.{http://tempuri.org/}ChkDeclaracao',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}FactoDeclaracao.{http://tempuri.org/}CargoFuncao',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}FactoDeclaracao.{http://tempuri.org/}TxtDeclaracao',
+            
+            # Support/Benefits (GenApoios)
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenApoios',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenApoios.{http://tempuri.org/}GenApoio',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenApoios.{http://tempuri.org/}GenApoio.{http://tempuri.org/}Entidade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenApoios.{http://tempuri.org/}GenApoio.{http://tempuri.org/}NaturezaArea',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenApoios.{http://tempuri.org/}GenApoio.{http://tempuri.org/}Descricao',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenApoios.{http://tempuri.org/}GenApoio.{http://tempuri.org/}Valor',
+            
+            # Positions Less Than 3 Years
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMenosTresAnos',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMenosTresAnos.{http://tempuri.org/}GenCargo',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMenosTresAnos.{http://tempuri.org/}GenCargo.{http://tempuri.org/}Entidade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMenosTresAnos.{http://tempuri.org/}GenCargo.{http://tempuri.org/}NaturezaArea',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMenosTresAnos.{http://tempuri.org/}GenCargo.{http://tempuri.org/}Cargo',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMenosTresAnos.{http://tempuri.org/}GenCargo.{http://tempuri.org/}DataInicio',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMenosTresAnos.{http://tempuri.org/}GenCargo.{http://tempuri.org/}DataFim',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMenosTresAnos.{http://tempuri.org/}GenCargo.{http://tempuri.org/}Remuneracao',
+            
+            # Positions More Than 3 Years  
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMaisTresAnos',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMaisTresAnos.{http://tempuri.org/}GenCargo',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMaisTresAnos.{http://tempuri.org/}GenCargo.{http://tempuri.org/}Entidade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMaisTresAnos.{http://tempuri.org/}GenCargo.{http://tempuri.org/}NaturezaArea',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMaisTresAnos.{http://tempuri.org/}GenCargo.{http://tempuri.org/}Cargo',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMaisTresAnos.{http://tempuri.org/}GenCargo.{http://tempuri.org/}DataInicio',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMaisTresAnos.{http://tempuri.org/}GenCargo.{http://tempuri.org/}DataFim',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenCargosMaisTresAnos.{http://tempuri.org/}GenCargo.{http://tempuri.org/}Remuneracao',
+            
+            # Services Provided
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}Entidade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}NaturezaArea',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}Descricao',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}Valor',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}DataInicio',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}DataFim',
+            
+            # Societies/Companies
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}GenSociedade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}Sociedade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}NaturezaArea',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}ParticipacaoSocial',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}Valor',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}Observacoes',
+            
+            # Professional Activities
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenAtivProfissional',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}GenAtivProfissional',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}Atividade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}Entidade',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}NaturezaArea',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}DataInicio',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}DataFim',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}GenAtivProfissional.{http://tempuri.org/}Remuneracao',
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -142,12 +212,47 @@ class RegistoInteressesMapper(SchemaMapper):
             
             # Process each RegistoInteresses record
             for registo in xml_root.findall('.//RegistoInteresses'):
-                # Try different schema versions
+                # Try different schema versions (newest first)
+                registo_v5 = registo.find('RegistoInteressesV5')
                 registo_v3 = registo.find('RegistoInteressesV3')
                 registo_v2 = registo.find('RegistoInteressesV2')
                 registo_v1 = registo.find('RegistoInteressesV1')
                 
-                if registo_v3 is not None:
+                if registo_v5 is not None:
+                    # Handle V5 schema (XV Legislature - newest format)
+                    try:
+                        # V5 uses tempuri namespace, process basic fields only for now
+                        categoria = self._get_namespaced_text(registo_v5, 'tempuri', 'Categoria')
+                        
+                        # Extract exclusivity info
+                        exclusividade_elem = self._get_namespaced_element(registo_v5, 'tempuri', 'Exclusividade')
+                        exclusivity_id = None
+                        exclusivity_desc = None
+                        if exclusividade_elem is not None:
+                            exclusivity_id = self._get_namespaced_text(exclusividade_elem, 'tempuri', 'Id')
+                            exclusivity_desc = self._get_namespaced_text(exclusividade_elem, 'tempuri', 'Designacao')
+                        
+                        # For now, store as V3 compatible format 
+                        success = self._process_v3_record(
+                            categoria or "0", categoria or "Unknown", None, None, 
+                            None, exclusivity_desc or "Unknown", exclusivity_id, legislatura
+                        )
+                        results['records_processed'] += 1
+                        if success:
+                            results['records_imported'] += 1
+                        
+                    except Exception as e:
+                        error_msg = f"Error processing V5 conflicts record: {str(e)}"
+                        logger.error(error_msg)
+                        results['errors'].append(error_msg)
+                        results['records_processed'] += 1
+                        self.session.rollback()
+                        if strict_mode:
+                            logger.error("STRICT MODE: Exiting due to V5 record processing error")
+                            raise SchemaError(f"V5 conflicts record processing failed in strict mode: {e}")
+                        continue
+                        
+                elif registo_v3 is not None:
                     # Handle V3 schema (newer format)
                     try:
                         record_id = self._get_text(registo_v3, 'RecordId')
