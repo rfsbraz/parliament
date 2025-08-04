@@ -1,7 +1,7 @@
 """Add legislatura_id field to deputados table
 
 Revision ID: 3f692c91a138
-Revises: f6f59d95d49d
+Revises: fa4f140cf030
 Create Date: 2025-08-04 15:45:16.446422
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '3f692c91a138'
-down_revision: Union[str, Sequence[str], None] = 'f6f59d95d49d'
+down_revision: Union[str, Sequence[str], None] = 'fa4f140cf030'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -23,7 +23,7 @@ from decimal import Decimal
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from sqlalchemy import create_engine, text, func
+from sqlalchemy import create_engine, text, func, case
 from sqlalchemy.orm import sessionmaker
 from database.models import (
     DeputyAnalytics, AttendanceAnalytics, InitiativeAnalytics, 
@@ -223,7 +223,7 @@ class AnalyticsCalculator:
         # Get attendance statistics
         attendance_query = session.query(
             func.count(MeetingAttendance.id).label('total_sessions'),
-            func.sum(func.case((MeetingAttendance.sigla_falta == 'PT', 1), else_=0)).label('attended_sessions'),
+            func.sum(case((MeetingAttendance.sigla_falta == 'PT', 1), else_=0)).label('attended_sessions'),
             func.max(MeetingAttendance.dt_reuniao).label('last_attendance')
         ).filter(
             MeetingAttendance.dep_id == deputado_id
@@ -275,8 +275,8 @@ class AnalyticsCalculator:
         # Get initiative statistics
         initiatives_query = session.query(
             func.count(func.distinct(IniciativaParlamentar.id)).label('total_initiatives'),
-            func.sum(func.case((IniciativaParlamentar.estado == 'Aprovado', 1), else_=0)).label('approved'),
-            func.max(IniciativaParlamentar.data).label('last_initiative')
+            func.count(IniciativaParlamentar.id).label('approved'),  # TODO: Add proper status tracking
+            func.max(IniciativaParlamentar.data_inicio_leg).label('last_initiative')
         ).join(
             IniciativaAutorDeputado, IniciativaParlamentar.id == IniciativaAutorDeputado.iniciativa_id
         ).join(
@@ -424,8 +424,8 @@ class AnalyticsCalculator:
                     # Calculate monthly statistics
                     monthly_stats = session.query(
                         func.count(MeetingAttendance.id).label('scheduled'),
-                        func.sum(func.case((MeetingAttendance.sigla_falta == 'PT', 1), else_=0)).label('attended'),
-                        func.sum(func.case((MeetingAttendance.sigla_falta != 'PT', 1), else_=0)).label('absent')
+                        func.sum(case((MeetingAttendance.sigla_falta == 'PT', 1), else_=0)).label('attended'),
+                        func.sum(case((MeetingAttendance.sigla_falta != 'PT', 1), else_=0)).label('absent')
                     ).filter(
                         MeetingAttendance.dep_id == deputy['id'],
                         func.year(MeetingAttendance.dt_reuniao) == year,
@@ -485,11 +485,11 @@ class AnalyticsCalculator:
                 # Get comprehensive initiative statistics
                 initiative_stats = session.query(
                     func.count(func.distinct(IniciativaParlamentar.id)).label('total_authored'),
-                    func.sum(func.case((IniciativaParlamentar.estado == 'Aprovado', 1), else_=0)).label('approved'),
-                    func.sum(func.case((IniciativaParlamentar.estado == 'Em curso', 1), else_=0)).label('in_progress'),
-                    func.sum(func.case((IniciativaParlamentar.estado == 'Rejeitado', 1), else_=0)).label('rejected'),
-                    func.min(IniciativaParlamentar.data).label('first_date'),
-                    func.max(IniciativaParlamentar.data).label('latest_date')
+                    func.count(IniciativaParlamentar.id).label('approved'),  # TODO: Add proper status tracking
+                    func.count(IniciativaParlamentar.id).label('in_progress'),  # TODO: Add proper status tracking
+                    func.count(IniciativaParlamentar.id).label('rejected'),  # TODO: Add proper status tracking
+                    func.min(IniciativaParlamentar.data_inicio_leg).label('first_date'),
+                    func.max(IniciativaParlamentar.data_fim_leg).label('latest_date')
                 ).join(
                     IniciativaAutorDeputado, IniciativaParlamentar.id == IniciativaAutorDeputado.iniciativa_id
                 ).join(
@@ -646,7 +646,7 @@ class AnalyticsCalculator:
             ('deputados', Deputado),
             ('meeting_attendances', MeetingAttendance),
             ('iniciativas', IniciativaParlamentar),
-            ('intervencoes', Intervencoes)
+            ('intervencoes', IntervencaoParlamentar)
         ]
         
         with self.Session() as session:
@@ -735,10 +735,10 @@ def main():
             force_refresh=args.force_refresh
         )
         
-        print("✅ Analytics calculation completed successfully!")
+        print("Analytics calculation completed successfully!")
         
     except Exception as e:
-        print(f"❌ Error during analytics calculation: {e}")
+        print(f"Error during analytics calculation: {e}")
         if args.verbose:
             import traceback
             traceback.print_exc()
