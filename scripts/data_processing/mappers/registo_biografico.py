@@ -326,6 +326,11 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
     def _process_i_legislature_biographical_record(self, record: ET.Element, file_info: Dict) -> bool:
         """Process comprehensive I Legislature biographical record with all fields"""
         try:
+            # Safety check - ensure record is not None
+            if record is None:
+                logger.warning("Received None record in I Legislature biographical processing")
+                return False
+                
             from database.models import (
                 Deputado, DeputadoHabilitacao, DeputadoCargoFuncao, DeputadoTitulo,
                 DeputadoCondecoracao, DeputadoObraPublicada, DeputadoAtividadeOrgao, DeputadoMandatoLegislativo
@@ -365,6 +370,8 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             habilitacoes = record.find('cadHabilitacoes')
             if habilitacoes is not None:
                 for hab in habilitacoes.findall('pt_ar_wsgode_objectos_DadosHabilitacoes'):
+                    if hab is None:
+                        continue
                     hab_id = self._get_text_value(hab, 'habId')
                     if hab_id:
                         # Check if already exists
@@ -387,6 +394,8 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             cargos_funcoes = record.find('cadCargosFuncoes')
             if cargos_funcoes is not None:
                 for cargo in cargos_funcoes.findall('pt_ar_wsgode_objectos_DadosCargosFuncoes'):
+                    if cargo is None:
+                        continue
                     fun_id = self._get_text_value(cargo, 'funId')
                     if fun_id:
                         # Check if already exists
@@ -409,6 +418,8 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             titulos = record.find('cadTitulos')
             if titulos is not None:
                 for titulo in titulos.findall('pt_ar_wsgode_objectos_DadosTitulos'):
+                    if titulo is None:
+                        continue
                     tit_id = self._get_text_value(titulo, 'titId')
                     if tit_id:
                         # Check if already exists
@@ -430,6 +441,8 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             condecoracoes = record.find('cadCondecoracoes')
             if condecoracoes is not None:
                 for cond in condecoracoes.findall('pt_ar_wsgode_objectos_DadosCondecoracoes'):
+                    if cond is None:
+                        continue
                     cod_id = self._get_text_value(cond, 'codId')
                     if cod_id:
                         # Check if already exists
@@ -451,6 +464,8 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             obras = record.find('cadObrasPublicadas')
             if obras is not None:
                 for obra in obras.findall('pt_ar_wsgode_objectos_DadosObrasPublicadas'):
+                    if obra is None:
+                        continue
                     pub_id = self._get_text_value(obra, 'pubId')
                     if pub_id:
                         # Check if already exists
@@ -474,6 +489,8 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 # Process Committee Activities (actividadeCom)
                 comissoes = atividades_orgaos.findall('actividadeCom')
                 for comissao in comissoes:
+                    if comissao is None:
+                        continue
                     dados_orgao = comissao.find('pt_ar_wsgode_objectos_DadosOrgaos')
                     if dados_orgao is not None:
                         # Check for position details in committee (cargoDes structure)
@@ -500,6 +517,8 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 # Process Working Group Activities (actividadeGT)
                 grupos_trabalho = atividades_orgaos.findall('actividadeGT')
                 for grupo in grupos_trabalho:
+                    if grupo is None:
+                        continue
                     dados_orgao = grupo.find('pt_ar_wsgode_objectos_DadosOrgaos')
                     if dados_orgao is not None:
                         # Check for position details (cargoDes structure)
@@ -527,6 +546,8 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             legislaturas = record.find('cadDeputadoLegis')
             if legislaturas is not None:
                 for mandato in legislaturas.findall('pt_ar_wsgode_objectos_DadosDeputadoLegis'):
+                    if mandato is None:
+                        continue
                     leg_des = self._get_text_value(mandato, 'legDes')
                     ce_des = self._get_text_value(mandato, 'ceDes')
                     
@@ -781,9 +802,14 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
     def _get_text_value(self, element: ET.Element, tag: str) -> Optional[str]:
         """Get text value from XML element"""
         if element is None:
+            logger.debug(f"_get_text_value called with None element for tag: {tag}")
             return None
-        child = element.find(tag)
-        return child.text.strip() if child is not None and child.text else None
+        try:
+            child = element.find(tag)
+            return child.text.strip() if child is not None and child.text else None
+        except Exception as e:
+            logger.error(f"Error in _get_text_value for tag '{tag}': {e}")
+            return None
     
     def _parse_int(self, value: str) -> Optional[int]:
         """Parse integer from string"""
