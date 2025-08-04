@@ -233,7 +233,10 @@ class PeticoesMapper(SchemaMapper):
             # Final missing fields
             'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.pedidosReiteracao.pt_gov_ar_objectos_peticoes_PedidosReiteracaoOut.dataOficio',
             'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl',
-            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Relatores.pt_gov_ar_objectos_RelatoresOut.motivoCessacao'
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Relatores.pt_gov_ar_objectos_RelatoresOut.motivoCessacao',
+            
+            # VIII Legislature field
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.FaseDebate'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -785,6 +788,7 @@ class PeticoesMapper(SchemaMapper):
         convidados = self._get_text_value(orador, 'Convidados')
         membros_governo = self._get_text_value(orador, 'MembrosGoverno')
         teor = self._get_text_value(orador, 'Teor')
+        fase_debate = self._get_text_value(orador, 'FaseDebate')
         
         # Handle MembrosGoverno fields (IX Legislature specific)
         governo = None
@@ -815,7 +819,8 @@ class PeticoesMapper(SchemaMapper):
             membro_governo_cargo=membro_governo_cargo,
             deputado_id_cadastro=deputado_id_cadastro,
             deputado_nome=deputado_nome,
-            teor=teor
+            teor=teor,
+            fase_debate=fase_debate
         )
         self.session.add(orador_obj)
         self.session.flush()  # Get the ID

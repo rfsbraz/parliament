@@ -3132,6 +3132,7 @@ class PeticaoOrador(Base):
     deputado_id_cadastro = Column(Integer)  # Deputados.idCadastro field
     deputado_nome = Column(Text)  # Deputados.nome field
     teor = Column(Text)  # Teor field from IX Legislature
+    fase_debate = Column(Text)  # FaseDebate field from VIII Legislature
     
     # Relationships
     intervencao = relationship("PeticaoIntervencao", back_populates="oradores")
