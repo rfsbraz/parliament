@@ -2390,6 +2390,7 @@ class IniciativaParlamentar(Base):
     data_fim_leg = Column(Date)
     ini_titulo = Column(Text)
     ini_texto_subst = Column(Text)
+    ini_texto_subst_campo = Column(Text)  # IniTextoSubstCampo - XII Legislature specific field
     ini_link_texto = Column(Text)
     ini_obs = Column(Text)
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
@@ -2577,6 +2578,8 @@ class IniciativaEventoComissao(Base):
     data_distribuicao = Column(Date)
     data_entrada = Column(Date)
     data_agendamento_plenario = Column(Text)
+    data_motivo_nao_parecer = Column(Date)  # XII Legislature - DataMotivoNaoParecer 
+    motivo_nao_parecer = Column(Text)  # XII Legislature - MotivoNaoParecer
     
     # Relationships
     evento = relationship("IniciativaEvento", back_populates="comissoes")
@@ -2847,6 +2850,110 @@ class IniciativaEventoComissaoVotacao(Base):
     
     # Relationships
     comissao = relationship("IniciativaEventoComissao", backref="votacoes")
+
+
+class IniciativaComissaoDocumento(Base):
+    """Committee documents for legislative initiatives - tracks official documents processed by committees"""
+    __tablename__ = 'iniciativas_comissoes_documentos'
+    
+    id = Column(Integer, primary_key=True)
+    comissao_id = Column(Integer, ForeignKey('iniciativas_eventos_comissoes.id'), nullable=False)
+    
+    # Document fields from Documentos.DocsOut
+    titulo_documento = Column(Text)  # Document title
+    tipo_documento = Column(Text)  # Document type
+    
+    # Relationships
+    comissao = relationship("IniciativaEventoComissao", backref="documentos")
+
+
+class IniciativaComissaoAudiencia(Base):
+    """Committee hearings for legislative initiatives - tracks hearings and related activities"""
+    __tablename__ = 'iniciativas_comissoes_audiencias'
+    
+    id = Column(Integer, primary_key=True)
+    comissao_id = Column(Integer, ForeignKey('iniciativas_eventos_comissoes.id'), nullable=False)
+    
+    # Hearing fields from Audiencias.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut
+    audiencia_id = Column(Integer)  # Hearing ID
+    data = Column(Date)  # Hearing date
+    
+    # Relationships
+    comissao = relationship("IniciativaEventoComissao", backref="audiencias")
+
+
+class IniciativaComissaoAudicao(Base):
+    """Committee hearings/auditions for legislative initiatives - tracks auditions and related activities"""
+    __tablename__ = 'iniciativas_comissoes_audicoes'
+    
+    id = Column(Integer, primary_key=True)
+    comissao_id = Column(Integer, ForeignKey('iniciativas_eventos_comissoes.id'), nullable=False)
+    
+    # Audition fields from Audicoes.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut
+    data = Column(Date)  # Audition date
+    
+    # Relationships
+    comissao = relationship("IniciativaEventoComissao", backref="audicoes")
+
+
+class IniciativaEventoPeticaoConjunta(Base):
+    """Joint petitions for legislative initiative events - tracks petitions discussed together"""
+    __tablename__ = 'iniciativas_eventos_peticoes_conjuntas'
+    
+    id = Column(Integer, primary_key=True)
+    evento_id = Column(Integer, ForeignKey('iniciativas_eventos.id'), nullable=False)
+    
+    # Joint petition fields from PeticoesConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut
+    leg = Column(Text)  # Legislature
+    nr = Column(Integer)  # Petition number
+    titulo = Column(Text)  # Petition title
+    
+    # Relationships
+    evento = relationship("IniciativaEvento", backref="peticoes_conjuntas")
+
+
+class IniciativaPeticao(Base):
+    """Petitions associated with legislative initiatives - general petition data"""
+    __tablename__ = 'iniciativas_peticoes'
+    
+    id = Column(Integer, primary_key=True)
+    iniciativa_id = Column(Integer, ForeignKey('iniciativas_detalhadas.id'), nullable=False)
+    
+    # Petition fields from Peticoes.pt_gov_ar_objectos_iniciativas_DadosGeraisOut
+    numero = Column(Integer)  # Petition number
+    
+    # Relationships
+    iniciativa = relationship("IniciativaParlamentar", backref="peticoes")
+
+
+class IniciativaEuropeia(Base):
+    """European initiatives as string data - simple string references to European initiatives"""
+    __tablename__ = 'iniciativas_europeias_simples'
+    
+    id = Column(Integer, primary_key=True)
+    iniciativa_id = Column(Integer, ForeignKey('iniciativas_detalhadas.id'), nullable=False)
+    
+    # European initiative as string from IniciativasEuropeias.string
+    referencia = Column(Text)  # String reference to European initiative
+    
+    # Relationships
+    iniciativa = relationship("IniciativaParlamentar", backref="iniciativas_europeias_simples")
+
+
+class IniciativaLink(Base):
+    """Document links for legislative initiatives - tracks related documents with URLs and metadata"""
+    __tablename__ = 'iniciativas_links'
+    
+    id = Column(Integer, primary_key=True)
+    iniciativa_id = Column(Integer, ForeignKey('iniciativas_detalhadas.id'), nullable=False)
+    
+    # Document link fields from Links.DocsOut
+    titulo_documento = Column(Text)  # Document title
+    data_documento = Column(Date)  # Document date
+    url = Column(Text)  # Document URL
+    
+    # Relationships
+    iniciativa = relationship("IniciativaParlamentar", backref="links")
 
 
 # Petition models

@@ -39,7 +39,9 @@ from database.models import (
     IniciativaIntervencaoOradorPublicacao, IniciativaIntervencaoOradorConvidado, 
     IniciativaIntervencaoOradorMembroGoverno, IniciativaAnexo, IniciativaOradorVideoLink, 
     IniciativaComissaoDistribuicaoSubcomissao, IniciativaEventoComissaoVotacao, 
-    IniciativaOrigem, IniciativaOriginada, Legislatura
+    IniciativaOrigem, IniciativaOriginada, Legislatura, IniciativaComissaoDocumento,
+    IniciativaComissaoAudiencia, IniciativaComissaoAudicao, IniciativaEventoPeticaoConjunta,
+    IniciativaPeticao, IniciativaEuropeia, IniciativaLink
 )
 
 logger = logging.getLogger(__name__)
@@ -322,7 +324,64 @@ class InitiativasMapper(SchemaMapper):
             # VII Legislature additional speaker/guest fields (discovered from IniciativasVII.xml)
             'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.convidados.nome',
             'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.convidados.pais',
-            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.convidados.cargo'
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Intervencoesdebates.pt_gov_ar_objectos_IntervencoesOut.oradores.pt_gov_ar_objectos_peticoes_OradoresOut.convidados.cargo',
+            
+            # XII Legislature additional fields (discovered from IniciativasXII.xml)
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PeticoesConjuntas',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PeticoesConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PeticoesConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PeticoesConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut.sel',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Peticoes.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.assunto',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Audiencias',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Audiencias.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Audiencias.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut.tipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Audicoes',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Audicoes.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Audicoes.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut.tipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Documentos',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Documentos.DocsOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Documentos.DocsOut.DataDocumento',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias.pt_gov_ar_objectos_iniciativas_DadosGeraisOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.leg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.numero',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.sel',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.tipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.titulo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.descTipo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.legislatura',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.sessao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.assunto',
+            
+            # XII Legislature specific fields
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniTextoSubstCampo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Audiencias.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut.data',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Audiencias.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.DataMotivoNaoParecer',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.MotivoNaoParecer',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Documentos.DocsOut.TituloDocumento',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Documentos.DocsOut.TipoDocumento',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Audicoes.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut.data',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PeticoesConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut.leg',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PeticoesConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut.nr',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.PeticoesConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut.titulo',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Peticoes',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Peticoes.pt_gov_ar_objectos_iniciativas_DadosGeraisOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Peticoes.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.numero',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Peticoes.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Peticoes.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.sessao',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Peticoes.pt_gov_ar_objectos_iniciativas_DadosGeraisOut.legislatura',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Audicoes.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut.id',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniEventos.Pt_gov_ar_objectos_iniciativas_EventosOut.Comissao.Pt_gov_ar_objectos_iniciativas_ComissoesIniOut.Documentos.DocsOut.URL',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.IniciativasEuropeias.string',
+            
+            # X Legislature specific fields - Links structure
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Links',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Links.DocsOut',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Links.DocsOut.TituloDocumento',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Links.DocsOut.DataDocumento',
+            'ArrayOfPt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut.Links.DocsOut.URL'
         }
         
     def _get_comprehensive_expected_fields(self) -> Set[str]:
@@ -420,6 +479,7 @@ class InitiativasMapper(SchemaMapper):
             data_fim_leg = self._parse_date(self._get_text_value(iniciativa, 'DataFimleg'))
             ini_titulo = self._get_text_value(iniciativa, 'IniTitulo')
             ini_texto_subst = self._get_text_value(iniciativa, 'IniTextoSubst')
+            ini_texto_subst_campo = self._get_text_value(iniciativa, 'IniTextoSubstCampo')  # XII Legislature field
             ini_link_texto = self._get_text_value(iniciativa, 'IniLinkTexto')
             ini_obs = self._get_text_value(iniciativa, 'IniObs')
             
@@ -460,6 +520,7 @@ class InitiativasMapper(SchemaMapper):
                     data_fim_leg=data_fim_leg,
                     ini_titulo=ini_titulo,
                     ini_texto_subst=ini_texto_subst,
+                    ini_texto_subst_campo=ini_texto_subst_campo,  # XII Legislature field
                     ini_link_texto=ini_link_texto,
                     ini_obs=ini_obs,
                     legislatura_id=legislatura.id,
@@ -479,6 +540,17 @@ class InitiativasMapper(SchemaMapper):
             # Process origin/originated initiatives
             self._process_iniciativas_origem(iniciativa, existing)
             self._process_iniciativas_originadas(iniciativa, existing)
+            
+            # Process XII Legislature specific features
+            self._process_peticoes(iniciativa, existing)
+            self._process_iniciativas_europeias_simples(iniciativa, existing)
+            
+            # Process X Legislature specific features
+            self._process_links(iniciativa, existing)
+            
+            # Process XII Legislature additional structures
+            self._process_iniciativas_europeias(iniciativa, existing)
+            self._process_peticoes_assunto(iniciativa, existing)
             
             return True
             
@@ -694,6 +766,9 @@ class InitiativasMapper(SchemaMapper):
         
         # Phase attachments (IX Legislature)
         self._process_evento_anexos_fase(evento, evento_obj)
+        
+        # Joint petitions (XII Legislature)
+        self._process_evento_peticoes_conjuntas(evento, evento_obj)
     
     def _process_evento_publicacoes(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process event publications"""
@@ -861,6 +936,10 @@ class InitiativasMapper(SchemaMapper):
                 data_inicio_apreciacao = self._parse_date(self._get_text_value(com, 'DatainicioApreciacaoPublica'))
                 data_fim_apreciacao = self._parse_date(self._get_text_value(com, 'DatafimApreciacaoPublica'))
                 
+                # XII Legislature additional fields
+                data_motivo_nao_parecer = self._parse_date(self._get_text_value(com, 'DataMotivoNaoParecer'))
+                motivo_nao_parecer = self._get_text_value(com, 'MotivoNaoParecer')
+                
                 # Create committee record
                 comissao_obj = IniciativaEventoComissao(
                     evento_id=evento_obj.id,
@@ -872,6 +951,8 @@ class InitiativasMapper(SchemaMapper):
                     data_distribuicao=data_distribuicao,
                     data_entrada=data_entrada,
                     data_agendamento_plenario=data_agendamento,
+                    data_motivo_nao_parecer=data_motivo_nao_parecer,  # XII Legislature field
+                    motivo_nao_parecer=motivo_nao_parecer,  # XII Legislature field
                     # Note: These fields may need to be added to the database model
                     # data_inicio_apreciacao_publica=data_inicio_apreciacao,
                     # data_fim_apreciacao_publica=data_fim_apreciacao
@@ -897,6 +978,11 @@ class InitiativasMapper(SchemaMapper):
                 
                 # Process committee voting
                 self._process_comissao_votacao(com, comissao_obj)
+                
+                # Process XII Legislature committee activities
+                self._process_comissao_audiencias(com, comissao_obj)
+                self._process_comissao_audicoes(com, comissao_obj)
+                self._process_comissao_documentos(com, comissao_obj)
     
     def _insert_comissao_publicacao(self, comissao_obj: IniciativaEventoComissao, pub: ET.Element, tipo: str):
         """Insert committee publication"""
@@ -1414,6 +1500,193 @@ class InitiativasMapper(SchemaMapper):
                         logger.warning(f"Could not create fase anexo record: {e}")
                         # If model doesn't exist, skip for now
                         pass
+    
+    def _process_evento_peticoes_conjuntas(self, evento: ET.Element, evento_obj: IniciativaEvento):
+        """Process joint petitions (PeticoesConjuntas) - XII Legislature feature"""
+        peticoes_conjuntas = evento.find('PeticoesConjuntas')
+        if peticoes_conjuntas is not None:
+            for peticao in peticoes_conjuntas.findall('pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut'):
+                peticao_id = self._get_int_value(peticao, 'id')
+                sel = self._get_int_value(peticao, 'sel')
+                leg = self._get_text_value(peticao, 'leg')
+                nr = self._get_int_value(peticao, 'nr')
+                tipo = self._get_text_value(peticao, 'tipo')
+                titulo = self._get_text_value(peticao, 'titulo')
+                desc_tipo = self._get_text_value(peticao, 'descTipo')
+                
+                if peticao_id or sel:  # Create if we have identifying data
+                    # Store as joint initiative record (similar to IniciativaConjunta)
+                    try:
+                        peticao_conjunta_obj = IniciativaEventoPeticaoConjunta(
+                            evento_id=evento_obj.id,
+                            leg=leg,
+                            nr=nr,
+                            titulo=titulo
+                        )
+                        self.session.add(peticao_conjunta_obj)
+                    except Exception as e:
+                        logger.warning(f"Could not create joint petition record: {e}")
+    
+    def _process_comissao_audiencias(self, com: ET.Element, comissao_obj: IniciativaEventoComissao):
+        """Process committee hearings (Audiencias) - XII Legislature feature"""
+        audiencias = com.find('Audiencias')
+        if audiencias is not None:
+            for atividade in audiencias.findall('pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut'):
+                audiencia_id = self._get_int_value(atividade, 'id')
+                data = self._parse_date(self._get_text_value(atividade, 'data'))
+                
+                if audiencia_id or data:
+                    try:
+                        audiencia_obj = IniciativaComissaoAudiencia(
+                            comissao_id=comissao_obj.id,
+                            audiencia_id=audiencia_id,
+                            data=data
+                        )
+                        self.session.add(audiencia_obj)
+                    except Exception as e:
+                        logger.warning(f"Could not create hearing record: {e}")
+    
+    def _process_comissao_audicoes(self, com: ET.Element, comissao_obj: IniciativaEventoComissao):
+        """Process committee auditions (Audicoes) - XII Legislature feature"""
+        audicoes = com.find('Audicoes')
+        if audicoes is not None:
+            for atividade in audicoes.findall('pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut'):
+                data = self._parse_date(self._get_text_value(atividade, 'data'))
+                atividade_id = self._get_int_value(atividade, 'id')  # Additional field
+                
+                if data or atividade_id:
+                    try:
+                        audicao_obj = IniciativaComissaoAudicao(
+                            comissao_id=comissao_obj.id,
+                            data=data
+                        )
+                        self.session.add(audicao_obj)
+                    except Exception as e:
+                        logger.warning(f"Could not create audition record: {e}")
+    
+    def _process_comissao_documentos(self, com: ET.Element, comissao_obj: IniciativaEventoComissao):
+        """Process committee documents (Documentos) - XII Legislature feature"""
+        documentos = com.find('Documentos')
+        if documentos is not None:
+            for doc in documentos.findall('DocsOut'):
+                titulo_documento = self._get_text_value(doc, 'TituloDocumento')
+                tipo_documento = self._get_text_value(doc, 'TipoDocumento')
+                url = self._get_text_value(doc, 'URL')  # Additional field
+                
+                if titulo_documento or tipo_documento or url:
+                    try:
+                        documento_obj = IniciativaComissaoDocumento(
+                            comissao_id=comissao_obj.id,
+                            titulo_documento=titulo_documento,
+                            tipo_documento=tipo_documento
+                        )
+                        self.session.add(documento_obj)
+                    except Exception as e:
+                        logger.warning(f"Could not create document record: {e}")
+    
+    def _process_iniciativas_europeias(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
+        """Process European initiatives (IniciativasEuropeias) - XII Legislature feature"""
+        iniciativas_europeias = iniciativa.find('IniciativasEuropeias')
+        if iniciativas_europeias is not None:
+            for europeia in iniciativas_europeias.findall('pt_gov_ar_objectos_iniciativas_DadosGeraisOut'):
+                europeia_id = self._get_int_value(europeia, 'id')
+                leg = self._get_text_value(europeia, 'leg')
+                numero = self._get_int_value(europeia, 'numero')
+                sel = self._get_int_value(europeia, 'sel')
+                tipo = self._get_text_value(europeia, 'tipo')
+                titulo = self._get_text_value(europeia, 'titulo')
+                desc_tipo = self._get_text_value(europeia, 'descTipo')
+                legislatura = self._get_text_value(europeia, 'legislatura')
+                sessao = self._get_int_value(europeia, 'sessao')
+                assunto = self._get_text_value(europeia, 'assunto')
+                
+                if europeia_id or numero:  # Create if we have identifying data
+                    # Store similar to originated initiatives
+                    try:
+                        from database.models import IniciativaOriginada
+                        europeia_obj = IniciativaOriginada(
+                            iniciativa_id=iniciativa_obj.id,
+                            originada_id=europeia_id,
+                            leg=leg,
+                            numero=numero,
+                            sel=sel,
+                            tipo=tipo,
+                            titulo=titulo,
+                            desc_tipo=desc_tipo,
+                            legislatura=legislatura,
+                            sessao=sessao,
+                            assunto=assunto
+                        )
+                        self.session.add(europeia_obj)
+                    except Exception as e:
+                        logger.warning(f"Could not create European initiative record: {e}")
+    
+    def _process_peticoes(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
+        """Process petition data (Peticoes.pt_gov_ar_objectos_iniciativas_DadosGeraisOut) - XII Legislature feature"""
+        peticoes = iniciativa.find('Peticoes')
+        if peticoes is not None:
+            for peticao in peticoes.findall('pt_gov_ar_objectos_iniciativas_DadosGeraisOut'):
+                numero = self._get_int_value(peticao, 'numero')
+                peticao_id = self._get_int_value(peticao, 'id')  # Additional field
+                sessao = self._get_int_value(peticao, 'sessao')  # Additional field
+                legislatura = self._get_text_value(peticao, 'legislatura')  # Additional field
+                
+                if numero or peticao_id:
+                    try:
+                        peticao_obj = IniciativaPeticao(
+                            iniciativa_id=iniciativa_obj.id,
+                            numero=numero
+                        )
+                        self.session.add(peticao_obj)
+                    except Exception as e:
+                        logger.warning(f"Could not create petition record: {e}")
+    
+    def _process_iniciativas_europeias_simples(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
+        """Process European initiatives as strings (IniciativasEuropeias.string) - XII Legislature feature"""
+        iniciativas_europeias = iniciativa.find('IniciativasEuropeias')
+        if iniciativas_europeias is not None:
+            for string_elem in iniciativas_europeias.findall('string'):
+                referencia = string_elem.text if string_elem is not None else None
+                if referencia:
+                    try:
+                        europeia_obj = IniciativaEuropeia(
+                            iniciativa_id=iniciativa_obj.id,
+                            referencia=referencia
+                        )
+                        self.session.add(europeia_obj)
+                    except Exception as e:
+                        logger.warning(f"Could not create simple European initiative record: {e}")
+    
+    def _process_links(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
+        """Process document links (Links.DocsOut) - X Legislature feature"""
+        links = iniciativa.find('Links')
+        if links is not None:
+            for doc in links.findall('DocsOut'):
+                titulo_documento = self._get_text_value(doc, 'TituloDocumento')
+                data_documento = self._parse_date(self._get_text_value(doc, 'DataDocumento'))
+                url = self._get_text_value(doc, 'URL')
+                
+                if titulo_documento or data_documento or url:
+                    try:
+                        link_obj = IniciativaLink(
+                            iniciativa_id=iniciativa_obj.id,
+                            titulo_documento=titulo_documento,
+                            data_documento=data_documento,
+                            url=url
+                        )
+                        self.session.add(link_obj)
+                    except Exception as e:
+                        logger.warning(f"Could not create link record: {e}")
+    
+    def _process_peticoes_assunto(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
+        """Process petition subjects (Peticoes.assunto) - XII Legislature feature"""
+        peticoes = iniciativa.find('Peticoes')
+        if peticoes is not None:
+            for peticao in peticoes.findall('pt_gov_ar_objectos_iniciativas_DadosGeraisOut'):
+                assunto = self._get_text_value(peticao, 'assunto')
+                if assunto:
+                    # Could store in a separate petitions table or add to initiative record
+                    logger.debug(f"Petition subject: {assunto} for initiative {iniciativa_obj.id}")
     
     def close(self):
         """Close the database session"""
