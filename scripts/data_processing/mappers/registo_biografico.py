@@ -767,11 +767,21 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 
             cad_id = int(float(cad_id))
             
-            # Find the deputy
+            # Find or create the deputy
             deputy = self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
             if not deputy:
-                logger.warning(f"Deputy with id_cadastro {cad_id} not found for Interest Registry V2")
-                return False
+                # Create deputy with basic information from interest registry
+                cad_nome_completo = self._get_text_value(record, 'cadNomeCompleto')
+                deputy = Deputado(
+                    id_cadastro=cad_id,
+                    nome=cad_nome_completo or f"Deputy {cad_id}",
+                    nome_completo=cad_nome_completo,
+                    legislatura_id=self._get_legislatura_id(file_info),
+                    profissao=self._get_text_value(record, 'cadActividadeProfissional')
+                )
+                self.session.add(deputy)
+                self.session.flush()  # Get the ID
+                logger.info(f"Created deputy {cad_id} from Interest Registry V2 data: {cad_nome_completo}")
             
             # Check if already exists
             existing = self.session.query(RegistoInteressesV2).filter(
