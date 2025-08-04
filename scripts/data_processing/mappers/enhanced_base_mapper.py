@@ -134,6 +134,28 @@ class LegislatureHandlerMixin:
         self.session.add(legislatura)
         logger.info(f"Created new legislatura: {legislatura_sigla}")
         return legislatura
+    
+    def _get_legislatura_id(self, file_info: Dict) -> int:
+        """
+        Extract legislature ID from file info for deputy records.
+        
+        Args:
+            file_info: Dictionary containing file_path and other metadata
+            
+        Returns:
+            Legislature ID for use in deputado records
+        """
+        if not hasattr(self, 'session'):
+            raise AttributeError("Session not available - ensure DatabaseSessionMixin is used")
+        
+        # Extract legislatura sigla from file path
+        file_path = file_info.get('file_path', '')
+        legislatura_sigla = self._extract_legislatura(file_path, None)
+        
+        # Get or create the legislatura record
+        legislatura = self._get_or_create_legislatura(legislatura_sigla)
+        
+        return legislatura.id
 
 
 class XMLProcessingMixin:

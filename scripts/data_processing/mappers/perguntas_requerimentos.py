@@ -422,6 +422,7 @@ class PerguntasRequerimentosMapper(SchemaMapper):
                             id_cadastro=id_cadastro,
                             nome=nome,
                             nome_completo=nome,
+                            legislatura_id=self._get_legislatura_id(file_info),
                             ativo=True
                         )
                         self.session.add(deputado)

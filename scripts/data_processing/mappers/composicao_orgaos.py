@@ -1544,6 +1544,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             id_cadastro=dep_cad_id,
             nome=nome,
             nome_completo=nome_completo or nome,
+            legislatura_id=self._get_legislatura_id(file_info),
             ativo=True
         )
         

@@ -549,6 +549,7 @@ class AtividadeDeputadosMapper(SchemaMapper):
                 id_cadastro=dep_cad_id,
                 nome=dep_nome,
                 nome_completo=dep_nome_completo,
+                legislatura_id=self._get_legislatura_id(file_info),
                 ativo=True
             )
             

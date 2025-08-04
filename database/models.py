@@ -72,6 +72,7 @@ class Deputado(Base):
     id_cadastro = Column(Integer, unique=True, nullable=False)
     nome = Column(String(200), nullable=False)
     nome_completo = Column(String(300))
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     sexo = Column(String(1))  # M/F - cadSexo field
     profissao = Column(String(200))
     data_nascimento = Column(Date)
@@ -4275,3 +4276,417 @@ class IniciativaOriginada(Base):
     
     # Relationships
     iniciativa = relationship("IniciativaParlamentar", back_populates="originadas")
+
+
+# =====================================================
+# UNIFIED INTEREST REGISTRY MODELS (Phase 2)
+# =====================================================
+
+class RegistoInteressesUnified(Base):
+    """
+    Unified Interest Registry Model - Phase 2 Consolidation
+    
+    Consolidates all interest registry data from different schema versions
+    (V1, V2, V3, V5) into a single, optimized structure.
+    
+    Replaces fragmented system of RegistoInteresses + RegistoInteressesV2
+    with unified architecture supporting all schema versions.
+    """
+    __tablename__ = 'registo_interesses_unified'
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core identification fields
+    record_id = Column(String(50))  # V3+ external record ID
+    cad_id = Column(Integer)  # V1/V2 cadastral ID  
+    schema_version = Column(String(10), nullable=False)  # "V1", "V2", "V3", "V5"
+    
+    # Personal information (unified across all versions)
+    full_name = Column(String(200))
+    marital_status_code = Column(String(10))
+    marital_status_desc = Column(String(50))
+    spouse_name = Column(String(200))
+    matrimonial_regime = Column(String(100))
+    professional_activity = Column(Text)
+    
+    # V3+ specific fields
+    exclusivity = Column(String(10))  # "Yes"/"No"
+    dgf_number = Column(String(50))
+    
+    # V5+ specific fields
+    category = Column(String(100))
+    declaration_fact = Column(Text)
+    
+    # Metadata
+    version_date = Column(Date)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    deputado = relationship("Deputado")
+    legislatura = relationship("Legislatura")
+    atividades = relationship("RegistoInteressesAtividadeUnified", back_populates="registo", cascade="all, delete-orphan")
+    sociedades = relationship("RegistoInteressesSociedadeUnified", back_populates="registo", cascade="all, delete-orphan")
+    apoios = relationship("RegistoInteressesApoioUnified", back_populates="registo", cascade="all, delete-orphan")
+
+
+class RegistoInteressesAtividadeUnified(Base):
+    """
+    Unified Activities Model for Interest Registry
+    
+    Handles all activity types across schema versions:
+    - V1/V2: Basic professional activities
+    - V2+: Detailed structured activities
+    - V5+: Extended activity classifications
+    """
+    __tablename__ = 'registo_interesses_activities_unified'
+    
+    id = Column(Integer, primary_key=True)
+    registo_id = Column(Integer, ForeignKey('registo_interesses_unified.id', ondelete='CASCADE'), nullable=False)
+    activity_type = Column(String(50))  # 'professional', 'cargo_menos_3', 'cargo_mais_3'
+    
+    # Common fields across all versions
+    description = Column(Text)
+    entity = Column(String(500))
+    nature_area = Column(String(500))
+    start_date = Column(Date)
+    end_date = Column(Date) 
+    remunerated = Column(String(10))  # Y/N
+    value = Column(String(200))  # Can be descriptive text
+    observations = Column(Text)
+    
+    # V5 specific fields
+    service_description = Column(Text)
+    cargo_funcao_atividade = Column(Text)
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    registo = relationship("RegistoInteressesUnified", back_populates="atividades")
+
+
+class RegistoInteressesSociedadeUnified(Base):
+    """
+    Unified Societies/Companies Model for Interest Registry
+    
+    Handles company shareholdings and business interests
+    across all schema versions.
+    """
+    __tablename__ = 'registo_interesses_societies_unified'
+    
+    id = Column(Integer, primary_key=True)
+    registo_id = Column(Integer, ForeignKey('registo_interesses_unified.id', ondelete='CASCADE'), nullable=False)
+    
+    entity = Column(String(500))
+    activity_area = Column(String(500))
+    headquarters = Column(String(500))
+    social_participation = Column(Text)  # Shareholding details
+    value = Column(String(200))
+    observations = Column(Text)
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    registo = relationship("RegistoInteressesUnified", back_populates="sociedades")
+
+
+class RegistoInteressesApoioUnified(Base):
+    """
+    Unified Benefits/Support Model for Interest Registry
+    
+    Handles V5+ apoios and servicos_prestados declarations.
+    """
+    __tablename__ = 'registo_interesses_benefits_unified'
+    
+    id = Column(Integer, primary_key=True)
+    registo_id = Column(Integer, ForeignKey('registo_interesses_unified.id', ondelete='CASCADE'), nullable=False)
+    
+    benefit_type = Column(String(100))  # 'apoio', 'servico_prestado'
+    entity = Column(String(500))
+    nature_area = Column(String(500))
+    description = Column(Text)
+    value = Column(String(200))
+    start_date = Column(Date)
+    end_date = Column(Date)
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    registo = relationship("RegistoInteressesUnified", back_populates="apoios")
+
+# =====================================================
+# PHASE 3: ANALYTICS MODELS - Database-Driven Parliamentary Analytics  
+# =====================================================
+
+class DeputyAnalytics(Base):
+    """Comprehensive deputy performance analytics with real-time scoring"""
+    __tablename__ = "deputy_analytics"
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False, unique=True)
+    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"))
+    
+    # Activity Scoring (0-100 scale) - calculated by stored procedures
+    activity_score = Column(Integer, default=0)
+    attendance_score = Column(Integer, default=0)
+    initiative_score = Column(Integer, default=0)
+    intervention_score = Column(Integer, default=0)
+    engagement_score = Column(Integer, default=0)
+    
+    # Core Activity Metrics
+    total_sessions_attended = Column(Integer, default=0)
+    total_sessions_eligible = Column(Integer, default=0)
+    attendance_percentage = Column(Integer, default=0)  # 0-100 percentage as integer
+    total_initiatives = Column(Integer, default=0)
+    total_interventions = Column(Integer, default=0)
+    total_words_spoken = Column(Integer, default=0)
+    
+    # Success and Impact Metrics
+    initiatives_approved = Column(Integer, default=0)
+    initiatives_pending = Column(Integer, default=0)
+    initiatives_rejected = Column(Integer, default=0)
+    approval_rate = Column(Integer, default=0)  # 0-100 percentage as integer
+    collaboration_count = Column(Integer, default=0)
+    leadership_score = Column(Integer, default=0)
+    
+    # Temporal Activity Tracking
+    days_active = Column(Integer, default=0)
+    avg_monthly_activity = Column(Integer, default=0)  # Average activities per month as integer
+    peak_activity_month = Column(String(7))
+    activity_trend = Column(String(20))
+    
+    # Ranking and Comparison
+    rank_overall = Column(Integer)
+    rank_in_party = Column(Integer)
+    rank_in_legislature = Column(Integer)
+    percentile_overall = Column(Integer)
+    
+    # Data Quality and Freshness
+    data_completeness_score = Column(Integer, default=0)
+    last_activity_date = Column(Date)
+    calculation_date = Column(DateTime, server_default=func.now())
+    needs_recalculation = Column(Boolean, default=False)
+    
+    # Metadata
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    deputado = relationship("Deputado", backref="analytics")
+    legislatura = relationship("Legislatura", backref="deputy_analytics")
+
+
+class AttendanceAnalytics(Base):
+    """Monthly attendance analytics for deputies"""
+    __tablename__ = "attendance_analytics"
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
+    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"))
+    year = Column(Integer, nullable=False)
+    month = Column(Integer, nullable=False)
+    
+    # Basic Attendance Metrics
+    sessions_scheduled = Column(Integer, default=0)
+    sessions_attended = Column(Integer, default=0)
+    sessions_absent = Column(Integer, default=0)
+    sessions_justified_absence = Column(Integer, default=0)
+    sessions_unjustified_absence = Column(Integer, default=0)
+    attendance_rate = Column(String(10))  # Decimal(5,2) as string
+    
+    # Advanced Metrics
+    consecutive_absences = Column(Integer, default=0)
+    max_consecutive_absences = Column(Integer, default=0)
+    attendance_consistency = Column(Integer, default=0)
+    seasonal_pattern = Column(String(20))
+    
+    # Session Type Breakdown
+    plenario_attended = Column(Integer, default=0)
+    comissao_attended = Column(Integer, default=0)
+    other_sessions_attended = Column(Integer, default=0)
+    
+    # Punctuality Metrics
+    early_departures = Column(Integer, default=0)
+    late_arrivals = Column(Integer, default=0)
+    full_session_attendance = Column(Integer, default=0)
+    punctuality_score = Column(Integer, default=0)
+    
+    # Ranking and Comparison
+    rank_in_month = Column(Integer)
+    above_average_attendance = Column(Boolean, default=False)
+    improvement_from_prev_month = Column(String(10))  # Decimal(5,2) as string
+    
+    # Metadata
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class InitiativeAnalytics(Base):
+    """Comprehensive initiative analytics for deputies"""
+    __tablename__ = "initiative_analytics"
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
+    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"))
+    
+    # Authorship Metrics
+    total_initiatives_authored = Column(Integer, default=0)
+    total_initiatives_co_authored = Column(Integer, default=0)
+    solo_initiatives = Column(Integer, default=0)
+    collaborative_initiatives = Column(Integer, default=0)
+    cross_party_initiatives = Column(Integer, default=0)
+    
+    # Initiative Types
+    projetos_lei = Column(Integer, default=0)
+    propostas_lei = Column(Integer, default=0)
+    requerimentos = Column(Integer, default=0)
+    perguntas = Column(Integer, default=0)
+    mocoes = Column(Integer, default=0)
+    other_types = Column(Integer, default=0)
+    
+    # Success Metrics
+    initiatives_approved = Column(Integer, default=0)
+    initiatives_in_progress = Column(Integer, default=0)
+    initiatives_rejected = Column(Integer, default=0)
+    initiatives_withdrawn = Column(Integer, default=0)
+    success_rate = Column(String(10))  # Decimal(5,2) as string
+    impact_score = Column(Integer, default=0)
+    
+    # Productivity Metrics
+    avg_initiatives_per_month = Column(String(10))  # Decimal(5,2) as string
+    most_productive_month = Column(String(7))
+    productivity_trend = Column(String(20))
+    
+    # Temporal Metrics
+    first_initiative_date = Column(Date)
+    latest_initiative_date = Column(Date)
+    initiative_span_days = Column(Integer)
+    
+    # Topic and Expertise
+    primary_topic_area = Column(String(100))
+    topic_diversity_score = Column(Integer, default=0)
+    expertise_areas = Column(Text)
+    
+    # Collaboration Metrics
+    unique_collaborators = Column(Integer, default=0)
+    collaboration_score = Column(Integer, default=0)
+    leadership_ratio = Column(String(10))  # Decimal(5,2) as string
+    
+    # Quality Metrics
+    avg_initiative_complexity = Column(Integer, default=0)
+    amendment_rate = Column(String(10))  # Decimal(5,2) as string
+    debate_generation_score = Column(Integer, default=0)
+    
+    # Rankings
+    rank_by_quantity = Column(Integer)
+    rank_by_success_rate = Column(Integer)
+    rank_by_impact = Column(Integer)
+    
+    # Metadata
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class DeputyTimeline(Base):
+    """Career timeline and experience analytics for deputies"""
+    __tablename__ = "deputy_timeline"
+    
+    id = Column(Integer, primary_key=True)
+    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
+    
+    # Career Timeline
+    first_election_date = Column(Date)
+    total_legislatures_served = Column(Integer, default=0)
+    consecutive_terms = Column(Integer, default=0)
+    years_of_service = Column(Integer, default=0)
+    current_term_start = Column(Date)
+    is_currently_active = Column(Boolean, default=True)
+    
+    # Career Highlights
+    key_positions_held = Column(Text)
+    committee_memberships = Column(Text)
+    leadership_roles = Column(Text)
+    significant_initiatives = Column(Text)
+    
+    # Performance Evolution
+    career_peak_year = Column(Integer)
+    career_peak_score = Column(Integer)
+    current_performance_trend = Column(String(20))
+    experience_category = Column(String(20))
+    
+    # Focus Areas Over Time
+    early_career_focus = Column(String(100))
+    mid_career_focus = Column(String(100))
+    current_focus = Column(String(100))
+    focus_evolution_pattern = Column(String(50))
+    
+    # Influence and Network
+    mentorship_score = Column(Integer, default=0)
+    network_centrality = Column(Integer, default=0)
+    cross_party_influence = Column(Integer, default=0)
+    media_attention_score = Column(Integer, default=0)
+    
+    # Future Projections
+    projected_career_trajectory = Column(String(50))
+    specialization_strength = Column(Integer, default=0)
+    institutional_memory_value = Column(Integer, default=0)
+    
+    # Calculation Metadata
+    last_calculated = Column(DateTime)
+    calculation_version = Column(String(10))
+    
+    # Metadata
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class DataQualityMetrics(Base):
+    """Data quality metrics for database tables"""
+    __tablename__ = "data_quality_metrics"
+    
+    id = Column(Integer, primary_key=True)
+    table_name = Column(String(100), nullable=False)
+    metric_date = Column(Date, nullable=False)
+    
+    # Volume Metrics
+    total_records = Column(Integer, default=0)
+    complete_records = Column(Integer, default=0)
+    incomplete_records = Column(Integer, default=0)
+    
+    # Quality Scores
+    completeness_percentage = Column(String(10))  # Decimal(5,2) as string
+    consistency_score = Column(Integer, default=0)
+    referential_integrity_score = Column(Integer, default=0)
+    temporal_consistency_score = Column(Integer, default=0)
+    
+    # Issue Counts
+    null_critical_fields = Column(Integer, default=0)
+    invalid_date_ranges = Column(Integer, default=0)
+    duplicate_records = Column(Integer, default=0)
+    orphaned_records = Column(Integer, default=0)
+    
+    # Temporal Coverage
+    oldest_record_date = Column(Date)
+    newest_record_date = Column(Date)
+    data_span_days = Column(Integer)
+    last_update_lag_hours = Column(Integer)
+    
+    # Trends and Issues
+    quality_trend = Column(String(20))
+    issue_categories = Column(Text)
+    improvement_suggestions = Column(Text)
+    
+    # Performance
+    check_duration_seconds = Column(Integer)
+    
+    # Metadata
+    created_at = Column(DateTime, server_default=func.now())
+

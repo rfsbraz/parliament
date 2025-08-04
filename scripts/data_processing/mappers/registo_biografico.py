@@ -325,6 +325,7 @@ class RegistoBiograficoMapper(SchemaMapper):
                     id_cadastro=cad_id,
                     nome=self._get_text_value(record, 'cadNomeCompleto') or f"Deputy {cad_id}",
                     nome_completo=self._get_text_value(record, 'cadNomeCompleto'),
+                    legislatura_id=self._get_legislatura_id(file_info),
                     sexo=self._get_text_value(record, 'cadSexo'),  # New I Legislature field
                     profissao=self._get_text_value(record, 'cadProfissao'),
                     data_nascimento=self._parse_date(self._get_text_value(record, 'cadDtNascimento')),
@@ -561,6 +562,7 @@ class RegistoBiograficoMapper(SchemaMapper):
                     id_cadastro=cad_id,
                     nome=self._get_text_value(record, 'CadNomeCompleto') or f"Deputy {cad_id}",
                     nome_completo=self._get_text_value(record, 'CadNomeCompleto'),
+                    legislatura_id=self._get_legislatura_id(file_info),
                     sexo=self._get_text_value(record, 'CadSexo'),
                     profissao=self._get_text_value(record, 'CadProfissao'),
                     data_nascimento=self._parse_date(self._get_text_value(record, 'CadDtNascimento')),
