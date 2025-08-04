@@ -586,7 +586,17 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             return True
             
         except Exception as e:
-            logger.error(f"Error processing I Legislature biographical record: {e}")
+            # Enhanced error logging for NoneType debugging
+            error_msg = str(e)
+            if "'NoneType' object has no attribute 'find'" in error_msg:
+                logger.error(f"NoneType 'find' error in I Legislature biographical processing")
+                logger.error(f"Record structure: {record.tag if record else 'record is None'}")
+                if record is not None:
+                    logger.error(f"Record children: {[child.tag for child in record]}")
+                import traceback
+                logger.error(f"Full traceback: {traceback.format_exc()}")
+            else:
+                logger.error(f"Error processing I Legislature biographical record: {error_msg}")
             return False
     
     def _process_viii_legislature_biographical_record(self, record: ET.Element, file_info: Dict) -> bool:

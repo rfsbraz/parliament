@@ -80,29 +80,30 @@ class LegislatureHandlerMixin:
         if leg_match:
             return leg_match.group(1).upper()
         
-        # Try XML content - multiple possible locations
-        xml_patterns = [
-            './/Legislatura',
-            './/LegDes', 
-            './/IniLeg',
-            './/leg',
-            './/Leg'
-        ]
-        
-        for pattern in xml_patterns:
-            leg_element = xml_root.find(pattern)
-            if leg_element is not None and leg_element.text:
-                leg_text = leg_element.text.strip()
-                
-                # Handle numeric format
-                if leg_text.isdigit():
-                    leg_num = int(leg_text)
-                    if leg_num in self.NUMBER_TO_ROMAN:
-                        return self.NUMBER_TO_ROMAN[leg_num]
-                
-                # Handle roman numeral format
-                if leg_text.upper() in self.ROMAN_TO_NUMBER:
-                    return leg_text.upper()
+        # Try XML content - multiple possible locations (only if xml_root is provided)
+        if xml_root is not None:
+            xml_patterns = [
+                './/Legislatura',
+                './/LegDes', 
+                './/IniLeg',
+                './/leg',
+                './/Leg'
+            ]
+            
+            for pattern in xml_patterns:
+                leg_element = xml_root.find(pattern)
+                if leg_element is not None and leg_element.text:
+                    leg_text = leg_element.text.strip()
+                    
+                    # Handle numeric format
+                    if leg_text.isdigit():
+                        leg_num = int(leg_text)
+                        if leg_num in self.NUMBER_TO_ROMAN:
+                            return self.NUMBER_TO_ROMAN[leg_num]
+                    
+                    # Handle roman numeral format
+                    if leg_text.upper() in self.ROMAN_TO_NUMBER:
+                        return leg_text.upper()
         
         # Final fallback - extract from directory structure (case-insensitive)
         path_match = re.search(r'[/\\\\](CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|XI|VIII|VII|VI|IV|III|IX|II|X|V|I)_?[Ll]egislatura', file_path, re.IGNORECASE)
