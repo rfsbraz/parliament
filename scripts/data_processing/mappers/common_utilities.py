@@ -192,6 +192,31 @@ class PerformanceUtils:
         if current % step == 0:
             percentage = (current / total) * 100
             logger.info(f"Processing progress: {current}/{total} ({percentage:.1f}%)")
+    
+    @staticmethod
+    def safe_text_for_logging(text: Optional[str]) -> str:
+        """
+        Convert text to ASCII-safe format for logging to avoid Unicode encoding errors.
+        
+        On Windows systems, the console often uses cp1252 encoding which can't handle
+        Portuguese characters like ã, ç, ó, etc. This function converts such characters
+        to replacement characters (usually ?) to prevent logging crashes.
+        
+        Args:
+            text: The text that may contain Unicode characters
+            
+        Returns:
+            ASCII-safe version of the text suitable for logging
+        """
+        if not text:
+            return 'Unknown'
+        
+        try:
+            # Try to encode as ASCII, replacing non-ASCII characters
+            return text.encode('ascii', 'replace').decode('ascii')
+        except (UnicodeEncodeError, UnicodeDecodeError, AttributeError):
+            # Fallback for any encoding issues
+            return 'Unknown'
 
 
 # Convenience functions for backward compatibility
@@ -206,3 +231,7 @@ def parse_date(date_str: Optional[str]) -> Optional[datetime]:
 def safe_int(value: Optional[str]) -> Optional[int]:
     """Backward compatibility wrapper"""
     return DataValidationUtils.safe_int_convert(value)
+
+def safe_log_text(text: Optional[str]) -> str:
+    """Backward compatibility wrapper for Unicode-safe logging"""
+    return DataValidationUtils.safe_text_for_logging(text)

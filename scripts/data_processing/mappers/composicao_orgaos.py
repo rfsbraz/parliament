@@ -18,7 +18,7 @@ import logging
 from .enhanced_base_mapper import EnhancedSchemaMapper, SchemaError
 from .common_utilities import (
     DataValidationUtils, LegislatureUtils, XMLPathUtils, 
-    ErrorHandlingUtils, ParliamentConstants
+    ErrorHandlingUtils, ParliamentConstants, safe_log_text
 )
 
 # Import our comprehensive OrganizacaoAR models
@@ -782,7 +782,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             plenary = self._get_or_create_plenary(
                 int(float(id_orgao)), sigla_orgao, nome_sigla, legislatura
             )
-            logger.info(f"Using plenary ID {plenary.id} for {sigla_orgao} in {legislatura.numero} Legislature")
+            logger.info(f"Using plenary ID {plenary.id} for {safe_log_text(sigla_orgao)} in {legislatura.numero} Legislature")
             
             # Process members
             composicao = plenario.find('Composicao')
@@ -974,11 +974,11 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 dados_cargo = dep_cargo.find('pt_ar_wsgode_objectos_DadosCargoDeputado')
                 if dados_cargo is not None:
                     # Process the cargo data - this structure is now covered in schema
-                    logger.debug(f"Processing DepCargo for deputy {dep_nome}")
+                    logger.debug(f"Processing DepCargo for deputy {safe_log_text(dep_nome)}")
             
             # Verify plenary exists before creating composition
             if not plenary or not plenary.id:
-                logger.error(f"Invalid plenary object for deputy {dep_nome}: {plenary}")
+                logger.error(f"Invalid plenary object for deputy {safe_log_text(dep_nome)}: {plenary}")
                 return False
                 
             # Create plenary composition record
@@ -1357,7 +1357,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 for dados_reuniao in reunioes.findall('pt_ar_wsgode_objectos_DadosReuniao'):
                     self._process_i_legislature_committee_meeting(dados_reuniao, committee)
             
-            logger.info(f"Processed I Legislature committee: {nome_sigla} (ID: {id_orgao})")
+            logger.info(f"Processed I Legislature committee: {safe_log_text(nome_sigla)} (ID: {id_orgao})")
             return True
             
         except Exception as e:
@@ -1754,7 +1754,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 numero_orgao = self._get_int_value(detalhe_orgao, 'numeroOrgao')
                 sigla_legislatura = self._get_text_value(detalhe_orgao, 'siglaLegislatura')
                 
-                logger.info(f"Processing ConferenciaPresidentesComissoes DetalheOrgao: {sigla_orgao} for {sigla_legislatura}")
+                logger.info(f"Processing ConferenciaPresidentesComissoes DetalheOrgao: {safe_log_text(sigla_orgao)} for {safe_log_text(sigla_legislatura)}")
                 
                 # Create or get conference record with DetalheOrgao data
                 conference = self._get_or_create_commission_president_conference(
@@ -2677,7 +2677,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                     )
                     
                     self.session.add(video)
-                    logger.debug(f"Added video for deputy {dep_nome_parlamentar}: {tipo} - {url}")
+                    logger.debug(f"Added video for deputy {safe_log_text(dep_nome_parlamentar)}: {safe_log_text(tipo)} - {url}")
             
             return True
             
