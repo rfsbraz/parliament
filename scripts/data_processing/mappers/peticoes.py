@@ -303,6 +303,9 @@ class PeticoesMapper(SchemaMapper):
             'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.votacao.ausencias.string',
             'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.votacao.detalhe',
             
+            # XV Legislature additional voting field
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.votacao.descricao',
+            
             # XIV Legislature publication obs field
             'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.obs'
         }
@@ -654,6 +657,7 @@ class PeticoesMapper(SchemaMapper):
                 votacao_tipo_reuniao = None
                 votacao_ausencias = None
                 votacao_detalhe = None
+                votacao_descricao = None
                 
                 votacao_elem = relatorio.find('votacao')
                 if votacao_elem is not None:
@@ -666,9 +670,10 @@ class PeticoesMapper(SchemaMapper):
                     votacao_reuniao = self._get_int_value(votacao_elem, 'reuniao')
                     votacao_tipo_reuniao = self._get_text_value(votacao_elem, 'tipoReuniao')
                     
-                    # XIV Legislature additional voting fields
+                    # XIV/XV Legislature additional voting fields
                     votacao_ausencias = self._extract_string_array(votacao_elem, 'ausencias')
                     votacao_detalhe = self._get_text_value(votacao_elem, 'detalhe')
+                    votacao_descricao = self._get_text_value(votacao_elem, 'descricao')
                 
                 relatorio_obj = PeticaoRelatorioFinal(
                     comissao_peticao_id=comissao_obj.id,
@@ -681,7 +686,8 @@ class PeticoesMapper(SchemaMapper):
                     votacao_reuniao=votacao_reuniao,
                     votacao_tipo_reuniao=votacao_tipo_reuniao,
                     votacao_ausencias=votacao_ausencias,
-                    votacao_detalhe=votacao_detalhe
+                    votacao_detalhe=votacao_detalhe,
+                    votacao_descricao=votacao_descricao
                 )
                 self.session.add(relatorio_obj)
                 self.session.flush()  # Get the ID

@@ -3100,6 +3100,9 @@ class PeticaoRelatorioFinal(Base):
     votacao_ausencias = Column(Text)  # votacao.ausencias (comma-separated)
     votacao_detalhe = Column(Text)  # votacao.detalhe
     
+    # XV Legislature additional voting field
+    votacao_descricao = Column(Text)  # votacao.descricao
+    
     # Relationships
     comissao = relationship("PeticaoComissao", back_populates="relatorios_finais")
     publicacoes = relationship("PeticaoRelatorioFinalPublicacao", back_populates="relatorio_final", cascade="all, delete-orphan")
