@@ -23,7 +23,7 @@ from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
 
-from .base_mapper import SchemaMapper, SchemaError
+from .enhanced_base_mapper import SchemaMapper, SchemaError
 
 # Import our models
 import sys
@@ -378,30 +378,6 @@ class PeticoesMapper(SchemaMapper):
                 return element.text
         return None
     
-    def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
-        """Extract legislatura from filename or XML content"""
-        # Try filename first
-        filename = os.path.basename(file_path)
-        leg_match = re.search(r'(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)', filename)
-        if leg_match:
-            return leg_match.group(1)
-        
-        # Try XML content - look for first PetLeg element
-        leg_element = xml_root.find('.//PetLeg')
-        if leg_element is not None and leg_element.text:
-            leg_text = leg_element.text.strip()
-            # Convert number to roman if needed
-            if leg_text.isdigit():
-                num_to_roman = {
-                    '0': 'CONSTITUINTE', '1': 'I', '2': 'II', '3': 'III', '4': 'IV', '5': 'V', 
-                    '6': 'VI', '7': 'VII', '8': 'VIII', '9': 'IX', '10': 'X', '11': 'XI', 
-                    '12': 'XII', '13': 'XIII', '14': 'XIV', '15': 'XV', '16': 'XVI', '17': 'XVII'
-                }
-                return num_to_roman.get(leg_text, leg_text)
-            return leg_text
-        
-        # Default to XVII
-        return 'XVII'
     
     def _process_petition_complete(self, petition: ET.Element, legislatura: Legislatura) -> bool:
         """Process complete petition with all structures"""

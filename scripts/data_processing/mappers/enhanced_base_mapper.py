@@ -110,8 +110,7 @@ class LegislatureHandlerMixin:
         if path_match:
             return path_match.group(1).upper()
         
-        logger.warning(f"Could not extract legislatura from {file_path}, defaulting to XVII")
-        return "XVII"  # Current legislature as fallback
+        raise SchemaError(f"Could not extract legislatura from file path: {file_path}")
     
     def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
         """Get existing or create new legislatura record"""

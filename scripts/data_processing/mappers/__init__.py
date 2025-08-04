@@ -6,7 +6,7 @@ This package contains all schema mappers for the unified parliament data importe
 Each mapper handles a specific file type and provides XML-to-database mapping functionality.
 """
 
-from .base_mapper import SchemaMapper, SchemaError
+from .enhanced_base_mapper import SchemaMapper, SchemaError
 from .registo_biografico import RegistoBiograficoMapper
 from .iniciativas import InitiativasMapper
 from .intervencoes import IntervencoesMapper

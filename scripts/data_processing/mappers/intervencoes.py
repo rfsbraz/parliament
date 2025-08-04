@@ -15,7 +15,7 @@ from typing import Dict, Optional, Set
 import logging
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode
 
-from .base_mapper import SchemaMapper, SchemaError
+from .enhanced_base_mapper import SchemaMapper, SchemaError
 
 # Import our models
 import sys

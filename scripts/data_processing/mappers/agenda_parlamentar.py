@@ -14,7 +14,7 @@ from datetime import datetime, date
 from typing import Dict, Optional, Set
 import logging
 
-from .base_mapper import SchemaMapper, SchemaError
+from .enhanced_base_mapper import SchemaMapper, SchemaError
 
 # Import our models
 import sys
@@ -90,21 +90,6 @@ class AgendaParlamentarMapper(SchemaMapper):
         
         return results
     
-    def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
-        """Extract legislatura from filename or XML content"""
-        # Try filename first
-        filename = os.path.basename(file_path)
-        leg_match = re.search(r'(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)', filename)
-        if leg_match:
-            return leg_match.group(1)
-        
-        # Try XML content
-        leg_des = xml_root.find('.//LegDes')
-        if leg_des is not None and leg_des.text:
-            return leg_des.text.strip()
-        
-        # Default to XVII
-        return 'XVII'
     
     def _process_agenda_item(self, agenda_item: ET.Element, legislatura_id: int) -> bool:
         """Process individual agenda item using SQLAlchemy ORM"""

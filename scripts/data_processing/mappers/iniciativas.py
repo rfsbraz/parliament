@@ -23,7 +23,7 @@ from typing import Dict, Optional, Set, List
 import logging
 from datetime import datetime
 
-from .base_mapper import SchemaMapper, SchemaError
+from .enhanced_base_mapper import SchemaMapper, SchemaError
 
 # Import our models
 import sys
