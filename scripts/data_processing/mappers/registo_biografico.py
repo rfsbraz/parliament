@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Dict, Optional, Set
 import logging
 
-from .base_mapper import SchemaMapper, SchemaError
+from .enhanced_base_mapper import EnhancedSchemaMapper, SchemaError
 
 # Import our models
 import sys
@@ -22,7 +22,7 @@ from database.models import Deputado
 logger = logging.getLogger(__name__)
 
 
-class RegistoBiograficoMapper(SchemaMapper):
+class RegistoBiograficoMapper(EnhancedSchemaMapper):
     """Schema mapper for biographical registry files"""
     
     def __init__(self, session):

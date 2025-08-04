@@ -17,7 +17,7 @@ import re
 from typing import Dict, Optional, Set, List
 import logging
 
-from .base_mapper import SchemaMapper, SchemaError
+from .enhanced_base_mapper import EnhancedSchemaMapper, SchemaError
 
 # Import our models
 import sys
@@ -48,7 +48,7 @@ from database.models import (
 logger = logging.getLogger(__name__)
 
 
-class AtividadeDeputadosMapper(SchemaMapper):
+class AtividadeDeputadosMapper(EnhancedSchemaMapper):
     """Schema mapper for deputy activity files - REAL XML STRUCTURE VERSION WITH ORM"""
     
     def __init__(self, session):

@@ -13,7 +13,7 @@ import logging
 import re
 import os
 
-from .base_mapper import SchemaMapper, SchemaError
+from .enhanced_base_mapper import EnhancedSchemaMapper, SchemaError
 
 # Import our models
 import sys
@@ -26,7 +26,7 @@ from database.models import (
 logger = logging.getLogger(__name__)
 
 
-class RegistoInteressesMapper(SchemaMapper):
+class RegistoInteressesMapper(EnhancedSchemaMapper):
     """Schema mapper for conflicts of interest registry files"""
     
     def __init__(self, session):

@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
 
-from .base_mapper import SchemaMapper, SchemaError
+from .enhanced_base_mapper import EnhancedSchemaMapper, SchemaError
 
 # Import our models
 import sys
@@ -26,7 +26,7 @@ from database.models import (
 logger = logging.getLogger(__name__)
 
 
-class PerguntasRequerimentosMapper(SchemaMapper):
+class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
     """Schema mapper for parliamentary questions and requests files"""
     
     def __init__(self, session):
