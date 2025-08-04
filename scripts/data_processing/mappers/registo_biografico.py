@@ -495,11 +495,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     if dados_orgao is not None:
                         # Check for position details in committee (cargoDes structure)
                         tia_des = None
-                        cargo_des_elem = dados_orgao.find('cargoDes')
-                        if cargo_des_elem is not None:
-                            cargo_data = cargo_des_elem.find('pt_ar_wsgode_objectos_DadosCargosOrgao')
-                            if cargo_data is not None:
-                                tia_des = self._get_text_value(cargo_data, 'tiaDes')
+                        try:
+                            cargo_des_elem = dados_orgao.find('cargoDes')
+                            if cargo_des_elem is not None:
+                                cargo_data = cargo_des_elem.find('pt_ar_wsgode_objectos_DadosCargosOrgao')
+                                if cargo_data is not None:
+                                    tia_des = self._get_text_value(cargo_data, 'tiaDes')
+                        except AttributeError:
+                            # Handle case where dados_orgao might be None despite check
+                            logger.debug("dados_orgao became None during processing")
                         
                         atividade = DeputadoAtividadeOrgao(
                             deputado_id=deputy.id,
@@ -523,11 +527,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     if dados_orgao is not None:
                         # Check for position details (cargoDes structure)
                         tia_des = None
-                        cargo_des_elem = dados_orgao.find('cargoDes')
-                        if cargo_des_elem is not None:
-                            cargo_data = cargo_des_elem.find('pt_ar_wsgode_objectos_DadosCargosOrgao')
-                            if cargo_data is not None:
-                                tia_des = self._get_text_value(cargo_data, 'tiaDes')
+                        try:
+                            cargo_des_elem = dados_orgao.find('cargoDes')
+                            if cargo_des_elem is not None:
+                                cargo_data = cargo_des_elem.find('pt_ar_wsgode_objectos_DadosCargosOrgao')
+                                if cargo_data is not None:
+                                    tia_des = self._get_text_value(cargo_data, 'tiaDes')
+                        except AttributeError:
+                            # Handle case where dados_orgao might be None despite check
+                            logger.debug("dados_orgao became None during working group processing")
                         
                         atividade = DeputadoAtividadeOrgao(
                             deputado_id=deputy.id,
@@ -822,6 +830,12 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
         try:
             child = element.find(tag)
             return child.text.strip() if child is not None and child.text else None
+        except AttributeError as e:
+            if "'NoneType' object has no attribute 'find'" in str(e):
+                logger.error(f"_get_text_value: element is None but passed None check for tag '{tag}' - element type: {type(element)}")
+            else:
+                logger.error(f"AttributeError in _get_text_value for tag '{tag}': {e}")
+            return None
         except Exception as e:
             logger.error(f"Error in _get_text_value for tag '{tag}': {e}")
             return None
