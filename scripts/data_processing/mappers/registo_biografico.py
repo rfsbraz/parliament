@@ -262,9 +262,11 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         if strict_mode:
                             raise
             else:
-                # I Legislature structure
+                # I Legislature structure - check for different possible structures
                 legislature_name = self._extract_legislature_from_path(file_info.get('file_path', ''))
                 logger.info(f"Processing {legislature_name} biographical structure (I Legislature format)")
+                
+                # Try I Legislature specific structure first
                 biografico_list = xml_root.find('RegistoBiograficoList')
                 if biografico_list is not None:
                     for record in biografico_list.findall('pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb'):
@@ -275,6 +277,21 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                 results['records_imported'] += 1
                         except Exception as e:
                             error_msg = f"Error processing I Legislature biographical record: {str(e)}"
+                            results['errors'].append(error_msg)
+                            logger.error(error_msg)
+                            if strict_mode:
+                                raise
+                else:
+                    # Fallback: Check for ArrayOfDadosRegistoBiografico structure (VIII Legislature format in I directory)
+                    logger.info(f"I Legislature directory contains VIII Legislature format, processing accordingly")
+                    for record in xml_root.findall('DadosRegistoBiografico'):
+                        try:
+                            success = self._process_viii_legislature_biographical_record(record, file_info)
+                            results['records_processed'] += 1
+                            if success:
+                                results['records_imported'] += 1
+                        except Exception as e:
+                            error_msg = f"Error processing VIII Legislature biographical record: {str(e)}"
                             results['errors'].append(error_msg)
                             logger.error(error_msg)
                             if strict_mode:
