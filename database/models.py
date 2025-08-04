@@ -4331,6 +4331,13 @@ class RegistoInteressesUnified(Base):
     # V5+ specific fields
     category = Column(String(100))
     declaration_fact = Column(Text)
+    gender = Column(String(1))  # V5 Sexo field (M/F)
+    
+    # V3+ Position dates (from RecordInterestResponse)
+    position_begin_date = Column(Date)  # PositionBeginDate
+    position_end_date = Column(Date)    # PositionEndDate  
+    position_changed_date = Column(Date)  # PositionChangedDate
+    position_designation = Column(String(200))  # PositionDesignation
     
     # Metadata
     version_date = Column(Date)
@@ -4342,6 +4349,7 @@ class RegistoInteressesUnified(Base):
     legislatura = relationship("Legislatura")
     atividades = relationship("RegistoInteressesAtividadeUnified", back_populates="registo", cascade="all, delete-orphan")
     sociedades = relationship("RegistoInteressesSociedadeUnified", back_populates="registo", cascade="all, delete-orphan")
+    social_positions = relationship("RegistoInteressesSocialPositionUnified", back_populates="registo", cascade="all, delete-orphan")
     apoios = relationship("RegistoInteressesApoioUnified", back_populates="registo", cascade="all, delete-orphan")
 
 
@@ -4359,6 +4367,7 @@ class RegistoInteressesAtividadeUnified(Base):
     id = Column(Integer, primary_key=True)
     registo_id = Column(Integer, ForeignKey('registo_interesses_unified.id', ondelete='CASCADE'), nullable=False)
     activity_type = Column(String(50))  # 'professional', 'cargo_menos_3', 'cargo_mais_3'
+    type_classification = Column(Integer)  # V3 Type field (0, 1, 2)
     
     # Common fields across all versions
     description = Column(Text)
@@ -4409,21 +4418,53 @@ class RegistoInteressesSociedadeUnified(Base):
     registo = relationship("RegistoInteressesUnified", back_populates="sociedades")
 
 
+class RegistoInteressesSocialPositionUnified(Base):
+    """
+    Unified Social Positions Model for Interest Registry
+    
+    Handles V3+ social positions (SocialPositions.RecordInterestSocialPositionResponse)
+    which are distinct from activities and include board positions, memberships, etc.
+    """
+    __tablename__ = 'registo_interesses_social_positions_unified'
+    
+    id = Column(Integer, primary_key=True)
+    registo_id = Column(Integer, ForeignKey('registo_interesses_unified.id', ondelete='CASCADE'), nullable=False)
+    
+    position = Column(String(500))  # Position title/role
+    entity = Column(String(500))    # Organization/company name
+    activity_area = Column(String(500))  # Area of activity
+    headquarters_location = Column(String(500))  # HeadOfficeLocation
+    type_classification = Column(Integer)  # V3 Type field (0, 1, 2)
+    social_participation = Column(Text)  # Participation details
+    value = Column(String(200))  # Monetary value if any
+    observations = Column(Text)
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    registo = relationship("RegistoInteressesUnified", back_populates="social_positions")
+
+
 class RegistoInteressesApoioUnified(Base):
     """
     Unified Benefits/Support Model for Interest Registry
     
-    Handles V5+ apoios and servicos_prestados declarations.
+    Handles V3+ ServicesProvided and V5+ apoios/servicos_prestados declarations.
+    - V3 ServicesProvided.RecordInterestServiceProvidedResponse.Service
+    - V5 GenServicoPrestado and GenApoios structures
     """
     __tablename__ = 'registo_interesses_benefits_unified'
     
     id = Column(Integer, primary_key=True)
     registo_id = Column(Integer, ForeignKey('registo_interesses_unified.id', ondelete='CASCADE'), nullable=False)
     
-    benefit_type = Column(String(100))  # 'apoio', 'servico_prestado'
+    benefit_type = Column(String(100))  # 'apoio', 'servico_prestado', 'service'
     entity = Column(String(500))
     nature_area = Column(String(500))
     description = Column(Text)
+    service_location = Column(String(500))  # V5 GenServicoPrestado Local field
     value = Column(String(200))
     start_date = Column(Date)
     end_date = Column(Date)

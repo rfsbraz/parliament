@@ -20,7 +20,10 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 from database.models import (
     RegistoInteresses, RegistoInteressesV2, RegistoInteressesAtividade, 
-    RegistoInteressesSociedade, RegistoInteressesCargo, Deputado, Legislatura
+    RegistoInteressesSociedade, RegistoInteressesCargo, Deputado, Legislatura,
+    RegistoInteressesUnified, RegistoInteressesAtividadeUnified,
+    RegistoInteressesSociedadeUnified, RegistoInteressesSocialPositionUnified,
+    RegistoInteressesApoioUnified
 )
 
 logger = logging.getLogger(__name__)
@@ -48,6 +51,40 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.MatrimonialRegime',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.Exclusivity',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.DGFNumber',
+            
+            # V3 RecordInterests structure (XIV Legislature)
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.RecordId',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.PositionBeginDate',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.PositionEndDate',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.PositionDesignation',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.ServicesProvided',
+            
+            # V3 Activities structure
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.Activities',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.Activities.RecordInterestActivityResponse',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.Activities.RecordInterestActivityResponse.Type',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.Activities.RecordInterestActivityResponse.Entity',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.Activities.RecordInterestActivityResponse.BeginDate',
+            
+            # V3 Societies structure  
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.Societies',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.Societies.RecordInterestSocietyResponse',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.Societies.RecordInterestSocietyResponse.Entity',
+            
+            # V3 Social Positions structure
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.SocialPositions',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.SocialPositions.RecordInterestSocialPositionResponse',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.SocialPositions.RecordInterestSocialPositionResponse.Type',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.SocialPositions.RecordInterestSocialPositionResponse.Position',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.SocialPositions.RecordInterestSocialPositionResponse.Entity',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.SocialPositions.RecordInterestSocialPositionResponse.ActivityArea',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.SocialPositions.RecordInterestSocialPositionResponse.HeadOfficeLocation',
+            
+            # V3 Services Provided structure
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.ServicesProvided.RecordInterestServiceProvidedResponse',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.ServicesProvided.RecordInterestServiceProvidedResponse.Service',
             
             # V2 Schema (XII, XIII) - Basic fields
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV2',
@@ -123,6 +160,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}Exclusividade.{http://tempuri.org/}Id',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}Exclusividade.{http://tempuri.org/}Designacao',
             
+            # Personal Data (GenDadosPessoais) - XIV Legislature 
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenDadosPessoais',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenDadosPessoais.{http://tempuri.org/}Sexo',
+            
             # Declaration Facts
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}FactoDeclaracao',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}FactoDeclaracao.{http://tempuri.org/}ChkDeclaracao',
@@ -132,6 +173,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             # Support/Benefits (GenApoios)
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenApoios',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenApoios.{http://tempuri.org/}GenApoio',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenApoios.{http://tempuri.org/}GenApoio.{http://tempuri.org/}Apoio',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenApoios.{http://tempuri.org/}GenApoio.{http://tempuri.org/}Entidade',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenApoios.{http://tempuri.org/}GenApoio.{http://tempuri.org/}NaturezaArea',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenApoios.{http://tempuri.org/}GenApoio.{http://tempuri.org/}Descricao',
@@ -162,8 +204,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}Entidade',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}NaturezaArea',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}Natureza',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}Descricao',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}Valor',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}Local',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}DataInicio',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}GenServicoPrestado.{http://tempuri.org/}DataFim',
             
@@ -173,6 +217,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}Sociedade',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}NaturezaArea',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}ParticipacaoSocial',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}Participacao',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}Valor',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV5.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}GenSociedade.{http://tempuri.org/}Observacoes',
             
@@ -267,6 +312,15 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiActividades.pt_ar_wsgode_objectos_DadosRgiActividades.rgaDataFim',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiActividades.pt_ar_wsgode_objectos_DadosRgiActividades.rgaRemunerada',
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb',
+            
+            # Additional missing V1 fields from XI Legislature
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiSociedades.pt_ar_wsgode_objectos_DadosRgiSociedades',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiApoiosBeneficios',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiCargoData',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiId',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiCadId',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiDataVersao',
+            'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiLegDes',
             
             # Additional missing V3 fields from error logs
             'ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.Societies.RecordInterestSocietyResponse.ActivityArea',
@@ -394,7 +448,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         dgf_number = self._get_text(registo_v3, 'DGFNumber')
                         
                         success = self._process_v3_record(
-                            record_id, full_name, marital_status, spouse_name, 
+                            registo_v3, record_id, full_name, marital_status, spouse_name, 
                             matrimonial_regime, exclusivity, dgf_number, legislatura
                         )
                         if success:
@@ -461,7 +515,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         dgf_number = None
                         
                         success = self._process_v1_record(
-                            record_id, full_name, marital_status_desc, spouse_name,
+                            registo_v1, record_id, full_name, marital_status_desc, spouse_name,
                             matrimonial_regime, exclusivity, dgf_number, legislatura
                         )
                         if success:
@@ -545,10 +599,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         self.session.flush()  # Get the ID
         return deputado
     
-    def _process_v3_record(self, record_id: str, full_name: str, marital_status: str, 
+    def _process_v3_record(self, registo_v3_elem: ET.Element, record_id: str, full_name: str, marital_status: str, 
                           spouse_name: str, matrimonial_regime: str, exclusivity: str, 
                           dgf_number: str, legislatura: Legislatura) -> bool:
-        """Process V3 schema record"""
+        """Process V3 schema record with RecordInterests structure"""
         try:
             if not record_id or not full_name:
                 return False
@@ -561,8 +615,8 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                 # If record_id is not numeric, create a dummy deputy
                 deputado = self._get_or_create_deputado(0, full_name)
             
-            # Check if record already exists
-            existing = self.session.query(RegistoInteresses).filter_by(
+            # Check if record already exists in unified model
+            existing = self.session.query(RegistoInteressesUnified).filter_by(
                 deputado_id=deputado.id,
                 legislatura_id=legislatura.id,
                 record_id=record_id
@@ -571,20 +625,21 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             if existing:
                 # Update existing record
                 existing.full_name = full_name
-                existing.marital_status = marital_status
+                existing.marital_status_desc = marital_status
                 existing.spouse_name = spouse_name
                 existing.matrimonial_regime = matrimonial_regime
                 existing.exclusivity = exclusivity
                 existing.dgf_number = dgf_number
                 existing.schema_version = "V3"
+                registo = existing
             else:
                 # Create new record
-                registo = RegistoInteresses(
+                registo = RegistoInteressesUnified(
                     deputado_id=deputado.id,
                     legislatura_id=legislatura.id,
                     record_id=record_id,
                     full_name=full_name,
-                    marital_status=marital_status,
+                    marital_status_desc=marital_status,
                     spouse_name=spouse_name,
                     matrimonial_regime=matrimonial_regime,
                     exclusivity=exclusivity,
@@ -592,12 +647,166 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     schema_version="V3"
                 )
                 self.session.add(registo)
+                self.session.flush()  # Get ID for related records
+            
+            # Process V3 RecordInterests structure
+            record_interests = registo_v3_elem.find('RecordInterests')
+            if record_interests is not None:
+                for record_response in record_interests.findall('RecordInterestResponse'):
+                    self._process_v3_record_interests(record_response, registo, deputado)
             
             return True
             
         except Exception as e:
             logger.error(f"Error processing V3 record: {e}")
             return False
+    
+    def _process_v3_record_interests(self, record_response: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V3 RecordInterestResponse structure with Activities, SocialPositions, Societies, ServicesProvided"""
+        try:
+            # Extract basic RecordInterestResponse fields
+            response_record_id = self._get_text(record_response, 'RecordId')
+            position_begin_date = self._parse_date(self._get_text(record_response, 'PositionBeginDate'))
+            position_end_date = self._parse_date(self._get_text(record_response, 'PositionEndDate'))
+            position_designation = self._get_text(record_response, 'PositionDesignation') 
+            position_changed_date = self._parse_date(self._get_text(record_response, 'PositionChangedDate'))
+            
+            # Update unified record with position dates
+            if position_begin_date:
+                registo.position_begin_date = position_begin_date
+            if position_end_date:
+                registo.position_end_date = position_end_date
+            
+            # Process Activities
+            activities = record_response.find('Activities')
+            if activities is not None:
+                for activity_response in activities.findall('RecordInterestActivityResponse'):
+                    self._process_v3_activity(activity_response, registo, deputado)
+            
+            # Process SocialPositions
+            social_positions = record_response.find('SocialPositions')
+            if social_positions is not None:
+                for social_position_response in social_positions.findall('RecordInterestSocialPositionResponse'):
+                    self._process_v3_social_position(social_position_response, registo, deputado)
+            
+            # Process Societies
+            societies = record_response.find('Societies')
+            if societies is not None:
+                for society_response in societies.findall('RecordInterestSocietyResponse'):
+                    self._process_v3_society(society_response, registo, deputado)
+            
+            # Process ServicesProvided/Supports
+            supports = record_response.find('Supports')
+            if supports is not None:
+                for support_response in supports.findall('RecordInterestSupportResponse'):
+                    self._process_v3_support(support_response, registo, deputado)
+            
+            # Process OtherSituations
+            other_situations = record_response.find('OtherSituations')
+            if other_situations is not None:
+                for other_situation_response in other_situations.findall('RecordInterestOtherSituationResponse'):
+                    situation = self._get_text(other_situation_response, 'Situation')
+                    logger.debug(f"Processing other situation: {situation}")
+                    
+        except Exception as e:
+            logger.error(f"Error processing V3 RecordInterests: {e}")
+    
+    def _process_v3_activity(self, activity_response: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V3 RecordInterestActivityResponse"""
+        try:
+            activity = self._get_text(activity_response, 'Activity')
+            activity_area = self._get_text(activity_response, 'ActivityArea')
+            start_date = self._parse_date(self._get_text(activity_response, 'StartDate'))
+            end_date = self._parse_date(self._get_text(activity_response, 'EndDate'))
+            paid_text = self._get_text(activity_response, 'Paid')
+            paid = paid_text.lower() in ['true', 'sim', 'yes', '1'] if paid_text else None
+            
+            # Create activity record in unified model
+            activity_record = RegistoInteressesAtividadeUnified(
+                registo_interesses_id=registo.id,
+                deputado_id=deputado.id,
+                legislatura_id=registo.legislatura_id,
+                activity_description=activity,
+                type_classification=activity_area,
+                start_date=start_date,
+                end_date=end_date,
+                is_paid=paid,
+                schema_version="V3"
+            )
+            self.session.add(activity_record)
+            
+        except Exception as e:
+            logger.error(f"Error processing V3 activity: {e}")
+    
+    def _process_v3_social_position(self, social_position_response: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V3 RecordInterestSocialPositionResponse"""
+        try:
+            position_text = self._get_text(social_position_response, 'Position')  # Assuming this field exists
+            type_classification = self._get_text(social_position_response, 'Type')
+            headquarters_location = self._get_text(social_position_response, 'HeadOfficeLocation')
+            
+            # Create social position record in unified model
+            social_position_record = RegistoInteressesSocialPositionUnified(
+                registo_interesses_id=registo.id,
+                deputado_id=deputado.id,
+                legislatura_id=registo.legislatura_id,
+                position_description=position_text,
+                type_classification=type_classification,
+                headquarters_location=headquarters_location,
+                schema_version="V3"
+            )
+            self.session.add(social_position_record)
+            
+        except Exception as e:
+            logger.error(f"Error processing V3 social position: {e}")
+    
+    def _process_v3_society(self, society_response: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V3 RecordInterestSocietyResponse"""
+        try:
+            society = self._get_text(society_response, 'Society')
+            entity = self._get_text(society_response, 'Entity')
+            activity_area = self._get_text(society_response, 'ActivityArea')
+            head_office_location = self._get_text(society_response, 'HeadOfficeLocation')
+            social_participation = self._get_text(society_response, 'SocialParticipation')
+            
+            # Create society record in unified model
+            society_record = RegistoInteressesSociedadeUnified(
+                registo_interesses_id=registo.id,
+                deputado_id=deputado.id,
+                legislatura_id=registo.legislatura_id,
+                entity=entity or society,  # Use entity if available, fallback to society
+                participation_type=social_participation,
+                activity_area=activity_area,
+                headquarters_location=head_office_location,
+                schema_version="V3"
+            )
+            self.session.add(society_record)
+            
+        except Exception as e:
+            logger.error(f"Error processing V3 society: {e}")
+    
+    def _process_v3_support(self, support_response: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V3 RecordInterestSupportResponse (ServicesProvided)"""
+        try:
+            support = self._get_text(support_response, 'Support')
+            support_area = self._get_text(support_response, 'SupportArea')
+            value = self._get_text(support_response, 'Value')
+            
+            # Create support/service record in unified model
+            support_record = RegistoInteressesApoioUnified(
+                registo_interesses_id=registo.id,
+                deputado_id=deputado.id,
+                legislatura_id=registo.legislatura_id,
+                support_description=support,
+                benefit_type='service',  # V3 supports are services provided
+                service_location=support_area,  # Area as location
+                value_amount=value,
+                schema_version="V3"
+            )
+            self.session.add(support_record)
+            
+        except Exception as e:
+            logger.error(f"Error processing V3 support: {e}")
     
     def _process_v2_record(self, record_id: str, full_name: str, marital_status_desc: str,
                           spouse_name: str, matrimonial_regime: str, exclusivity: str,
@@ -653,10 +862,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             logger.error(f"Error processing V2 record: {e}")
             return False
     
-    def _process_v1_record(self, record_id: str, full_name: str, marital_status_desc: str,
+    def _process_v1_record(self, registo_v1_elem: ET.Element, record_id: str, full_name: str, marital_status_desc: str,
                           spouse_name: str, matrimonial_regime: str, exclusivity: str,
                           dgf_number: str, legislatura: Legislatura) -> bool:
-        """Process V1 schema record"""
+        """Process V1 schema record with detailed nested structures"""
         try:
             if not record_id or not full_name:
                 return False
@@ -664,37 +873,181 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             cad_id = int(record_id) if record_id.isdigit() else 0
             deputado = self._get_or_create_deputado(cad_id, full_name)
             
-            # Check if record already exists
-            existing = self.session.query(RegistoInteresses).filter_by(
+            # Create unified record for V1
+            existing = self.session.query(RegistoInteressesUnified).filter_by(
                 deputado_id=deputado.id,
                 legislatura_id=legislatura.id,
                 cad_id=cad_id
             ).first()
             
             if existing:
-                # Update existing record
-                existing.cad_nome_completo = full_name
-                existing.cad_estado_civil_des = marital_status_desc
-                existing.cad_nome_conjuge = spouse_name
+                # Update existing unified record
+                existing.full_name = full_name
+                existing.marital_status_desc = marital_status_desc
+                existing.spouse_name = spouse_name
+                existing.matrimonial_regime = matrimonial_regime
                 existing.schema_version = "V1"
+                registo = existing
             else:
-                # Create new record
-                registo = RegistoInteresses(
+                # Create new unified record
+                registo = RegistoInteressesUnified(
                     deputado_id=deputado.id,
                     legislatura_id=legislatura.id,
                     cad_id=cad_id,
-                    cad_nome_completo=full_name,
-                    cad_estado_civil_des=marital_status_desc,
-                    cad_nome_conjuge=spouse_name,
+                    record_id=record_id,
+                    full_name=full_name,
+                    marital_status_desc=marital_status_desc,
+                    spouse_name=spouse_name,
+                    matrimonial_regime=matrimonial_regime,
                     schema_version="V1"
                 )
                 self.session.add(registo)
+                self.session.flush()  # Get ID for related records
+            
+            # Process V1 detailed structures from cadRgi
+            cad_rgi = registo_v1_elem.find('cadRgi/pt_ar_wsgode_objectos_DadosRegistoInteressesWeb')
+            if cad_rgi is not None:
+                self._process_v1_detailed_structures(cad_rgi, registo, deputado)
             
             return True
             
         except Exception as e:
             logger.error(f"Error processing V1 record: {e}")
             return False
+    
+    def _process_v1_detailed_structures(self, rgi_elem: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V1 detailed structures (rgiSociedades, rgiApoiosBeneficios, etc.)"""
+        try:
+            # Extract metadata fields
+            rgi_id = self._get_text(rgi_elem, 'rgiId')
+            rgi_cad_id = self._get_text(rgi_elem, 'rgiCadId')
+            rgi_data_versao = self._parse_date(self._get_text(rgi_elem, 'rgiDataVersao'))
+            rgi_leg_des = self._get_text(rgi_elem, 'rgiLegDes')
+            rgi_cargo_data = self._get_text(rgi_elem, 'rgiCargoData')
+            
+            # Update main record with additional metadata
+            if rgi_data_versao:
+                registo.version_date = rgi_data_versao
+            if rgi_leg_des:
+                registo.category = rgi_leg_des  # Legislature description as category
+            
+            # Process societies (rgiSociedades)
+            self._process_v1_societies(rgi_elem, registo, deputado)
+            
+            # Process benefits/support (rgiApoiosBeneficios)  
+            self._process_v1_benefits(rgi_elem, registo, deputado)
+            
+            # Process activities (already covered in existing V1 processing)
+            self._process_v1_activities(rgi_elem, registo, deputado)
+            
+            # Process social positions (rgiCargosSociais)
+            self._process_v1_social_positions(rgi_elem, registo, deputado)
+            
+        except Exception as e:
+            logger.error(f"Error processing V1 detailed structures: {e}")
+    
+    def _process_v1_societies(self, rgi_elem: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V1 rgiSociedades structure"""
+        try:
+            sociedades_elem = rgi_elem.find('rgiSociedades')
+            if sociedades_elem is not None:
+                for sociedade in sociedades_elem.findall('pt_ar_wsgode_objectos_DadosRgiSociedades'):
+                    rgs_entidade = self._get_text(sociedade, 'rgsEntidade')
+                    rgs_local_sede = self._get_text(sociedade, 'rgsLocalSede')
+                    
+                    # Create society record
+                    society_record = RegistoInteressesSociedadeUnified(
+                        registo_interesses_id=registo.id,
+                        deputado_id=deputado.id,
+                        legislatura_id=registo.legislatura_id,
+                        entity=rgs_entidade,
+                        headquarters_location=rgs_local_sede,
+                        schema_version="V1"
+                    )
+                    self.session.add(society_record)
+                    
+        except Exception as e:
+            logger.error(f"Error processing V1 societies: {e}")
+    
+    def _process_v1_benefits(self, rgi_elem: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V1 rgiApoiosBeneficios structure"""
+        try:
+            apoios_elem = rgi_elem.find('rgiApoiosBeneficios')
+            if apoios_elem is not None:
+                # V1 benefits structure may contain different nested elements
+                # Process any child elements as benefit records
+                for apoio in apoios_elem:
+                    apoio_text = apoio.text if apoio.text else apoio.tag
+                    
+                    # Create support record
+                    support_record = RegistoInteressesApoioUnified(
+                        registo_interesses_id=registo.id,
+                        deputado_id=deputado.id,
+                        legislatura_id=registo.legislatura_id,
+                        support_description=apoio_text,
+                        benefit_type='benefit',
+                        schema_version="V1"
+                    )
+                    self.session.add(support_record)
+                    
+        except Exception as e:
+            logger.error(f"Error processing V1 benefits: {e}")
+    
+    def _process_v1_activities(self, rgi_elem: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V1 rgiActividades structure"""
+        try:
+            atividades_elem = rgi_elem.find('rgiActividades')
+            if atividades_elem is not None:
+                for atividade in atividades_elem.findall('pt_ar_wsgode_objectos_DadosRgiActividades'):
+                    rga_id = self._get_text(atividade, 'rgaId')
+                    rga_atividade = self._get_text(atividade, 'rgaActividade')
+                    rga_data_inicio = self._parse_date(self._get_text(atividade, 'rgaDataInicio'))
+                    rga_data_fim = self._parse_date(self._get_text(atividade, 'rgaDataFim'))
+                    rga_remunerada = self._get_text(atividade, 'rgaRemunerada')
+                    
+                    # Convert remuneration flag
+                    is_paid = rga_remunerada.lower() in ['sim', 'yes', 'true', '1'] if rga_remunerada else None
+                    
+                    # Create activity record
+                    activity_record = RegistoInteressesAtividadeUnified(
+                        registo_interesses_id=registo.id,
+                        deputado_id=deputado.id,
+                        legislatura_id=registo.legislatura_id,
+                        activity_description=rga_atividade,
+                        start_date=rga_data_inicio,
+                        end_date=rga_data_fim,
+                        is_paid=is_paid,
+                        schema_version="V1"
+                    )
+                    self.session.add(activity_record)
+                    
+        except Exception as e:
+            logger.error(f"Error processing V1 activities: {e}")
+    
+    def _process_v1_social_positions(self, rgi_elem: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V1 rgiCargosSociais structure"""
+        try:
+            cargos_elem = rgi_elem.find('rgiCargosSociais')
+            if cargos_elem is not None:
+                for cargo in cargos_elem.findall('pt_ar_wsgode_objectos_DadosRgiCargosSociais'):
+                    rgc_entidade = self._get_text(cargo, 'rgcEntidade')
+                    rgc_data_inicio = self._parse_date(self._get_text(cargo, 'rgcDataInicio'))
+                    rgc_data_fim = self._parse_date(self._get_text(cargo, 'rgcDataFim'))
+                    
+                    # Create social position record
+                    position_record = RegistoInteressesSocialPositionUnified(
+                        registo_interesses_id=registo.id,
+                        deputado_id=deputado.id,
+                        legislatura_id=registo.legislatura_id,
+                        position_description=rgc_entidade,
+                        start_date=rgc_data_inicio,
+                        end_date=rgc_data_fim,
+                        schema_version="V1"
+                    )
+                    self.session.add(position_record)
+                    
+        except Exception as e:
+            logger.error(f"Error processing V1 social positions: {e}")
     
     def _process_v2_activities(self, rgi_elem: ET.Element, registo_v2: RegistoInteressesV2):
         """Process activities from V2 detailed structure"""
@@ -850,10 +1203,11 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                 logger.warning("V5 record has no identifiable name, skipping")
                 return False
             
-            # Create main interest registry record using V3 compatibility
-            success = self._process_v3_record(
+            # Create main interest registry record in unified model
+            success = self._process_v5_unified_record(
                 record_id, display_name, estado_civil, nome_conjuge,
-                regime_bens, exclusivity_desc or exclusivity_exclusive, exclusivity_id, legislatura
+                regime_bens, exclusivity_desc or exclusivity_exclusive, exclusivity_id, 
+                legislatura, registo_v5
             )
             
             if not success:
@@ -970,5 +1324,253 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         except Exception as e:
             logger.error(f"Error processing V5 record: {e}")
             return False
+    
+    def _process_v5_unified_record(self, record_id: str, display_name: str, estado_civil: str,
+                                  nome_conjuge: str, regime_bens: str, exclusivity: str,
+                                  exclusivity_id: str, legislatura: Legislatura, registo_v5: ET.Element) -> bool:
+        """Process V5 record in unified model with detailed structures"""
+        try:
+            if not record_id or not display_name:
+                return False
+            
+            # Try to find deputy by record_id
+            try:
+                cad_id = int(record_id)
+                deputado = self._get_or_create_deputado(cad_id, display_name)
+            except ValueError:
+                deputado = self._get_or_create_deputado(0, display_name)
+            
+            # Extract gender from GenDadosPessoais
+            dados_pessoais = self._get_namespaced_element(registo_v5, 'tempuri', 'GenDadosPessoais')
+            gender = None
+            if dados_pessoais is not None:
+                gender = self._get_namespaced_text(dados_pessoais, 'tempuri', 'Sexo')
+            
+            # Check if unified record already exists
+            existing = self.session.query(RegistoInteressesUnified).filter_by(
+                deputado_id=deputado.id,
+                legislatura_id=legislatura.id,
+                record_id=record_id
+            ).first()
+            
+            if existing:
+                # Update existing record
+                existing.full_name = display_name
+                existing.marital_status_desc = estado_civil
+                existing.spouse_name = nome_conjuge
+                existing.matrimonial_regime = regime_bens
+                existing.exclusivity = exclusivity
+                existing.dgf_number = exclusivity_id
+                existing.gender = gender
+                existing.schema_version = "V5"
+                registo = existing
+            else:
+                # Create new unified record
+                registo = RegistoInteressesUnified(
+                    deputado_id=deputado.id,
+                    legislatura_id=legislatura.id,
+                    record_id=record_id,
+                    full_name=display_name,
+                    marital_status_desc=estado_civil,
+                    spouse_name=nome_conjuge,
+                    matrimonial_regime=regime_bens,
+                    exclusivity=exclusivity,
+                    dgf_number=exclusivity_id,
+                    gender=gender,
+                    schema_version="V5"
+                )
+                self.session.add(registo)
+                self.session.flush()  # Get ID for related records
+            
+            # Process V5 detailed structures
+            self._process_v5_apoios(registo_v5, registo, deputado)
+            self._process_v5_atividades_profissionais(registo_v5, registo, deputado)
+            self._process_v5_cargos_mais_tres_anos(registo_v5, registo, deputado)
+            self._process_v5_cargos_menos_tres_anos(registo_v5, registo, deputado)
+            self._process_v5_servicos_prestados(registo_v5, registo, deputado)
+            self._process_v5_sociedades(registo_v5, registo, deputado)
+            self._process_v5_incompatibilidades(registo_v5, registo, deputado)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error processing V5 unified record: {e}")
+            return False
+    
+    def _process_v5_apoios(self, registo_v5: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V5 GenApoios (supports/benefits)"""
+        try:
+            gen_apoios = self._get_namespaced_element(registo_v5, 'tempuri', 'GenApoios')
+            if gen_apoios is not None:
+                for apoio in gen_apoios.findall('.//{http://tempuri.org/}GenApoio'):
+                    entidade = self._get_namespaced_text(apoio, 'tempuri', 'Entidade')
+                    natureza_area = self._get_namespaced_text(apoio, 'tempuri', 'NaturezaArea')
+                    descricao = self._get_namespaced_text(apoio, 'tempuri', 'Descricao')
+                    valor = self._get_namespaced_text(apoio, 'tempuri', 'Valor')
+                    apoio_text = self._get_namespaced_text(apoio, 'tempuri', 'Apoio')
+                    natureza_beneficio = self._get_namespaced_text(apoio, 'tempuri', 'NaturezaBeneficio')
+                    data = self._parse_date(self._get_namespaced_text(apoio, 'tempuri', 'Data'))
+                    
+                    # Create support record
+                    apoio_record = RegistoInteressesApoioUnified(
+                        registo_interesses_id=registo.id,
+                        deputado_id=deputado.id,
+                        legislatura_id=registo.legislatura_id,
+                        entity_name=entidade,
+                        support_description=apoio_text or descricao,
+                        benefit_type=natureza_beneficio,
+                        service_location=natureza_area,
+                        value_amount=valor,
+                        support_date=data,
+                        schema_version="V5"
+                    )
+                    self.session.add(apoio_record)
+                    
+        except Exception as e:
+            logger.error(f"Error processing V5 apoios: {e}")
+    
+    def _process_v5_atividades_profissionais(self, registo_v5: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V5 GenAtivProfissional (professional activities)"""
+        try:
+            gen_ativ = self._get_namespaced_element(registo_v5, 'tempuri', 'GenAtivProfissional')
+            if gen_ativ is not None:
+                for ativ in gen_ativ.findall('.//{http://tempuri.org/}GenAtivProfissional'):
+                    cargo_funcao_atividade = self._get_namespaced_text(ativ, 'tempuri', 'CargoFuncaoAtividade')
+                    local_sede = self._get_namespaced_text(ativ, 'tempuri', 'LocalSede')
+                    data_termo = self._parse_date(self._get_namespaced_text(ativ, 'tempuri', 'DataTermo'))
+                    
+                    # Create activity record
+                    activity_record = RegistoInteressesAtividadeUnified(
+                        registo_interesses_id=registo.id,
+                        deputado_id=deputado.id,
+                        legislatura_id=registo.legislatura_id,
+                        activity_description=cargo_funcao_atividade,
+                        headquarters_location=local_sede,
+                        end_date=data_termo,
+                        schema_version="V5"
+                    )
+                    self.session.add(activity_record)
+                    
+        except Exception as e:
+            logger.error(f"Error processing V5 professional activities: {e}")
+    
+    def _process_v5_cargos_mais_tres_anos(self, registo_v5: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V5 GenCargosMaisTresAnos (positions more than 3 years)"""
+        try:
+            gen_cargos = self._get_namespaced_element(registo_v5, 'tempuri', 'GenCargosMaisTresAnos')
+            if gen_cargos is not None:
+                for cargo in gen_cargos.findall('.//{http://tempuri.org/}GenCargo'):
+                    cargo_funcao_atividade = self._get_namespaced_text(cargo, 'tempuri', 'CargoFuncaoAtividade')
+                    local_sede = self._get_namespaced_text(cargo, 'tempuri', 'LocalSede')
+                    data_termo = self._parse_date(self._get_namespaced_text(cargo, 'tempuri', 'DataTermo'))
+                    
+                    # Create social position record (positions are social positions)
+                    position_record = RegistoInteressesSocialPositionUnified(
+                        registo_interesses_id=registo.id,
+                        deputado_id=deputado.id,
+                        legislatura_id=registo.legislatura_id,
+                        position_description=cargo_funcao_atividade,
+                        headquarters_location=local_sede,
+                        end_date=data_termo,
+                        type_classification="mais_tres_anos",
+                        schema_version="V5"
+                    )
+                    self.session.add(position_record)
+                    
+        except Exception as e:
+            logger.error(f"Error processing V5 positions more than 3 years: {e}")
+    
+    def _process_v5_cargos_menos_tres_anos(self, registo_v5: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V5 GenCargosMenosTresAnos (positions less than 3 years)"""
+        try:
+            gen_cargos = self._get_namespaced_element(registo_v5, 'tempuri', 'GenCargosMenosTresAnos')
+            if gen_cargos is not None:
+                for cargo in gen_cargos.findall('.//{http://tempuri.org/}GenCargo'):
+                    cargo_funcao_atividade = self._get_namespaced_text(cargo, 'tempuri', 'CargoFuncaoAtividade')
+                    local_sede = self._get_namespaced_text(cargo, 'tempuri', 'LocalSede')
+                    data_termo = self._parse_date(self._get_namespaced_text(cargo, 'tempuri', 'DataTermo'))
+                    
+                    # Create social position record
+                    position_record = RegistoInteressesSocialPositionUnified(
+                        registo_interesses_id=registo.id,
+                        deputado_id=deputado.id,
+                        legislatura_id=registo.legislatura_id,
+                        position_description=cargo_funcao_atividade,
+                        headquarters_location=local_sede,
+                        end_date=data_termo,
+                        type_classification="menos_tres_anos",
+                        schema_version="V5"
+                    )
+                    self.session.add(position_record)
+                    
+        except Exception as e:
+            logger.error(f"Error processing V5 positions less than 3 years: {e}")
+    
+    def _process_v5_servicos_prestados(self, registo_v5: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V5 GenServicoPrestado (services provided)"""
+        try:
+            gen_servico = self._get_namespaced_element(registo_v5, 'tempuri', 'GenServicoPrestado')
+            if gen_servico is not None:
+                for servico in gen_servico.findall('.//{http://tempuri.org/}GenServicoPrestado'):
+                    natureza = self._get_namespaced_text(servico, 'tempuri', 'Natureza')
+                    local = self._get_namespaced_text(servico, 'tempuri', 'Local')
+                    local_sede = self._get_namespaced_text(servico, 'tempuri', 'LocalSede')
+                    data = self._parse_date(self._get_namespaced_text(servico, 'tempuri', 'Data'))
+                    data_termo = self._parse_date(self._get_namespaced_text(servico, 'tempuri', 'DataTermo'))
+                    
+                    # Create support record (services are support records)
+                    service_record = RegistoInteressesApoioUnified(
+                        registo_interesses_id=registo.id,
+                        deputado_id=deputado.id,
+                        legislatura_id=registo.legislatura_id,
+                        support_description=natureza,
+                        benefit_type='service',
+                        service_location=local or local_sede,
+                        support_date=data,
+                        end_date=data_termo,
+                        schema_version="V5"
+                    )
+                    self.session.add(service_record)
+                    
+        except Exception as e:
+            logger.error(f"Error processing V5 services provided: {e}")
+    
+    def _process_v5_sociedades(self, registo_v5: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V5 GenSociedade (societies)"""
+        try:
+            gen_sociedade = self._get_namespaced_element(registo_v5, 'tempuri', 'GenSociedade')
+            if gen_sociedade is not None:
+                for sociedade in gen_sociedade.findall('.//{http://tempuri.org/}GenSociedade'):
+                    natureza = self._get_namespaced_text(sociedade, 'tempuri', 'Natureza')
+                    local_sede = self._get_namespaced_text(sociedade, 'tempuri', 'LocalSede')
+                    
+                    # Create society record
+                    society_record = RegistoInteressesSociedadeUnified(
+                        registo_interesses_id=registo.id,
+                        deputado_id=deputado.id,
+                        legislatura_id=registo.legislatura_id,
+                        entity=natureza,  # Nature as entity
+                        headquarters_location=local_sede,
+                        schema_version="V5"
+                    )
+                    self.session.add(society_record)
+                    
+        except Exception as e:
+            logger.error(f"Error processing V5 societies: {e}")
+    
+    def _process_v5_incompatibilidades(self, registo_v5: ET.Element, registo: 'RegistoInteressesUnified', deputado: 'Deputado'):
+        """Process V5 GenIncompatibilidade (incompatibilities)"""
+        try:
+            gen_incompatibilidade = self._get_namespaced_element(registo_v5, 'tempuri', 'GenIncompatibilidade')
+            if gen_incompatibilidade is not None:
+                for incomp in gen_incompatibilidade.findall('.//{http://tempuri.org/}Incompatibilidade'):
+                    incompatibilidade = self._get_text(incomp, '')  # Get text content
+                    
+                    # Log incompatibility (no specific unified model for this yet)
+                    if incompatibilidade:
+                        logger.debug(f"Processing incompatibility: {incompatibilidade}")
+                    
+        except Exception as e:
+            logger.error(f"Error processing V5 incompatibilities: {e}")
     
     # _parse_date method now inherited from base class
