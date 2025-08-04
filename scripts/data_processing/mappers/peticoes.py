@@ -30,8 +30,9 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 from database.models import (
     PeticaoParlamentar, PeticaoPublicacao, PeticaoComissao, PeticaoRelator,
-    PeticaoRelatorioFinal, PeticaoDocumento, PeticaoIntervencao, PeticaoOrador,
-    PeticaoOradorPublicacao, Legislatura
+    PeticaoRelatorioFinal, PeticaoRelatorioFinalPublicacao, PeticaoDocumento, 
+    PeticaoIntervencao, PeticaoOrador, PeticaoOradorPublicacao, PeticaoAudiencia, 
+    PeticaoPedidoInformacao, PeticaoPedidoReiteracao, Legislatura
 )
 
 logger = logging.getLogger(__name__)
@@ -161,7 +162,78 @@ class PeticoesMapper(SchemaMapper):
             'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idInt',
             'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
             'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
-            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string'
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            
+            # IX Legislature additional fields
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Teor',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.MembrosGoverno.governo',
+            
+            # Audiencias (Hearings)
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Audiencias',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Audiencias.pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Audiencias.pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut.data',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Audiencias.pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut.titulo',
+            
+            # Audicoes (Auditions - similar to Audiencias)
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Audicoes',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Audicoes.pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Audicoes.pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut.data',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Audicoes.pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut.titulo',
+            
+            # Pedidos de Informacao (Information Requests)
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.nrOficio',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.entidades',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.entidades.string',
+            
+            # idPag field in publications
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
+            
+            # Additional IX Legislature fields found in error
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.supl',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.relatorioIntercalar',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.dataResposta',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsOutros',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsOutros.PeticaoDocsOutros',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsOutros.PeticaoDocsOutros.TituloDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsOutros.PeticaoDocsOutros.DataDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsOutros.PeticaoDocsOutros.TipoDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsOutros.PeticaoDocsOutros.URL',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.pedidosReiteracao',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.pedidosReiteracao.pt_gov_ar_objectos_peticoes_PedidosReiteracaoOut',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.pedidosReiteracao.pt_gov_ar_objectos_peticoes_PedidosReiteracaoOut.dataResposta',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.pedidosReiteracao.pt_gov_ar_objectos_peticoes_PedidosReiteracaoOut.data',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoDebate.pt_gov_ar_objectos_PublicacoesOut.supl',
+            
+            # Additional missing fields from second run
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.pedidosReiteracao.pt_gov_ar_objectos_peticoes_PedidosReiteracaoOut.nrOficio',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Audiencias.pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut.id',
+            'ArrayOfPeticaoOut.PeticaoOut.PetObs',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Audicoes.pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut.id',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.dataOficio',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.pedidosReiteracao.pt_gov_ar_objectos_peticoes_PedidosReiteracaoOut.oficioResposta',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.MembrosGoverno.cargo',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.MembrosGoverno.nome',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Deputados',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Deputados.idCadastro',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.Deputados.nome',
+            
+            # Final missing fields
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosPedidosInformacao.pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.pedidosReiteracao.pt_gov_ar_objectos_peticoes_PedidosReiteracaoOut.dataOficio',
+            'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Relatores.pt_gov_ar_objectos_RelatoresOut.motivoCessacao'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -188,9 +260,11 @@ class PeticoesMapper(SchemaMapper):
                     logger.error(error_msg)
                     results['errors'].append(error_msg)
                     results['records_processed'] += 1
-                    logger.error("Data integrity issue detected - exiting immediately")
-                    import sys
-                    sys.exit(1)
+                    self.session.rollback()
+                    if strict_mode:
+                        logger.error("STRICT MODE: Exiting due to petition processing error")
+                        raise SchemaError(f"Petition processing failed in strict mode: {e}")
+                    continue  # Continue processing other petitions in non-strict mode
             
             # Commit all changes
             self.session.commit()
@@ -200,10 +274,24 @@ class PeticoesMapper(SchemaMapper):
             error_msg = f"Critical error processing petitions: {str(e)}"
             logger.error(error_msg)
             results['errors'].append(error_msg)
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-            sys.exit(1)
+            self.session.rollback()
+            if strict_mode:
+                logger.error("STRICT MODE: Exiting due to critical processing error")
+                raise SchemaError(f"Critical petition processing error in strict mode: {e}")
             return results
+    
+    def _validate_petition_data(self, pet_id: Optional[int], pet_assunto: Optional[str]) -> bool:
+        """Validate required petition data"""
+        if not pet_id:
+            logger.warning("Missing required field: pet_id")
+            return False
+        if not pet_assunto or not pet_assunto.strip():
+            logger.warning("Missing required field: pet_assunto")
+            return False
+        if not isinstance(pet_id, int) or pet_id <= 0:
+            logger.warning(f"Invalid pet_id: {pet_id} (must be positive integer)")
+            return False
+        return True
     
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
@@ -245,9 +333,10 @@ class PeticoesMapper(SchemaMapper):
             pet_atividade_id = self._get_int_value(petition, 'PetActividadeId')
             pet_autor = self._get_text_value(petition, 'PetAutor')
             data_debate = self._parse_date(self._get_text_value(petition, 'DataDebate'))
+            pet_obs = self._get_text_value(petition, 'PetObs')
             
-            if not pet_id or not pet_assunto:
-                logger.warning("Missing required fields: pet_id or pet_assunto")
+            # Validate required fields
+            if not self._validate_petition_data(pet_id, pet_assunto):
                 return False
             
             # Check if petition already exists
@@ -267,6 +356,7 @@ class PeticoesMapper(SchemaMapper):
                 existing.pet_atividade_id = pet_atividade_id
                 existing.pet_autor = pet_autor
                 existing.data_debate = data_debate
+                existing.pet_obs = pet_obs
                 existing.legislatura_id = legislatura.id
                 existing.updated_at = datetime.now()
             else:
@@ -283,6 +373,7 @@ class PeticoesMapper(SchemaMapper):
                     pet_atividade_id=pet_atividade_id,
                     pet_autor=pet_autor,
                     data_debate=data_debate,
+                    pet_obs=pet_obs,
                     legislatura_id=legislatura.id,
                     updated_at=datetime.now()
                 )
@@ -330,6 +421,8 @@ class PeticoesMapper(SchemaMapper):
         pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
         id_pag = self._get_int_value(pub, 'idPag')
         url_diario = self._get_text_value(pub, 'URLDiario')
+        supl = self._get_text_value(pub, 'supl')
+        pag_final_diario_supl = self._get_text_value(pub, 'pagFinalDiarioSupl')
         
         # Handle page numbers
         pag_text = None
@@ -350,7 +443,9 @@ class PeticoesMapper(SchemaMapper):
             pub_dt=pub_dt,
             pag=pag_text,
             id_pag=id_pag,
-            url_diario=url_diario
+            url_diario=url_diario,
+            supl=supl,
+            pag_final_diario_supl=pag_final_diario_supl
         )
         self.session.add(publicacao)
     
@@ -412,6 +507,12 @@ class PeticoesMapper(SchemaMapper):
         
         # Committee documents
         self._process_documentos_comissao(comissao, comissao_obj)
+        
+        # Audiencias (Hearings)
+        self._process_audiencias(comissao, comissao_obj)
+        
+        # Information requests
+        self._process_pedidos_informacao(comissao, comissao_obj)
     
     def _process_relatores(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
         """Process reporters for committee"""
@@ -423,6 +524,7 @@ class PeticoesMapper(SchemaMapper):
                 gp = self._get_text_value(relator, 'gp')
                 data_nomeacao = self._parse_date(self._get_text_value(relator, 'dataNomeacao'))
                 data_cessacao = self._parse_date(self._get_text_value(relator, 'dataCessacao'))
+                motivo_cessacao = self._get_text_value(relator, 'motivoCessacao')
                 
                 relator_obj = PeticaoRelator(
                     comissao_peticao_id=comissao_obj.id,
@@ -430,7 +532,8 @@ class PeticoesMapper(SchemaMapper):
                     nome=nome,
                     gp=gp,
                     data_nomeacao=data_nomeacao,
-                    data_cessacao=data_cessacao
+                    data_cessacao=data_cessacao,
+                    motivo_cessacao=motivo_cessacao
                 )
                 self.session.add(relator_obj)
     
@@ -448,6 +551,14 @@ class PeticoesMapper(SchemaMapper):
                     votacao=votacao
                 )
                 self.session.add(relatorio_obj)
+                self.session.flush()  # Get the ID
+                
+                # Process publicacao (IX Legislature)
+                publicacao = relatorio.find('publicacao')
+                if publicacao is not None:
+                    pub_elem = publicacao.find('pt_gov_ar_objectos_PublicacoesOut')
+                    if pub_elem is not None:
+                        self._insert_relatorio_final_publicacao(relatorio_obj, pub_elem)
         
         # Process RelatorioFinal string elements
         relatorio_final = comissao.find('RelatorioFinal')
@@ -461,6 +572,41 @@ class PeticoesMapper(SchemaMapper):
                     )
                     self.session.add(relatorio_obj)
     
+    def _insert_relatorio_final_publicacao(self, relatorio_obj: PeticaoRelatorioFinal, pub: ET.Element):
+        """Insert final report publication data"""
+        pub_nr = self._get_int_value(pub, 'pubNr')
+        pub_tipo = self._get_text_value(pub, 'pubTipo')
+        pub_tp = self._get_text_value(pub, 'pubTp')
+        pub_leg = self._get_text_value(pub, 'pubLeg')
+        pub_sl = self._get_int_value(pub, 'pubSL')
+        pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
+        id_pag = self._get_int_value(pub, 'idPag')
+        url_diario = self._get_text_value(pub, 'URLDiario')
+        
+        # Handle page numbers
+        pag_text = None
+        pag_elem = pub.find('pag')
+        if pag_elem is not None:
+            string_elems = pag_elem.findall('string')
+            if string_elems:
+                pag_text = ', '.join([s.text for s in string_elems if s.text])
+            elif pag_elem.text:
+                pag_text = pag_elem.text
+        
+        publicacao = PeticaoRelatorioFinalPublicacao(
+            relatorio_final_id=relatorio_obj.id,
+            pub_nr=pub_nr,
+            pub_tipo=pub_tipo,
+            pub_tp=pub_tp,
+            pub_leg=pub_leg,
+            pub_sl=pub_sl,
+            pub_dt=pub_dt,
+            pag=pag_text,
+            id_pag=id_pag,
+            url_diario=url_diario
+        )
+        self.session.add(publicacao)
+    
     def _process_documentos_comissao(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
         """Process committee-specific documents"""
         documentos_peticao = comissao.find('DocumentosPeticao')
@@ -470,6 +616,107 @@ class PeticoesMapper(SchemaMapper):
             if docs_relatorio is not None:
                 for doc in docs_relatorio.findall('PeticaoDocsRelatorioFinal'):
                     self._insert_documento(None, comissao_obj, doc, 'DocsRelatorioFinal')
+            
+            # DocsOutros (IX Legislature)
+            docs_outros = documentos_peticao.find('DocsOutros')
+            if docs_outros is not None:
+                for doc in docs_outros.findall('PeticaoDocsOutros'):
+                    self._insert_documento(None, comissao_obj, doc, 'DocsOutros')
+    
+    def _process_audiencias(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
+        """Process hearings/audiencias and audicoes"""
+        # Process Audiencias
+        audiencias = comissao.find('Audiencias')
+        if audiencias is not None:
+            for audiencia in audiencias.findall('pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut'):
+                audiencia_id = self._get_int_value(audiencia, 'id')
+                data = self._parse_date(self._get_text_value(audiencia, 'data'))
+                titulo = self._get_text_value(audiencia, 'titulo')
+                
+                if audiencia_id or data or titulo:
+                    audiencia_obj = PeticaoAudiencia(
+                        comissao_peticao_id=comissao_obj.id,
+                        audiencia_id=audiencia_id,
+                        data=data,
+                        titulo=titulo,
+                        tipo='audiencia'
+                    )
+                    self.session.add(audiencia_obj)
+        
+        # Process Audicoes (same structure as audiencias)
+        audicoes = comissao.find('Audicoes')
+        if audicoes is not None:
+            for audicao in audicoes.findall('pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut'):
+                audicao_id = self._get_int_value(audicao, 'id')
+                data = self._parse_date(self._get_text_value(audicao, 'data'))
+                titulo = self._get_text_value(audicao, 'titulo')
+                
+                if audicao_id or data or titulo:
+                    audicao_obj = PeticaoAudiencia(
+                        comissao_peticao_id=comissao_obj.id,
+                        audiencia_id=audicao_id,
+                        data=data,
+                        titulo=titulo,
+                        tipo='audicao'
+                    )
+                    self.session.add(audicao_obj)
+    
+    def _process_pedidos_informacao(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
+        """Process information requests"""
+        dados_pedidos = comissao.find('DadosPedidosInformacao')
+        if dados_pedidos is not None:
+            for pedido in dados_pedidos.findall('pt_gov_ar_objectos_peticoes_PedidosInformacaoOut'):
+                nr_oficio = self._get_text_value(pedido, 'nrOficio')
+                relatorio_intercalar = self._get_text_value(pedido, 'relatorioIntercalar')
+                data_resposta = self._parse_date(self._get_text_value(pedido, 'dataResposta'))
+                data_oficio = self._parse_date(self._get_text_value(pedido, 'dataOficio'))
+                
+                # Handle entidades (can be a complex structure with strings)
+                entidades_text = None
+                entidades = pedido.find('entidades')
+                if entidades is not None:
+                    string_elems = entidades.findall('string')
+                    if string_elems:
+                        entidades_text = ', '.join([s.text for s in string_elems if s.text])
+                    elif entidades.text:
+                        entidades_text = entidades.text
+                
+                if nr_oficio or entidades_text or relatorio_intercalar or data_resposta or data_oficio:
+                    pedido_obj = PeticaoPedidoInformacao(
+                        comissao_peticao_id=comissao_obj.id,
+                        nr_oficio=nr_oficio,
+                        entidades=entidades_text,
+                        relatorio_intercalar=relatorio_intercalar,
+                        data_resposta=data_resposta,
+                        data_oficio=data_oficio
+                    )
+                    self.session.add(pedido_obj)
+                    self.session.flush()  # Get the ID
+                    
+                    # Process pedidos de reiteracao
+                    self._process_pedidos_reiteracao(pedido, pedido_obj)
+    
+    def _process_pedidos_reiteracao(self, pedido: ET.Element, pedido_obj: PeticaoPedidoInformacao):
+        """Process reiteration requests"""
+        pedidos_reiteracao = pedido.find('pedidosReiteracao')
+        if pedidos_reiteracao is not None:
+            for reiteracao in pedidos_reiteracao.findall('pt_gov_ar_objectos_peticoes_PedidosReiteracaoOut'):
+                data = self._parse_date(self._get_text_value(reiteracao, 'data'))
+                data_resposta = self._parse_date(self._get_text_value(reiteracao, 'dataResposta'))
+                nr_oficio = self._get_text_value(reiteracao, 'nrOficio')
+                oficio_resposta = self._get_text_value(reiteracao, 'oficioResposta')
+                data_oficio = self._parse_date(self._get_text_value(reiteracao, 'dataOficio'))
+                
+                if data or data_resposta or nr_oficio or oficio_resposta or data_oficio:
+                    reiteracao_obj = PeticaoPedidoReiteracao(
+                        pedido_informacao_id=pedido_obj.id,
+                        data=data,
+                        data_resposta=data_resposta,
+                        nr_oficio=nr_oficio,
+                        oficio_resposta=oficio_resposta,
+                        data_oficio=data_oficio
+                    )
+                    self.session.add(reiteracao_obj)
     
     def _process_documentos(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
         """Process main petition documents"""
@@ -537,13 +784,38 @@ class PeticoesMapper(SchemaMapper):
         sumario = self._get_text_value(orador, 'Sumario')
         convidados = self._get_text_value(orador, 'Convidados')
         membros_governo = self._get_text_value(orador, 'MembrosGoverno')
+        teor = self._get_text_value(orador, 'Teor')
+        
+        # Handle MembrosGoverno fields (IX Legislature specific)
+        governo = None
+        membro_governo_nome = None
+        membro_governo_cargo = None
+        membros_governo_elem = orador.find('MembrosGoverno')
+        if membros_governo_elem is not None:
+            governo = self._get_text_value(membros_governo_elem, 'governo')
+            membro_governo_nome = self._get_text_value(membros_governo_elem, 'nome')
+            membro_governo_cargo = self._get_text_value(membros_governo_elem, 'cargo')
+        
+        # Handle Deputados fields (IX Legislature specific)
+        deputado_id_cadastro = None
+        deputado_nome = None
+        deputados_elem = orador.find('Deputados')
+        if deputados_elem is not None:
+            deputado_id_cadastro = self._get_int_value(deputados_elem, 'idCadastro')
+            deputado_nome = self._get_text_value(deputados_elem, 'nome')
         
         orador_obj = PeticaoOrador(
             intervencao_id=intervencao_obj.id,
             fase_sessao=fase_sessao,
             sumario=sumario,
             convidados=convidados,
-            membros_governo=membros_governo
+            membros_governo=membros_governo,
+            governo=governo,
+            membro_governo_nome=membro_governo_nome,
+            membro_governo_cargo=membro_governo_cargo,
+            deputado_id_cadastro=deputado_id_cadastro,
+            deputado_nome=deputado_nome,
+            teor=teor
         )
         self.session.add(orador_obj)
         self.session.flush()  # Get the ID
@@ -560,6 +832,7 @@ class PeticoesMapper(SchemaMapper):
                 pub_leg = self._get_text_value(pub, 'pubLeg')
                 pub_sl = self._get_int_value(pub, 'pubSL')
                 pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
+                id_pag = self._get_int_value(pub, 'idPag')
                 id_int = self._get_int_value(pub, 'idInt')
                 url_diario = self._get_text_value(pub, 'URLDiario')
                 
@@ -580,6 +853,7 @@ class PeticoesMapper(SchemaMapper):
                     pub_sl=pub_sl,
                     pub_dt=pub_dt,
                     pag=pag_text,
+                    id_pag=id_pag,
                     id_int=id_int,
                     url_diario=url_diario
                 )

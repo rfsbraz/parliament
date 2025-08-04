@@ -2959,6 +2959,12 @@ class IniciativaLink(Base):
 # Petition models
 class PeticaoParlamentar(Base):
     __tablename__ = 'peticoes_detalhadas'
+    __table_args__ = (
+        Index('idx_peticao_pet_id', 'pet_id'),
+        Index('idx_peticao_legislatura', 'legislatura_id'),
+        # Note: pet_situacao is TEXT field, would need length specification for MySQL
+        # Index('idx_peticao_situacao', text('pet_situacao(20)')),
+    )
     
     id = Column(Integer, primary_key=True)
     pet_id = Column(Integer, unique=True, nullable=False)  # External ID
@@ -2972,6 +2978,7 @@ class PeticaoParlamentar(Base):
     pet_atividade_id = Column(Integer)
     pet_autor = Column(Text)
     data_debate = Column(Date)
+    pet_obs = Column(Text)  # PetObs field from IX Legislature
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     updated_at = Column(DateTime, default=func.now, onupdate=func.now)
     
@@ -2997,12 +3004,19 @@ class PeticaoPublicacao(Base):
     pag = Column(Text)
     id_pag = Column(Integer)
     url_diario = Column(Text)
+    supl = Column(Text)  # supl field from IX Legislature
+    pag_final_diario_supl = Column(Text)  # pagFinalDiarioSupl field from IX Legislature
     
     # Relationships
     peticao = relationship("PeticaoParlamentar", back_populates="publicacoes")
 
 class PeticaoComissao(Base):
     __tablename__ = 'peticoes_comissoes'
+    __table_args__ = (
+        Index('idx_peticao_comissao_peticao', 'peticao_id'),
+        # Note: legislatura is TEXT field, MySQL indexes need length specification
+        # Index('idx_peticao_comissao_legislatura', text('legislatura(10)')),
+    )
     
     id = Column(Integer, primary_key=True)
     peticao_id = Column(Integer, ForeignKey('peticoes_detalhadas.id'), nullable=False)
@@ -3024,6 +3038,8 @@ class PeticaoComissao(Base):
     relatores = relationship("PeticaoRelator", back_populates="comissao", cascade="all, delete-orphan")
     relatorios_finais = relationship("PeticaoRelatorioFinal", back_populates="comissao", cascade="all, delete-orphan")
     documentos = relationship("PeticaoDocumento", back_populates="comissao_peticao", cascade="all, delete-orphan")
+    audiencias = relationship("PeticaoAudiencia", back_populates="comissao", cascade="all, delete-orphan")
+    pedidos_informacao = relationship("PeticaoPedidoInformacao", back_populates="comissao", cascade="all, delete-orphan")
 
 class PeticaoRelator(Base):
     __tablename__ = 'peticoes_relatores'
@@ -3035,6 +3051,7 @@ class PeticaoRelator(Base):
     gp = Column(Text)
     data_nomeacao = Column(Date)
     data_cessacao = Column(Date)
+    motivo_cessacao = Column(Text)  # motivoCessacao field from IX Legislature
     
     # Relationships
     comissao = relationship("PeticaoComissao", back_populates="relatores")
@@ -3050,6 +3067,28 @@ class PeticaoRelatorioFinal(Base):
     
     # Relationships
     comissao = relationship("PeticaoComissao", back_populates="relatorios_finais")
+    publicacoes = relationship("PeticaoRelatorioFinalPublicacao", back_populates="relatorio_final", cascade="all, delete-orphan")
+
+
+class PeticaoRelatorioFinalPublicacao(Base):
+    """Publications associated with final reports"""
+    __tablename__ = 'peticoes_relatorios_finais_publicacoes'
+    
+    id = Column(Integer, primary_key=True)
+    relatorio_final_id = Column(Integer, ForeignKey('peticoes_relatorios_finais.id'), nullable=False)
+    pub_nr = Column(Integer)
+    pub_tipo = Column(Text)
+    pub_tp = Column(Text)
+    pub_leg = Column(Text)
+    pub_sl = Column(Integer)
+    pub_dt = Column(Date)
+    pag = Column(Text)
+    id_pag = Column(Integer)
+    url_diario = Column(Text)
+    
+    # Relationships
+    relatorio_final = relationship("PeticaoRelatorioFinal", back_populates="publicacoes")
+
 
 class PeticaoDocumento(Base):
     __tablename__ = 'peticoes_documentos'
@@ -3087,6 +3126,12 @@ class PeticaoOrador(Base):
     sumario = Column(Text)
     convidados = Column(Text)
     membros_governo = Column(Text)
+    governo = Column(Text)  # MembrosGoverno.governo field
+    membro_governo_nome = Column(Text)  # MembrosGoverno.nome field
+    membro_governo_cargo = Column(Text)  # MembrosGoverno.cargo field
+    deputado_id_cadastro = Column(Integer)  # Deputados.idCadastro field
+    deputado_nome = Column(Text)  # Deputados.nome field
+    teor = Column(Text)  # Teor field from IX Legislature
     
     # Relationships
     intervencao = relationship("PeticaoIntervencao", back_populates="oradores")
@@ -3104,11 +3149,60 @@ class PeticaoOradorPublicacao(Base):
     pub_sl = Column(Integer)
     pub_dt = Column(Date)
     pag = Column(Text)
+    id_pag = Column(Integer)  # idPag field from IX Legislature
     id_int = Column(Integer)
     url_diario = Column(Text)
     
     # Relationships
     orador = relationship("PeticaoOrador", back_populates="publicacoes")
+
+
+class PeticaoAudiencia(Base):
+    """Hearings/audiencias for petition committee processing"""
+    __tablename__ = 'peticoes_audiencias'
+    
+    id = Column(Integer, primary_key=True)
+    comissao_peticao_id = Column(Integer, ForeignKey('peticoes_comissoes.id'), nullable=False)
+    audiencia_id = Column(Integer)  # id from pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut.id
+    data = Column(Date)  # Data from pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut.data
+    titulo = Column(Text)  # Titulo from pt_gov_ar_objectos_peticoes_AudienciasDiligenciasOut.titulo
+    tipo = Column(String(50), default='audiencia')  # Type identifier: 'audiencia' or 'audicao'
+    
+    # Relationships
+    comissao = relationship("PeticaoComissao", back_populates="audiencias")
+
+
+class PeticaoPedidoInformacao(Base):
+    """Information requests for petition committee processing"""
+    __tablename__ = 'peticoes_pedidos_informacao'
+    
+    id = Column(Integer, primary_key=True)
+    comissao_peticao_id = Column(Integer, ForeignKey('peticoes_comissoes.id'), nullable=False)
+    nr_oficio = Column(Text)  # nrOficio from pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.nrOficio
+    entidades = Column(Text)  # entidades.string from pt_gov_ar_objectos_peticoes_PedidosInformacaoOut.entidades.string
+    relatorio_intercalar = Column(Text)  # relatorioIntercalar field from IX Legislature
+    data_resposta = Column(Date)  # dataResposta field from IX Legislature
+    data_oficio = Column(Date)  # dataOficio field from IX Legislature
+    
+    # Relationships
+    comissao = relationship("PeticaoComissao", back_populates="pedidos_informacao")
+    pedidos_reiteracao = relationship("PeticaoPedidoReiteracao", back_populates="pedido_informacao", cascade="all, delete-orphan")
+
+
+class PeticaoPedidoReiteracao(Base):
+    """Reiteration requests for information requests"""
+    __tablename__ = 'peticoes_pedidos_reiteracao'
+    
+    id = Column(Integer, primary_key=True)
+    pedido_informacao_id = Column(Integer, ForeignKey('peticoes_pedidos_informacao.id'), nullable=False)
+    data = Column(Date)  # data field from pt_gov_ar_objectos_peticoes_PedidosReiteracaoOut.data
+    data_resposta = Column(Date)  # dataResposta field from pt_gov_ar_objectos_peticoes_PedidosReiteracaoOut.dataResposta
+    nr_oficio = Column(Text)  # nrOficio field from IX Legislature
+    oficio_resposta = Column(Text)  # oficioResposta field from IX Legislature
+    data_oficio = Column(Date)  # dataOficio field from IX Legislature
+    
+    # Relationships
+    pedido_informacao = relationship("PeticaoPedidoInformacao", back_populates="pedidos_reiteracao")
 
 
 class IntervencaoParlamentar(Base):
