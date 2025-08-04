@@ -95,6 +95,9 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
         """Map parliamentary questions and requests to database"""
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
+        # Store file_info for use in other methods
+        self.file_info = file_info
+        
         try:
             # Validate schema coverage according to strict mode
             self.validate_schema_coverage(xml_root, file_info, strict_mode)
@@ -422,7 +425,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                             id_cadastro=id_cadastro,
                             nome=nome,
                             nome_completo=nome,
-                            legislatura_id=self._get_legislatura_id(file_info),
+                            legislatura_id=self._get_legislatura_id(self.file_info),
                             ativo=True
                         )
                         self.session.add(deputado)

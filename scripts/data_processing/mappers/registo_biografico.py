@@ -230,6 +230,9 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Map biographical data to database with comprehensive field processing - supports both I and VIII Legislature structures"""
+        # Store for use in nested methods
+        self.file_info = file_info
+        
         results = {
             'records_processed': 0,
             'records_imported': 0,
@@ -325,7 +328,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     id_cadastro=cad_id,
                     nome=self._get_text_value(record, 'cadNomeCompleto') or f"Deputy {cad_id}",
                     nome_completo=self._get_text_value(record, 'cadNomeCompleto'),
-                    legislatura_id=self._get_legislatura_id(file_info),
+                    legislatura_id=self._get_legislatura_id(self.file_info),
                     sexo=self._get_text_value(record, 'cadSexo'),  # New I Legislature field
                     profissao=self._get_text_value(record, 'cadProfissao'),
                     data_nascimento=self._parse_date(self._get_text_value(record, 'cadDtNascimento')),
@@ -562,7 +565,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     id_cadastro=cad_id,
                     nome=self._get_text_value(record, 'CadNomeCompleto') or f"Deputy {cad_id}",
                     nome_completo=self._get_text_value(record, 'CadNomeCompleto'),
-                    legislatura_id=self._get_legislatura_id(file_info),
+                    legislatura_id=self._get_legislatura_id(self.file_info),
                     sexo=self._get_text_value(record, 'CadSexo'),
                     profissao=self._get_text_value(record, 'CadProfissao'),
                     data_nascimento=self._parse_date(self._get_text_value(record, 'CadDtNascimento')),

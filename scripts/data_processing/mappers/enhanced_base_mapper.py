@@ -132,6 +132,7 @@ class LegislatureHandlerMixin:
         )
         
         self.session.add(legislatura)
+        self.session.flush()  # Flush to get the auto-generated ID
         logger.info(f"Created new legislatura: {legislatura_sigla}")
         return legislatura
     

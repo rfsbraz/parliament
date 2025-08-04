@@ -426,6 +426,9 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Map deputy activities to database with ACTUAL XML structure - STORES REAL DATA"""
+        # Store for use in nested methods
+        self.file_info = file_info
+        
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         
         # Validate schema coverage according to strict mode
@@ -549,7 +552,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 id_cadastro=dep_cad_id,
                 nome=dep_nome,
                 nome_completo=dep_nome_completo,
-                legislatura_id=self._get_legislatura_id(file_info),
+                legislatura_id=self._get_legislatura_id(self.file_info),
                 ativo=True
             )
             

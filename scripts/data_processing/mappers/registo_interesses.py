@@ -337,6 +337,9 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             'errors': []
         }
         
+        # Store file_info for use in other methods
+        self.file_info = file_info
+        
         try:
             # Extract legislatura from file path
             legislatura_sigla = self._extract_legislatura(file_info['file_path'])
@@ -534,7 +537,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             id_cadastro=record_id,
             nome=full_name,
             nome_completo=full_name,
-            legislatura_id=self._get_legislatura_id(file_info),
+            legislatura_id=self._get_legislatura_id(self.file_info),
             ativo=True
         )
         

@@ -603,8 +603,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
         """Map parliamentary organ composition to database"""
-        # Store strict_mode for use in nested methods
+        # Store for use in nested methods
         self.strict_mode = strict_mode
+        self.file_info = file_info
         results = self.create_processing_results()
         
         try:
@@ -1544,7 +1545,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             id_cadastro=dep_cad_id,
             nome=nome,
             nome_completo=nome_completo or nome,
-            legislatura_id=self._get_legislatura_id(file_info),
+            legislatura_id=self._get_legislatura_id(self.file_info),
             ativo=True
         )
         

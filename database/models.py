@@ -66,10 +66,23 @@ class CirculoEleitoral(Base):
 
 
 class Deputado(Base):
+    """
+    Deputy/Parliament Member Model
+    
+    IMPORTANT: Deputy Identity Across Legislatures
+    ==============================================
+    - `id`: Primary key, unique within this table but only meaningful within a single legislature
+    - `id_cadastro`: Registration number - THIS IS THE TRUE UNIQUE IDENTIFIER for a person
+      across all legislatures. Use this field to identify the same person across different
+      legislative periods, not the `id` field.
+      
+    A person may serve in multiple legislatures and will have different `id` values
+    but the same `id_cadastro` throughout their parliamentary career.
+    """
     __tablename__ = 'deputados'
     
-    id = Column(Integer, primary_key=True)
-    id_cadastro = Column(Integer, unique=True, nullable=False)
+    id = Column(Integer, primary_key=True)  # Legislature-specific ID
+    id_cadastro = Column(Integer, unique=True, nullable=False)  # Person's unique registration ID
     nome = Column(String(200), nullable=False)
     nome_completo = Column(String(300))
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
@@ -4429,9 +4442,12 @@ class RegistoInteressesApoioUnified(Base):
 class DeputyAnalytics(Base):
     """Comprehensive deputy performance analytics with real-time scoring"""
     __tablename__ = "deputy_analytics"
+    __table_args__ = (
+        UniqueConstraint('deputado_id', 'legislatura_id', name='unique_deputy_legislature_analytics'),
+    )
     
     id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False, unique=True)
+    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
     legislatura_id = Column(Integer, ForeignKey("legislaturas.id"))
     
     # Activity Scoring (0-100 scale) - calculated by stored procedures
@@ -4596,11 +4612,16 @@ class InitiativeAnalytics(Base):
 
 
 class DeputyTimeline(Base):
-    """Career timeline and experience analytics for deputies"""
+    """
+    Career timeline and experience analytics for deputies
+    
+    IMPORTANT: Uses id_cadastro to track the same PERSON across all legislatures,
+    not deputado_id which is legislature-specific.
+    """
     __tablename__ = "deputy_timeline"
     
     id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
+    id_cadastro = Column(Integer, nullable=False, unique=True)  # Person's unique ID across all legislatures
     
     # Career Timeline
     first_election_date = Column(Date)

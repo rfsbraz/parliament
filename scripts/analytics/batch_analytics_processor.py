@@ -27,7 +27,8 @@ from sqlalchemy import create_engine, text, func
 from sqlalchemy.orm import sessionmaker
 from database.models import (
     DeputyAnalytics, AttendanceAnalytics, InitiativeAnalytics,
-    DeputyTimeline, DataQualityMetrics, Deputado, Legislatura
+    DeputyTimeline, DataQualityMetrics, Deputado, Legislatura,
+    IniciativaParlamentar, IniciativaAutorDeputado, IntervencaoParlamentar, MeetingAttendance
 )
 from database.connection import get_engine
 
@@ -295,23 +296,22 @@ class BatchAnalyticsProcessor:
                         InitiativeAnalytics.legislatura_id == legislatura_id
                     ).first()
                     
-                    # Get initiative statistics
-                    stats = session.execute(text("""
-                        SELECT 
-                            COUNT(DISTINCT i.id) as total_authored,
-                            SUM(CASE WHEN i.estado = 'Aprovado' THEN 1 ELSE 0 END) as approved,
-                            SUM(CASE WHEN i.estado = 'Em curso' THEN 1 ELSE 0 END) as in_progress,
-                            SUM(CASE WHEN i.estado = 'Rejeitado' THEN 1 ELSE 0 END) as rejected,
-                            MIN(i.data) as first_date,
-                            MAX(i.data) as latest_date
-                        FROM iniciativas i
-                        JOIN iniciativas_autores ia ON i.id = ia.iniciativa_id
-                        WHERE ia.autor_deputado_id = :deputy_id
-                        AND i.legislatura_id = :leg_id
-                    """), {
-                        "deputy_id": deputy_id,
-                        "leg_id": legislatura_id
-                    }).fetchone()
+                    # Get initiative statistics using SQLAlchemy ORM
+                    stats = session.query(
+                        func.count(func.distinct(IniciativaParlamentar.id)).label('total_authored'),
+                        func.count(IniciativaParlamentar.id).label('approved'),  # No estado field, so count all as placeholder
+                        func.count(IniciativaParlamentar.id).label('in_progress'),  # No estado field
+                        func.count(IniciativaParlamentar.id).label('rejected'),  # No estado field
+                        func.min(IniciativaParlamentar.data_inicio_leg).label('first_date'),
+                        func.max(IniciativaParlamentar.data_inicio_leg).label('latest_date')
+                    ).join(
+                        IniciativaAutorDeputado, IniciativaParlamentar.id == IniciativaAutorDeputado.iniciativa_id
+                    ).join(
+                        Deputado, Deputado.id_cadastro == IniciativaAutorDeputado.id_cadastro
+                    ).filter(
+                        Deputado.id == deputy_id,
+                        IniciativaParlamentar.legislatura_id == legislatura_id
+                    ).first()
                     
                     total_authored = stats.total_authored or 0
                     approved = stats.approved or 0
@@ -367,21 +367,28 @@ class BatchAnalyticsProcessor:
             
             for deputy_id, in deputies:
                 try:
-                    # Check if record exists (timeline is per deputy, not per legislature)
+                    # Get deputy's id_cadastro for cross-legislature tracking
+                    deputy = session.query(Deputado).filter(Deputado.id == deputy_id).first()
+                    if not deputy:
+                        continue
+                    
+                    # Check if record exists (timeline is per person using id_cadastro)
                     existing = session.query(DeputyTimeline).filter(
-                        DeputyTimeline.deputado_id == deputy_id
+                        DeputyTimeline.id_cadastro == deputy.id_cadastro
                     ).first()
                     
-                    # Get career statistics
-                    career_stats = session.execute(text("""
-                        SELECT 
-                            COUNT(DISTINCT d.legislatura_id) as total_legislatures,
-                            MIN(l.data_inicio) as first_election,
-                            MAX(l.data_fim) as current_term_end
-                        FROM deputados d
-                        JOIN legislaturas l ON d.legislatura_id = l.id
-                        WHERE d.id = :deputy_id
-                    """), {"deputy_id": deputy_id}).fetchone()
+                    # Get career statistics using id_cadastro for cross-legislature analysis
+                    career_stats = session.query(
+                        func.count(func.distinct(Deputado.legislatura_id)).label('total_legislatures'),
+                        func.min(Legislatura.data_inicio).label('first_election'),
+                        func.max(Legislatura.data_fim).label('current_term_end')
+                    ).select_from(
+                        Deputado
+                    ).join(
+                        Legislatura, Deputado.legislatura_id == Legislatura.id
+                    ).filter(
+                        Deputado.id_cadastro == deputy.id_cadastro
+                    ).first()
                     
                     total_legislatures = career_stats.total_legislatures or 0
                     first_election = career_stats.first_election
@@ -414,7 +421,7 @@ class BatchAnalyticsProcessor:
                     else:
                         # Create new
                         timeline = DeputyTimeline(
-                            deputado_id=deputy_id,
+                            id_cadastro=deputy.id_cadastro,
                             first_election_date=first_election,
                             total_legislatures_served=total_legislatures,
                             years_of_service=years_of_service,
@@ -453,23 +460,23 @@ class BatchAnalyticsProcessor:
                     
                     # Get table statistics (simplified)
                     if table_name == 'deputados':
-                        total_records = session.execute(text("""
-                            SELECT COUNT(*) FROM deputados WHERE legislatura_id = :leg_id
-                        """), {"leg_id": legislatura_id}).scalar()
+                        total_records = session.query(func.count(Deputado.id)).filter(
+                            Deputado.legislatura_id == legislatura_id
+                        ).scalar()
                     elif table_name == 'meeting_attendances':
-                        total_records = session.execute(text("""
-                            SELECT COUNT(*) FROM meeting_attendances ma
-                            JOIN deputados d ON ma.dep_id = d.id
-                            WHERE d.legislatura_id = :leg_id
-                        """), {"leg_id": legislatura_id}).scalar()
+                        total_records = session.query(func.count(MeetingAttendance.id)).join(
+                            Deputado, MeetingAttendance.dep_id == Deputado.id
+                        ).filter(
+                            Deputado.legislatura_id == legislatura_id
+                        ).scalar()
                     elif table_name == 'iniciativas':
-                        total_records = session.execute(text("""
-                            SELECT COUNT(*) FROM iniciativas WHERE legislatura_id = :leg_id
-                        """), {"leg_id": legislatura_id}).scalar()
+                        total_records = session.query(func.count(IniciativaParlamentar.id)).filter(
+                            IniciativaParlamentar.legislatura_id == legislatura_id
+                        ).scalar()
                     elif table_name == 'intervencoes':
-                        total_records = session.execute(text("""
-                            SELECT COUNT(*) FROM intervencoes WHERE legislatura_id = :leg_id
-                        """), {"leg_id": legislatura_id}).scalar()
+                        total_records = session.query(func.count(IntervencaoParlamentar.id)).filter(
+                            IntervencaoParlamentar.legislatura_id == legislatura_id
+                        ).scalar()
                     else:
                         total_records = 0
                     
