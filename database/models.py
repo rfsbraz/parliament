@@ -1583,6 +1583,7 @@ class DiplomaAprovado(Base):
     link_texto = Column(Text)
     observacoes = Column(Text)
     tp = Column(String(50))
+    versao = Column(String(50))  # Versao field from IV Legislature
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

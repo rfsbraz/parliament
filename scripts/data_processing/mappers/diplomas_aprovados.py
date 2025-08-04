@@ -48,6 +48,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
             'ArrayOfDiplomaOut.DiplomaOut.Numero2',
             'ArrayOfDiplomaOut.DiplomaOut.Observacoes',
             'ArrayOfDiplomaOut.DiplomaOut.Tp',
+            'ArrayOfDiplomaOut.DiplomaOut.Versao',  # IV Legislature field
             
             # Activities
             'ArrayOfDiplomaOut.DiplomaOut.Actividades',
@@ -159,6 +160,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
             link_texto = self._get_text_value(diploma, 'LinkTexto')
             observacoes = self._get_text_value(diploma, 'Observacoes')
             tp = self._get_text_value(diploma, 'Tp')
+            versao = self._get_text_value(diploma, 'Versao')
             
             if not titulo:
                 logger.warning("Missing required field: titulo")
@@ -182,6 +184,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                 existing.link_texto = link_texto
                 existing.observacoes = observacoes
                 existing.tp = tp
+                existing.versao = versao
                 existing.legislatura_id = legislatura.id
             else:
                 # Create new diploma record
@@ -196,6 +199,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                     link_texto=link_texto,
                     observacoes=observacoes,
                     tp=tp,
+                    versao=versao,
                     legislatura_id=legislatura.id
                 )
                 self.session.add(diploma_record)
