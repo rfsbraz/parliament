@@ -76,7 +76,7 @@ class LegislatureHandlerMixin:
         """Extract legislatura from filename or XML content with comprehensive fallback"""
         # Try filename first - most reliable (case-insensitive)
         filename = os.path.basename(file_path)
-        leg_match = re.search(r'(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|XI|VIII|VII|VI|IV|III|IX|II|X|V|I)', filename, re.IGNORECASE)
+        leg_match = re.search(r'(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|XI|VIII|VII|VI|IV|III|IX|II|X|V|I)\b', filename, re.IGNORECASE)
         if leg_match:
             return leg_match.group(1).upper()
         
@@ -105,7 +105,7 @@ class LegislatureHandlerMixin:
                     return leg_text.upper()
         
         # Final fallback - extract from directory structure (case-insensitive)
-        path_match = re.search(r'[/\\\\](XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)[/\\\\]', file_path, re.IGNORECASE)
+        path_match = re.search(r'[/\\\\](CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|XI|VIII|VII|VI|IV|III|IX|II|X|V|I)_?[Ll]egislatura', file_path, re.IGNORECASE)
         if path_match:
             return path_match.group(1).upper()
         
