@@ -287,7 +287,16 @@ class PeticoesMapper(SchemaMapper):
             # Additional XIII Legislature petition fields
             'ArrayOfPeticaoOut.PeticaoOut.PetNrAssinaturasInicial',  # Initial number of signatures
             'ArrayOfPeticaoOut.PeticaoOut.Iniciativasoriginadas',  # Originated initiatives
-            'ArrayOfPeticaoOut.PeticaoOut.Iniciativasoriginadas.string'
+            'ArrayOfPeticaoOut.PeticaoOut.Iniciativasoriginadas.string',
+            
+            # XII Legislature fields - Voting data in final reports
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.votacao',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.votacao.id',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.votacao.data',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.votacao.unanime',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.votacao.resultado',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.votacao.reuniao',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.votacao.tipoReuniao'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -626,10 +635,35 @@ class PeticoesMapper(SchemaMapper):
                 data_relatorio = self._parse_date(self._get_text_value(relatorio, 'data'))
                 votacao = self._get_text_value(relatorio, 'votacao')
                 
+                # XII Legislature voting fields
+                votacao_id = None
+                votacao_data = None
+                votacao_unanime = None
+                votacao_resultado = None
+                votacao_reuniao = None
+                votacao_tipo_reuniao = None
+                
+                votacao_elem = relatorio.find('votacao')
+                if votacao_elem is not None:
+                    votacao_id = self._get_int_value(votacao_elem, 'id')
+                    votacao_data = self._parse_date(self._get_text_value(votacao_elem, 'data'))
+                    unanime_text = self._get_text_value(votacao_elem, 'unanime')
+                    if unanime_text:
+                        votacao_unanime = unanime_text.lower() in ('true', '1', 'yes', 'sim')
+                    votacao_resultado = self._get_text_value(votacao_elem, 'resultado')
+                    votacao_reuniao = self._get_int_value(votacao_elem, 'reuniao')
+                    votacao_tipo_reuniao = self._get_text_value(votacao_elem, 'tipoReuniao')
+                
                 relatorio_obj = PeticaoRelatorioFinal(
                     comissao_peticao_id=comissao_obj.id,
                     data_relatorio=data_relatorio,
-                    votacao=votacao
+                    votacao=votacao,
+                    votacao_id=votacao_id,
+                    votacao_data=votacao_data,
+                    votacao_unanime=votacao_unanime,
+                    votacao_resultado=votacao_resultado,
+                    votacao_reuniao=votacao_reuniao,
+                    votacao_tipo_reuniao=votacao_tipo_reuniao
                 )
                 self.session.add(relatorio_obj)
                 self.session.flush()  # Get the ID

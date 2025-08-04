@@ -3087,6 +3087,14 @@ class PeticaoRelatorioFinal(Base):
     votacao = Column(Text)
     relatorio_final_id = Column(Text)
     
+    # XII Legislature voting fields
+    votacao_id = Column(Integer)  # votacao.id
+    votacao_data = Column(Date)  # votacao.data
+    votacao_unanime = Column(Boolean)  # votacao.unanime
+    votacao_resultado = Column(Text)  # votacao.resultado
+    votacao_reuniao = Column(Integer)  # votacao.reuniao
+    votacao_tipo_reuniao = Column(Text)  # votacao.tipoReuniao
+    
     # Relationships
     comissao = relationship("PeticaoComissao", back_populates="relatorios_finais")
     publicacoes = relationship("PeticaoRelatorioFinalPublicacao", back_populates="relatorio_final", cascade="all, delete-orphan")
