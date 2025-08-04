@@ -118,6 +118,7 @@ class IntervencoesMapper(SchemaMapper):
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
         file_path = file_info['file_path']
         filename = os.path.basename(file_path)
+        skip_video_processing = file_info.get('skip_video_processing', False)
         
         try:
             # Validate schema coverage according to strict mode
@@ -132,7 +133,7 @@ class IntervencoesMapper(SchemaMapper):
             
             for intervencao in xml_root.findall('.//DadosPesquisaIntervencoesOut'):
                 try:
-                    success = self._process_intervencao_record(intervencao, legislatura, filename)
+                    success = self._process_intervencao_record(intervencao, legislatura, filename, skip_video_processing)
                     results['records_processed'] += 1
                     if success:
                         results['records_imported'] += 1
@@ -158,7 +159,7 @@ class IntervencoesMapper(SchemaMapper):
             sys.exit(1)
             return results
     
-    def _process_intervencao_record(self, intervencao: ET.Element, legislatura: Legislatura, filename: str = None) -> bool:
+    def _process_intervencao_record(self, intervencao: ET.Element, legislatura: Legislatura, filename: str = None, skip_video_processing: bool = False) -> bool:
         """Process individual intervention record with proper normalized storage"""
         try:
             # Extract basic fields
@@ -227,7 +228,7 @@ class IntervencoesMapper(SchemaMapper):
                 self._process_convidados(intervencao, existing)
                 self._process_atividades_relacionadas(intervencao, existing)
                 self._process_iniciativas(intervencao, existing)
-                self._process_audiovisual(intervencao, existing, filename)
+                self._process_audiovisual(intervencao, existing, filename, skip_video_processing)
                 
                 return True
                 
@@ -363,7 +364,7 @@ class IntervencoesMapper(SchemaMapper):
                     )
                     self.session.add(iniciativa)
     
-    def _process_audiovisual(self, intervencao: ET.Element, intervention: IntervencaoParlamentar, filename: str = None):
+    def _process_audiovisual(self, intervencao: ET.Element, intervention: IntervencaoParlamentar, filename: str = None, skip_video_processing: bool = False):
         """Process audiovisual data with thumbnail extraction"""
         video_url = None
         thumbnail_url = None
@@ -398,10 +399,10 @@ class IntervencoesMapper(SchemaMapper):
                     if tipo_elem is not None:
                         tipo_intervencao = tipo_elem.text
         
-        # Extract thumbnail if video URL exists (handles 404 fallback internally)
+        # Extract thumbnail if video URL exists and video processing is not skipped
         thumbnail_url = None
         original_video_url = video_url
-        if video_url:
+        if video_url and not skip_video_processing:
             time.sleep(0.5)  # Small delay between requests
             result = self._extract_thumbnail_url_with_fallback(video_url, filename)
             if result:
@@ -413,6 +414,8 @@ class IntervencoesMapper(SchemaMapper):
                     logger.info(f"Updated video URL to working version: {video_url}{file_info}")
             else:
                 thumbnail_url = None
+        elif video_url and skip_video_processing:
+            logger.debug(f"Skipping video processing for: {video_url} (skip_video_processing=True)")
         
         # Store audiovisual data
         if video_url or duracao or assunto or tipo_intervencao:

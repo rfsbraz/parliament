@@ -311,6 +311,7 @@ class UnifiedImporter:
         force_reimport: bool = False,
         legislatura_filter: str = None,
         strict_mode: bool = False,
+        skip_video_processing: bool = False,
     ):
         """Process files directly from source directories in dependency order"""
         logger.info("Starting file processing...")
@@ -379,7 +380,7 @@ class UnifiedImporter:
                     if self._should_process_file(
                         session, file_path, force_reimport, strict_mode
                     ):
-                        success = self._process_file(session, file_path, strict_mode)
+                        success = self._process_file(session, file_path, strict_mode, skip_video_processing)
                         if success:
                             processed_files += 1
                         elif strict_mode:
@@ -502,7 +503,7 @@ class UnifiedImporter:
 
         return existing is None
 
-    def _process_file(self, session, file_path: str, strict_mode: bool = False) -> bool:
+    def _process_file(self, session, file_path: str, strict_mode: bool = False, skip_video_processing: bool = False) -> bool:
         """Process a single file"""
         try:
             # Determine file type
@@ -560,6 +561,7 @@ class UnifiedImporter:
                     "file_path": file_path,
                     "file_type": file_type,
                     "file_hash": file_hash,
+                    "skip_video_processing": skip_video_processing,
                 }
             except Exception as e:
                 error_msg = f"XML parsing error: {str(e)}"
@@ -826,6 +828,11 @@ def main():
         action="store_true",
         help="Create timestamped backup and truncate all database tables",
     )
+    parser.add_argument(
+        "--skip-video-processing",
+        action="store_true",
+        help="Skip video URL validation and thumbnail extraction to speed up processing",
+    )
 
     args = parser.parse_args()
 
@@ -852,6 +859,7 @@ def main():
             force_reimport=args.force_reimport,
             legislatura_filter=args.legislatura,
             strict_mode=args.strict_mode,
+            skip_video_processing=args.skip_video_processing,
         )
 
 
