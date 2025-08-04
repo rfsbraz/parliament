@@ -3028,6 +3028,7 @@ class PeticaoPublicacao(Base):
     url_diario = Column(Text)
     supl = Column(Text)  # supl field from IX Legislature
     pag_final_diario_supl = Column(Text)  # pagFinalDiarioSupl field from IX Legislature
+    obs = Column(Text)  # obs field from XIV Legislature
     
     # Relationships
     peticao = relationship("PeticaoParlamentar", back_populates="publicacoes")
@@ -3094,6 +3095,10 @@ class PeticaoRelatorioFinal(Base):
     votacao_resultado = Column(Text)  # votacao.resultado
     votacao_reuniao = Column(Integer)  # votacao.reuniao
     votacao_tipo_reuniao = Column(Text)  # votacao.tipoReuniao
+    
+    # XIV Legislature additional voting fields
+    votacao_ausencias = Column(Text)  # votacao.ausencias (comma-separated)
+    votacao_detalhe = Column(Text)  # votacao.detalhe
     
     # Relationships
     comissao = relationship("PeticaoComissao", back_populates="relatorios_finais")
