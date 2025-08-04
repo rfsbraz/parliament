@@ -32,8 +32,8 @@ from database.models import (
     PeticaoParlamentar, PeticaoPublicacao, PeticaoComissao, PeticaoRelator,
     PeticaoRelatorioFinal, PeticaoRelatorioFinalPublicacao, PeticaoDocumento, 
     PeticaoIntervencao, PeticaoOrador, PeticaoOradorPublicacao, PeticaoAudiencia, 
-    PeticaoPedidoInformacao, PeticaoPedidoReiteracao, PeticaoPedidoEsclarecimento, 
-    Legislatura
+    PeticaoPedidoInformacao, PeticaoPedidoReiteracao, PeticaoPedidoEsclarecimento,
+    PeticaoLink, Legislatura
 )
 
 logger = logging.getLogger(__name__)
@@ -243,7 +243,44 @@ class PeticoesMapper(SchemaMapper):
             'ArrayOfPeticaoOut.PeticaoOut.PedidosEsclarecimento',
             'ArrayOfPeticaoOut.PeticaoOut.PedidosEsclarecimento.pt_gov_ar_objectos_peticoes_PedidosEsclarecimentoOut',
             'ArrayOfPeticaoOut.PeticaoOut.PedidosEsclarecimento.pt_gov_ar_objectos_peticoes_PedidosEsclarecimentoOut.nrOficio',
-            'ArrayOfPeticaoOut.PeticaoOut.PedidosEsclarecimento.pt_gov_ar_objectos_peticoes_PedidosEsclarecimentoOut.dataResposta'
+            'ArrayOfPeticaoOut.PeticaoOut.PedidosEsclarecimento.pt_gov_ar_objectos_peticoes_PedidosEsclarecimentoOut.dataResposta',
+            
+            # XIII Legislature fields
+            # Links
+            'ArrayOfPeticaoOut.PeticaoOut.Links',
+            'ArrayOfPeticaoOut.PeticaoOut.Links.PeticaoDocsOut',
+            'ArrayOfPeticaoOut.PeticaoOut.Links.PeticaoDocsOut.TipoDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.Links.PeticaoDocsOut.TituloDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.Links.PeticaoDocsOut.DataDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.Links.PeticaoDocsOut.URL',
+            
+            # Joint Initiatives
+            'ArrayOfPeticaoOut.PeticaoOut.IniciativasConjuntas',
+            'ArrayOfPeticaoOut.PeticaoOut.IniciativasConjuntas.string',
+            
+            # Associated Petitions
+            'ArrayOfPeticaoOut.PeticaoOut.PeticoesAssociadas',
+            'ArrayOfPeticaoOut.PeticaoOut.PeticoesAssociadas.string',
+            
+            # LinkVideo for speakers
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.LinkVideo',
+            
+            # Additional document types for committees
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsPedidoInformacoes',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsPedidoInformacoes.PeticaoDocsPedidoInformacoes',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsPedidoInformacoes.PeticaoDocsPedidoInformacoes.TituloDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsPedidoInformacoes.PeticaoDocsPedidoInformacoes.DataDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsPedidoInformacoes.PeticaoDocsPedidoInformacoes.TipoDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsPedidoInformacoes.PeticaoDocsPedidoInformacoes.URL',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRespostaPedidoInformacoes',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRespostaPedidoInformacoes.PeticaoDocsRespostaPedidoInformacoes',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRespostaPedidoInformacoes.PeticaoDocsRespostaPedidoInformacoes.TituloDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRespostaPedidoInformacoes.PeticaoDocsRespostaPedidoInformacoes.DataDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRespostaPedidoInformacoes.PeticaoDocsRespostaPedidoInformacoes.TipoDocumento',
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRespostaPedidoInformacoes.PeticaoDocsRespostaPedidoInformacoes.URL',
+            
+            # Additional publication field
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.obs'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -303,6 +340,17 @@ class PeticoesMapper(SchemaMapper):
             return False
         return True
     
+    def _extract_string_array(self, parent: ET.Element, tag_name: str) -> Optional[str]:
+        """Extract string array from XML element and return as comma-separated string"""
+        element = parent.find(tag_name)
+        if element is not None:
+            strings = element.findall('string')
+            if strings:
+                return ', '.join([s.text for s in strings if s.text])
+            elif element.text:
+                return element.text
+        return None
+    
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content"""
         # Try filename first
@@ -345,6 +393,10 @@ class PeticoesMapper(SchemaMapper):
             data_debate = self._parse_date(self._get_text_value(petition, 'DataDebate'))
             pet_obs = self._get_text_value(petition, 'PetObs')
             
+            # XIII Legislature fields
+            iniciativas_conjuntas = self._extract_string_array(petition, 'IniciativasConjuntas')
+            peticoes_associadas = self._extract_string_array(petition, 'PeticoesAssociadas')
+            
             # Validate required fields
             if not self._validate_petition_data(pet_id, pet_assunto):
                 return False
@@ -367,6 +419,8 @@ class PeticoesMapper(SchemaMapper):
                 existing.pet_autor = pet_autor
                 existing.data_debate = data_debate
                 existing.pet_obs = pet_obs
+                existing.iniciativas_conjuntas = iniciativas_conjuntas
+                existing.peticoes_associadas = peticoes_associadas
                 existing.legislatura_id = legislatura.id
                 existing.updated_at = datetime.now()
             else:
@@ -384,6 +438,8 @@ class PeticoesMapper(SchemaMapper):
                     pet_autor=pet_autor,
                     data_debate=data_debate,
                     pet_obs=pet_obs,
+                    iniciativas_conjuntas=iniciativas_conjuntas,
+                    peticoes_associadas=peticoes_associadas,
                     legislatura_id=legislatura.id,
                     updated_at=datetime.now()
                 )
@@ -396,6 +452,7 @@ class PeticoesMapper(SchemaMapper):
             self._process_documentos(petition, existing)
             self._process_intervencoes(petition, existing)
             self._process_pedidos_esclarecimento(petition, existing)
+            self._process_links(petition, existing)
             
             return True
             
@@ -593,6 +650,7 @@ class PeticoesMapper(SchemaMapper):
         pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
         id_pag = self._get_int_value(pub, 'idPag')
         url_diario = self._get_text_value(pub, 'URLDiario')
+        obs = self._get_text_value(pub, 'obs')
         
         # Handle page numbers
         pag_text = None
@@ -614,7 +672,8 @@ class PeticoesMapper(SchemaMapper):
             pub_dt=pub_dt,
             pag=pag_text,
             id_pag=id_pag,
-            url_diario=url_diario
+            url_diario=url_diario,
+            obs=obs
         )
         self.session.add(publicacao)
     
@@ -633,6 +692,18 @@ class PeticoesMapper(SchemaMapper):
             if docs_outros is not None:
                 for doc in docs_outros.findall('PeticaoDocsOutros'):
                     self._insert_documento(None, comissao_obj, doc, 'DocsOutros')
+            
+            # DocsPedidoInformacoes (XIII Legislature)
+            docs_pedido_info = documentos_peticao.find('DocsPedidoInformacoes')
+            if docs_pedido_info is not None:
+                for doc in docs_pedido_info.findall('PeticaoDocsPedidoInformacoes'):
+                    self._insert_documento(None, comissao_obj, doc, 'DocsPedidoInformacoes')
+            
+            # DocsRespostaPedidoInformacoes (XIII Legislature)
+            docs_resposta_pedido = documentos_peticao.find('DocsRespostaPedidoInformacoes')
+            if docs_resposta_pedido is not None:
+                for doc in docs_resposta_pedido.findall('PeticaoDocsRespostaPedidoInformacoes'):
+                    self._insert_documento(None, comissao_obj, doc, 'DocsRespostaPedidoInformacoes')
     
     def _process_audiencias(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
         """Process hearings/audiencias and audicoes"""
@@ -797,6 +868,7 @@ class PeticoesMapper(SchemaMapper):
         membros_governo = self._get_text_value(orador, 'MembrosGoverno')
         teor = self._get_text_value(orador, 'Teor')
         fase_debate = self._get_text_value(orador, 'FaseDebate')
+        link_video = self._get_text_value(orador, 'LinkVideo')
         
         # Handle MembrosGoverno fields (IX Legislature specific)
         governo = None
@@ -828,7 +900,8 @@ class PeticoesMapper(SchemaMapper):
             deputado_id_cadastro=deputado_id_cadastro,
             deputado_nome=deputado_nome,
             teor=teor,
-            fase_debate=fase_debate
+            fase_debate=fase_debate,
+            link_video=link_video
         )
         self.session.add(orador_obj)
         self.session.flush()  # Get the ID
@@ -854,6 +927,31 @@ class PeticoesMapper(SchemaMapper):
                         data_resposta=data_resposta
                     )
                     self.session.add(pedido_obj)
+    
+    def _process_links(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
+        """Process links (XIII Legislature)"""
+        # Clear existing links
+        for link in peticao_obj.links:
+            self.session.delete(link)
+        
+        links = petition.find('Links')
+        if links is not None:
+            for link in links.findall('PeticaoDocsOut'):
+                tipo_documento = self._get_text_value(link, 'TipoDocumento')
+                titulo_documento = self._get_text_value(link, 'TituloDocumento')
+                data_documento = self._parse_date(self._get_text_value(link, 'DataDocumento'))
+                url = self._get_text_value(link, 'URL')
+                
+                # Create link if there's data
+                if any([tipo_documento, titulo_documento, data_documento, url]):
+                    link_obj = PeticaoLink(
+                        peticao_id=peticao_obj.id,
+                        tipo_documento=tipo_documento,
+                        titulo_documento=titulo_documento,
+                        data_documento=data_documento,
+                        url=url
+                    )
+                    self.session.add(link_obj)
     
     def _process_orador_publicacoes(self, orador: ET.Element, orador_obj: PeticaoOrador):
         """Process speaker publications"""

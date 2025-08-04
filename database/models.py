@@ -2979,6 +2979,8 @@ class PeticaoParlamentar(Base):
     pet_autor = Column(Text)
     data_debate = Column(Date)
     pet_obs = Column(Text)  # PetObs field from IX Legislature
+    iniciativas_conjuntas = Column(Text)  # IniciativasConjuntas from XIII Legislature (comma-separated)
+    peticoes_associadas = Column(Text)  # PeticoesAssociadas from XIII Legislature (comma-separated)
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     updated_at = Column(DateTime, default=func.now, onupdate=func.now)
     
@@ -2989,6 +2991,23 @@ class PeticaoParlamentar(Base):
     documentos = relationship("PeticaoDocumento", back_populates="peticao", cascade="all, delete-orphan")
     intervencoes = relationship("PeticaoIntervencao", back_populates="peticao", cascade="all, delete-orphan")
     pedidos_esclarecimento = relationship("PeticaoPedidoEsclarecimento", back_populates="peticao", cascade="all, delete-orphan")
+    links = relationship("PeticaoLink", back_populates="peticao", cascade="all, delete-orphan")
+
+
+class PeticaoLink(Base):
+    """Links associated with petitions (XIII Legislature)"""
+    __tablename__ = 'peticoes_links'
+    
+    id = Column(Integer, primary_key=True)
+    peticao_id = Column(Integer, ForeignKey('peticoes_detalhadas.id'), nullable=False)
+    tipo_documento = Column(Text)  # TipoDocumento from PeticaoDocsOut
+    titulo_documento = Column(Text)  # TituloDocumento from PeticaoDocsOut
+    data_documento = Column(Date)  # DataDocumento from PeticaoDocsOut
+    url = Column(Text)  # URL from PeticaoDocsOut
+    
+    # Relationships
+    peticao = relationship("PeticaoParlamentar", back_populates="links")
+
 
 class PeticaoPublicacao(Base):
     __tablename__ = 'peticoes_publicacoes'
@@ -3086,6 +3105,7 @@ class PeticaoRelatorioFinalPublicacao(Base):
     pag = Column(Text)
     id_pag = Column(Integer)
     url_diario = Column(Text)
+    obs = Column(Text)  # obs field from XIII Legislature
     
     # Relationships
     relatorio_final = relationship("PeticaoRelatorioFinal", back_populates="publicacoes")
@@ -3134,6 +3154,7 @@ class PeticaoOrador(Base):
     deputado_nome = Column(Text)  # Deputados.nome field
     teor = Column(Text)  # Teor field from IX Legislature
     fase_debate = Column(Text)  # FaseDebate field from VIII Legislature
+    link_video = Column(Text)  # LinkVideo field from XIII Legislature
     
     # Relationships
     intervencao = relationship("PeticaoIntervencao", back_populates="oradores")
