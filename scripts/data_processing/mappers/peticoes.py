@@ -32,7 +32,8 @@ from database.models import (
     PeticaoParlamentar, PeticaoPublicacao, PeticaoComissao, PeticaoRelator,
     PeticaoRelatorioFinal, PeticaoRelatorioFinalPublicacao, PeticaoDocumento, 
     PeticaoIntervencao, PeticaoOrador, PeticaoOradorPublicacao, PeticaoAudiencia, 
-    PeticaoPedidoInformacao, PeticaoPedidoReiteracao, Legislatura
+    PeticaoPedidoInformacao, PeticaoPedidoReiteracao, PeticaoPedidoEsclarecimento, 
+    Legislatura
 )
 
 logger = logging.getLogger(__name__)
@@ -236,7 +237,13 @@ class PeticoesMapper(SchemaMapper):
             'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.Relatores.pt_gov_ar_objectos_RelatoresOut.motivoCessacao',
             
             # VIII Legislature field
-            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.FaseDebate'
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.FaseDebate',
+            
+            # VI Legislature fields - PedidosEsclarecimento (Clarification Requests)
+            'ArrayOfPeticaoOut.PeticaoOut.PedidosEsclarecimento',
+            'ArrayOfPeticaoOut.PeticaoOut.PedidosEsclarecimento.pt_gov_ar_objectos_peticoes_PedidosEsclarecimentoOut',
+            'ArrayOfPeticaoOut.PeticaoOut.PedidosEsclarecimento.pt_gov_ar_objectos_peticoes_PedidosEsclarecimentoOut.nrOficio',
+            'ArrayOfPeticaoOut.PeticaoOut.PedidosEsclarecimento.pt_gov_ar_objectos_peticoes_PedidosEsclarecimentoOut.dataResposta'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -388,6 +395,7 @@ class PeticoesMapper(SchemaMapper):
             self._process_dados_comissao(petition, existing)
             self._process_documentos(petition, existing)
             self._process_intervencoes(petition, existing)
+            self._process_pedidos_esclarecimento(petition, existing)
             
             return True
             
@@ -825,6 +833,27 @@ class PeticoesMapper(SchemaMapper):
         self.session.add(orador_obj)
         self.session.flush()  # Get the ID
         return orador_obj
+    
+    def _process_pedidos_esclarecimento(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
+        """Process clarification requests (VI Legislature)"""
+        # Clear existing clarification requests
+        for pedido in peticao_obj.pedidos_esclarecimento:
+            self.session.delete(pedido)
+        
+        pedidos_esclarecimento = petition.find('PedidosEsclarecimento')
+        if pedidos_esclarecimento is not None:
+            for pedido in pedidos_esclarecimento.findall('pt_gov_ar_objectos_peticoes_PedidosEsclarecimentoOut'):
+                nr_oficio = self._get_text_value(pedido, 'nrOficio')
+                data_resposta = self._parse_date(self._get_text_value(pedido, 'dataResposta'))
+                
+                # Create clarification request if there's data
+                if nr_oficio or data_resposta:
+                    pedido_obj = PeticaoPedidoEsclarecimento(
+                        peticao_id=peticao_obj.id,
+                        nr_oficio=nr_oficio,
+                        data_resposta=data_resposta
+                    )
+                    self.session.add(pedido_obj)
     
     def _process_orador_publicacoes(self, orador: ET.Element, orador_obj: PeticaoOrador):
         """Process speaker publications"""

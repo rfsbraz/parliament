@@ -2988,6 +2988,7 @@ class PeticaoParlamentar(Base):
     comissoes = relationship("PeticaoComissao", back_populates="peticao", cascade="all, delete-orphan")
     documentos = relationship("PeticaoDocumento", back_populates="peticao", cascade="all, delete-orphan")
     intervencoes = relationship("PeticaoIntervencao", back_populates="peticao", cascade="all, delete-orphan")
+    pedidos_esclarecimento = relationship("PeticaoPedidoEsclarecimento", back_populates="peticao", cascade="all, delete-orphan")
 
 class PeticaoPublicacao(Base):
     __tablename__ = 'peticoes_publicacoes'
@@ -3188,6 +3189,19 @@ class PeticaoPedidoInformacao(Base):
     # Relationships
     comissao = relationship("PeticaoComissao", back_populates="pedidos_informacao")
     pedidos_reiteracao = relationship("PeticaoPedidoReiteracao", back_populates="pedido_informacao", cascade="all, delete-orphan")
+
+
+class PeticaoPedidoEsclarecimento(Base):
+    """Clarification requests for petition processing (VI Legislature)"""
+    __tablename__ = 'peticoes_pedidos_esclarecimento'
+    
+    id = Column(Integer, primary_key=True)
+    peticao_id = Column(Integer, ForeignKey('peticoes_detalhadas.id'), nullable=False)
+    nr_oficio = Column(Text)  # nrOficio from pt_gov_ar_objectos_peticoes_PedidosEsclarecimentoOut.nrOficio
+    data_resposta = Column(Date)  # dataResposta from pt_gov_ar_objectos_peticoes_PedidosEsclarecimentoOut.dataResposta
+    
+    # Relationships
+    peticao = relationship("PeticaoParlamentar", back_populates="pedidos_esclarecimento")
 
 
 class PeticaoPedidoReiteracao(Base):
