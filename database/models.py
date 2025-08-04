@@ -2981,6 +2981,8 @@ class PeticaoParlamentar(Base):
     pet_obs = Column(Text)  # PetObs field from IX Legislature
     iniciativas_conjuntas = Column(Text)  # IniciativasConjuntas from XIII Legislature (comma-separated)
     peticoes_associadas = Column(Text)  # PeticoesAssociadas from XIII Legislature (comma-separated)
+    pet_nr_assinaturas_inicial = Column(Integer)  # PetNrAssinaturasInicial from XIII Legislature
+    iniciativas_originadas = Column(Text)  # Iniciativasoriginadas from XIII Legislature (comma-separated)
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     updated_at = Column(DateTime, default=func.now, onupdate=func.now)
     

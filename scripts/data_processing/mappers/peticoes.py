@@ -262,8 +262,10 @@ class PeticoesMapper(SchemaMapper):
             'ArrayOfPeticaoOut.PeticaoOut.PeticoesAssociadas',
             'ArrayOfPeticaoOut.PeticaoOut.PeticoesAssociadas.string',
             
-            # LinkVideo for speakers
+            # LinkVideo for speakers (complex structure)
             'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.LinkVideo',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.LinkVideo.pt_gov_ar_objectos_peticoes_LinksVideos',
+            'ArrayOfPeticaoOut.PeticaoOut.Intervencoes.PeticaoIntervencoesOut.Oradores.PeticaoOradoresOut.LinkVideo.pt_gov_ar_objectos_peticoes_LinksVideos.link',
             
             # Additional document types for committees
             'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsPedidoInformacoes',
@@ -280,7 +282,12 @@ class PeticoesMapper(SchemaMapper):
             'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DocumentosPeticao.DocsRespostaPedidoInformacoes.PeticaoDocsRespostaPedidoInformacoes.URL',
             
             # Additional publication field
-            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.obs'
+            'ArrayOfPeticaoOut.PeticaoOut.DadosComissao.ComissoesPetOut.DadosRelatorioFinal.pt_gov_ar_objectos_peticoes_DadosRelatorioFinalOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
+            
+            # Additional XIII Legislature petition fields
+            'ArrayOfPeticaoOut.PeticaoOut.PetNrAssinaturasInicial',  # Initial number of signatures
+            'ArrayOfPeticaoOut.PeticaoOut.Iniciativasoriginadas',  # Originated initiatives
+            'ArrayOfPeticaoOut.PeticaoOut.Iniciativasoriginadas.string'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -396,6 +403,8 @@ class PeticoesMapper(SchemaMapper):
             # XIII Legislature fields
             iniciativas_conjuntas = self._extract_string_array(petition, 'IniciativasConjuntas')
             peticoes_associadas = self._extract_string_array(petition, 'PeticoesAssociadas')
+            pet_nr_assinaturas_inicial = self._get_int_value(petition, 'PetNrAssinaturasInicial')
+            iniciativas_originadas = self._extract_string_array(petition, 'Iniciativasoriginadas')
             
             # Validate required fields
             if not self._validate_petition_data(pet_id, pet_assunto):
@@ -421,6 +430,8 @@ class PeticoesMapper(SchemaMapper):
                 existing.pet_obs = pet_obs
                 existing.iniciativas_conjuntas = iniciativas_conjuntas
                 existing.peticoes_associadas = peticoes_associadas
+                existing.pet_nr_assinaturas_inicial = pet_nr_assinaturas_inicial
+                existing.iniciativas_originadas = iniciativas_originadas
                 existing.legislatura_id = legislatura.id
                 existing.updated_at = datetime.now()
             else:
@@ -440,6 +451,8 @@ class PeticoesMapper(SchemaMapper):
                     pet_obs=pet_obs,
                     iniciativas_conjuntas=iniciativas_conjuntas,
                     peticoes_associadas=peticoes_associadas,
+                    pet_nr_assinaturas_inicial=pet_nr_assinaturas_inicial,
+                    iniciativas_originadas=iniciativas_originadas,
                     legislatura_id=legislatura.id,
                     updated_at=datetime.now()
                 )
@@ -868,7 +881,18 @@ class PeticoesMapper(SchemaMapper):
         membros_governo = self._get_text_value(orador, 'MembrosGoverno')
         teor = self._get_text_value(orador, 'Teor')
         fase_debate = self._get_text_value(orador, 'FaseDebate')
-        link_video = self._get_text_value(orador, 'LinkVideo')
+        
+        # Handle LinkVideo complex structure (XIII Legislature)
+        link_video = None
+        link_video_elem = orador.find('LinkVideo')
+        if link_video_elem is not None:
+            # Try complex structure first
+            links_videos = link_video_elem.find('pt_gov_ar_objectos_peticoes_LinksVideos')
+            if links_videos is not None:
+                link_video = self._get_text_value(links_videos, 'link')
+            else:
+                # Fallback to simple text value
+                link_video = link_video_elem.text
         
         # Handle MembrosGoverno fields (IX Legislature specific)
         governo = None
