@@ -1573,4 +1573,59 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         except Exception as e:
             logger.error(f"Error processing V5 incompatibilities: {e}")
     
-    # _parse_date method now inherited from base class
+    # Utility methods for XML processing
+    
+    def _parse_date(self, date_str: str) -> Optional[datetime]:
+        """Parse date string with multiple format support"""
+        if not date_str or date_str.strip() == "":
+            return None
+            
+        date_str = date_str.strip()
+        
+        # Common date formats in Portuguese parliamentary data
+        formats = [
+            "%Y-%m-%d",      # 2025-01-15
+            "%d-%m-%Y",      # 15-01-2025
+            "%Y/%m/%d",      # 2025/01/15
+            "%d/%m/%Y",      # 15/01/2025
+            "%Y-%m-%dT%H:%M:%S",  # ISO format with time
+            "%Y-%m-%d %H:%M:%S",  # Standard datetime
+        ]
+        
+        for fmt in formats:
+            try:
+                parsed_date = datetime.strptime(date_str, fmt)
+                return parsed_date.date() if hasattr(parsed_date, 'date') else parsed_date
+            except ValueError:
+                continue
+                
+        logger.warning(f"Could not parse date: {date_str}")
+        return None
+    
+    def _get_namespaced_text(self, parent: ET.Element, namespace: str, tag: str) -> Optional[str]:
+        """Get text from namespaced XML element"""
+        if namespace == 'tempuri':
+            full_tag = f"{{http://tempuri.org/}}{tag}"
+        else:
+            full_tag = f"{{{namespace}}}{tag}"
+            
+        element = parent.find(full_tag)
+        if element is not None and element.text:
+            return element.text.strip()
+        return None
+    
+    def _get_namespaced_element(self, parent: ET.Element, namespace: str, tag: str) -> Optional[ET.Element]:
+        """Get namespaced XML element"""
+        if namespace == 'tempuri':
+            full_tag = f"{{http://tempuri.org/}}{tag}"
+        else:
+            full_tag = f"{{{namespace}}}{tag}"
+            
+        return parent.find(full_tag)
+    
+    def _get_int_text(self, parent: ET.Element, tag: str) -> Optional[int]:
+        """Get integer value from XML element text"""
+        text = self._get_text(parent, tag)
+        if text and text.isdigit():
+            return int(text)
+        return None
