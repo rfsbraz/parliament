@@ -396,7 +396,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         
         try:
             # Extract legislatura from file path
-            legislatura_sigla = self._extract_legislatura(file_info['file_path'])
+            legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
             if not legislatura_sigla:
                 error_msg = f"Could not extract legislatura from file path: {file_info['file_path']}"
                 logger.error(error_msg)
@@ -552,30 +552,6 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             return element.text.strip()
         return None
     
-    def _extract_legislatura(self, file_path: str) -> Optional[str]:
-        """Extract legislatura from file path"""
-        # Try different patterns
-        patterns = [
-            r'Legislatura_([A-Z]+|\d+)',
-            r'[/\\]([XVII]+)[/\\]',
-            r'([XVII]+)\.xml',
-            r'(\d+)\.xml'
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, file_path, re.IGNORECASE)
-            if match:
-                leg = match.group(1).upper()
-                # Convert roman numerals to numbers if needed
-                roman_map = {
-                    'XVII': '17', 'XVI': '16', 'XV': '15', 'XIV': '14', 'XIII': '13',
-                    'XII': '12', 'XI': '11', 'X': '10', 'IX': '9', 'VIII': '8',
-                    'VII': '7', 'VI': '6', 'V': '5', 'IV': '4', 'III': '3',
-                    'II': '2', 'I': '1', 'CONSTITUINTE': '0'
-                }
-                return roman_map.get(leg, leg)
-        
-        return None
     
     # Legislatura and roman numeral methods now inherited from base class
     
@@ -617,8 +593,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             
             # Check if record already exists in unified model
             existing = self.session.query(RegistoInteressesUnified).filter_by(
-                deputado_id=deputado.id,
-                legislatura_id=legislatura.id,
+                                legislatura_id=legislatura.id,
                 record_id=record_id
             ).first()
             
@@ -635,8 +610,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             else:
                 # Create new record
                 registo = RegistoInteressesUnified(
-                    deputado_id=deputado.id,
-                    legislatura_id=legislatura.id,
+                                        legislatura_id=legislatura.id,
                     record_id=record_id,
                     full_name=full_name,
                     marital_status_desc=marital_status,
@@ -644,8 +618,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     matrimonial_regime=matrimonial_regime,
                     exclusivity=exclusivity,
                     dgf_number=dgf_number,
-                    schema_version="V3"
-                )
+                                    )
                 self.session.add(registo)
                 self.session.flush()  # Get ID for related records
             
@@ -723,16 +696,13 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             
             # Create activity record in unified model
             activity_record = RegistoInteressesAtividadeUnified(
-                registo_interesses_id=registo.id,
-                deputado_id=deputado.id,
-                legislatura_id=registo.legislatura_id,
-                activity_description=activity,
+                registo_id=registo.id,
+                                description=activity,
                 type_classification=activity_area,
                 start_date=start_date,
                 end_date=end_date,
-                is_paid=paid,
-                schema_version="V3"
-            )
+                remunerated=paid,
+                            )
             self.session.add(activity_record)
             
         except Exception as e:
@@ -747,14 +717,11 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             
             # Create social position record in unified model
             social_position_record = RegistoInteressesSocialPositionUnified(
-                registo_interesses_id=registo.id,
-                deputado_id=deputado.id,
-                legislatura_id=registo.legislatura_id,
-                position_description=position_text,
+                registo_id=registo.id,
+                                position=position_text,
                 type_classification=type_classification,
                 headquarters_location=headquarters_location,
-                schema_version="V3"
-            )
+                            )
             self.session.add(social_position_record)
             
         except Exception as e:
@@ -771,15 +738,12 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             
             # Create society record in unified model
             society_record = RegistoInteressesSociedadeUnified(
-                registo_interesses_id=registo.id,
-                deputado_id=deputado.id,
-                legislatura_id=registo.legislatura_id,
-                entity=entity or society,  # Use entity if available, fallback to society
-                participation_type=social_participation,
+                registo_id=registo.id,
+                                entity=entity or society,  # Use entity if available, fallback to society
+                social_participation=social_participation,
                 activity_area=activity_area,
                 headquarters_location=head_office_location,
-                schema_version="V3"
-            )
+                            )
             self.session.add(society_record)
             
         except Exception as e:
@@ -794,15 +758,12 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             
             # Create support/service record in unified model
             support_record = RegistoInteressesApoioUnified(
-                registo_interesses_id=registo.id,
-                deputado_id=deputado.id,
-                legislatura_id=registo.legislatura_id,
-                support_description=support,
+                registo_id=registo.id,
+                                description=support,
                 benefit_type='service',  # V3 supports are services provided
                 service_location=support_area,  # Area as location
-                value_amount=value,
-                schema_version="V3"
-            )
+                value=value,
+                            )
             self.session.add(support_record)
             
         except Exception as e:
@@ -825,8 +786,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             
             # Check if V2 record already exists
             existing_v2 = self.session.query(RegistoInteressesV2).filter_by(
-                deputado_id=deputado.id,
-                cad_id=cad_id
+                                cad_id=cad_id
             ).first()
             
             if existing_v2:
@@ -839,8 +799,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             else:
                 # Create new V2 record
                 registo_v2 = RegistoInteressesV2(
-                    deputado_id=deputado.id,
-                    cad_id=cad_id,
+                                        cad_id=cad_id,
                     cad_nome_completo=full_name,
                     cad_estado_civil_des=marital_status_desc,
                     cad_actividade_profissional=cad_actividade_profissional,
@@ -875,8 +834,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             
             # Create unified record for V1
             existing = self.session.query(RegistoInteressesUnified).filter_by(
-                deputado_id=deputado.id,
-                legislatura_id=legislatura.id,
+                                legislatura_id=legislatura.id,
                 cad_id=cad_id
             ).first()
             
@@ -891,16 +849,14 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             else:
                 # Create new unified record
                 registo = RegistoInteressesUnified(
-                    deputado_id=deputado.id,
-                    legislatura_id=legislatura.id,
+                                        legislatura_id=legislatura.id,
                     cad_id=cad_id,
                     record_id=record_id,
                     full_name=full_name,
                     marital_status_desc=marital_status_desc,
                     spouse_name=spouse_name,
                     matrimonial_regime=matrimonial_regime,
-                    schema_version="V1"
-                )
+                                    )
                 self.session.add(registo)
                 self.session.flush()  # Get ID for related records
             
@@ -957,13 +913,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     
                     # Create society record
                     society_record = RegistoInteressesSociedadeUnified(
-                        registo_interesses_id=registo.id,
-                        deputado_id=deputado.id,
-                        legislatura_id=registo.legislatura_id,
-                        entity=rgs_entidade,
+                        registo_id=registo.id,
+                                                                        entity=rgs_entidade,
                         headquarters_location=rgs_local_sede,
-                        schema_version="V1"
-                    )
+                                            )
                     self.session.add(society_record)
                     
         except Exception as e:
@@ -981,13 +934,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     
                     # Create support record
                     support_record = RegistoInteressesApoioUnified(
-                        registo_interesses_id=registo.id,
-                        deputado_id=deputado.id,
-                        legislatura_id=registo.legislatura_id,
-                        support_description=apoio_text,
+                        registo_id=registo.id,
+                                                                        description=apoio_text,
                         benefit_type='benefit',
-                        schema_version="V1"
-                    )
+                                            )
                     self.session.add(support_record)
                     
         except Exception as e:
@@ -1010,15 +960,12 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     
                     # Create activity record
                     activity_record = RegistoInteressesAtividadeUnified(
-                        registo_interesses_id=registo.id,
-                        deputado_id=deputado.id,
-                        legislatura_id=registo.legislatura_id,
-                        activity_description=rga_atividade,
+                        registo_id=registo.id,
+                                                                        description=rga_atividade,
                         start_date=rga_data_inicio,
                         end_date=rga_data_fim,
-                        is_paid=is_paid,
-                        schema_version="V1"
-                    )
+                        remunerated=is_paid,
+                                            )
                     self.session.add(activity_record)
                     
         except Exception as e:
@@ -1036,14 +983,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     
                     # Create social position record
                     position_record = RegistoInteressesSocialPositionUnified(
-                        registo_interesses_id=registo.id,
-                        deputado_id=deputado.id,
-                        legislatura_id=registo.legislatura_id,
-                        position_description=rgc_entidade,
+                        registo_id=registo.id,
+                                                                        position=rgc_entidade,
                         start_date=rgc_data_inicio,
-                        end_date=rgc_data_fim,
-                        schema_version="V1"
-                    )
+                                            )
                     self.session.add(position_record)
                     
         except Exception as e:
@@ -1348,8 +1291,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             
             # Check if unified record already exists
             existing = self.session.query(RegistoInteressesUnified).filter_by(
-                deputado_id=deputado.id,
-                legislatura_id=legislatura.id,
+                                legislatura_id=legislatura.id,
                 record_id=record_id
             ).first()
             
@@ -1367,8 +1309,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             else:
                 # Create new unified record
                 registo = RegistoInteressesUnified(
-                    deputado_id=deputado.id,
-                    legislatura_id=legislatura.id,
+                                        legislatura_id=legislatura.id,
                     record_id=record_id,
                     full_name=display_name,
                     marital_status_desc=estado_civil,
@@ -1377,8 +1318,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     exclusivity=exclusivity,
                     dgf_number=exclusivity_id,
                     gender=gender,
-                    schema_version="V5"
-                )
+                                    )
                 self.session.add(registo)
                 self.session.flush()  # Get ID for related records
             
@@ -1413,17 +1353,14 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     
                     # Create support record
                     apoio_record = RegistoInteressesApoioUnified(
-                        registo_interesses_id=registo.id,
-                        deputado_id=deputado.id,
-                        legislatura_id=registo.legislatura_id,
-                        entity_name=entidade,
-                        support_description=apoio_text or descricao,
+                        registo_id=registo.id,
+                                                                        entity=entidade,
+                        description=apoio_text or descricao,
                         benefit_type=natureza_beneficio,
                         service_location=natureza_area,
-                        value_amount=valor,
-                        support_date=data,
-                        schema_version="V5"
-                    )
+                        value=valor,
+                        start_date=data,
+                                            )
                     self.session.add(apoio_record)
                     
         except Exception as e:
@@ -1441,14 +1378,11 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     
                     # Create activity record
                     activity_record = RegistoInteressesAtividadeUnified(
-                        registo_interesses_id=registo.id,
-                        deputado_id=deputado.id,
-                        legislatura_id=registo.legislatura_id,
-                        activity_description=cargo_funcao_atividade,
+                        registo_id=registo.id,
+                                                                        description=cargo_funcao_atividade,
                         headquarters_location=local_sede,
                         end_date=data_termo,
-                        schema_version="V5"
-                    )
+                                            )
                     self.session.add(activity_record)
                     
         except Exception as e:
@@ -1466,15 +1400,11 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     
                     # Create social position record (positions are social positions)
                     position_record = RegistoInteressesSocialPositionUnified(
-                        registo_interesses_id=registo.id,
-                        deputado_id=deputado.id,
-                        legislatura_id=registo.legislatura_id,
-                        position_description=cargo_funcao_atividade,
+                        registo_id=registo.id,
+                                                                        position=cargo_funcao_atividade,
                         headquarters_location=local_sede,
-                        end_date=data_termo,
                         type_classification="mais_tres_anos",
-                        schema_version="V5"
-                    )
+                                            )
                     self.session.add(position_record)
                     
         except Exception as e:
@@ -1492,15 +1422,11 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     
                     # Create social position record
                     position_record = RegistoInteressesSocialPositionUnified(
-                        registo_interesses_id=registo.id,
-                        deputado_id=deputado.id,
-                        legislatura_id=registo.legislatura_id,
-                        position_description=cargo_funcao_atividade,
+                        registo_id=registo.id,
+                                                                        position=cargo_funcao_atividade,
                         headquarters_location=local_sede,
-                        end_date=data_termo,
                         type_classification="menos_tres_anos",
-                        schema_version="V5"
-                    )
+                                            )
                     self.session.add(position_record)
                     
         except Exception as e:
@@ -1520,16 +1446,13 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     
                     # Create support record (services are support records)
                     service_record = RegistoInteressesApoioUnified(
-                        registo_interesses_id=registo.id,
-                        deputado_id=deputado.id,
-                        legislatura_id=registo.legislatura_id,
-                        support_description=natureza,
+                        registo_id=registo.id,
+                                                                        description=natureza,
                         benefit_type='service',
                         service_location=local or local_sede,
-                        support_date=data,
+                        start_date=data,
                         end_date=data_termo,
-                        schema_version="V5"
-                    )
+                                            )
                     self.session.add(service_record)
                     
         except Exception as e:
@@ -1546,13 +1469,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     
                     # Create society record
                     society_record = RegistoInteressesSociedadeUnified(
-                        registo_interesses_id=registo.id,
-                        deputado_id=deputado.id,
-                        legislatura_id=registo.legislatura_id,
-                        entity=natureza,  # Nature as entity
+                        registo_id=registo.id,
+                                                                        entity=natureza,  # Nature as entity
                         headquarters_location=local_sede,
-                        schema_version="V5"
-                    )
+                                            )
                     self.session.add(society_record)
                     
         except Exception as e:

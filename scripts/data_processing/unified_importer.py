@@ -51,7 +51,7 @@ CORRUPTED_FILE_PREFIX = "CORRUPTED FILE:"
 
 # Configure logging
 logging.basicConfig(
-    level=logging.ERROR,
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.FileHandler("unified_importer.log"), logging.StreamHandler()],
 )
@@ -380,17 +380,25 @@ class UnifiedImporter:
                     if self._should_process_file(
                         session, file_path, force_reimport, strict_mode
                     ):
-                        success = self._process_file(session, file_path, strict_mode, skip_video_processing)
+                        success = self._process_file(
+                            session, file_path, strict_mode, skip_video_processing
+                        )
                         if success:
                             processed_files += 1
                         elif strict_mode:
                             # Check if this was a corrupted file that we should skip
-                            import_status = session.query(ImportStatus).filter_by(
-                                file_path=file_path
-                            ).first()
+                            import_status = (
+                                session.query(ImportStatus)
+                                .filter_by(file_path=file_path)
+                                .first()
+                            )
                             if import_status and import_status.status == "corrupted":
-                                logger.info(f"STRICT MODE: Skipping corrupted file {file_path}")
-                                processed_files += 1  # Count as processed since we handled it
+                                logger.info(
+                                    f"STRICT MODE: Skipping corrupted file {file_path}"
+                                )
+                                processed_files += (
+                                    1  # Count as processed since we handled it
+                                )
                             else:
                                 logger.error(
                                     f"STRICT MODE: Exiting due to processing error in {file_path}"
@@ -503,7 +511,13 @@ class UnifiedImporter:
 
         return existing is None
 
-    def _process_file(self, session, file_path: str, strict_mode: bool = False, skip_video_processing: bool = False) -> bool:
+    def _process_file(
+        self,
+        session,
+        file_path: str,
+        strict_mode: bool = False,
+        skip_video_processing: bool = False,
+    ) -> bool:
         """Process a single file"""
         try:
             # Determine file type
@@ -577,11 +591,15 @@ class UnifiedImporter:
                     # In strict mode, only exit for schema violations, not corrupted files
                     if "not well-formed" in error_msg or "invalid token" in error_msg:
                         import_status.status = "corrupted"
-                        import_status.error_message = f"{CORRUPTED_FILE_PREFIX}: {error_msg}"
+                        import_status.error_message = (
+                            f"{CORRUPTED_FILE_PREFIX}: {error_msg}"
+                        )
                         try:
                             session.commit()
                         except Exception as commit_error:
-                            logger.warning(f"Failed to commit corrupted status: {commit_error}")
+                            logger.warning(
+                                f"Failed to commit corrupted status: {commit_error}"
+                            )
                             session.rollback()
                         logger.warning(
                             f"STRICT MODE: Skipping corrupted XML file {file_path}"
@@ -654,7 +672,9 @@ class UnifiedImporter:
                             try:
                                 session.commit()
                             except Exception as commit_error:
-                                logger.warning(f"Failed to commit corrupted status: {commit_error}")
+                                logger.warning(
+                                    f"Failed to commit corrupted status: {commit_error}"
+                                )
                                 session.rollback()
                             logger.warning(
                                 f"STRICT MODE: Skipping corrupted file {file_path}"
@@ -666,7 +686,9 @@ class UnifiedImporter:
                         try:
                             session.commit()
                         except Exception as commit_error:
-                            logger.warning(f"Failed to commit corrupted status: {commit_error}")
+                            logger.warning(
+                                f"Failed to commit corrupted status: {commit_error}"
+                            )
                             session.rollback()
                         logger.warning(
                             f"STRICT MODE: Skipping unreadable file {file_path}"
