@@ -782,9 +782,13 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     ini_tp = self._get_text_value(iniciativa, 'IniTp')
                     ini_tpdesc = self._get_text_value(iniciativa, 'IniTpdesc')
                     
-                    # Skip if no essential data
+                    # Import even without ID or number - use placeholders
                     if not ini_id and not ini_nr:
-                        continue
+                        logger.debug("Missing initiative ID and number - importing with placeholders")
+                        if not ini_id:
+                            ini_id = f"INI_UNKNOWN_{hash(str(iniciativa))}"
+                        if not ini_nr:
+                            ini_nr = "NUMERO_NAO_ESPECIFICADO"
                     
                     # Create DeputyInitiative record
                     initiative = DeputyInitiative(
@@ -1642,23 +1646,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             self.session.close()
     
     # Utility methods
-    def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
-        """Get text value from XML element"""
-        if parent is None:
-            return None
-        element = parent.find(tag_name)
-        if element is not None and element.text:
-            return element.text.strip()
-        return None
     
-    def _safe_int(self, value: str) -> Optional[int]:
-        """Safely convert string to int"""
-        if not value:
-            return None
-        try:
-            return int(float(value))  # Handle values like "16897.0"
-        except (ValueError, TypeError):
-            return None
     
     def _parse_date(self, date_str: str) -> Optional[object]:
         """Parse date string to Python date object"""

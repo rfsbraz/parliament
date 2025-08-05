@@ -126,8 +126,8 @@ class DelegacaoPermanenteMapper(SchemaMapper):
             data_eleicao_str = self._get_text_value(delegation, 'DataEleicao')
             
             if not nome:
-                logger.warning("Missing required field: Nome")
-                return False
+                logger.debug("Missing Nome field - importing with placeholder")
+                nome = "DELEGACAO_SEM_NOME"
             
             # Parse election date
             data_eleicao = self._parse_date(data_eleicao_str)
@@ -188,7 +188,8 @@ class DelegacaoPermanenteMapper(SchemaMapper):
             data_fim_str = self._get_text_value(member, 'DataFim')
             
             if not nome:
-                return False
+                logger.debug("Missing member name - importing with placeholder")
+                nome = "MEMBRO_SEM_NOME"
             
             # Parse dates
             data_inicio = self._parse_date(data_inicio_str)

@@ -140,8 +140,8 @@ class CooperacaoMapper(SchemaMapper):
             local = self._get_text_value(cooperacao_item, 'Local')
             
             if not nome:
-                logger.warning("Missing required field: Nome")
-                return False
+                logger.debug("Missing Nome field - importing with placeholder")
+                nome = "COOPERACAO_SEM_NOME"
             
             # Parse date
             data = self._parse_date(data_str)
@@ -214,22 +214,6 @@ class CooperacaoMapper(SchemaMapper):
         
         return type_mapping.get(tipo.upper(), 'audiencia')
     
-    def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
-        """Get text value from XML element"""
-        element = parent.find(tag_name)
-        if element is not None and element.text:
-            return element.text.strip()
-        return None
-    
-    def _get_int_value(self, parent: ET.Element, tag_name: str) -> Optional[int]:
-        """Get integer value from XML element"""
-        text_value = self._get_text_value(parent, tag_name)
-        if text_value:
-            try:
-                return int(text_value)
-            except ValueError:
-                return None
-        return None
     
     def _parse_date(self, date_str: str) -> Optional[str]:
         """Parse date string to ISO format"""

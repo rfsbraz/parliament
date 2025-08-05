@@ -581,7 +581,12 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         """Process V3 schema record with RecordInterests structure"""
         try:
             if not record_id or not full_name:
-                return False
+                logger.debug("Missing record_id or full_name in V3 record - importing with available data")
+                # Use placeholder values for missing required fields
+                if not record_id:
+                    record_id = f"UNKNOWN_ID_{hash(str(element))}"
+                if not full_name:
+                    full_name = "NOME_NAO_ESPECIFICADO"
             
             # Try to find deputy by record_id (assuming it's a cad_id)
             try:
@@ -775,7 +780,12 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         """Process V2 schema record with detailed nested structures"""
         try:
             if not record_id or not full_name:
-                return False
+                logger.debug("Missing record_id or full_name in V2 record - importing with available data")
+                # Use placeholder values for missing required fields
+                if not record_id:
+                    record_id = f"UNKNOWN_ID_{hash(str(registo_v2_elem))}"
+                if not full_name:
+                    full_name = "NOME_NAO_ESPECIFICADO"
             
             cad_id = int(record_id) if record_id.isdigit() else 0
             deputado = self._get_or_create_deputado(cad_id, full_name)
@@ -827,7 +837,12 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         """Process V1 schema record with detailed nested structures"""
         try:
             if not record_id or not full_name:
-                return False
+                logger.debug("Missing record_id or full_name in V1 record - importing with available data")
+                # Use placeholder values for missing required fields
+                if not record_id:
+                    record_id = f"UNKNOWN_ID_{hash(str(registo_v1_elem))}"
+                if not full_name:
+                    full_name = "NOME_NAO_ESPECIFICADO"
             
             cad_id = int(record_id) if record_id.isdigit() else 0
             deputado = self._get_or_create_deputado(cad_id, full_name)
@@ -1143,8 +1158,8 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             display_name = full_name or nome_identificacao or "Unknown"
             
             if not display_name or display_name.strip() == "Unknown":
-                logger.warning("V5 record has no identifiable name, skipping")
-                return False
+                logger.debug("V5 record has no identifiable name - importing with generated name")
+                display_name = f"DEPUTADO_ANONIMO_{hash(str(registo_v5_elem))}"
             
             # Create main interest registry record in unified model
             success = self._process_v5_unified_record(
@@ -1274,7 +1289,12 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         """Process V5 record in unified model with detailed structures"""
         try:
             if not record_id or not display_name:
-                return False
+                logger.debug("Missing record_id or display_name in V5 unified record - importing with placeholders")
+                # Use placeholder values for missing required fields
+                if not record_id:
+                    record_id = f"UNKNOWN_ID_{hash(str(registo_v5))}"
+                if not display_name:
+                    display_name = "NOME_NAO_ESPECIFICADO"
             
             # Try to find deputy by record_id
             try:

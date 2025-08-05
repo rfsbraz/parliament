@@ -599,8 +599,8 @@ class AtividadesMapper(SchemaMapper):
             )
             
             if not has_content:
-                logger.debug("Skipping empty activity record (no content found)")
-                return True  # Successfully skip empty records
+                logger.debug("Empty activity record - importing with available metadata")
+                # Continue importing even if no text content - there might be valuable structural data
             
             # Extract basic fields
             tipo = self._get_text_value(atividade, 'Tipo')
@@ -623,8 +623,8 @@ class AtividadesMapper(SchemaMapper):
             # Allow records without dates - they can still be valuable
             
             if not assunto:
-                logger.debug("Missing Assunto field - skipping record")
-                return False
+                logger.debug("Missing Assunto field - importing with placeholder")
+                assunto = "ASSUNTO_NAO_ESPECIFICADO"
             
             # Create external ID from numero
             id_externo = None
@@ -712,8 +712,8 @@ class AtividadesMapper(SchemaMapper):
             )
             
             if not has_content:
-                logger.debug("Skipping empty debate record (no content found)")
-                return True  # Successfully skip empty records
+                logger.debug("Empty debate record - importing with available metadata")
+                # Continue importing even if no text content - there might be valuable structural data
             
             debate_id = self._get_text_value(debate, 'DebateId')
             tipo_debate_desig = self._get_text_value(debate, 'TipoDebateDesig')
@@ -725,12 +725,16 @@ class AtividadesMapper(SchemaMapper):
             
             # Basic validation - require both debate_id and assunto
             if not debate_id:
-                logger.debug("Missing DebateId - skipping record")
-                return False
+                logger.debug("Missing DebateId - importing with generated ID")
+                # Generate a unique debate_id based on available data
+                import hashlib
+                hash_input = f"{assunto}_{data_debate_str}_{tipo}_{self.legislature_number}"
+                hash_obj = hashlib.md5(hash_input.encode())
+                debate_id = str(abs(int(hash_obj.hexdigest()[:8], 16)))
                 
             if not assunto:
-                logger.debug("Missing Assunto - skipping record")
-                return False
+                logger.debug("Missing Assunto - importing with placeholder")
+                assunto = "ASSUNTO_NAO_ESPECIFICADO"
             
             data_debate = self._parse_date(data_debate_str)
             
@@ -815,8 +819,8 @@ class AtividadesMapper(SchemaMapper):
             )
             
             if not has_content:
-                logger.debug("Skipping empty report record (no content found)")
-                return True  # Successfully skip empty records
+                logger.debug("Empty report record - importing with available metadata")
+                # Continue importing even if no text content - there might be valuable structural data
             
             tipo = self._get_text_value(relatorio, 'Tipo')
             assunto = self._get_text_value(relatorio, 'Assunto')
@@ -831,8 +835,8 @@ class AtividadesMapper(SchemaMapper):
             audicoes = self._get_text_value(relatorio, 'Audicoes')
             
             if not assunto:
-                logger.debug("Missing Assunto field - skipping report record")
-                return False
+                logger.debug("Missing Assunto field - importing with placeholder")
+                assunto = "ASSUNTO_NAO_ESPECIFICADO"
             
             data_entrada = self._parse_date(data_entrada_str)
             # Allow reports without dates - they can still be valuable
@@ -895,12 +899,6 @@ class AtividadesMapper(SchemaMapper):
         
         return type_mapping.get(tipo.upper(), 'debate')  # Default to debate
     
-    def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
-        """Get text value from XML element"""
-        element = parent.find(tag_name)
-        if element is not None and element.text:
-            return element.text.strip()
-        return None
     
     def _parse_date(self, date_str: str) -> Optional[object]:
         """Parse date string to Python date object"""
@@ -1058,8 +1056,8 @@ class AtividadesMapper(SchemaMapper):
             )
             
             if not has_content:
-                logger.debug("Skipping empty budget/account record (no content found)")
-                return True  # Successfully skip empty records
+                logger.debug("Empty budget/account record - importing with available metadata")
+                # Continue importing even if no text content - there might be valuable structural data
             
             # Extract required fields
             entry_id = self._get_int_value(entry, 'id')
@@ -1407,12 +1405,3 @@ class AtividadesMapper(SchemaMapper):
             logger.error(f"Error processing commission opinions: {e}")
             return False
     
-    def _get_int_value(self, parent: ET.Element, tag_name: str) -> Optional[int]:
-        """Get integer value from XML element"""
-        text_value = self._get_text_value(parent, tag_name)
-        if text_value:
-            try:
-                return int(text_value)
-            except ValueError:
-                return None
-        return None
