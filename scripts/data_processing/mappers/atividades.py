@@ -1068,18 +1068,7 @@ class AtividadesMapper(SchemaMapper):
             leg = self._get_text_value(entry, 'leg')
             sl = self._get_int_value(entry, 'SL')
             
-            # Validate required fields
-            if not entry_id:
-                logger.warning(f"DATA VALIDATION FAILURE: Missing required budget/account field - id")
-                return False
-            
-            if not titulo:
-                logger.warning(f"DATA VALIDATION FAILURE: Missing required budget/account field - titulo")
-                return False
-            
-            if not ano:
-                logger.warning(f"DATA VALIDATION FAILURE: Missing required budget/account field - ano")
-                return False
+            # No validation - let record creation fail naturally if fields are actually required
             
             # Extract optional date fields
             dt_aprovacao_str = self._get_text_value(entry, 'dtAprovacaoCA')

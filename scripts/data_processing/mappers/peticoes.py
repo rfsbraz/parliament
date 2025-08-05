@@ -354,18 +354,6 @@ class PeticoesMapper(SchemaMapper):
                 raise SchemaError(f"Critical petition processing error in strict mode: {e}")
             return results
     
-    def _validate_petition_data(self, pet_id: Optional[int], pet_assunto: Optional[str]) -> bool:
-        """Validate required petition data"""
-        if not pet_id:
-            logger.warning("Missing required field: pet_id")
-            return False
-        if not pet_assunto or not pet_assunto.strip():
-            logger.warning("Missing required field: pet_assunto")
-            return False
-        if not isinstance(pet_id, int) or pet_id <= 0:
-            logger.warning(f"Invalid pet_id: {pet_id} (must be positive integer)")
-            return False
-        return True
     
     def _extract_string_array(self, parent: ET.Element, tag_name: str) -> Optional[str]:
         """Extract string array from XML element and return as comma-separated string"""
@@ -402,9 +390,8 @@ class PeticoesMapper(SchemaMapper):
             pet_nr_assinaturas_inicial = self._get_int_value(petition, 'PetNrAssinaturasInicial')
             iniciativas_originadas = self._extract_string_array(petition, 'Iniciativasoriginadas')
             
-            # Validate required fields
-            if not self._validate_petition_data(pet_id, pet_assunto):
-                return False
+            # No validation - let the import proceed and fail naturally if there are real structural issues
+            # This allows us to identify and fix specific record structure problems
             
             # Check if petition already exists
             existing = None

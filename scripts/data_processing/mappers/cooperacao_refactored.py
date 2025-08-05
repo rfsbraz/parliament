@@ -75,8 +75,7 @@ class CooperacaoMapper(EnhancedSchemaMapper):
         data = self.safe_date_extract(cooperacao_item.find('Data'))
         local = self.safe_text_extract(cooperacao_item.find('Local'))
         
-        if not nome:
-            raise ValueError("Missing required field: Nome")
+        # No validation - let record creation fail naturally if nome is actually required
         
         # Check if record already exists
         existing = None

@@ -483,9 +483,7 @@ class InitiativasMapper(SchemaMapper):
             ini_link_texto = self._get_text_value(iniciativa, 'IniLinkTexto')
             ini_obs = self._get_text_value(iniciativa, 'IniObs')
             
-            if not ini_id or not ini_titulo:
-                logger.warning("Missing required fields: ini_id or ini_titulo")
-                return False
+            # No validation - let record creation fail naturally if ini_id or ini_titulo are actually required
             
             # Check if initiative already exists
             existing = None

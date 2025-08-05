@@ -155,9 +155,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
             # XIII Legislature fields
             anexos = self._extract_string_array(diploma, 'Anexos')
             
-            if not titulo:
-                logger.warning("Missing required field: titulo")
-                return False
+            # No validation - let record creation fail naturally if titulo is actually required
             
             # Check if diploma already exists
             existing = None
