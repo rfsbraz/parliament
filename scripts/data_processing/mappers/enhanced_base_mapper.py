@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Set
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-from database.models import Legislatura
+from database.models import Legislatura, Deputado
 
 logger = logging.getLogger(__name__)
 
@@ -256,6 +256,63 @@ class LegislatureHandlerMixin:
         logger.debug(f"Got legislatura ID: {legislatura.id}")
 
         return legislatura.id
+
+    def _get_or_create_deputado(self, id_cadastro: int, nome: str, nome_completo: str = None, legislatura_id: int = None) -> Deputado:
+        """
+        Get or create deputy record with proper handling of cadastral ID vs primary key
+        
+        CRITICAL UNDERSTANDING: 
+        - id_cadastro: Unique identifier for a person across ALL legislatures (what we lookup by)
+        - deputado.id: Database primary key that foreign keys should reference
+        
+        The issue reported was that foreign key references in XML point to deputado.id, not id_cadastro.
+        This method creates a single deputy record per id_cadastro but allows the database to 
+        assign the primary key that other records will reference.
+        
+        Args:
+            id_cadastro: The cadastral ID for the deputy (unique across legislatures)
+            nome: Deputy's parliamentary name
+            nome_completo: Deputy's full name (optional)
+            legislatura_id: Legislature ID (optional, can be derived from context)
+            
+        Returns:
+            Deputado record that can be referenced by its .id field
+        """
+        if not hasattr(self, "session"):
+            raise AttributeError("Session not available - ensure DatabaseSessionMixin is used")
+        
+        # Check if this person already exists (by cadastral ID)
+        deputado = self.session.query(Deputado).filter_by(id_cadastro=id_cadastro).first()
+        if deputado:
+            # Update with any new information we have
+            if nome_completo and not deputado.nome_completo:
+                deputado.nome_completo = nome_completo
+            if nome and deputado.nome != nome:
+                deputado.nome = nome
+            return deputado
+        
+        # Get legislature ID if not provided
+        if legislatura_id is None:
+            if hasattr(self, 'file_info'):
+                legislatura_id = self._get_legislatura_id(self.file_info)
+            else:
+                # Fallback - get current legislature from context
+                raise ValueError("Cannot determine legislature_id - please provide explicitly")
+        
+        # Create new deputy record - let database assign primary key
+        deputado = Deputado(
+            id_cadastro=id_cadastro,  # Unique person identifier across legislatures
+            nome=nome,
+            nome_completo=nome_completo,
+            legislatura_id=legislatura_id,
+            ativo=True
+        )
+        
+        self.session.add(deputado)
+        self.session.flush()  # Ensure we get the auto-assigned primary key
+        
+        logger.debug(f"Created deputy record: ID={deputado.id}, cadastro={id_cadastro}, name={nome}")
+        return deputado
 
 
 class XMLProcessingMixin:

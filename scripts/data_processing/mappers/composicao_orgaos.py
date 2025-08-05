@@ -1564,28 +1564,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         self.session.flush()  # Get the ID
         return work_group
     
-    def _get_or_create_deputado(self, dep_cad_id: int, nome: str, nome_completo: str = None) -> Deputado:
-        """Get or create deputy record"""
-        deputado = self.session.query(Deputado).filter_by(id_cadastro=dep_cad_id).first()
-        
-        if deputado:
-            # Update name if we have more complete info
-            if nome_completo and not deputado.nome_completo:
-                deputado.nome_completo = nome_completo
-            return deputado
-        
-        # Create basic deputy record (will be enriched by other mappers)
-        deputado = Deputado(
-            id_cadastro=dep_cad_id,
-            nome=nome,
-            nome_completo=nome_completo or nome,
-            legislatura_id=self._get_legislatura_id(self.file_info),
-            ativo=True
-        )
-        
-        self.session.add(deputado)
-        self.session.flush()  # Get the ID
-        return deputado
+    # _get_or_create_deputado method now inherited from enhanced base mapper
     
     def _map_cargo(self, cargo_des: str) -> str:
         """Map cargo description to standard values"""

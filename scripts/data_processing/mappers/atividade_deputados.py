@@ -477,11 +477,13 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             if not dep_nome:
                 dep_nome = "Unknown Deputy"
             
-            # Find or create deputado record in our database
-            deputado_db_id = self._get_or_create_deputado(dep_cad_id, dep_nome, deputado)
-            if not deputado_db_id:
+            # Find or create deputado record in our database using base class method
+            dep_nome_completo = self._get_text_value(deputado, 'DepNomeCompleto')
+            deputado_record = self._get_or_create_deputado(dep_cad_id, dep_nome, dep_nome_completo)
+            if not deputado_record:
                 logger.warning("Could not create/find deputado record")
                 return False
+            deputado_db_id = deputado_record.id
             
             # Create AtividadeDeputado record using our new models
             atividade_deputado_id = self._create_atividade_deputado(
@@ -536,40 +538,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             logger.error(f"Error in real structure deputy processing: {e}")
             return False
     
-    def _get_or_create_deputado(self, dep_cad_id: int, dep_nome: str, deputado_elem: ET.Element) -> Optional[int]:
-        """Get or create deputado record using SQLAlchemy ORM"""
-        try:
-            # Check if deputado exists
-            deputado = self.session.query(Deputado).filter_by(id_cadastro=dep_cad_id).first()
-            
-            if deputado:
-                return deputado.id
-            
-            # Create new deputado record
-            dep_nome_completo = self._get_text_value(deputado_elem, 'DepNomeCompleto')
-            
-            new_deputado = Deputado(
-                id_cadastro=dep_cad_id,
-                nome=dep_nome,
-                nome_completo=dep_nome_completo,
-                legislatura_id=self._get_legislatura_id(self.file_info),
-                ativo=True
-            )
-            
-            self.session.add(new_deputado)
-            self.session.commit()
-            
-            # Process deputy positions (DepCargo)
-            self._process_dep_cargo(deputado_elem, new_deputado.id)
-            
-            return new_deputado.id
-            
-        except Exception as e:
-            logger.error(f"Error creating deputado record: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-            sys.exit(1)
-            return None
+    # _get_or_create_deputado method now inherited from enhanced base mapper
     
     def _create_atividade_deputado(self, deputado_id: int, dep_cad_id: int, 
                                   legislatura_sigla: str, deputado_elem: ET.Element) -> Optional[int]:

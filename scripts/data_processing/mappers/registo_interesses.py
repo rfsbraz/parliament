@@ -555,25 +555,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
     
     # Legislatura and roman numeral methods now inherited from base class
     
-    def _get_or_create_deputado(self, record_id: int, full_name: str) -> Deputado:
-        """Get or create deputy record"""
-        deputado = self.session.query(Deputado).filter_by(id_cadastro=record_id).first()
-        
-        if deputado:
-            return deputado
-        
-        # Create basic deputy record
-        deputado = Deputado(
-            id_cadastro=record_id,
-            nome=full_name,
-            nome_completo=full_name,
-            legislatura_id=self._get_legislatura_id(self.file_info),
-            ativo=True
-        )
-        
-        self.session.add(deputado)
-        self.session.flush()  # Get the ID
-        return deputado
+    # _get_or_create_deputado method now inherited from enhanced base mapper
     
     def _process_v3_record(self, registo_v3_elem: ET.Element, record_id: str, full_name: str, marital_status: str, 
                           spouse_name: str, matrimonial_regime: str, exclusivity: str, 
