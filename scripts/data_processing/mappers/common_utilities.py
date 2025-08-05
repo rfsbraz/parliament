@@ -35,6 +35,9 @@ class ParliamentConstants:
         "%d/%m/%Y",     # 25/12/2023
         "%Y-%m-%dT%H:%M:%S",  # 2023-12-25T14:30:00
         "%d-%m-%Y %H:%M:%S",  # 25-12-2023 14:30:00
+        "%d/%m/%Y %H:%M:%S",  # 18/11/2004 00:00:00
+        "%Y/%m/%d %H:%M:%S",  # 2004/11/18 00:00:00
+        "%d/%m/%Y",     # Single digit support: 1/1/2023
     ]
     
     # Common regex patterns
@@ -76,13 +79,24 @@ class DataValidationUtils:
     
     @staticmethod
     def safe_int_convert(value: Optional[str]) -> Optional[int]:
-        """Safely convert string to integer"""
+        """Safely convert string to integer, handling float strings like '211.0'"""
         if not value:
             return None
         
         try:
+            # First try direct int conversion
             return int(value.strip())
-        except (ValueError, AttributeError):
+        except ValueError:
+            try:
+                # If that fails, try float conversion then int (handles "211.0" -> 211)
+                float_val = float(value.strip())
+                # Check for infinity and NaN
+                if float_val == float('inf') or float_val == float('-inf') or float_val != float_val:
+                    return None
+                return int(float_val)
+            except (ValueError, AttributeError, OverflowError):
+                return None
+        except AttributeError:
             return None
     
     @staticmethod
