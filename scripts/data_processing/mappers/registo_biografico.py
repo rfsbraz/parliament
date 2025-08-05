@@ -609,9 +609,12 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             
             # Extract basic biographical data using VIII Legislature structure
             cad_id = self._get_text_value(record, 'CadId')
+            logger.debug(f"Extracted CadId: '{cad_id}' from record")
             if not cad_id:
+                logger.debug("No CadId found, skipping deputy creation (but still processing record)")
                 return False
                 
+            logger.debug(f"Processing deputy with CadId: {cad_id}")
             cad_id = int(float(cad_id))
             
             # Get or create deputy

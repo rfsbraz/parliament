@@ -91,7 +91,11 @@ class DatabaseSession:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.session:
             if exc_type is not None:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(f"Exception in DatabaseSession, rolling back: {exc_type.__name__}: {exc_val}")
                 self.session.rollback()
+                logger.debug("Session rolled back due to exception")
             self.session.close()
 
 

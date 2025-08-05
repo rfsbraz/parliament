@@ -184,17 +184,25 @@ class LegislatureHandlerMixin:
 
     def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
         """Get existing or create new legislatura record"""
+        logger.debug(f"_get_or_create_legislatura called with sigla: '{legislatura_sigla}'")
+        
         if not hasattr(self, "session"):
             raise AttributeError(
                 "Session not available - ensure DatabaseSessionMixin is used"
             )
 
+        # Query for existing legislatura
+        logger.debug(f"Querying database for existing legislatura: {legislatura_sigla}")
         legislatura = (
             self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
         )
+        
         if legislatura:
+            logger.debug(f"Found existing legislatura: {legislatura_sigla} (ID: {legislatura.id})")
             return legislatura
 
+        logger.debug(f"Legislatura {legislatura_sigla} not found, creating new one")
+        
         # Create new legislatura
         leg_number = self.ROMAN_TO_NUMBER.get(legislatura_sigla, 17)  # Default to XVII
         logger.debug(
@@ -208,9 +216,15 @@ class LegislatureHandlerMixin:
             ativa=False,
         )
 
+        logger.debug(f"Adding legislatura {legislatura_sigla} to session")
         self.session.add(legislatura)
+        
+        logger.debug(f"Flushing session to get ID for legislatura {legislatura_sigla}")
         self.session.flush()  # Flush to get the auto-generated ID
-        logger.info(f"Created new legislatura: {legislatura_sigla}")
+        
+        logger.info(f"Created new legislatura: {legislatura_sigla} (ID: {legislatura.id})")
+        logger.debug(f"Session state after legislatura creation: {self.session.new}, {self.session.dirty}")
+        
         return legislatura
 
     def _get_legislatura_id(self, file_info: Dict) -> int:
@@ -223,6 +237,8 @@ class LegislatureHandlerMixin:
         Returns:
             Legislature ID for use in deputado records
         """
+        logger.debug(f"_get_legislatura_id called with file_info: {file_info}")
+        
         if not hasattr(self, "session"):
             raise AttributeError(
                 "Session not available - ensure DatabaseSessionMixin is used"
@@ -230,10 +246,14 @@ class LegislatureHandlerMixin:
 
         # Extract legislatura sigla from file path
         file_path = file_info.get("file_path", "")
+        logger.debug(f"Extracting legislatura from file path: {file_path}")
         legislatura_sigla = self._extract_legislatura(file_path, None)
+        logger.debug(f"Extracted legislatura sigla: {legislatura_sigla}")
 
         # Get or create the legislatura record
+        logger.debug(f"Getting or creating legislatura for sigla: {legislatura_sigla}")
         legislatura = self._get_or_create_legislatura(legislatura_sigla)
+        logger.debug(f"Got legislatura ID: {legislatura.id}")
 
         return legislatura.id
 

@@ -51,7 +51,7 @@ CORRUPTED_FILE_PREFIX = "CORRUPTED FILE:"
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.FileHandler("unified_importer.log"), logging.StreamHandler()],
 )
@@ -621,11 +621,14 @@ class UnifiedImporter:
 
                 # Use a separate session for the mapper to avoid conflicts
                 with DatabaseSession() as mapper_session:
+                    logger.debug(f"Starting mapper session for {file_path}")
                     mapper = mapper_class(mapper_session)
                     results = mapper.validate_and_map(xml_root, file_info, strict_mode)
 
                     # Commit mapper changes
+                    logger.debug(f"Committing mapper session for {file_path}")
                     mapper_session.commit()
+                    logger.debug(f"Successfully committed mapper session for {file_path}")
 
                     # Update status to completed
                     import_status.status = "completed"
