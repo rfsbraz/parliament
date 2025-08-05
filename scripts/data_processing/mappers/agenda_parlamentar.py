@@ -108,11 +108,10 @@ class AgendaParlamentarMapper(SchemaMapper):
             event_end_date = self._get_text_value(agenda_item, 'EventEndDate')
             event_end_time = self._get_text_value(agenda_item, 'EventEndTime')
             
-            # Parse date - use default date if parsing fails, don't skip the record
+            # Parse date - must be valid for data integrity
             data_evento = self._parse_date(event_start_date)
             if not data_evento:
-                # Use a default date (1900-01-01) for invalid dates to avoid skipping records
-                data_evento = date(1900, 1, 1)
+                raise ValueError(f"Invalid or missing event date: '{event_start_date}'. Data integrity violation - cannot use artificial dates")
             
             # Parse times
             hora_inicio = self._parse_time(event_start_time)
@@ -128,7 +127,7 @@ class AgendaParlamentarMapper(SchemaMapper):
             pos_plenario = self._get_boolean_value(agenda_item, 'PostPlenary')
             
             if not titulo:
-                titulo = "Untitled Event"
+                raise ValueError("Missing required Title field. Data integrity violation - cannot generate artificial titles")
             
             # Check if record already exists using SQLAlchemy ORM
             existing_agenda = self.session.query(AgendaParlamentar).filter_by(

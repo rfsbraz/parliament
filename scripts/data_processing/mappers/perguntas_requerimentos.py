@@ -152,8 +152,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
             ficheiro = self._get_text_value(request, 'Ficheiro')
             
             if not assunto:
-                logger.debug("Missing Assunto field - importing with placeholder")
-                assunto = "ASSUNTO_NAO_ESPECIFICADO"
+                raise ValueError("Missing required Assunto field. Data integrity violation - cannot generate artificial content")
             
             # Parse dates
             dt_entrada = self._parse_date(dt_entrada_str)

@@ -623,8 +623,7 @@ class AtividadesMapper(SchemaMapper):
             # Allow records without dates - they can still be valuable
             
             if not assunto:
-                logger.debug("Missing Assunto field - importing with placeholder")
-                assunto = "ASSUNTO_NAO_ESPECIFICADO"
+                raise ValueError("Missing required Assunto field. Data integrity violation - cannot generate artificial content")
             
             # Create external ID from numero
             id_externo = None
@@ -733,8 +732,7 @@ class AtividadesMapper(SchemaMapper):
                 debate_id = str(abs(int(hash_obj.hexdigest()[:8], 16)))
                 
             if not assunto:
-                logger.debug("Missing Assunto - importing with placeholder")
-                assunto = "ASSUNTO_NAO_ESPECIFICADO"
+                raise ValueError("Missing required Assunto field. Data integrity violation - cannot generate artificial content")
             
             data_debate = self._parse_date(data_debate_str)
             
@@ -835,8 +833,7 @@ class AtividadesMapper(SchemaMapper):
             audicoes = self._get_text_value(relatorio, 'Audicoes')
             
             if not assunto:
-                logger.debug("Missing Assunto field - importing with placeholder")
-                assunto = "ASSUNTO_NAO_ESPECIFICADO"
+                raise ValueError("Missing required Assunto field. Data integrity violation - cannot generate artificial content")
             
             data_entrada = self._parse_date(data_entrada_str)
             # Allow reports without dates - they can still be valuable
@@ -847,7 +844,7 @@ class AtividadesMapper(SchemaMapper):
             
             # Create new report record (no external ID available, so always create new)
             relatorio_obj = RelatorioParlamentar(
-                tipo=tipo or 'RELATORIO',
+                tipo=tipo,
                 assunto=assunto,
                 data_entrada=data_entrada,
                 comissao=comissao,
@@ -1090,12 +1087,12 @@ class AtividadesMapper(SchemaMapper):
             # Create new budget/account record
             orcamento_obj = OrcamentoContasGerencia(
                 entry_id=entry_id,
-                tipo=tipo or 'Unknown',
-                tp=tp or 'UNK',
+                tipo=tipo,
+                tp=tp,
                 titulo=titulo,
                 ano=ano,
-                leg=leg or legislatura.numero,
-                sl=sl or 1,
+                leg=leg,
+                sl=sl,
                 dt_aprovacao_ca=dt_aprovacao,
                 dt_agendamento=dt_agendamento,
                 legislatura_id=legislatura.id
@@ -1222,7 +1219,7 @@ class AtividadesMapper(SchemaMapper):
                 evento_obj = EventoParlamentar(
                     id_evento=id_evento,
                     data=data,
-                    tipo_evento=tipo_evento or tipo,  # Use TipoEvento if available, fallback to Tipo
+                    tipo_evento=tipo_evento,
                     designacao=designacao,
                     local_evento=local_evento,
                     sessao_legislativa=sessao_legislativa,

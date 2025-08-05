@@ -257,32 +257,29 @@ class LegislatureHandlerMixin:
 
         return legislatura.id
 
-    def _get_or_create_deputado(self, id_cadastro: int, nome: str, nome_completo: str = None, legislatura_id: int = None) -> Deputado:
+    def _get_or_create_deputado(self, record_id: int, id_cadastro: int, nome: str, nome_completo: str = None, legislatura_id: int = None) -> Deputado:
         """
-        Get or create deputy record with proper handling of cadastral ID vs primary key
+        Get or create deputy record with CORRECT primary key handling
         
-        CRITICAL UNDERSTANDING: 
-        - id_cadastro: Unique identifier for a person across ALL legislatures (what we lookup by)
-        - deputado.id: Database primary key that foreign keys should reference
-        
-        The issue reported was that foreign key references in XML point to deputado.id, not id_cadastro.
-        This method creates a single deputy record per id_cadastro but allows the database to 
-        assign the primary key that other records will reference.
+        CRITICAL FIX: The issue was that foreign key references in XML data point to deputado.id,
+        not id_cadastro. This method uses record_id as the deputado.id (primary key) that other
+        records will reference, while id_cadastro tracks the same person across legislatures.
         
         Args:
-            id_cadastro: The cadastral ID for the deputy (unique across legislatures)
+            record_id: The ID from XML data that becomes deputado.id (primary key for foreign key references)
+            id_cadastro: The cadastral ID for linking the same person across legislatures
             nome: Deputy's parliamentary name
             nome_completo: Deputy's full name (optional)
             legislatura_id: Legislature ID (optional, can be derived from context)
             
         Returns:
-            Deputado record that can be referenced by its .id field
+            Deputado record that can be referenced by its .id field (which equals record_id)
         """
         if not hasattr(self, "session"):
             raise AttributeError("Session not available - ensure DatabaseSessionMixin is used")
         
-        # Check if this person already exists (by cadastral ID)
-        deputado = self.session.query(Deputado).filter_by(id_cadastro=id_cadastro).first()
+        # First, check if this specific record_id already exists as primary key
+        deputado = self.session.query(Deputado).filter_by(id=record_id).first()
         if deputado:
             # Update with any new information we have
             if nome_completo and not deputado.nome_completo:
@@ -290,6 +287,11 @@ class LegislatureHandlerMixin:
             if nome and deputado.nome != nome:
                 deputado.nome = nome
             return deputado
+        
+        # Check if this person (by id_cadastro) exists with a different record_id
+        existing_person = self.session.query(Deputado).filter_by(id_cadastro=id_cadastro).first()
+        if existing_person:
+            logger.info(f"Deputy {nome} (cadastro {id_cadastro}) already exists with different record ID {existing_person.id}, creating new record with ID {record_id}")
         
         # Get legislature ID if not provided
         if legislatura_id is None:
@@ -299,9 +301,10 @@ class LegislatureHandlerMixin:
                 # Fallback - get current legislature from context
                 raise ValueError("Cannot determine legislature_id - please provide explicitly")
         
-        # Create new deputy record - let database assign primary key
+        # Create new deputy record with specific record_id as primary key
         deputado = Deputado(
-            id_cadastro=id_cadastro,  # Unique person identifier across legislatures
+            id=record_id,  # CRITICAL: Use record_id as primary key for foreign key references
+            id_cadastro=id_cadastro,  # This tracks the same person across legislatures
             nome=nome,
             nome_completo=nome_completo,
             legislatura_id=legislatura_id,
@@ -309,7 +312,7 @@ class LegislatureHandlerMixin:
         )
         
         self.session.add(deputado)
-        self.session.flush()  # Ensure we get the auto-assigned primary key
+        self.session.flush()  # Ensure the record gets the correct ID
         
         logger.debug(f"Created deputy record: ID={deputado.id}, cadastro={id_cadastro}, name={nome}")
         return deputado
@@ -452,7 +455,7 @@ class XMLProcessingMixin:
         if text_value:
             try:
                 # Handle both integer and float strings
-                return int(float(text_value)) if "." in text_value else int(text_value)
+                return int(text_value)
             except (ValueError, TypeError):
                 return None
         return None
@@ -462,7 +465,7 @@ class XMLProcessingMixin:
         if not value:
             return None
         try:
-            return int(float(value)) if "." in str(value) else int(value)
+            return int(value)
         except (ValueError, TypeError):
             return None
 

@@ -773,15 +773,17 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 return False
             
             id_orgao = self._get_text_value(detalhe_orgao, 'idOrgao')
-            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao') or 'PL'
-            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla') or 'Plenário'
+            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao')
+            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla')
+            if not sigla_orgao or not nome_sigla:
+                raise ValueError(f"Missing required organ identifiers: siglaOrgao='{sigla_orgao}', nomeSigla='{nome_sigla}'. Data integrity violation - cannot generate artificial identifiers")
             
             if not id_orgao:
                 return False
             
             # Create or get plenary record
             plenary = self._get_or_create_plenary(
-                int(float(id_orgao)), sigla_orgao, nome_sigla, legislatura
+                int(id_orgao), sigla_orgao, nome_sigla, legislatura
             )
             logger.info(f"Using plenary ID {plenary.id} for {safe_log_text(sigla_orgao)} in {legislatura.numero} Legislature")
             
@@ -835,7 +837,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
             # Create or get committee record
             committee = self._get_or_create_committee(
-                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, legislatura
+                int(id_orgao), sigla_orgao, nome_sigla, legislatura
             )
             
             # Process members
@@ -878,7 +880,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
             # Create or get subcommittee record
             subcommittee = self._get_or_create_subcommittee(
-                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, legislatura
+                int(id_orgao), sigla_orgao, nome_sigla, legislatura
             )
             
             # Process members
@@ -927,7 +929,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
             # Create or get working group record
             work_group = self._get_or_create_work_group(
-                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, legislatura
+                int(id_orgao), sigla_orgao, nome_sigla, legislatura
             )
             
             # Process members
@@ -945,6 +947,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
     def _process_deputy_plenary_membership(self, deputado_data: ET.Element, plenary: Plenary) -> bool:
         """Process deputy membership in plenary"""
         try:
+            dep_id = self._get_text_value(deputado_data, 'DepId')
             dep_cad_id = self._get_text_value(deputado_data, 'DepCadId')
             dep_nome = self._get_text_value(deputado_data, 'DepNomeParlamentar')
             dep_nome_completo = self._get_text_value(deputado_data, 'DepNomeCompleto')
@@ -966,8 +969,14 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             if not data_inicio:
                 return False
             
-            # Find or create deputy
-            deputado = self._get_or_create_deputado(int(float(dep_cad_id)), dep_nome, dep_nome_completo)
+            # Both DepId and DepCadId must be present for data integrity
+            if not dep_id or not dep_cad_id:
+                raise ValueError(f"Missing required deputy IDs: DepId='{dep_id}', DepCadId='{dep_cad_id}'. Data integrity violation - cannot create artificial IDs")
+            
+            # Convert IDs to integers (XML provides strings)
+            record_id = int(dep_id)
+            cadastral_id = int(dep_cad_id)
+            deputado = self._get_or_create_deputado(record_id, cadastral_id, dep_nome, dep_nome_completo)
             
             # Process deputy positions (DepCargo) - IX Legislature structure
             dep_cargo = deputado_data.find('DepCargo')
@@ -985,7 +994,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Create plenary composition record
             plenary_composition = PlenaryComposition(
                 plenary_id=plenary.id,
-                dep_cad_id=int(float(dep_cad_id)),
+                dep_cad_id=int(dep_cad_id),
                 dep_nome_parlamentar=dep_nome,
                 dep_nome_completo=dep_nome_completo,
                 org_id=plenary.id  # Using plenary ID as org_id
@@ -997,7 +1006,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process videos for this deputy (XIII Legislature structure)
             videos = deputado_data.find('Videos')
             if videos is not None:
-                self._process_deputy_videos(videos, deputado.id, int(float(dep_cad_id)), dep_nome, 'Plenario', plenary.id, plenary.sigla_legislatura)
+                self._process_deputy_videos(videos, deputado.id, int(dep_cad_id), dep_nome, 'Plenario', plenary.id, plenary.sigla_legislatura)
             
             return True
             
@@ -1013,6 +1022,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
     def _process_deputy_committee_membership(self, deputado_data: ET.Element, committee: Commission) -> bool:
         """Process deputy membership in committee"""
         try:
+            dep_id = self._get_text_value(deputado_data, 'DepId')
             dep_cad_id = self._get_text_value(deputado_data, 'DepCadId')
             dep_nome = self._get_text_value(deputado_data, 'DepNomeParlamentar')
             dep_nome_completo = self._get_text_value(deputado_data, 'DepNomeCompleto')
@@ -1031,13 +1041,19 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             if not data_inicio:
                 return False
             
-            # Find or create deputy
-            deputado = self._get_or_create_deputado(int(float(dep_cad_id)), dep_nome, dep_nome_completo)
+            # Both DepId and DepCadId must be present for data integrity
+            if not dep_id or not dep_cad_id:
+                raise ValueError(f"Missing required deputy IDs: DepId='{dep_id}', DepCadId='{dep_cad_id}'. Data integrity violation - cannot create artificial IDs")
+            
+            # Convert IDs to integers (XML provides strings)
+            record_id = int(dep_id)
+            cadastral_id = int(dep_cad_id)
+            deputado = self._get_or_create_deputado(record_id, cadastral_id, dep_nome, dep_nome_completo)
             
             # Create commission historical composition record
             composition = CommissionHistoricalComposition(
                 commission_id=committee.id,
-                dep_cad_id=int(float(dep_cad_id)),
+                dep_cad_id=int(dep_cad_id),
                 dep_nome_parlamentar=dep_nome,
                 dep_nome_completo=dep_nome_completo,
                 org_id=committee.id_orgao
@@ -1056,6 +1072,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
     def _process_deputy_subcommittee_membership(self, deputado_data: ET.Element, subcommittee: SubCommittee) -> bool:
         """Process deputy membership in subcommittee"""
         try:
+            dep_id = self._get_text_value(deputado_data, 'DepId')
             dep_cad_id = self._get_text_value(deputado_data, 'DepCadId')
             dep_nome = self._get_text_value(deputado_data, 'DepNomeParlamentar')
             dep_nome_completo = self._get_text_value(deputado_data, 'DepNomeCompleto')
@@ -1074,13 +1091,19 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             if not data_inicio:
                 return False
             
-            # Find or create deputy
-            deputado = self._get_or_create_deputado(int(float(dep_cad_id)), dep_nome, dep_nome_completo)
+            # Both DepId and DepCadId must be present for data integrity
+            if not dep_id or not dep_cad_id:
+                raise ValueError(f"Missing required deputy IDs: DepId='{dep_id}', DepCadId='{dep_cad_id}'. Data integrity violation - cannot create artificial IDs")
+            
+            # Convert IDs to integers (XML provides strings)
+            record_id = int(dep_id)
+            cadastral_id = int(dep_cad_id)
+            deputado = self._get_or_create_deputado(record_id, cadastral_id, dep_nome, dep_nome_completo)
             
             # Create subcommittee historical composition record
             composition = SubCommitteeHistoricalComposition(
                 sub_committee_id=subcommittee.id,
-                dep_cad_id=int(float(dep_cad_id)),
+                dep_cad_id=int(dep_cad_id),
                 dep_nome_parlamentar=dep_nome,
                 dep_nome_completo=dep_nome_completo,
                 org_id=subcommittee.id_orgao
@@ -1099,6 +1122,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
     def _process_deputy_work_group_membership(self, deputado_data: ET.Element, work_group: WorkGroup) -> bool:
         """Process deputy membership in work group"""
         try:
+            dep_id = self._get_text_value(deputado_data, 'DepId')
             dep_cad_id = self._get_text_value(deputado_data, 'DepCadId')
             dep_nome = self._get_text_value(deputado_data, 'DepNomeParlamentar')
             dep_nome_completo = self._get_text_value(deputado_data, 'DepNomeCompleto')
@@ -1117,13 +1141,19 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             if not data_inicio:
                 return False
             
-            # Find or create deputy
-            deputado = self._get_or_create_deputado(int(float(dep_cad_id)), dep_nome, dep_nome_completo)
+            # Both DepId and DepCadId must be present for data integrity
+            if not dep_id or not dep_cad_id:
+                raise ValueError(f"Missing required deputy IDs: DepId='{dep_id}', DepCadId='{dep_cad_id}'. Data integrity violation - cannot create artificial IDs")
+            
+            # Convert IDs to integers (XML provides strings)
+            record_id = int(dep_id)
+            cadastral_id = int(dep_cad_id)
+            deputado = self._get_or_create_deputado(record_id, cadastral_id, dep_nome, dep_nome_completo)
             
             # Create work group historical composition record
             composition = WorkGroupHistoricalComposition(
                 work_group_id=work_group.id,
-                dep_cad_id=int(float(dep_cad_id)),
+                dep_cad_id=int(dep_cad_id),
                 dep_nome_parlamentar=dep_nome,
                 dep_nome_completo=dep_nome_completo,
                 org_id=work_group.id_orgao
@@ -1154,9 +1184,11 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             if not dep_cad_id or not dep_nome_parlamentar:
                 return False
             
-            # Get or create deputy
+            # Get or create deputy using both record_id and cadastral_id
+            record_id = int(dep_id) if dep_id else int(dep_cad_id)
+            cadastral_id = int(dep_cad_id)
             deputado = self._get_or_create_deputado(
-                int(dep_cad_id), dep_nome_parlamentar, dep_nome_completo
+                record_id, cadastral_id, dep_nome_parlamentar, dep_nome_completo
             )
             
             # Process parliamentary group information (depGP)
@@ -1196,6 +1228,11 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         """Extract deputado and legislatura from data element"""
         try:
             # Try different field patterns for deputy ID and name
+            dep_id = (
+                self._get_int_value(data_element, 'DepId') or
+                self._get_int_value(data_element, 'depId')
+            )
+            
             dep_cad_id = (
                 self._get_int_value(data_element, 'DepCadId') or
                 self._get_int_value(data_element, 'depCadId') or
@@ -1210,7 +1247,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
             
             if dep_cad_id and dep_nome:
-                deputado = self._get_or_create_deputado(dep_cad_id, dep_nome, dep_nome)
+                # Get or create deputy using both record_id and cadastral_id
+                record_id = dep_id if dep_id else dep_cad_id
+                deputado = self._get_or_create_deputado(record_id, dep_cad_id, dep_nome, dep_nome)
                 
                 # Get legislatura from file context
                 legislatura_sigla = self._extract_legislatura(self.file_info.get('file_path', ''), None)
@@ -1380,8 +1419,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
             # Create or get committee record using I Legislature data
             committee = self._get_or_create_committee(
-                int(float(id_orgao)), 
-                sigla_orgao or f"CO{numero_orgao}" if numero_orgao else 'CO', 
+                int(id_orgao), 
+                sigla_orgao, 
                 nome_sigla, 
                 legislatura
             )
@@ -1598,8 +1637,10 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 return False
             
             id_orgao = self._get_text_value(detalhe_orgao, 'idOrgao')
-            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao') or 'MAR'
-            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla') or 'Mesa da Assembleia da República'
+            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao')
+            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla')
+            if not sigla_orgao or not nome_sigla:
+                raise ValueError(f"Missing required organ identifiers: siglaOrgao='{sigla_orgao}', nomeSigla='{nome_sigla}'. Data integrity violation - cannot generate artificial identifiers")
             numero_orgao = self._get_text_value(detalhe_orgao, 'numeroOrgao')
             
             if not id_orgao:
@@ -1607,7 +1648,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
             # Create or get AR Board record
             ar_board = self._get_or_create_ar_board(
-                int(float(id_orgao)), sigla_orgao, nome_sigla, numero_orgao, legislatura
+                int(id_orgao), sigla_orgao, nome_sigla, numero_orgao, legislatura
             )
             
             # Process members
@@ -1636,8 +1677,10 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 return False
             
             id_orgao = self._get_text_value(detalhe_orgao, 'idOrgao')
-            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao') or 'CA'
-            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla') or 'Conselho de Administração'
+            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao')
+            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla')
+            if not sigla_orgao or not nome_sigla:
+                raise ValueError(f"Missing required organ identifiers: siglaOrgao='{sigla_orgao}', nomeSigla='{nome_sigla}'. Data integrity violation - cannot generate artificial identifiers")
             numero_orgao = self._get_text_value(detalhe_orgao, 'numeroOrgao')
             
             if not id_orgao:
@@ -1645,7 +1688,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
             # Create or get Administrative Council record
             admin_council = self._get_or_create_administrative_council(
-                int(float(id_orgao)), sigla_orgao, nome_sigla, numero_orgao, legislatura
+                int(id_orgao), sigla_orgao, nome_sigla, numero_orgao, legislatura
             )
             
             # Process members
@@ -1675,8 +1718,10 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 return False
             
             id_orgao = self._get_text_value(detalhe_orgao, 'idOrgao')
-            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao') or 'CP'
-            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla') or 'Comissão Permanente'
+            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao')
+            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla')
+            if not sigla_orgao or not nome_sigla:
+                raise ValueError(f"Missing required organ identifiers: siglaOrgao='{sigla_orgao}', nomeSigla='{nome_sigla}'. Data integrity violation - cannot generate artificial identifiers")
             numero_orgao = self._get_text_value(detalhe_orgao, 'numeroOrgao')
             
             if not id_orgao:
@@ -1684,7 +1729,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
             # Create or get Permanent Committee record
             permanent_committee = self._get_or_create_permanent_committee(
-                int(float(id_orgao)), sigla_orgao, nome_sigla, numero_orgao, legislatura
+                int(id_orgao), sigla_orgao, nome_sigla, numero_orgao, legislatura
             )
             
             # Process members
@@ -1716,8 +1761,10 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 return False
             
             id_orgao = self._get_text_value(detalhe_orgao, 'idOrgao')
-            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao') or 'CL'
-            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla') or 'Conferência de Líderes'
+            sigla_orgao = self._get_text_value(detalhe_orgao, 'siglaOrgao')
+            nome_sigla = self._get_text_value(detalhe_orgao, 'nomeSigla')
+            if not sigla_orgao or not nome_sigla:
+                raise ValueError(f"Missing required organ identifiers: siglaOrgao='{sigla_orgao}', nomeSigla='{nome_sigla}'. Data integrity violation - cannot generate artificial identifiers")
             numero_orgao = self._get_text_value(detalhe_orgao, 'numeroOrgao')
             
             if not id_orgao:
@@ -1725,7 +1772,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
             # Create or get Leader Conference record
             leader_conference = self._get_or_create_leader_conference(
-                int(float(id_orgao)), sigla_orgao, nome_sigla, numero_orgao, legislatura
+                int(id_orgao), sigla_orgao, nome_sigla, numero_orgao, legislatura
             )
             
             # Process members
@@ -1855,7 +1902,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
             # Create or get committee record
             committee = self._get_or_create_committee(
-                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, legislatura
+                int(id_orgao), sigla_orgao, nome_sigla, legislatura
             )
             
             # Process members
@@ -1894,7 +1941,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             
             # Create or get working group record
             work_group = self._get_or_create_work_group(
-                int(float(id_orgao)), sigla_orgao, nome_sigla or sigla_orgao, legislatura
+                int(id_orgao), sigla_orgao, nome_sigla, legislatura
             )
             
             # Process historical composition (VIII Legislature structure)
@@ -2283,10 +2330,13 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         """Process deputy membership in AR Board"""
         try:
             # Get or create deputy and legislatura
+            dep_id = self._get_int_value(deputado_data, 'DepId')
             dep_cad_id = self._get_int_value(deputado_data, 'DepCadId')
             dep_nome = self._get_text_value(deputado_data, 'DepNomeParlamentar')
             if dep_cad_id and dep_nome:
-                deputado = self._get_or_create_deputado(dep_cad_id, dep_nome, dep_nome)
+                # Get or create deputy using both record_id and cadastral_id
+                record_id = dep_id if dep_id else dep_cad_id
+                deputado = self._get_or_create_deputado(record_id, dep_cad_id, dep_nome, dep_nome)
                 
                 # Get legislatura from file context
                 legislatura_sigla = self._extract_legislatura(self.file_info.get('file_path', ''), None)

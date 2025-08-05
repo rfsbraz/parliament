@@ -564,19 +564,18 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         try:
             if not record_id or not full_name:
                 logger.debug("Missing record_id or full_name in V3 record - importing with available data")
-                # Use placeholder values for missing required fields
-                if not record_id:
-                    record_id = f"UNKNOWN_ID_{hash(str(element))}"
-                if not full_name:
-                    full_name = "NOME_NAO_ESPECIFICADO"
+                # Both record_id and full_name are required for data integrity
+                if not record_id or not full_name:
+                    raise ValueError(f"Missing required fields: record_id='{record_id}', full_name='{full_name}'. Data integrity violation - cannot generate artificial data")
             
             # Try to find deputy by record_id (assuming it's a cad_id)
             try:
                 cad_id = int(record_id)
-                deputado = self._get_or_create_deputado(cad_id, full_name)
+                # Use cad_id as both record_id and cadastral_id (same person identifier)
+                deputado = self._get_or_create_deputado(cad_id, cad_id, full_name)
             except ValueError:
                 # If record_id is not numeric, create a dummy deputy
-                deputado = self._get_or_create_deputado(0, full_name)
+                deputado = self._get_or_create_deputado(0, 0, full_name)
             
             # Check if record already exists in unified model
             existing = self.session.query(RegistoInteressesUnified).filter_by(
@@ -763,14 +762,14 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         try:
             if not record_id or not full_name:
                 logger.debug("Missing record_id or full_name in V2 record - importing with available data")
-                # Use placeholder values for missing required fields
-                if not record_id:
-                    record_id = f"UNKNOWN_ID_{hash(str(registo_v2_elem))}"
-                if not full_name:
-                    full_name = "NOME_NAO_ESPECIFICADO"
+                # Both record_id and full_name are required for data integrity
+                if not record_id or not full_name:
+                    raise ValueError(f"Missing required V2 fields: record_id='{record_id}', full_name='{full_name}'. Data integrity violation - cannot generate artificial data")
             
-            cad_id = int(record_id) if record_id.isdigit() else 0
-            deputado = self._get_or_create_deputado(cad_id, full_name)
+            if not record_id.isdigit():
+                raise ValueError(f"Record ID must be numeric: '{record_id}'. Data integrity violation - cannot use non-numeric ID")
+            cad_id = int(record_id)
+            deputado = self._get_or_create_deputado(cad_id, cad_id, full_name)
             
             # Extract additional V2 fields
             cad_actividade_profissional = self._get_text(registo_v2_elem, 'cadActividadeProfissional')
@@ -820,14 +819,14 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         try:
             if not record_id or not full_name:
                 logger.debug("Missing record_id or full_name in V1 record - importing with available data")
-                # Use placeholder values for missing required fields
-                if not record_id:
-                    record_id = f"UNKNOWN_ID_{hash(str(registo_v1_elem))}"
-                if not full_name:
-                    full_name = "NOME_NAO_ESPECIFICADO"
+                # Both record_id and full_name are required for data integrity
+                if not record_id or not full_name:
+                    raise ValueError(f"Missing required V1 fields: record_id='{record_id}', full_name='{full_name}'. Data integrity violation - cannot generate artificial data")
             
-            cad_id = int(record_id) if record_id.isdigit() else 0
-            deputado = self._get_or_create_deputado(cad_id, full_name)
+            if not record_id.isdigit():
+                raise ValueError(f"Record ID must be numeric: '{record_id}'. Data integrity violation - cannot use non-numeric ID")
+            cad_id = int(record_id)
+            deputado = self._get_or_create_deputado(cad_id, cad_id, full_name)
             
             # Create unified record for V1
             existing = self.session.query(RegistoInteressesUnified).filter_by(
@@ -1135,13 +1134,15 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                 data_alteracao_funcao = self._parse_date(self._get_namespaced_text(facto_declaracao, 'tempuri', 'DataAlteracaoFuncao'))
                 data_cessacao_funcao = self._parse_date(self._get_namespaced_text(facto_declaracao, 'tempuri', 'DataCessacaoFuncao'))
             
-            # Use category as record_id if available, otherwise use personal_id or a default
-            record_id = categoria or personal_id or id_cadastro_gode or "0"
-            display_name = full_name or nome_identificacao or "Unknown"
+            # Determine record_id from available fields (no fallbacks allowed)
+            record_id = categoria or personal_id or id_cadastro_gode
+            display_name = full_name or nome_identificacao
+            
+            if not record_id:
+                raise ValueError(f"No valid record ID found: categoria='{categoria}', personal_id='{personal_id}', id_cadastro_gode='{id_cadastro_gode}'. Data integrity violation")
             
             if not display_name or display_name.strip() == "Unknown":
-                logger.debug("V5 record has no identifiable name - importing with generated name")
-                display_name = f"DEPUTADO_ANONIMO_{hash(str(registo_v5_elem))}"
+                raise ValueError(f"V5 record has no identifiable name: '{display_name}'. Data integrity violation - cannot generate artificial names")
             
             # Create main interest registry record in unified model
             success = self._process_v5_unified_record(
@@ -1272,18 +1273,16 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         try:
             if not record_id or not display_name:
                 logger.debug("Missing record_id or display_name in V5 unified record - importing with placeholders")
-                # Use placeholder values for missing required fields
-                if not record_id:
-                    record_id = f"UNKNOWN_ID_{hash(str(registo_v5))}"
-                if not display_name:
-                    display_name = "NOME_NAO_ESPECIFICADO"
+                # Both record_id and display_name are required for data integrity
+                if not record_id or not display_name:
+                    raise ValueError(f"Missing required V5 fields: record_id='{record_id}', display_name='{display_name}'. Data integrity violation - cannot generate artificial data")
             
             # Try to find deputy by record_id
             try:
                 cad_id = int(record_id)
-                deputado = self._get_or_create_deputado(cad_id, display_name)
+                deputado = self._get_or_create_deputado(cad_id, cad_id, display_name)
             except ValueError:
-                deputado = self._get_or_create_deputado(0, display_name)
+                deputado = self._get_or_create_deputado(0, 0, display_name)
             
             # Extract gender from GenDadosPessoais
             dados_pessoais = self._get_namespaced_element(registo_v5, 'tempuri', 'GenDadosPessoais')
