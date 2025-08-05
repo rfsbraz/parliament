@@ -1192,37 +1192,71 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             sys.exit(1)
             return False
     
-    def _process_gp_situations(self, dep_gp: ET.Element, **kwargs) -> bool:
+    def _get_deputado_and_legislatura_from_data(self, data_element: ET.Element) -> tuple:
+        """Extract deputado and legislatura from data element"""
+        try:
+            # Try different field patterns for deputy ID and name
+            dep_cad_id = (
+                self._get_int_value(data_element, 'DepCadId') or
+                self._get_int_value(data_element, 'depCadId') or
+                self._get_int_value(data_element, 'depCadID')
+            )
+            
+            dep_nome = (
+                self._get_text_value(data_element, 'DepNomeParlamentar') or
+                self._get_text_value(data_element, 'depNomeParlamentar') or
+                self._get_text_value(data_element, 'depNome') or
+                self._get_text_value(data_element, 'DepNome')
+            )
+            
+            if dep_cad_id and dep_nome:
+                deputado = self._get_or_create_deputado(dep_cad_id, dep_nome, dep_nome)
+                
+                # Get legislatura from file context
+                legislatura_sigla = self._extract_legislatura(self.file_info.get('file_path', ''), None)
+                legislatura = self._get_or_create_legislatura(legislatura_sigla)
+                
+                return deputado, legislatura
+            else:
+                logger.debug(f"Could not extract deputy info: dep_cad_id={dep_cad_id}, dep_nome={dep_nome}")
+                return None, None
+        except Exception as e:
+            logger.warning(f"Error extracting deputado and legislatura: {e}")
+            return None, None
+
+    def _process_gp_situations(self, dep_gp: ET.Element, deputado=None, legislatura=None, composition_type=None, **kwargs) -> bool:
         """Process deputy parliamentary group situation for various organ compositions"""
         if dep_gp is None:
             logger.warning("Empty dep_gp element provided")
             return True
             
-        if not kwargs:
-            logger.warning("No composition context provided for GP situation processing")
-            return True
+        # Check if we have the required context - if not, try to get it from composition context
+        if not deputado or not legislatura:
+            # Try to extract from composition context in kwargs
+            for key, value in kwargs.items():
+                if key.endswith('_composition') and hasattr(value, '__dict__'):
+                    # Try to get parent element that might have deputy data
+                    parent_element = getattr(value, '_source_element', None)
+                    if parent_element is not None:
+                        deputado, legislatura = self._get_deputado_and_legislatura_from_data(parent_element)
+                        if deputado and legislatura:
+                            break
+            
+            # If still missing, log and return
+            if not deputado or not legislatura:
+                logger.debug(f"Missing required context for GP processing: deputado={'present' if deputado else 'None'}, legislatura={'present' if legislatura else 'None'}")
+                return True
             
         try:
-            # Get composition context from kwargs
+            # Get composition context from kwargs (for backward compatibility)
             composition = None
-            composition_type = None
-            deputado = None
-            legislatura = None
             
             for key, value in kwargs.items():
                 if key.endswith('_composition'):
                     composition = value
-                    composition_type = key.replace('_composition', '')
-                    # Extract deputado and legislatura from composition context
-                    if hasattr(value, 'deputado_id'):
-                        deputado = self.session.query(Deputado).filter_by(id=value.deputado_id).first()
-                    if hasattr(value, 'legislatura_id'):
-                        legislatura = self.session.query(Legislatura).filter_by(id=value.legislatura_id).first()
+                    if not composition_type:
+                        composition_type = key.replace('_composition', '')
                     break
-            
-            if not composition:
-                logger.warning("No valid composition context found")
-                return True
             
             # Handle different GP structure patterns - optimized approach
             gp_situations = (
@@ -1568,10 +1602,6 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         else:
             return 'membro'
     
-    def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
-        """Extract text content from XML child element with safe handling"""
-        element = parent.find(tag_name)
-        return self.safe_text_extract(element) or None
     
     def _parse_date(self, date_str: str) -> Optional[str]:
         """Parse date string to ISO format - using common utilities"""
@@ -2273,13 +2303,26 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
     def _process_deputy_ar_board_membership(self, deputado_data: ET.Element, ar_board) -> bool:
         """Process deputy membership in AR Board"""
         try:
+            # Get or create deputy and legislatura
+            dep_cad_id = self._get_int_value(deputado_data, 'DepCadId')
+            dep_nome = self._get_text_value(deputado_data, 'DepNomeParlamentar')
+            if dep_cad_id and dep_nome:
+                deputado = self._get_or_create_deputado(dep_cad_id, dep_nome, dep_nome)
+                
+                # Get legislatura from file context
+                legislatura_sigla = self._extract_legislatura(self.file_info.get('file_path', ''), None)
+                legislatura = self._get_or_create_legislatura(legislatura_sigla)
+            else:
+                deputado = None
+                legislatura = None
+            
             # Create historical composition record
             composition = ARBoardHistoricalComposition(
                 board_id=ar_board.id,
                 leg_des=self._get_text_value(deputado_data, 'LegDes'),
                 dep_id=self._get_int_value(deputado_data, 'DepId'),
-                dep_cad_id=self._get_int_value(deputado_data, 'DepCadId'),
-                dep_nome_parlamentar=self._get_text_value(deputado_data, 'DepNomeParlamentar'),
+                dep_cad_id=dep_cad_id,
+                dep_nome_parlamentar=dep_nome,
                 org_id=ar_board.id_orgao
             )
             
@@ -2289,7 +2332,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process parliamentary group situations
             dep_gp = deputado_data.find('DepGP')
             if dep_gp is not None:
-                self._process_gp_situations(dep_gp, ar_board_composition=composition)
+                self._process_gp_situations(dep_gp, deputado=deputado, legislatura=legislatura, composition_type='ar_board', ar_board_composition=composition)
             
             # Process deputy situations
             dep_situacao = deputado_data.find('DepSituacao')
@@ -2322,7 +2365,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process parliamentary group situations
             dep_gp = historico_data.find('depGP')
             if dep_gp is not None:
-                self._process_gp_situations(dep_gp, ar_board_composition=composition)
+                deputado, legislatura = self._get_deputado_and_legislatura_from_data(historico_data)
+                self._process_gp_situations(dep_gp, deputado=deputado, legislatura=legislatura, composition_type='ar_board', ar_board_composition=composition)
             
             # Process deputy positions/cargo
             dep_cargo = historico_data.find('depCargo')
@@ -2355,7 +2399,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process parliamentary group situations
             dep_gp = historico_data.find('depGP')
             if dep_gp is not None:
-                self._process_gp_situations(dep_gp, commission_composition=composition)
+                deputado, legislatura = self._get_deputado_and_legislatura_from_data(historico_data)
+                self._process_gp_situations(dep_gp, deputado=deputado, legislatura=legislatura, composition_type='commission', commission_composition=composition)
             
             # Process deputy positions/cargo
             dep_cargo = historico_data.find('depCargo')
@@ -2393,7 +2438,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process parliamentary group situations
             dep_gp = historico_data.find('depGP')
             if dep_gp is not None:
-                self._process_gp_situations(dep_gp, sub_committee_composition=composition)
+                deputado, legislatura = self._get_deputado_and_legislatura_from_data(historico_data)
+                self._process_gp_situations(dep_gp, deputado=deputado, legislatura=legislatura, composition_type='sub_committee', sub_committee_composition=composition)
             
             # Process deputy positions/cargo
             dep_cargo = historico_data.find('depCargo')
@@ -2431,7 +2477,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process parliamentary group situations
             dep_gp = historico_data.find('depGP')
             if dep_gp is not None:
-                self._process_gp_situations(dep_gp, work_group_composition=composition)
+                deputado, legislatura = self._get_deputado_and_legislatura_from_data(historico_data)
+                self._process_gp_situations(dep_gp, deputado=deputado, legislatura=legislatura, composition_type='work_group', work_group_composition=composition)
             
             # Process deputy positions/cargo
             dep_cargo = historico_data.find('depCargo')
@@ -2468,7 +2515,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process parliamentary group situations
             dep_gp = deputado_data.find('DepGP')
             if dep_gp is not None:
-                self._process_gp_situations(dep_gp, admin_council_composition=composition)
+                deputado, legislatura = self._get_deputado_and_legislatura_from_data(deputado_data)
+                self._process_gp_situations(dep_gp, deputado=deputado, legislatura=legislatura, composition_type='admin_council', admin_council_composition=composition)
             
             # Process deputy situations
             dep_situacao = deputado_data.find('DepSituacao')
@@ -2500,7 +2548,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process parliamentary group situations
             dep_gp = deputado_data.find('DepGP')
             if dep_gp is not None:
-                self._process_gp_situations(dep_gp, permanent_committee_composition=composition)
+                deputado, legislatura = self._get_deputado_and_legislatura_from_data(deputado_data)
+                self._process_gp_situations(dep_gp, deputado=deputado, legislatura=legislatura, composition_type='permanent_committee', permanent_committee_composition=composition)
             
             # Process deputy situations
             dep_situacao = deputado_data.find('DepSituacao')
@@ -2533,7 +2582,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process parliamentary group situations
             dep_gp = historico_data.find('depGP')
             if dep_gp is not None:
-                self._process_gp_situations(dep_gp, permanent_committee_composition=composition)
+                deputado, legislatura = self._get_deputado_and_legislatura_from_data(historico_data)
+                self._process_gp_situations(dep_gp, deputado=deputado, legislatura=legislatura, composition_type='permanent_committee', permanent_committee_composition=composition)
             
             # Process deputy positions/cargo
             dep_cargo = historico_data.find('depCargo')
@@ -2570,7 +2620,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process parliamentary group situations
             dep_gp = deputado_data.find('DepGP')
             if dep_gp is not None:
-                self._process_gp_situations(dep_gp, leader_conference_composition=composition)
+                deputado, legislatura = self._get_deputado_and_legislatura_from_data(deputado_data)
+                self._process_gp_situations(dep_gp, deputado=deputado, legislatura=legislatura, composition_type='leader_conference', leader_conference_composition=composition)
             
             # Process deputy situations
             dep_situacao = deputado_data.find('DepSituacao')
@@ -2603,7 +2654,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process parliamentary group situations
             dep_gp = historico_data.find('depGP')
             if dep_gp is not None:
-                self._process_gp_situations(dep_gp, admin_council_composition=composition)
+                deputado, legislatura = self._get_deputado_and_legislatura_from_data(historico_data)
+                self._process_gp_situations(dep_gp, deputado=deputado, legislatura=legislatura, composition_type='admin_council', admin_council_composition=composition)
             
             # Process deputy positions/cargo
             dep_cargo = historico_data.find('depCargo')
@@ -2641,7 +2693,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Process parliamentary group situations
             dep_gp = historico_data.find('depGP')
             if dep_gp is not None:
-                self._process_gp_situations(dep_gp, leader_conference_composition=composition)
+                deputado, legislatura = self._get_deputado_and_legislatura_from_data(historico_data)
+                self._process_gp_situations(dep_gp, deputado=deputado, legislatura=legislatura, composition_type='leader_conference', leader_conference_composition=composition)
             
             # Process deputy positions/cargo
             dep_cargo = historico_data.find('depCargo')
@@ -2786,15 +2839,6 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             return text_value.lower() in ('true', '1', 'yes', 'sim')
         return False
     
-    def _get_int_value(self, parent: ET.Element, tag_name: str) -> Optional[int]:
-        """Get integer value from XML element"""
-        text_value = self._get_text_value(parent, tag_name)
-        if text_value:
-            try:
-                return int(float(text_value)) if '.' in text_value else int(text_value)
-            except (ValueError, TypeError):
-                return None
-        return None
     
     def _handle_processing_error(self, error_msg: str, results: Dict, strict_mode: bool):
         """Handle processing errors with strict mode support"""

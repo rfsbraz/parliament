@@ -186,22 +186,6 @@ class AgendaParlamentarMapper(SchemaMapper):
             sys.exit(1)
             return False
     
-    def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
-        """Get text value from XML element"""
-        element = parent.find(tag_name)
-        if element is not None and element.text:
-            return element.text.strip()
-        return None
-    
-    def _get_int_value(self, parent: ET.Element, tag_name: str) -> Optional[int]:
-        """Get integer value from XML element"""
-        text_value = self._get_text_value(parent, tag_name)
-        if text_value:
-            try:
-                return int(text_value)
-            except ValueError:
-                return None
-        return None
     
     def _get_boolean_value(self, parent: ET.Element, tag_name: str) -> bool:
         """Get boolean value from XML element"""

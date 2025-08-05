@@ -455,14 +455,6 @@ class IntervencoesMapper(SchemaMapper):
         self.session.flush()  # Get the ID
         return legislatura
     
-    def _safe_int(self, value) -> Optional[int]:
-        """Safely convert to int"""
-        if not value:
-            return None
-        try:
-            return int(float(value)) if '.' in str(value) else int(value)
-        except (ValueError, TypeError):
-            return None
     
     def _parse_date(self, date_str: str) -> Optional[str]:
         """Parse date string to standard format"""
