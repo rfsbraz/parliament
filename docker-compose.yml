@@ -93,19 +93,23 @@ services:
     depends_on:
       - backend
 
-  # Adminer (Database Management UI)
-  adminer:
-    image: adminer:4.8.1
-    container_name: parliament_adminer
+  # phpMyAdmin (Database Management UI)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5.2
+    container_name: parliament_phpmyadmin
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8080:80"
     networks:
       - parliament_network
     depends_on:
       - mysql
     environment:
-      ADMINER_DEFAULT_SERVER: mysql
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: parliament_user
+      PMA_PASSWORD: parliament_pass
+      MYSQL_ROOT_PASSWORD: parliament_dev
 
   # Redis (for caching, sessions, etc.)
   redis:
