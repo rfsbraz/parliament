@@ -86,24 +86,28 @@ class ReunioesNacionaisMapper(SchemaMapper):
             'ArrayOfReuniao',
             'ArrayOfReuniao.Reuniao',
             
-            # Main meeting fields
-            'ArrayOfReuniao.Reuniao.Id',
-            'ArrayOfReuniao.Reuniao.Nome',
-            'ArrayOfReuniao.Reuniao.Tipo',
-            'ArrayOfReuniao.Reuniao.TipoDesignacao',
-            'ArrayOfReuniao.Reuniao.DataInicio',
-            'ArrayOfReuniao.Reuniao.DataFim',
-            'ArrayOfReuniao.Reuniao.Local',
-            'ArrayOfReuniao.Reuniao.Promotor',
-            'ArrayOfReuniao.Reuniao.Observacoes',
+            # Main meeting fields (XML uses lowercase)
+            'ArrayOfReuniao.Reuniao.id',
+            'ArrayOfReuniao.Reuniao.nome',
+            'ArrayOfReuniao.Reuniao.tipo',
+            'ArrayOfReuniao.Reuniao.tipoDesignacao',
+            'ArrayOfReuniao.Reuniao.dataInicio',
+            'ArrayOfReuniao.Reuniao.dataFim',
+            'ArrayOfReuniao.Reuniao.local',
+            'ArrayOfReuniao.Reuniao.promotor',
+            'ArrayOfReuniao.Reuniao.observacoes',
+            'ArrayOfReuniao.Reuniao.legislatura',
+            'ArrayOfReuniao.Reuniao.sessao',
             
-            # Participants
-            'ArrayOfReuniao.Reuniao.Participantes',
-            'ArrayOfReuniao.Reuniao.Participantes.Participante',
-            'ArrayOfReuniao.Reuniao.Participantes.Participante.Tipo',
-            'ArrayOfReuniao.Reuniao.Participantes.Participante.Nome',
-            'ArrayOfReuniao.Reuniao.Participantes.Participante.Gp',
-            'ArrayOfReuniao.Reuniao.Participantes.Participante.Id'
+            # Participants (XML uses lowercase)
+            'ArrayOfReuniao.Reuniao.participantes',
+            'ArrayOfReuniao.Reuniao.participantes.Participante',
+            'ArrayOfReuniao.Reuniao.participantes.Participante.tipo',
+            'ArrayOfReuniao.Reuniao.participantes.Participante.nome',
+            'ArrayOfReuniao.Reuniao.participantes.Participante.gp',
+            'ArrayOfReuniao.Reuniao.participantes.Participante.id',
+            'ArrayOfReuniao.Reuniao.participantes.Participante.leg',
+            'ArrayOfReuniao.Reuniao.participantes.Participante.pais'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -154,16 +158,16 @@ class ReunioesNacionaisMapper(SchemaMapper):
     def _process_meeting(self, reuniao: ET.Element, legislatura: Legislatura) -> bool:
         """Process individual national meeting record"""
         try:
-            # Extract basic fields
-            reuniao_id = self._get_int_value(reuniao, 'Id')
-            nome = self._get_text_value(reuniao, 'Nome')
-            tipo = self._get_text_value(reuniao, 'Tipo')
-            tipo_designacao = self._get_text_value(reuniao, 'TipoDesignacao')
-            data_inicio_str = self._get_text_value(reuniao, 'DataInicio')
-            data_fim_str = self._get_text_value(reuniao, 'DataFim')
-            local = self._get_text_value(reuniao, 'Local')
-            promotor = self._get_text_value(reuniao, 'Promotor')
-            observacoes = self._get_text_value(reuniao, 'Observacoes')
+            # Extract basic fields (XML uses lowercase tags)
+            reuniao_id = self._get_int_value(reuniao, 'id')
+            nome = self._get_text_value(reuniao, 'nome')
+            tipo = self._get_text_value(reuniao, 'tipo')
+            tipo_designacao = self._get_text_value(reuniao, 'tipoDesignacao')
+            data_inicio_str = self._get_text_value(reuniao, 'dataInicio')
+            data_fim_str = self._get_text_value(reuniao, 'dataFim')
+            local = self._get_text_value(reuniao, 'local')
+            promotor = self._get_text_value(reuniao, 'promotor')
+            observacoes = self._get_text_value(reuniao, 'observacoes')
             
             if not reuniao_id:
                 logger.warning("Missing meeting ID - skipping record")
@@ -238,8 +242,8 @@ class ReunioesNacionaisMapper(SchemaMapper):
             reuniao_id=meeting_record.id
         ).delete()
         
-        # Process participants
-        participantes_element = reuniao.find('Participantes')
+        # Process participants (XML uses lowercase 'participantes')
+        participantes_element = reuniao.find('participantes')
         if participantes_element is not None:
             for participante in participantes_element.findall('Participante'):
                 self._process_participant(participante, meeting_record)
@@ -247,11 +251,11 @@ class ReunioesNacionaisMapper(SchemaMapper):
     def _process_participant(self, participante: ET.Element, meeting_record: ReuniaoNacional) -> None:
         """Process individual meeting participant"""
         try:
-            # Extract participant fields
-            tipo = self._get_text_value(participante, 'Tipo')
-            nome = self._get_text_value(participante, 'Nome')
-            gp = self._get_text_value(participante, 'Gp')  # Parliamentary group
-            deputy_id = self._get_int_value(participante, 'Id')
+            # Extract participant fields (XML uses lowercase tags)
+            tipo = self._get_text_value(participante, 'tipo')
+            nome = self._get_text_value(participante, 'nome')
+            gp = self._get_text_value(participante, 'gp')  # Parliamentary group
+            deputy_id = self._get_int_value(participante, 'id')
             
             if not nome:
                 logger.warning("Participant missing name - skipping")

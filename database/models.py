@@ -6116,6 +6116,7 @@ class OrcamentoEstadoPropostaAlteracao(Base):
     id = Column(Integer, primary_key=True)
     orcamento_id = Column(Integer, ForeignKey('orcamento_estado.id'), nullable=True)
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    item_id = Column(Integer, ForeignKey('orcamento_estado_items.id'), nullable=True)  # Link to budget items
     
     # Core proposal identification
     proposta_id = Column(Integer, nullable=False, index=True)  # XML: ID/ID_PA
@@ -6151,6 +6152,7 @@ class OrcamentoEstadoPropostaAlteracao(Base):
     # Relationships
     orcamento = relationship("OrcamentoEstado", back_populates="propostas_alteracao")
     legislatura = relationship("Legislatura")
+    item = relationship("OrcamentoEstadoItem", back_populates="propostas")
     proponentes = relationship("OrcamentoEstadoProponente", back_populates="proposta")
     votacoes = relationship("OrcamentoEstadoVotacao", back_populates="proposta")
     artigos = relationship("OrcamentoEstadoArtigo", back_populates="proposta")
@@ -6215,7 +6217,7 @@ class OrcamentoEstadoItem(Base):
     orcamento = relationship("OrcamentoEstado", back_populates="items")
     legislatura = relationship("Legislatura")
     artigos = relationship("OrcamentoEstadoArtigo", back_populates="item")
-    propostas = relationship("OrcamentoEstadoPropostaAlteracao")  # Via foreign key
+    propostas = relationship("OrcamentoEstadoPropostaAlteracao", back_populates="item")
     diplomas = relationship("OrcamentoEstadoDiploma", back_populates="item")
     iniciativas = relationship("OrcamentoEstadoIniciativa", back_populates="item")
     votacoes = relationship("OrcamentoEstadoVotacao", back_populates="item")

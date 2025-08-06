@@ -138,10 +138,11 @@ class FileTypeResolver:
             r".*Diplomas.*\.xml\.xml",
         ],
         "orcamento_estado": [
-            r"OE.*\.xml",
+            r"OE20\d{2}.*\.xml",  # OE followed by year (OE2016, OE2017, etc.)
             r"OEPropostasAlteracao.*\.xml",
+            r".*[/\\]O_E[/\\].*\.xml",  # Files in O_E directory
             r".*[/\\]Orçamento do Estado[/\\].*\.xml",
-            r".*OE.*\.xml\.xml",
+            r".*OE20\d{2}.*\.xml\.xml",
             r".*OEPropostasAlteracao.*\.xml\.xml",
         ],
         "informacao_base": [
