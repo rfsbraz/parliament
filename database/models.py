@@ -4100,7 +4100,20 @@ class ActividadesParlamentaresOut(Base):
 
 
 class GruposParlamentaresAmizade(Base):
-    """Parliamentary Friendship Groups - Gpa section"""
+    """
+    Parliamentary Friendship Groups - Gpa section (Deputy Activities Context)
+    ========================================================================
+    
+    This model represents friendship group associations as they appear within
+    deputy activity files (AtividadeDeputado*.xml). It captures basic friendship
+    group membership information linked to specific deputy activities.
+    
+    For comprehensive friendship group data including meetings, detailed member 
+    information, and visit records, see GrupoAmizadeStandalone model which 
+    processes the dedicated GrupoDeAmizadeXX.xml files.
+    
+    XML Context: ArrayOfAtividadeDeputado.AtividadeDeputado.ActividadeOut.Gpa
+    """
     __tablename__ = 'grupos_parlamentares_amizade'
     
     id = Column(Integer, primary_key=True)
@@ -5291,4 +5304,149 @@ class DataQualityMetrics(Base):
     
     # Metadata
     created_at = Column(DateTime, server_default=func.now())
+
+
+# Parliamentary Friendship Groups (Standalone Data) Models
+# ========================================================
+
+class GrupoAmizadeStandalone(Base):
+    """
+    Parliamentary Friendship Groups - Comprehensive Standalone Data
+    ==============================================================
+    
+    This model represents complete friendship group information as it appears in
+    the dedicated GrupoDeAmizadeXX.xml files. These files contain comprehensive
+    data about friendship groups including detailed member information, meetings,
+    visits, and participant records.
+    
+    XML Structure: ArrayOfGrupoDeAmizadeOut/GrupoDeAmizadeOut
+    Source Files: GrupoDeAmizadeV.xml, GrupoDeAmizadeVI.xml, etc.
+    
+    Key Differences from GruposParlamentaresAmizade:
+    - Not tied to deputy activities (standalone data)
+    - Includes complete member composition with roles and dates
+    - Contains meeting and visit records
+    - Has detailed participant information
+    - Covers all friendship groups comprehensively per legislature
+    """
+    __tablename__ = 'grupos_amizade_standalone'
+    
+    id = Column(Integer, primary_key=True)
+    
+    # Core identification (from GrupoDeAmizadeOut)
+    group_id = Column(Integer, nullable=False, index=True)  # XML: Id
+    nome = Column(String(500), nullable=False)  # XML: Nome
+    legislatura = Column(String(10), nullable=False, index=True)  # XML: Legislatura (e.g., "XV")
+    sessao = Column(Integer)  # XML: Sessao
+    data_criacao = Column(DateTime)  # XML: DataCriacao
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    membros = relationship("GrupoAmizadeMembro", back_populates="grupo", cascade="all, delete-orphan")
+    reunioes = relationship("GrupoAmizadeReuniao", back_populates="grupo", cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<GrupoAmizadeStandalone(id={self.group_id}, nome='{self.nome}', legislatura='{self.legislatura}')>"
+
+
+class GrupoAmizadeMembro(Base):
+    """
+    Parliamentary Friendship Group Members
+    =====================================
+    
+    Represents individual members of parliamentary friendship groups with their
+    roles, parliamentary group affiliation, and service periods.
+    
+    XML Structure: GrupoDeAmizadeOut/Composicao/DelegacaoPermanenteMembroOut
+    """
+    __tablename__ = 'grupos_amizade_membros'
+    
+    id = Column(Integer, primary_key=True)
+    grupo_amizade_id = Column(Integer, ForeignKey('grupos_amizade_standalone.id'), nullable=False)
+    
+    # Member information (from DelegacaoPermanenteMembroOut)
+    nome = Column(String(500), nullable=False)  # XML: Nome
+    grupo_parlamentar = Column(String(200))  # XML: Gp (full name, e.g., "Partido Socialista")
+    cargo = Column(String(100))  # XML: Cargo (Presidente, Vice-Presidente, Membro)
+    data_inicio = Column(DateTime)  # XML: DataInicio
+    data_fim = Column(DateTime)  # XML: DataFim
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    grupo = relationship("GrupoAmizadeStandalone", back_populates="membros")
+    
+    def __repr__(self):
+        return f"<GrupoAmizadeMembro(nome='{self.nome}', cargo='{self.cargo}', gp='{self.grupo_parlamentar}')>"
+
+
+class GrupoAmizadeReuniao(Base):
+    """
+    Parliamentary Friendship Group Meetings and Visits
+    =================================================
+    
+    Represents meetings, visits, and other events organized by parliamentary
+    friendship groups, including participant information.
+    
+    XML Structure: GrupoDeAmizadeOut/Visitas/GrupoDeAmizadeReuniao
+    Note: Despite being under "Visitas", these include both meetings and visits
+    """
+    __tablename__ = 'grupos_amizade_reunioes'
+    
+    id = Column(Integer, primary_key=True)
+    grupo_amizade_id = Column(Integer, ForeignKey('grupos_amizade_standalone.id'), nullable=False)
+    
+    # Meeting information (from GrupoDeAmizadeReuniao)
+    meeting_id = Column(Integer, nullable=False, index=True)  # XML: Id
+    nome = Column(Text, nullable=False)  # XML: Nome (can be long descriptions)
+    tipo = Column(String(200))  # XML: Tipo (often empty)
+    local = Column(String(500))  # XML: Local
+    data_inicio = Column(DateTime, nullable=False)  # XML: DataInicio
+    data_fim = Column(DateTime)  # XML: DataFim (rarely used)
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships  
+    grupo = relationship("GrupoAmizadeStandalone", back_populates="reunioes")
+    participantes = relationship("GrupoAmizadeParticipante", back_populates="reuniao", cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<GrupoAmizadeReuniao(id={self.meeting_id}, nome='{self.nome[:50]}...', local='{self.local}')>"
+
+
+class GrupoAmizadeParticipante(Base):
+    """
+    Parliamentary Friendship Group Meeting Participants
+    ==================================================
+    
+    Represents deputies and other participants in friendship group meetings
+    and events, with their parliamentary group affiliation and roles.
+    
+    XML Structure: GrupoDeAmizadeReuniao/Participantes/RelacoesExternasParticipantes
+    """
+    __tablename__ = 'grupos_amizade_participantes'
+    
+    id = Column(Integer, primary_key=True)
+    reuniao_id = Column(Integer, ForeignKey('grupos_amizade_reunioes.id'), nullable=False)
+    
+    # Participant information (from RelacoesExternasParticipantes)
+    participant_id = Column(Integer, nullable=False, index=True)  # XML: Id (deputy ID)
+    nome = Column(String(500), nullable=False)  # XML: Nome
+    tipo = Column(String(10), nullable=False)  # XML: Tipo (typically "D" for Deputy)
+    grupo_parlamentar = Column(String(200))  # XML: Gp
+    legislatura = Column(String(10))  # XML: Leg
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    reuniao = relationship("GrupoAmizadeReuniao", back_populates="participantes")
+    
+    def __repr__(self):
+        return f"<GrupoAmizadeParticipante(id={self.participant_id}, nome='{self.nome}', tipo='{self.tipo}')>"
 
