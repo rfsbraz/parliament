@@ -1,10 +1,74 @@
 """
-Parliamentary Permanent Delegations Mapper
-==========================================
+Parliamentary Permanent Delegations Mapper - SQLAlchemy ORM Version
+===================================================================
 
 Schema mapper for parliamentary permanent delegation files (DelegacaoPermanente*.xml).
-Handles permanent parliamentary delegations to international organizations 
-and their membership compositions.
+Based on official Portuguese Parliament documentation (December 2017) - 
+identical across legislatures IX through XIII.
+
+DOCUMENTATION SOURCE:
+Official PDF documentation from Portuguese Parliament data downloads.
+Documentation is identical across all legislatures with available PDF files.
+
+MAIN XML STRUCTURE MAPPED:
+- ArrayOfDelegacaoPermanente: Root container for permanent delegation lists
+
+DELEGATION STRUCTURE HANDLED:
+1. DelegacaoPermanente (Permanent Delegation)
+   - Id: Identificador do registo da Delegação Permanente
+   - Nome: Nome da Delegação Permanente
+   - Legislatura: Identificador da Legislatura
+   - Sessão: Número da Sessão Legislativa
+   - DataEleicao: Data da eleição da Delegação Permanente
+   - Composicao: Lista de deputados (estruturas Membro)
+   - Comissoes: Lista de comissões (estruturas Comissao)
+   - Reunioes: Lista de reuniões (estruturas Reuniao)
+
+2. Membro (Delegation Members)
+   - Nome: Nome do deputado participante
+   - Gp: Grupo parlamentar ao qual pertence o deputado
+   - Cargo: Cargo exercido pelo deputado
+   - DataInicio: Data do início do exercício de funções
+   - DataFim: Data do fim do exercício de funções
+   - Id: Identificador do deputado
+
+3. Comissao (Commissions)
+   - Nome: Nome da comissão pertencente à Delegação Permanente
+   - Composição: Composição da comissão
+   - Subcomissoes: Lista de Subcomissões
+
+4. Reuniao (Meetings)
+   - ID: Identificador do registo da reunião
+   - Nome: Título da reunião
+   - Tipo: Tipo de reunião (REN/RNI)
+   - Local: Cidade e País onde foi realizada
+   - Legislatura: Identificador da Legislatura
+   - Sessão: Número da Sessão Legislativa
+   - DataInicio: Data de início da reunião
+   - DataFim: Data do fim da reunião
+   - Participantes: Lista de participantes (estruturas Participante)
+
+5. Participante (Meeting Participants)
+   - Tipo: Tipo de participante (D=Deputado)
+   - Nome: Nome do deputado participante
+   - Gp: Grupo parlamentar
+   - Leg: Legislatura do deputado
+   - Id: Identificador do deputado
+
+FIELD MAPPINGS (from official documentation):
+Information about permanent delegations to international parliamentary organizations:
+APCE, APOSCE, APNATO, UIP, AP-UPM, FPIA, AP-CPLP, and others.
+
+Uses SQLAlchemy ORM models for clean, type-safe database operations.
+All field mappings preserve official XML structure and naming conventions.
+
+VERIFICATION COMPLETED:
+✓ Mapper processes actual XML structure: ArrayOfDelegacaoPermanenteOut > DelegacaoPermanenteOut
+✓ PDF documentation describes: ArrayOfDelegacaoPermanente > DelegacaoPermanente  
+✓ Field mappings match between actual XML and documentation (verified via IX Legislature XML)
+✓ All documented fields (Id, Nome, Legislatura, Sessao, DataEleicao, Composicao, etc.) present
+✓ Member structure matches documentation (Nome, Gp, Cargo, DataInicio, DataFim, Id)
+✓ Commission and meeting structures present but empty in sample data
 """
 
 import xml.etree.ElementTree as ET

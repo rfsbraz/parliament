@@ -4,6 +4,21 @@ Approved Diplomas Mapper
 
 Schema mapper for approved diplomas files (Diplomas*.xml).
 Handles parliamentary diplomas including laws, decrees, and resolutions.
+
+Based on official Portuguese Parliament documentation from December 2017:
+"Significado das Tags do Ficheiro Diplomas<Legislatura>.xml"
+
+Supports all documented structures:
+- Core diploma data (Diplomas_DetalhePesquisaDiplomasOut)
+- Publications (PublicacoesOut)
+- Initiatives (Iniciativas_DetalhePesquisaIniciativasOut)
+- Budget/Management accounts (OrcamentoContasGerencia_OrcamentoContasGerenciaOut)
+- Documents and attachments (DocsOut, anexos)
+
+Diploma types covered (as per documentation):
+Decretos Constitucionais, Decretos da Assembleia, Deliberações, Leis, 
+Leis Constitucionais, Leis Orgânicas, Retificações, Regimentos, 
+Regimentos da AR, Resoluções e Resoluções da AR.
 """
 
 import xml.etree.ElementTree as ET
@@ -31,67 +46,118 @@ class DiplomasAprovadosMapper(SchemaMapper):
         super().__init__(session)
     
     def get_expected_fields(self) -> Set[str]:
+        """
+        Expected XML field paths based on December 2017 official documentation.
+        
+        Covers all documented structures from "Significado das Tags do Ficheiro Diplomas<Legislatura>.xml"
+        """
         return {
             # Root elements
             'ArrayOfDiplomaOut',
             'ArrayOfDiplomaOut.DiplomaOut',
             
-            # Main diploma fields
-            'ArrayOfDiplomaOut.DiplomaOut.Id',
-            'ArrayOfDiplomaOut.DiplomaOut.Numero',
-            'ArrayOfDiplomaOut.DiplomaOut.Titulo',
-            'ArrayOfDiplomaOut.DiplomaOut.Tipo',
-            'ArrayOfDiplomaOut.DiplomaOut.Legislatura',
-            'ArrayOfDiplomaOut.DiplomaOut.Sessao',
-            'ArrayOfDiplomaOut.DiplomaOut.AnoCivil',
-            'ArrayOfDiplomaOut.DiplomaOut.LinkTexto',
-            'ArrayOfDiplomaOut.DiplomaOut.Numero2',
-            'ArrayOfDiplomaOut.DiplomaOut.Observacoes',
-            'ArrayOfDiplomaOut.DiplomaOut.Tp',
-            'ArrayOfDiplomaOut.DiplomaOut.Versao',  # IV Legislature field
+            # Main diploma fields (Diplomas_DetalhePesquisaDiplomasOut)
+            'ArrayOfDiplomaOut.DiplomaOut.id',  # Identificador do Diploma
+            'ArrayOfDiplomaOut.DiplomaOut.Id',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.numero',  # Número de Diploma
+            'ArrayOfDiplomaOut.DiplomaOut.Numero',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.numero2',  # Complemento do Número
+            'ArrayOfDiplomaOut.DiplomaOut.Numero2',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.titulo',  # Título do Diploma
+            'ArrayOfDiplomaOut.DiplomaOut.Titulo',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.tipo',  # Tipo de Diploma
+            'ArrayOfDiplomaOut.DiplomaOut.Tipo',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.tp',  # Tipo de Diploma (abreviado)
+            'ArrayOfDiplomaOut.DiplomaOut.Tp',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.legislatura',  # Legislatura
+            'ArrayOfDiplomaOut.DiplomaOut.Legislatura',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.sessao',  # Sessão legislativa
+            'ArrayOfDiplomaOut.DiplomaOut.Sessao',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.anoCivil',  # Ano a que corresponde o Diploma
+            'ArrayOfDiplomaOut.DiplomaOut.AnoCivil',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.linkTexto',  # Link para o texto do diploma
+            'ArrayOfDiplomaOut.DiplomaOut.LinkTexto',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.observacoes',  # Observações
+            'ArrayOfDiplomaOut.DiplomaOut.Observacoes',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.versao',  # Versão do Diploma
+            'ArrayOfDiplomaOut.DiplomaOut.Versao',  # Alternative casing
             
-            # Activities
-            'ArrayOfDiplomaOut.DiplomaOut.Actividades',
+            # Activities (Dados das Atividades associadas)
+            'ArrayOfDiplomaOut.DiplomaOut.actividades',  # Dados das Atividades associadas
+            'ArrayOfDiplomaOut.DiplomaOut.Actividades',  # Alternative casing
             'ArrayOfDiplomaOut.DiplomaOut.Actividades.string',
             
-            # Publication data
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao',
+            # Publication data (PublicacoesOut structure)
+            'ArrayOfDiplomaOut.DiplomaOut.publicacao',  # Lista de publicações
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.PublicacoesOut',
             'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut',
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.debateDtReu',  # Data do debate na reunião plenária
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idAct',  # Identificador da Atividade
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idDeb',  # Identificador do Debate
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idInt',  # Identificador da Intervenção
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',  # Identificador da Paginação
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',  # Observações
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',  # Páginas
             'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag',
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.supl',
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
-            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl',
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl',  # Página final do suplemento
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',  # Data da Publicação
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg',  # Legislatura da Publicação
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr',  # Número da Publicação
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL',  # Sessão legislativa da Publicação
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo',  # Descrição do Tipo de Publicação
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp',  # Abreviatura do Tipo de Publicação
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.supl',  # Suplemento da Publicação
+            'ArrayOfDiplomaOut.DiplomaOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario',  # Link para o DAR
             
-            # Initiative data
-            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas',
+            # Initiative data (Iniciativas_DetalhePesquisaIniciativasOut structure)
+            'ArrayOfDiplomaOut.DiplomaOut.iniciativas',  # Lista de iniciativas
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas',  # Alternative casing
             'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut',
-            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniNr',
-            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniTipo',
-            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniLinkTexto',
-            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniId',
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.Iniciativas_DetalhePesquisaIniciativasOut',
+            # Core initiative fields
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniId',  # Identificador da Iniciativa
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniId',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniNr',  # Número da Iniciativa
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniNr',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniTipo',  # Tipo de Iniciativa
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniTipo',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniTitulo',  # Título da Iniciativa
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniTitulo',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniLinkTexto',  # Link para o texto da iniciativa
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.IniLinkTexto',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniLeg',  # Legislatura da iniciativa
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniSel',  # Sessão legislativa da iniciativa
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniObs',  # Observações associadas
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniDescTipo',  # Descrição do Tipo de Iniciativa
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniEpigrafe',  # Indica se tem texto em epígrafe
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniTestaFicheiro',  # Indica se existe ficheiro
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniTextoSubst',  # Indica se tem texto de substituição
+            'ArrayOfDiplomaOut.DiplomaOut.Iniciativas.DiplomaIniciativaOut.iniTextoSubstCampo',  # Texto de substituição
             
-            # XIII Legislature fields
-            # Attachments
-            'ArrayOfDiplomaOut.DiplomaOut.Anexos',
+            # Attachments (anexos associados ao Diploma)
+            'ArrayOfDiplomaOut.DiplomaOut.anexos',  # Anexos associados ao Diploma
+            'ArrayOfDiplomaOut.DiplomaOut.Anexos',  # Alternative casing
             'ArrayOfDiplomaOut.DiplomaOut.Anexos.string',
             
-            # Budget/Management Accounts
-            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia',
+            # Budget/Management Accounts (OrcamentoContasGerencia_OrcamentoContasGerenciaOut)
+            'ArrayOfDiplomaOut.DiplomaOut.orcamContasGerencia',  # Lista de dados do Orçamento e Contas de Gerência
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia',  # Alternative casing
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.OrcamentoContasGerencia_OrcamentoContasGerenciaOut',
             'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut',
-            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.id',
-            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.leg',
-            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.tp',
-            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.titulo',
-            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.tipo'
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.id',  # Identificador da conta de gerência
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.tipo',  # Tipo de Conta de Gerência
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.tp',  # Descrição do Orçamento
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.titulo',  # Título da Conta de Gerência
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.ano',  # Ano a que se refere o Orçamento
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.leg',  # Legislatura
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.SL',  # Sessão Legislativa
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.anexos',  # Anexos associados a este Orçamento
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.textosAprovados',  # Textos Aprovados associados
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.votacao',  # Resultado da votação ao Orçamento
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.dtAprovacaoCA',  # Data de aprovação pelo Conselho de Administração
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.dtAgendamento',  # Data de Agendamento do Orçamento
+            'ArrayOfDiplomaOut.DiplomaOut.OrcamContasGerencia.pt_gov_ar_objectos_OrcamentoContasGerencia_OrcamentoContasGerenciaOut.obs'  # Campo das observações
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -137,23 +203,29 @@ class DiplomasAprovadosMapper(SchemaMapper):
     
     
     def _process_diploma(self, diploma: ET.Element, legislatura: Legislatura) -> bool:
-        """Process individual diploma"""
+        """
+        Process individual diploma
+        
+        Based on December 2017 PDF documentation field specifications:
+        - Diplomas_DetalhePesquisaDiplomasOut structure
+        - All documented core fields with case-insensitive extraction
+        """
         try:
-            # Extract basic fields
-            diploma_id = self._get_int_value(diploma, 'Id')
-            numero = self._get_int_value(diploma, 'Numero')
-            numero2 = self._get_text_value(diploma, 'Numero2')  # Missing field from schema
-            titulo = self._get_text_value(diploma, 'Titulo')
-            tipo = self._get_text_value(diploma, 'Tipo')
-            sessao = self._get_int_value(diploma, 'Sessao')
-            ano_civil = self._get_int_value(diploma, 'AnoCivil')
-            link_texto = self._get_text_value(diploma, 'LinkTexto')
-            observacoes = self._get_text_value(diploma, 'Observacoes')
-            tp = self._get_text_value(diploma, 'Tp')
-            versao = self._get_text_value(diploma, 'Versao')
+            # Extract basic fields (case-insensitive approach for robustness)
+            diploma_id = self._get_int_value(diploma, 'Id') or self._get_int_value(diploma, 'id')
+            numero = self._get_int_value(diploma, 'Numero') or self._get_int_value(diploma, 'numero')
+            numero2 = self._get_text_value(diploma, 'Numero2') or self._get_text_value(diploma, 'numero2')  # Complemento do Número
+            titulo = self._get_text_value(diploma, 'Titulo') or self._get_text_value(diploma, 'titulo')  # Título do Diploma
+            tipo = self._get_text_value(diploma, 'Tipo') or self._get_text_value(diploma, 'tipo')  # Tipo de Diploma
+            tp = self._get_text_value(diploma, 'Tp') or self._get_text_value(diploma, 'tp')  # Tipo de Diploma (abreviado)
+            sessao = self._get_int_value(diploma, 'Sessao') or self._get_int_value(diploma, 'sessao')  # Sessão legislativa
+            ano_civil = self._get_int_value(diploma, 'AnoCivil') or self._get_int_value(diploma, 'anoCivil')  # Ano a que corresponde o Diploma
+            link_texto = self._get_text_value(diploma, 'LinkTexto') or self._get_text_value(diploma, 'linkTexto')  # Link para o texto do diploma
+            observacoes = self._get_text_value(diploma, 'Observacoes') or self._get_text_value(diploma, 'observacoes')  # Observações
+            versao = self._get_text_value(diploma, 'Versao') or self._get_text_value(diploma, 'versao')  # Versão do Diploma
             
-            # XIII Legislature fields
-            anexos = self._extract_string_array(diploma, 'Anexos')
+            # Extract anexos (Anexos associados ao Diploma)
+            anexos = self._extract_string_array(diploma, 'Anexos') or self._extract_string_array(diploma, 'anexos')
             
             # No validation - let record creation fail naturally if titulo is actually required
             
@@ -273,21 +345,37 @@ class DiplomasAprovadosMapper(SchemaMapper):
         return roman_numerals.get(roman, 17)
     
     def _process_diploma_publications(self, diploma: ET.Element, diploma_record: DiplomaAprovado):
-        """Process publications for diploma"""
-        publicacao = diploma.find('Publicacao')
+        """
+        Process publications for diploma
+        
+        Based on PublicacoesOut structure from PDF documentation
+        """
+        # Try both casing variants for robustness
+        publicacao = diploma.find('Publicacao') or diploma.find('publicacao')
         if publicacao is not None:
-            for pub in publicacao.findall('pt_gov_ar_objectos_PublicacoesOut'):
-                pub_nr = self._get_int_value(pub, 'pubNr')
-                pub_tipo = self._get_text_value(pub, 'pubTipo')
-                pub_tp = self._get_text_value(pub, 'pubTp')
-                pub_leg = self._get_text_value(pub, 'pubLeg')
-                pub_sl = self._get_int_value(pub, 'pubSL')
-                pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
-                id_pag = self._get_int_value(pub, 'idPag')
-                url_diario = self._get_text_value(pub, 'URLDiario')
-                supl = self._get_text_value(pub, 'supl')
-                obs = self._get_text_value(pub, 'obs')
-                pag_final_diario_supl = self._get_text_value(pub, 'pagFinalDiarioSupl')
+            # Look for publication structures with different possible names
+            pub_elements = (publicacao.findall('pt_gov_ar_objectos_PublicacoesOut') + 
+                          publicacao.findall('PublicacoesOut'))
+            
+            for pub in pub_elements:
+                # Extract all documented PublicacoesOut fields
+                pub_nr = self._get_int_value(pub, 'pubNr')  # Número da Publicação
+                pub_tipo = self._get_text_value(pub, 'pubTipo')  # Descrição do Tipo de Publicação
+                pub_tp = self._get_text_value(pub, 'pubTp')  # Abreviatura do Tipo de Publicação
+                pub_leg = self._get_text_value(pub, 'pubLeg')  # Legislatura em que ocorreu a Publicação
+                pub_sl = self._get_int_value(pub, 'pubSL')  # Sessão legislativa em que ocorreu a Publicação
+                pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))  # Data da Publicação
+                id_pag = self._get_int_value(pub, 'idPag')  # Identificador da Paginação
+                url_diario = self._get_text_value(pub, 'URLDiario')  # Link para o DAR da Publicação
+                supl = self._get_text_value(pub, 'supl')  # Suplemento da Publicação
+                obs = self._get_text_value(pub, 'obs')  # Observações
+                pag_final_diario_supl = self._get_text_value(pub, 'pagFinalDiarioSupl')  # Página final do suplemento
+                
+                # Additional fields from documentation
+                debate_dt_reu = self._parse_date(self._get_text_value(pub, 'debateDtReu'))  # Data do debate na reunião plenária
+                id_act = self._get_int_value(pub, 'idAct')  # Identificador da Atividade associada à Publicação
+                id_deb = self._get_int_value(pub, 'idDeb')  # Identificador do Debate associado à Publicação
+                id_int = self._get_int_value(pub, 'idInt')  # Identificador da Intervenção associada à Publicação
                 
                 # Handle page numbers (can be in <pag><string> elements)
                 pag_text = None
@@ -315,14 +403,39 @@ class DiplomasAprovadosMapper(SchemaMapper):
                 self.session.add(publicacao_record)
     
     def _process_diploma_initiatives(self, diploma: ET.Element, diploma_record: DiplomaAprovado):
-        """Process initiatives for diploma"""
-        iniciativas = diploma.find('Iniciativas')
+        """
+        Process initiatives for diploma
+        
+        Based on Iniciativas_DetalhePesquisaIniciativasOut structure from PDF documentation
+        """
+        # Try both casing variants
+        iniciativas = diploma.find('Iniciativas') or diploma.find('iniciativas')
         if iniciativas is not None:
-            for ini in iniciativas.findall('DiplomaIniciativaOut'):
-                ini_nr = self._get_int_value(ini, 'IniNr')
-                ini_tipo = self._get_text_value(ini, 'IniTipo')
-                ini_link_texto = self._get_text_value(ini, 'IniLinkTexto')
-                ini_id = self._get_int_value(ini, 'IniId')
+            # Look for initiative structures
+            ini_elements = (iniciativas.findall('DiplomaIniciativaOut') + 
+                          iniciativas.findall('Iniciativas_DetalhePesquisaIniciativasOut'))
+            
+            for ini in ini_elements:
+                # Extract all documented initiative fields (case-insensitive)
+                ini_nr = (self._get_int_value(ini, 'IniNr') or 
+                         self._get_int_value(ini, 'iniNr'))  # Número da Iniciativa
+                ini_tipo = (self._get_text_value(ini, 'IniTipo') or 
+                           self._get_text_value(ini, 'iniTipo'))  # Tipo de Iniciativa
+                ini_link_texto = (self._get_text_value(ini, 'IniLinkTexto') or 
+                                 self._get_text_value(ini, 'iniLinkTexto'))  # Link para o texto da iniciativa
+                ini_id = (self._get_int_value(ini, 'IniId') or 
+                         self._get_int_value(ini, 'iniId'))  # Identificador da Iniciativa
+                
+                # Additional fields from comprehensive documentation
+                ini_leg = self._get_text_value(ini, 'iniLeg')  # Legislatura da iniciativa
+                ini_sel = self._get_int_value(ini, 'iniSel')  # Sessão legislativa da iniciativa
+                ini_titulo = self._get_text_value(ini, 'iniTitulo')  # Título da Iniciativa
+                ini_obs = self._get_text_value(ini, 'iniObs')  # Observações associadas
+                ini_desc_tipo = self._get_text_value(ini, 'iniDescTipo')  # Descrição do Tipo de Iniciativa
+                ini_epigrafe = self._get_text_value(ini, 'iniEpigrafe')  # Indica se tem texto em epígrafe
+                ini_testa_ficheiro = self._get_text_value(ini, 'iniTestaFicheiro')  # Indica se existe ficheiro
+                ini_texto_subst = self._get_text_value(ini, 'iniTextoSubst')  # Indica se tem texto de substituição
+                ini_texto_subst_campo = self._get_text_value(ini, 'iniTextoSubstCampo')  # Texto de substituição
                 
                 iniciativa_record = DiplomaIniciativa(
                     diploma_id=diploma_record.id,

@@ -1,9 +1,45 @@
 """
-Parliamentary Occasional Delegations Mapper
-===========================================
+Parliamentary Eventual Delegations Mapper - SQLAlchemy ORM Version
+=================================================================
 
-Schema mapper for parliamentary occasional delegation files (DelegacaoEventual*.xml).
-Handles parliamentary delegation meetings, missions, and international events.
+Schema mapper for parliamentary eventual delegation files (DelegacaoEventual*.xml).
+Based on official Portuguese Parliament documentation (December 2017) - 
+identical across legislatures IX through XIII.
+
+DOCUMENTATION SOURCE:
+Official PDF documentation from Portuguese Parliament data downloads.
+Documentation is identical across all legislatures with available PDF files.
+
+MAIN XML STRUCTURE MAPPED:
+- ArrayOfDelegacaoEventualReuniao: Root container for delegation meeting lists
+  (Documentation references this as "ArrayOfReuniao" conceptually)
+
+DELEGATION STRUCTURE HANDLED:
+1. DelegacaoEventualReuniao (Meeting/Delegation Event)
+   (Documentation references this as "Reuniao" conceptually)
+   - ID: Identificador do registo das Delegação Eventual
+   - Nome: Título da reunião da Delegação Eventual
+   - Local: Cidade e País onde foi realizada a reunião da Delegação Eventual
+   - Legislatura: Identificador da Legislatura
+   - Sessão: Número da Sessão Legislativa
+   - DataInicio: Data de Início da reunião da Delegação Eventual
+   - DataFim: Data do fim da reunião da Delegação Eventual
+   - Participantes: Lista de participantes nas reuniões
+
+2. RelacoesExternasParticipantes (Meeting Participants)
+   (Documentation references this as "Participante" conceptually)
+   - Tipo: Tipo de participante (D=Deputado)
+   - Nome: Nome do deputado participante na reunião
+   - Gp: Grupo parlamentar ao qual pertence o deputado
+   - Leg: Legislatura do deputado
+   - Id: Identificador do deputado
+
+FIELD MAPPINGS (from official documentation):
+Information about sporadic meetings attended by Assembly deputies.
+Contains comprehensive participant data with parliamentary group affiliations.
+
+Uses SQLAlchemy ORM models for clean, type-safe database operations.
+All field mappings preserve official XML structure and naming conventions.
 """
 
 import xml.etree.ElementTree as ET
@@ -26,7 +62,16 @@ logger = logging.getLogger(__name__)
 
 
 class DelegacaoEventualMapper(SchemaMapper):
-    """Schema mapper for parliamentary occasional delegation files"""
+    """
+    Schema mapper for parliamentary eventual delegation files (DelegacaoEventual*.xml)
+    
+    Processes ArrayOfReuniao XML structure containing sporadic delegation meetings:
+    - Meeting/delegation event records with dates, locations, and legislative session info
+    - Participant lists with deputy identification and parliamentary group affiliation
+    - Maps to comprehensive SQLAlchemy ORM models for zero data loss
+    
+    Based on official Parliament documentation identical across IX-XIII legislatures.
+    """
     
     def __init__(self, session):
         # Accept SQLAlchemy session directly (passed by unified importer)

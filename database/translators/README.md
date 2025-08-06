@@ -39,6 +39,20 @@ This directory contains thematic field translation modules for Portuguese Parlia
 - **ThemeType** enum for agenda theme types (16 codes: 1-16)
 - Used across models: AgendaParlamentar (secao_id, tema_id fields)
 
+### `delegacao_eventual.py`
+- Uses shared **TipoParticipante** enum from common_enums
+- Used across models: DelegacaoEventualParticipante (tipo_participante field)
+
+### `delegacoes_permanentes.py`
+- **TipoReuniao** enum for meeting types (2 codes: REN, RNI)
+- Uses shared **TipoParticipante** enum from common_enums
+- Used across models: DelegacaoPermanente meeting and participant records
+
+### `common_enums.py`
+- **TipoParticipante** enum for participant types (1 code: D)
+- Shared across multiple modules to avoid duplication
+- Used in both eventual and permanent delegations
+
 ## Usage Patterns
 
 ### Individual Model Translation
@@ -101,6 +115,9 @@ else:
 | VotacaoOut | TipoReuniao | general_activities | meeting_type() |
 | AgendaParlamentar | secao_id | agenda_parlamentar | section_type() |
 | AgendaParlamentar | tema_id | agenda_parlamentar | theme_type() |
+| DelegacaoEventualParticipante | tipo_participante | delegacao_eventual | participant_type() |
+| DelegacaoPermanente | meeting_type | delegacoes_permanentes | meeting_type() |
+| DelegacaoPermanente | participant_type | delegacoes_permanentes | participant_type() |
 
 ### Official Documentation Mapping
 
@@ -108,5 +125,7 @@ All translations are based on multiple official sources:
 - **AtividadeDeputado**: "Significado das Tags do Ficheiro AtividadeDeputado<Legislatura>.xml" (December 2017)
 - **Atividades**: "VI_Legislatura Atividades.xml" structure documentation (December 2017)
 - **AgendaParlamentar**: "AgendaParlamentar.xml/.json" structure documentation (June 2023)
+- **DelegacoesEventuais**: "DelegacoesEventuais.xml" structure documentation (December 2017)
+- **DelegacoesPermanentes**: "DelegacoesPermanentes.xml" structure documentation (December 2017)
 - **Validation**: Consistent across legislatures with version-specific updates
 - **Location**: `E:\dev\parliament\scripts\data_processing\data\downloads\`

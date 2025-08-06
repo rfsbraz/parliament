@@ -2159,19 +2159,28 @@ class CooperacaoParticipante(Base):
 
 
 class DelegacaoEventual(Base):
+    """
+    Eventual Delegation (Delegação Eventual)
+    
+    Information about sporadic meetings attended by Assembly deputies.
+    Maps to Reuniao structure in DelegacoesEventuais.xml files.
+    
+    Based on official Parliament documentation (December 2017) -
+    identical across legislatures IX through XIII.
+    """
     __tablename__ = 'delegacao_eventual'
     
     id = Column(Integer, primary_key=True)
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     
-    # Core fields
-    delegacao_id = Column(Integer, unique=True)  # External ID
-    nome = Column(Text)
-    local = Column(Text)
-    sessao = Column(Integer)
-    data_inicio = Column(Date)
-    data_fim = Column(Date)
-    tipo = Column(String(100))
+    # Core meeting fields from official documentation
+    delegacao_id = Column(Integer, unique=True)  # ID: Identificador do registo das Delegação Eventual
+    nome = Column(Text)  # Nome: Título da reunião da Delegação Eventual
+    local = Column(Text)  # Local: Cidade e País onde foi realizada a reunião da Delegação Eventual
+    sessao = Column(Integer)  # Sessão: Número da Sessão Legislativa
+    data_inicio = Column(Date)  # DataInicio: Data de Início da reunião da Delegação Eventual
+    data_fim = Column(Date)  # DataFim: Data do fim da reunião da Delegação Eventual
+    tipo = Column(String(100))  # Additional classification field
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -2181,6 +2190,15 @@ class DelegacaoEventual(Base):
 
 
 class DelegacaoEventualParticipante(Base):
+    """
+    Eventual Delegation Participant (Participante)
+    
+    Individual participants in eventual delegation meetings.
+    Maps to Participante structure in DelegacoesEventuais.xml files.
+    
+    Based on official Parliament documentation (December 2017) -
+    identical across legislatures IX through XIII.
+    """
     __tablename__ = 'delegacao_eventual_participantes'
     
     id = Column(Integer, primary_key=True)
@@ -2188,10 +2206,11 @@ class DelegacaoEventualParticipante(Base):
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=True)
     participante_id = Column(Integer)  # External participant ID from XML (IX Legislature)
     
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    gp = Column(String(50))  # Grupo Parlamentar
-    tipo_participante = Column(String(50))  # 'deputado', 'funcionario', 'externo'
+    # Participant fields from official documentation
+    nome = Column(String(200))  # Nome: Nome do deputado participante na reunião
+    cargo = Column(String(100))  # Additional position/role field
+    gp = Column(String(50))  # Gp: Grupo parlamentar ao qual pertence o deputado
+    tipo_participante = Column(String(50))  # Tipo: Tipo de participante (D=Deputado)
     
     created_at = Column(DateTime, default=func.now())
     
@@ -2200,16 +2219,43 @@ class DelegacaoEventualParticipante(Base):
 
 
 class DelegacaoPermanente(Base):
+    """
+    Permanent Parliamentary Delegations Model
+    ========================================
+    
+    Information about permanent delegations to international parliamentary organizations,
+    including delegations to APCE (Parliamentary Assembly of the Council of Europe),
+    APOSCE (OSCE Parliamentary Assembly), APNATO (NATO Parliamentary Assembly),
+    UIP (Inter-Parliamentary Union), AP-UPM (Parliamentary Assembly of the Union for the Mediterranean),
+    FPIA (Ibero-American Parliamentary Forum), and AP-CPLP (Parliamentary Assembly of the Community
+    of Portuguese Speaking Countries), among others.
+    
+    Based on official Parliament documentation (December 2017) - 
+    identical across legislatures IX through XIII.
+    
+    XML Structure: ArrayOfDelegacaoPermanente > DelegacaoPermanente
+    
+    Field Mappings (from official documentation):
+    - Id: Identificador do registo da Delegação Permanente
+    - Nome: Nome da Delegação Permanente  
+    - Legislatura: Identificador da Legislatura
+    - Sessão: Número da Sessão Legislativa
+    - DataEleicao: Data da eleição da Delegação Permanente
+    - Composicao: Lista de deputados da Delegação (estruturas Membro)
+    - Comissoes: Lista de comissões da Delegação (estruturas Comissao)
+    - Reunioes: Lista de reuniões da Delegação (estruturas Reuniao)
+    """
     __tablename__ = 'delegacao_permanente'
     
     id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False, 
+                          comment="Legislature identifier (Legislatura)")
     
-    # Core fields
-    delegacao_id = Column(Integer, unique=True)  # External ID
-    nome = Column(Text)
-    sessao = Column(String(50))
-    data_eleicao = Column(Date)
+    # Core fields from official documentation
+    delegacao_id = Column(Integer, unique=True, comment="Delegation record identifier (Id)")
+    nome = Column(Text, comment="Permanent delegation name (Nome)")
+    sessao = Column(String(50), comment="Legislative session number (Sessão)")
+    data_eleicao = Column(Date, comment="Delegation election date (DataEleicao)")
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -2219,18 +2265,34 @@ class DelegacaoPermanente(Base):
 
 
 class DelegacaoPermanenteMembro(Base):
+    """
+    Permanent Delegation Members Model
+    =================================
+    
+    Members (deputies) belonging to permanent delegations.
+    
+    XML Structure: DelegacaoPermanente > Composicao > Membro
+    
+    Field Mappings (from official documentation):
+    - Nome: Nome do deputado participante na reunião
+    - Gp: Grupo parlamentar ao qual pertence o deputado
+    - Cargo: Cargo exercido pelo deputado
+    - DataInicio: Data do início do exercício de funções na Delegação Permanente pelo deputado
+    - DataFim: Data do fim do exercício de funções na Delegação Permanente
+    - Id: Identificador do deputado
+    """
     __tablename__ = 'delegacao_permanente_membros'
     
     id = Column(Integer, primary_key=True)
     delegacao_id = Column(Integer, ForeignKey('delegacao_permanente.id'), nullable=False)
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=True)
     
-    membro_id = Column(Integer)  # External member ID
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    gp = Column(String(50))  # Grupo Parlamentar
-    data_inicio = Column(Date)
-    data_fim = Column(Date)
+    membro_id = Column(Integer, comment="Deputy identifier (Id)")
+    nome = Column(String(200), comment="Deputy participant name (Nome)")
+    cargo = Column(String(100), comment="Position held by deputy (Cargo)")
+    gp = Column(String(50), comment="Parliamentary group (Gp)")
+    data_inicio = Column(Date, comment="Start date of functions (DataInicio)")
+    data_fim = Column(Date, comment="End date of functions (DataFim)")
     
     created_at = Column(DateTime, default=func.now())
     
@@ -2239,16 +2301,28 @@ class DelegacaoPermanenteMembro(Base):
 
 
 class DelegacaoPermanenteComissao(Base):
-    """Commission data for permanent delegations - XIII Legislature structure"""
+    """
+    Permanent Delegation Commissions Model
+    =====================================
+    
+    Commissions belonging to permanent delegations.
+    
+    XML Structure: DelegacaoPermanente > Comissoes > Comissao
+    
+    Field Mappings (from official documentation):
+    - Nome: Nome da comissão pertencente à Delegação Permanente
+    - Composição: Composição da comissão
+    - Subcomissoes: Lista de Subcomissões pertencentes a cada comissão
+    """
     __tablename__ = 'delegacao_permanente_comissoes'
     
     id = Column(Integer, primary_key=True)
     delegacao_id = Column(Integer, ForeignKey('delegacao_permanente.id'), nullable=False)
     
-    # Commission fields with XML namespace support
-    nome = Column(Text)  # Commission name
-    composicao = Column(Text)  # Commission composition details
-    subcomissoes = Column(Text)  # Subcommissions data
+    # Commission fields from official documentation
+    nome = Column(Text, comment="Commission name (Nome)")
+    composicao = Column(Text, comment="Commission composition details (Composição)")
+    subcomissoes = Column(Text, comment="Subcommissions data (Subcomissoes)")
     
     created_at = Column(DateTime, default=func.now())
     
