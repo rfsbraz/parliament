@@ -2,8 +2,21 @@
 Parliamentary Questions and Requests Mapper
 ===========================================
 
-Schema mapper for parliamentary questions and requests files (PerguntasRequerimentos*.xml).
+Schema mapper for parliamentary questions and requests files (Requerimentos<Legislatura>.xml).
 Handles parliamentary questions and formal requests submitted by deputies.
+
+Based on official Parliament documentation (December 2017):
+- Questions (Perguntas) are oversight instruments and political control acts that can only 
+  be directed to the Government and Public Administration, not to regional and local administration.
+- Requests (Requerimentos) are used to obtain information, elements and official publications 
+  useful for the exercise of the Deputy's mandate and can be directed to any public entity.
+
+XML Structure: Requerimentos_DetalheRequerimentosOut containing:
+- Main request data with TipodeRequerimento enum for reqTipo field
+- Authors using Iniciativas_AutoresDeputadosOut structure
+- Recipients using Requerimentos_DestinatariosOut structure with status tracking
+- Publications using PublicacoesOut structure with TipodePublicacao enum
+- Responses using Requerimentos_RespostasOut structure (for older requests)
 """
 
 import xml.etree.ElementTree as ET
@@ -39,18 +52,19 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
             'ArrayOfRequerimentoOut',
             'ArrayOfRequerimentoOut.RequerimentoOut',
             
-            # Main request fields
-            'ArrayOfRequerimentoOut.RequerimentoOut.Id',
-            'ArrayOfRequerimentoOut.RequerimentoOut.Tipo',
-            'ArrayOfRequerimentoOut.RequerimentoOut.Nr',
-            'ArrayOfRequerimentoOut.RequerimentoOut.ReqTipo',
-            'ArrayOfRequerimentoOut.RequerimentoOut.Legislatura',
-            'ArrayOfRequerimentoOut.RequerimentoOut.Sessao',
-            'ArrayOfRequerimentoOut.RequerimentoOut.Assunto',
-            'ArrayOfRequerimentoOut.RequerimentoOut.DtEntrada',
-            'ArrayOfRequerimentoOut.RequerimentoOut.DataEnvio',
-            'ArrayOfRequerimentoOut.RequerimentoOut.Observacoes',
-            'ArrayOfRequerimentoOut.RequerimentoOut.Ficheiro',
+            # Main request fields from Requerimentos_DetalheRequerimentosOut
+            'ArrayOfRequerimentoOut.RequerimentoOut.Id',  # id: Código de Identificação
+            'ArrayOfRequerimentoOut.RequerimentoOut.Tipo',  # tipo: Pergunta ou Requerimento  
+            'ArrayOfRequerimentoOut.RequerimentoOut.Nr',  # nr: Número do Requerimento/Pergunta
+            'ArrayOfRequerimentoOut.RequerimentoOut.ReqTipo',  # reqTipo: TipodeRequerimento
+            'ArrayOfRequerimentoOut.RequerimentoOut.Legislatura',  # legislatura: Legislatura
+            'ArrayOfRequerimentoOut.RequerimentoOut.Sessao',  # sessao: Sessão Legislativa
+            'ArrayOfRequerimentoOut.RequerimentoOut.Assunto',  # assunto: Assunto do requerimento
+            'ArrayOfRequerimentoOut.RequerimentoOut.DtEntrada',  # dtEntrada: Data da Entrada
+            'ArrayOfRequerimentoOut.RequerimentoOut.DataEnvio',  # dataEnvio: Data de envio para destinatário
+            'ArrayOfRequerimentoOut.RequerimentoOut.Observacoes',  # observacoes: Observações
+            'ArrayOfRequerimentoOut.RequerimentoOut.Ficheiro',  # ficheiro: Nome do ficheiro com texto
+            'ArrayOfRequerimentoOut.RequerimentoOut.Fundamentacao',  # fundamentacao: Descrição da fundamentação
             
             # Publication section
             'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao',
@@ -69,10 +83,17 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
             'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.obs',
             'ArrayOfRequerimentoOut.RequerimentoOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl',
             
-            # Recipients section
+            # Recipients section from Requerimentos_DestinatariosOut
             'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios',
             'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut',
             'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.nomeEntidade',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.dataProrrogacao',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.dataReenvio',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.devolvido',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.prazoProrrogacao',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.prorrogado',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.reenviado',
+            'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.retirado',
             'ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.dataEnvio',
             
             # Responses section
@@ -150,6 +171,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
             data_envio_str = self._get_text_value(request, 'DataEnvio')
             observacoes = self._get_text_value(request, 'Observacoes')
             ficheiro = self._get_text_value(request, 'Ficheiro')
+            fundamentacao = self._get_text_value(request, 'Fundamentacao')
             
             if not assunto:
                 raise ValueError("Missing required Assunto field. Data integrity violation - cannot generate artificial content")
@@ -176,6 +198,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                 existing.data_envio = data_envio
                 existing.observacoes = observacoes
                 existing.ficheiro = ficheiro
+                existing.fundamentacao = fundamentacao
                 existing.legislatura_id = legislatura.id
             else:
                 # Create new record
@@ -190,6 +213,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                     data_envio=data_envio,
                     observacoes=observacoes,
                     ficheiro=ficheiro,
+                    fundamentacao=fundamentacao,
                     legislatura_id=legislatura.id
                 )
                 self.session.add(pergunta_req)
@@ -332,16 +356,31 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                 self.session.add(publicacao_record)
     
     def _process_request_destinatarios(self, request: ET.Element, pergunta_req: PerguntaRequerimento):
-        """Process recipients for request"""
+        """Process recipients for request from Requerimentos_DestinatariosOut structure"""
         destinatarios = request.find('Destinatarios')
         if destinatarios is not None:
             for dest in destinatarios.findall('pt_gov_ar_objectos_requerimentos_DestinatariosOut'):
+                # Extract all recipient fields per PDF documentation
                 nome_entidade = self._get_text_value(dest, 'nomeEntidade')
+                data_prorrogacao = self._parse_date(self._get_text_value(dest, 'dataProrrogacao'))
+                data_reenvio = self._parse_date(self._get_text_value(dest, 'dataReenvio'))
+                devolvido = self._get_boolean_value(dest, 'devolvido')
+                prazo_prorrogacao = self._get_int_value(dest, 'prazoProrrogacao')
+                prorrogado = self._get_boolean_value(dest, 'prorrogado')
+                reenviado = self._get_boolean_value(dest, 'reenviado')
+                retirado = self._get_boolean_value(dest, 'retirado')
                 data_envio = self._parse_date(self._get_text_value(dest, 'dataEnvio'))
                 
                 destinatario_record = PerguntaRequerimentoDestinatario(
                     pergunta_requerimento_id=pergunta_req.id,
                     nome_entidade=nome_entidade,
+                    data_prorrogacao=data_prorrogacao,
+                    data_reenvio=data_reenvio,
+                    devolvido=devolvido,
+                    prazo_prorrogacao=prazo_prorrogacao,
+                    prorrogado=prorrogado,
+                    reenviado=reenviado,
+                    retirado=retirado,
                     data_envio=data_envio
                 )
                 self.session.add(destinatario_record)

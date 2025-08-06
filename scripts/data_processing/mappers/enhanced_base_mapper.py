@@ -460,6 +460,39 @@ class XMLProcessingMixin:
                 return None
         return None
 
+    def _get_boolean_value(self, parent: ET.Element, tag_name: str) -> Optional[bool]:
+        """
+        Get boolean value from XML element - standardized method used across all mappers
+        
+        Handles common boolean representations:
+        - True: 'true', '1', 'yes', 'sim', 'True', 'TRUE'
+        - False: 'false', '0', 'no', 'não', 'False', 'FALSE'
+        - None: empty, None, or unrecognized values
+        
+        Args:
+            parent: XML element to search within
+            tag_name: Name of the tag to extract boolean from
+            
+        Returns:
+            Optional[bool]: True/False if recognized, None otherwise
+        """
+        text_value = self._get_text_value(parent, tag_name)
+        if text_value is None:
+            return None
+        
+        value_lower = text_value.lower().strip()
+        
+        # True values (English and Portuguese)
+        if value_lower in ('true', '1', 'yes', 'sim'):
+            return True
+        # False values (English and Portuguese) 
+        elif value_lower in ('false', '0', 'no', 'não', 'nao'):
+            return False
+        
+        # Log warning for unrecognized values
+        logger.warning(f"Unrecognized boolean value '{text_value}' for tag '{tag_name}', returning None")
+        return None
+
     def _safe_int(self, value) -> Optional[int]:
         """Safely convert value to int - handles strings, floats, None"""
         if not value:

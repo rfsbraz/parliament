@@ -2074,22 +2074,52 @@ class DiplomaIniciativa(Base):
 
 
 class PerguntaRequerimento(Base):
+    """
+    Parliamentary Questions and Requests Model
+    =========================================
+    
+    Based on Requerimentos_DetalheRequerimentosOut structure from official documentation.
+    
+    Questions (Perguntas) are oversight instruments and political control acts that can only 
+    be directed to the Government and Public Administration, not to regional and local administration.
+    
+    Requests (Requerimentos) are used to obtain information, elements and official publications 
+    useful for the exercise of the Deputy's mandate and can be directed to any public entity.
+    
+    XML Structure Mapping (Requerimentos<Legislatura>.xml):
+    - id: Código de Identificação do Requerimento (XML: id)
+    - tipo: Tipo: Pergunta ou Requerimento (XML: tipo)
+    - nr: Número do Requerimento/Pergunta (XML: nr)
+    - reqTipo: Campo Tipo de Registo da estrutura TipodeRequerimento (XML: reqTipo)
+    - sessao: Sessão Legislativa (XML: sessao)
+    - assunto: Assunto do requerimento ou pergunta (XML: assunto)
+    - dtEntrada: Data da Entrada do Requerimento (XML: dtEntrada)
+    - dataEnvio: Data de envio do requerimento para o destinatário (XML: dataEnvio)
+    - observacoes: Observações (XML: observacoes)
+    - ficheiro: Nome do ficheiro que contém o texto do requerimento (XML: ficheiro)
+    - fundamentacao: Descrição da fundamentação do requerimento (XML: fundamentacao)
+    - autores: Lista de autores using Iniciativas_AutoresDeputadosOut structure
+    - destinatarios: Lista de destinatários using Requerimentos_DestinatariosOut structure
+    - publicacao: Lista de publicações using PublicacoesOut structure
+    - respostasSPerguntas: Lista de respostas (apenas para requerimentos mais antigos)
+    """
     __tablename__ = 'perguntas_requerimentos'
     
     id = Column(Integer, primary_key=True)
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     
-    # Core fields
-    requerimento_id = Column(Integer, unique=True)  # External ID
-    tipo = Column(String(100))
-    nr = Column(Integer)
-    req_tipo = Column(String(100))
-    sessao = Column(Integer)
-    assunto = Column(Text)
-    dt_entrada = Column(Date)
-    data_envio = Column(Date)
-    observacoes = Column(Text)
-    ficheiro = Column(Text)
+    # Core fields from XML mapping
+    requerimento_id = Column(Integer, unique=True, comment="Código de Identificação do Requerimento (XML: id)")
+    tipo = Column(String(100), comment="Tipo: Pergunta ou Requerimento (XML: tipo)")
+    nr = Column(Integer, comment="Número do Requerimento/Pergunta (XML: nr)")
+    req_tipo = Column(String(100), comment="Tipo de Registo usando TipodeRequerimento enum (XML: reqTipo)")
+    sessao = Column(Integer, comment="Sessão Legislativa (XML: sessao)")
+    assunto = Column(Text, comment="Assunto do requerimento ou pergunta (XML: assunto)")
+    dt_entrada = Column(Date, comment="Data da Entrada do Requerimento (XML: dtEntrada)")
+    data_envio = Column(Date, comment="Data de envio para o destinatário (XML: dataEnvio)")
+    observacoes = Column(Text, comment="Observações (XML: observacoes)")
+    ficheiro = Column(Text, comment="Nome do ficheiro que contém o texto (XML: ficheiro)")
+    fundamentacao = Column(Text, comment="Descrição da fundamentação do requerimento (XML: fundamentacao)")
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -2101,23 +2131,49 @@ class PerguntaRequerimento(Base):
 
 
 class PerguntaRequerimentoPublicacao(Base):
+    """
+    Parliamentary Questions and Requests Publications Model
+    ======================================================
+    
+    Based on PublicacoesOut structure from official documentation.
+    Contains publications related to parliamentary questions and requests.
+    
+    XML Structure Mapping (PublicacoesOut):
+    - pubNr: Número da Publicação (XML: pubNr)
+    - pubTipo: Descrição de tipo de publicação na estrutura TipodePublicacao (XML: pubTipo)
+    - pubTp: Tipo de publicação na estrutura TipodePublicacao (XML: pubTp)
+    - pubLeg: Legislatura em que ocorreu a Publicação (XML: pubLeg)
+    - pubSL: Sessão legislativa em que ocorreu a Publicação (XML: pubSL)
+    - pubdt: Data da Publicação (XML: pubdt)
+    - idPag: Identificador da Paginação (XML: idPag)
+    - URLDiario: Link para o DAR da Publicação (XML: URLDiario)
+    - pag: Páginas (XML: pag)
+    - supl: Suplemento da Publicação (XML: supl)
+    - obs: Observações (XML: obs)
+    - pagFinalDiarioSupl: Página final do suplemento (XML: pagFinalDiarioSupl)
+    - debateDtReu: Data da reunião plenária onde ocorreu o Debate (XML: debateDtReu)
+    - idAct: Identificador da Atividade associada à Publicação (XML: idAct)
+    """
     __tablename__ = 'pergunta_requerimento_publicacoes'
     
     id = Column(Integer, primary_key=True)
     pergunta_requerimento_id = Column(Integer, ForeignKey('perguntas_requerimentos.id'), nullable=False)
     
-    pub_nr = Column(Integer)
-    pub_tipo = Column(String(50))
-    pub_tp = Column(String(10))
-    pub_leg = Column(String(20))
-    pub_sl = Column(Integer)
-    pub_dt = Column(Date)
-    id_pag = Column(Integer)
-    url_diario = Column(Text)
-    pag = Column(Text)
-    supl = Column(String(10))
-    obs = Column(Text)
-    pag_final_diario_supl = Column(String(50))
+    # Publications fields from XML mapping
+    pub_nr = Column(Integer, comment="Número da Publicação (XML: pubNr)")
+    pub_tipo = Column(String(50), comment="Descrição de tipo usando TipodePublicacao (XML: pubTipo)")
+    pub_tp = Column(String(10), comment="Tipo de publicação usando TipodePublicacao enum (XML: pubTp)")
+    pub_leg = Column(String(20), comment="Legislatura da Publicação (XML: pubLeg)")
+    pub_sl = Column(Integer, comment="Sessão legislativa da Publicação (XML: pubSL)")
+    pub_dt = Column(Date, comment="Data da Publicação (XML: pubdt)")
+    id_pag = Column(Integer, comment="Identificador da Paginação (XML: idPag)")
+    url_diario = Column(Text, comment="Link para o DAR da Publicação (XML: URLDiario)")
+    pag = Column(Text, comment="Páginas (XML: pag)")
+    supl = Column(String(10), comment="Suplemento da Publicação (XML: supl)")
+    obs = Column(Text, comment="Observações (XML: obs)")
+    pag_final_diario_supl = Column(String(50), comment="Página final do suplemento (XML: pagFinalDiarioSupl)")
+    debate_dt_reu = Column(Date, comment="Data da reunião plenária onde ocorreu o Debate (XML: debateDtReu)")
+    id_act = Column(Integer, comment="Identificador da Atividade associada (XML: idAct)")
     
     created_at = Column(DateTime, default=func.now())
     
@@ -2125,13 +2181,40 @@ class PerguntaRequerimentoPublicacao(Base):
 
 
 class PerguntaRequerimentoDestinatario(Base):
+    """
+    Parliamentary Questions and Requests Recipients Model
+    ====================================================
+    
+    Based on Requerimentos_DestinatariosOut structure from official documentation.
+    Contains recipient information for parliamentary questions and requests.
+    
+    XML Structure Mapping (Requerimentos_DestinatariosOut):
+    - nomeEntidade: Nome do destinatário (XML: nomeEntidade)
+    - dataProrrogacao: Data do pedido de prorrogação do prazo (XML: dataProrrogacao)
+    - dataReenvio: Data de reenvio para outro destinatário (XML: dataReenvio)
+    - devolvido: Indica se o requerimento foi devolvido (XML: devolvido)
+    - prazoProrrogacao: Prazo em dias (XML: prazoProrrogacao)
+    - prorrogado: Indica se o requerimento foi prorrogado (XML: prorrogado)
+    - reenviado: Indica se o requerimento foi reenviado (XML: reenviado)
+    - respostas: Contém os dados da resposta ao requerimento (XML: respostas)
+    - retirado: Indica se o requerimento foi retirado (XML: retirado)
+    """
     __tablename__ = 'pergunta_requerimento_destinatarios'
     
     id = Column(Integer, primary_key=True)
     pergunta_requerimento_id = Column(Integer, ForeignKey('perguntas_requerimentos.id'), nullable=False)
     
-    nome_entidade = Column(String(200))
-    data_envio = Column(Date)
+    # Recipient fields from XML mapping
+    nome_entidade = Column(String(200), comment="Nome do destinatário (XML: nomeEntidade)")
+    data_prorrogacao = Column(Date, comment="Data do pedido de prorrogação do prazo (XML: dataProrrogacao)")
+    data_reenvio = Column(Date, comment="Data de reenvio para outro destinatário (XML: dataReenvio)")
+    devolvido = Column(Boolean, comment="Indica se foi devolvido (XML: devolvido)")
+    prazo_prorrogacao = Column(Integer, comment="Prazo em dias (XML: prazoProrrogacao)")
+    prorrogado = Column(Boolean, comment="Indica se foi prorrogado (XML: prorrogado)")
+    reenviado = Column(Boolean, comment="Indica se foi reenviado (XML: reenviado)")
+    retirado = Column(Boolean, comment="Indica se foi retirado (XML: retirado)")
+    # Legacy field maintained for backward compatibility
+    data_envio = Column(Date, comment="Data de envio (legacy compatibility)")
     
     created_at = Column(DateTime, default=func.now())
     
@@ -2140,15 +2223,30 @@ class PerguntaRequerimentoDestinatario(Base):
 
 
 class PerguntaRequerimentoResposta(Base):
+    """
+    Parliamentary Questions and Requests Responses Model
+    ===================================================
+    
+    Based on Requerimentos_RespostasOut structure from official documentation.
+    Contains response information for parliamentary questions and requests.
+    
+    XML Structure Mapping (Requerimentos_RespostasOut):
+    - dataResposta: Data da resposta (XML: dataResposta)
+    - docRemetida: Documentação remetida com a resposta (XML: docRemetida)
+    - Entidade: Entidade que elaborou a resposta (XML: Entidade)
+    - Ficheiro: Link para o ficheiro (XML: Ficheiro)
+    - publicacao: Lista de publicações representadas por estrutura PublicacoesOut (XML: publicacao)
+    """
     __tablename__ = 'pergunta_requerimento_respostas'
     
     id = Column(Integer, primary_key=True)
     destinatario_id = Column(Integer, ForeignKey('pergunta_requerimento_destinatarios.id'), nullable=False)
     
-    entidade = Column(String(200))
-    data_resposta = Column(Date)
-    ficheiro = Column(Text)
-    doc_remetida = Column(String(200))
+    # Response fields from XML mapping
+    entidade = Column(String(200), comment="Entidade que elaborou a resposta (XML: Entidade)")
+    data_resposta = Column(Date, comment="Data da resposta (XML: dataResposta)")
+    ficheiro = Column(Text, comment="Link para o ficheiro (XML: Ficheiro)")
+    doc_remetida = Column(String(200), comment="Documentação remetida com a resposta (XML: docRemetida)")
     
     created_at = Column(DateTime, default=func.now())
     
@@ -2156,15 +2254,28 @@ class PerguntaRequerimentoResposta(Base):
 
 
 class PerguntaRequerimentoAutor(Base):
+    """
+    Parliamentary Questions and Requests Authors Model
+    =================================================
+    
+    Based on Iniciativas_AutoresDeputadosOut structure from official documentation.
+    Contains author information for parliamentary questions and requests.
+    
+    XML Structure Mapping (Iniciativas_AutoresDeputadosOut):
+    - GP: Grupo Parlamentar do Deputado (XML: GP)
+    - idCadastro: Identificador do registo de cadastro do Deputado (XML: idCadastro)
+    - nome: Nome do Deputado (XML: nome)
+    """
     __tablename__ = 'pergunta_requerimento_autores'
     
     id = Column(Integer, primary_key=True)
     pergunta_requerimento_id = Column(Integer, ForeignKey('perguntas_requerimentos.id'), nullable=False)
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=True)
     
-    id_cadastro = Column(Integer)
-    nome = Column(String(200))
-    gp = Column(String(50))  # Grupo Parlamentar
+    # Author fields from XML mapping
+    id_cadastro = Column(Integer, comment="Identificador do registo de cadastro do Deputado (XML: idCadastro)")
+    nome = Column(String(200), comment="Nome do Deputado (XML: nome)")
+    gp = Column(String(50), comment="Grupo Parlamentar do Deputado (XML: GP)")
     
     created_at = Column(DateTime, default=func.now())
     
