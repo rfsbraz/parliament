@@ -102,14 +102,14 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
     """
     Deputy Activity Data Mapper - Cross-Legislature Validated
     ========================================================
-    
+
     Maps Portuguese Parliament deputy activity XML files to database models.
     Based on official Parliament documentation (December 2017):
     "Significado das Tags do Ficheiro AtividadeDeputado<Legislatura>.xml"
-    
+
     DOCUMENTATION STATUS:
     ✓ Constituinte Legislature - Documented and validated
-    ✓ I Legislature - Documented and validated (IDENTICAL to Constituinte)  
+    ✓ I Legislature - Documented and validated (IDENTICAL to Constituinte)
     ✓ II Legislature - Documented and validated (IDENTICAL to Constituinte & I)
     ✓ III Legislature - Documented and validated (IDENTICAL to all previous)
     ✓ IV Legislature - Documented and validated (IDENTICAL to all previous)
@@ -120,21 +120,21 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
     ✓ IX Legislature - Documented and validated (IDENTICAL to all previous)
     ✓ X Legislature - Documented and validated (IDENTICAL to all previous)
     ? XI-XVII Legislatures - Pending documentation analysis
-    
+
     FINDING: Field definitions are IDENTICAL across all validated legislatures,
     proving consistent XML structure across Portuguese Parliament legislatures.
-    
+
     MAPPED STRUCTURES (from official documentation):
-    
+
     1. **IniciativasOut** - Deputy initiatives presented
        - iniId: Initiative identifier
-       - iniNr: Initiative number  
+       - iniNr: Initiative number
        - iniTp: Initiative type (requires TipodeIniciativa translator)
        - iniTpdesc: Initiative type description
        - iniSelLg: Initiative legislature
        - iniSelNr: Legislative session
        - iniTi: Initiative title
-    
+
     2. **RequerimentosOut** - Questions and requirements submitted
        - reqId: Requirement identifier
        - reqNr: Requirement number
@@ -144,7 +144,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
        - reqAs: Requirement subject
        - reqDt: Requirement date
        - reqPerTp: Document type (requerimento/pergunta)
-    
+
     3. **IntervencoesOut** - Parliamentary interventions
        - intId: Intervention identifier
        - intTe: Intervention summary
@@ -152,7 +152,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
        - pubTp: Publication type (requires TipodePublicacao translator)
        - pubDar: Assembly Diary number
        - tinDs: Intervention type
-    
+
     4. **ActividadesParlamentaresOut** - Parliamentary activities
        - actId: Activity identifier
        - actNr: Activity number
@@ -161,19 +161,19 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
        - actSelLg: Activity legislature
        - actSelNr: Legislative session
        - actAs: Activity subject
-    
+
     5. **ComissoesOut** - Committee memberships
        - cmsNo: Committee name
        - cmsCd: Committee code
        - cmsCargo: Committee position
        - cmsSituacao: Member status (suplente/efetivo - requires translator)
-    
+
     TRANSLATION REQUIREMENTS:
     - Use database.translators.deputy_activities for activity/request types
     - Use database.translators.publications for publication types
     - Use database.translators.initiatives for initiative types
     - Use database.translators.parliamentary_interventions for intervention types
-    
+
     DATA INTEGRITY PRINCIPLES:
     - Map XML to SQL directly without artificial data generation
     - Preserve all original field values and relationships
@@ -602,16 +602,15 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 deputado, "DepNomeCompleto"
             ) or self._get_text_value(deputado, "depNomeCompleto")
             deputado_record = self._get_or_create_deputado(
-                dep_id, dep_cad_id, dep_nome, dep_nome_completo
+                dep_id_text, dep_cad_id_text, dep_nome, dep_nome_completo
             )
             if not deputado_record:
                 logger.warning("Could not create/find deputado record")
                 return False
-            deputado_db_id = deputado_record.id
 
             # Create AtividadeDeputado record using our new models
             atividade_deputado_id = self._create_atividade_deputado(
-                deputado_db_id, dep_cad_id, legislatura_sigla, deputado
+                dep_id_text, dep_cad_id_text, legislatura_sigla, deputado
             )
 
             if not atividade_deputado_id:

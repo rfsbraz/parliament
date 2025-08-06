@@ -197,12 +197,11 @@ class Deputado(Base):
     gp_situations = relationship("DeputyGPSituation", back_populates="deputado", cascade="all, delete-orphan")
     situations = relationship("DeputySituation", back_populates="deputado", cascade="all, delete-orphan")
 
-    # Indexes and constraints for query optimization
+    # Indexes for query optimization
     __table_args__ = (
         Index('idx_deputy_cadastro', 'id_cadastro'),
         Index('idx_deputy_legislature', 'legislatura_id'),
         Index('idx_deputy_name', 'nome'),
-        UniqueConstraint('id_cadastro', 'legislatura_id', name='uq_deputy_cadastro_legislature'),
     )
 
 

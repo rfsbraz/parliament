@@ -1938,7 +1938,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Field mapping: orgId, orgSigla, orgDes, orgNumero
             id_orgao = self._get_text_value(detalhe_orgao, "orgId")
             sigla_orgao = self._get_text_value(detalhe_orgao, "orgSigla")
-            nome_sigla = self._get_text_value(detalhe_orgao, "orgDes")  # orgDes is the description
+            nome_sigla = self._get_text_value(
+                detalhe_orgao, "orgDes"
+            )  # orgDes is the description
 
             # For Mesa AR, orgDes may not exist - use orgSigla as fallback
             if not nome_sigla and sigla_orgao:
@@ -1951,7 +1953,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             numero_orgao = self._get_text_value(detalhe_orgao, "orgNumero")
 
             if not id_orgao:
-                return False
+                raise ValueError(
+                    f"Missing required organ identifier: orgId='{id_orgao}'. Data integrity violation - cannot generate artificial identifiers"
+                )
 
             # Create or get AR Board record
             ar_board = self._get_or_create_ar_board(

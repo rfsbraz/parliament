@@ -525,7 +525,7 @@ class InformacaoBaseMapper(SchemaMapper):
             # Process deputy situations
             dep_situacao = deputado_element.find("DepSituacao")
             if dep_situacao is not None:
-                self._process_deputy_situations(dep_situacao, deputado)
+                self._process_deputy_situations(dep_situacao, deputado, legislatura)
 
             # Process deputy positions/roles (DepCargo) - IX Legislature and later
             dep_cargo = deputado_element.find("DepCargo")
@@ -536,8 +536,6 @@ class InformacaoBaseMapper(SchemaMapper):
             dep_videos = deputado_element.find("Videos")
             if dep_videos is not None:
                 self._process_deputy_videos(dep_videos, deputado)
-
-            logger.debug(f"Processed deputy: {dep_nome_parlamentar} (ID: {dep_cad_id})")
 
         except Exception as e:
             logger.error(f"Error processing standard deputy: {e}")
@@ -675,7 +673,7 @@ class InformacaoBaseMapper(SchemaMapper):
             logger.error(f"Error processing deputy GP situations: {e}")
 
     def _process_deputy_situations(
-        self, dep_situacao_element: ET.Element, deputado: Deputado
+        self, dep_situacao_element: ET.Element, deputado: Deputado, legislatura: Legislatura
     ) -> None:
         """Process deputy situations (DepSituacao -> DadosSituacaoDeputado)"""
         try:
@@ -703,14 +701,21 @@ class InformacaoBaseMapper(SchemaMapper):
                 if sio_dt_fim_str:
                     sio_dt_fim = DataValidationUtils.parse_date_flexible(sio_dt_fim_str)
 
-                # Create deputy situation record (need to check existing structure)
-                # For now, create a simple tracking record
-                # Note: This may need adjustment based on actual deputy situation model structure
+                # Create deputy situation record
+                deputy_situation = DeputySituation(
+                    deputado_id=deputado.id,
+                    legislatura_id=legislatura.id,
+                    sio_des=sio_des,
+                    sio_dt_inicio=sio_dt_inicio,
+                    sio_dt_fim=sio_dt_fim
+                )
+                
+                self.session.add(deputy_situation)
+                self.processed_deputy_situations += 1
 
                 logger.debug(
                     f"Processed deputy situation: {deputado.nome} -> {sio_des} ({sio_dt_inicio} - {sio_dt_fim})"
                 )
-                self.processed_deputy_situations += 1
 
         except Exception as e:
             logger.error(f"Error processing deputy situations: {e}")

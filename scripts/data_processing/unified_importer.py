@@ -56,8 +56,8 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler("unified_importer.log", encoding='utf-8'),
-        UnicodeSafeHandler()
+        logging.FileHandler("unified_importer.log", encoding="utf-8"),
+        UnicodeSafeHandler(),
     ],
 )
 logger = logging.getLogger(__name__)
@@ -246,13 +246,13 @@ class UnifiedImporter:
     IMPORT_ORDER = [
         # 1. Foundation data (no dependencies)
         "informacao_base",  # Creates: Legislatura, Partido, CirculoEleitoral, Deputado (base information)
-        "registo_biografico",  # Creates: Deputado, Legislatura, CirculoEleitoral, Partido
         # 2. Basic organizational structure
         "composicao_orgaos",  # Creates: OrganMeeting, Committee data (depends on Deputado, Legislatura)
         # 3. Deputy activities (depends on Deputado)
         "atividade_deputados",  # Creates: AtividadeDeputado, DeputySituations (depends on Deputado)
         # 4. Parliamentary activities (depends on Deputado, Legislatura)
         "atividades",  # Creates: AtividadeParlamentar (depends on Deputado, Legislatura)
+        "registo_biografico",  # Creates: Deputado, Legislatura, CirculoEleitoral, Partido
         "agenda_parlamentar",  # Creates: AgendaParlamentar (depends on Legislatura)
         # 5. Budget and State financial activities (depends on Legislatura)
         "orcamento_estado",  # Creates: OrcamentoEstado* models (depends on Legislatura)
@@ -490,10 +490,16 @@ class UnifiedImporter:
         file_type = self.file_type_resolver.resolve_file_type(file_path)
         if not file_type:
             # PANIC: If we found an XML/JSON file but can't determine its type, this is a bug
-            if file_path.endswith(('.xml', '.json', '_json.txt')):
-                logger.error(f"PANIC: Cannot determine file type for XML/JSON file: {file_path}")
-                logger.error("This indicates missing file type patterns in FileTypeResolver.FILE_TYPE_PATTERNS")
-                logger.error("All XML/JSON files must have defined patterns and mappers")
+            if file_path.endswith((".xml", ".json", "_json.txt")):
+                logger.error(
+                    f"PANIC: Cannot determine file type for XML/JSON file: {file_path}"
+                )
+                logger.error(
+                    "This indicates missing file type patterns in FileTypeResolver.FILE_TYPE_PATTERNS"
+                )
+                logger.error(
+                    "All XML/JSON files must have defined patterns and mappers"
+                )
                 sys.exit(1)
             return False
 
@@ -501,9 +507,15 @@ class UnifiedImporter:
         if file_type not in self.schema_mappers:
             error_msg = f"PANIC: No mapper for file type: {file_type}"
             logger.error(f"{error_msg} in {file_path}")
-            logger.error(f"Available mappers: {', '.join(sorted(self.schema_mappers.keys()))}")
-            logger.error(f"Detected file type '{file_type}' has no corresponding mapper implementation")
-            logger.error("This indicates missing mapper development - exiting to prevent data loss")
+            logger.error(
+                f"Available mappers: {', '.join(sorted(self.schema_mappers.keys()))}"
+            )
+            logger.error(
+                f"Detected file type '{file_type}' has no corresponding mapper implementation"
+            )
+            logger.error(
+                "This indicates missing mapper development - exiting to prevent data loss"
+            )
             sys.exit(1)
 
         # If force reimport, always process
@@ -646,7 +658,9 @@ class UnifiedImporter:
                     # Commit mapper changes
                     logger.debug(f"Committing mapper session for {file_path}")
                     mapper_session.commit()
-                    logger.debug(f"Successfully committed mapper session for {file_path}")
+                    logger.debug(
+                        f"Successfully committed mapper session for {file_path}"
+                    )
 
                     # Update status to completed
                     import_status.status = "completed"
