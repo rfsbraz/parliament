@@ -2,18 +2,40 @@
 Comprehensive Parliamentary Petitions Mapper
 ============================================
 
-Enhanced schema mapper for parliamentary petition files (Peticoes*.xml).
-Imports EVERY SINGLE FIELD and structure from the XML including:
-- Main petition data
-- Committee handling across multiple legislaturas
-- Reporters and their assignments
-- Final reports with voting data
-- Documents (texts, final reports)
-- Interventions/debates with speakers
-- Publications for all phases
-- Complete audit trail of petition lifecycle
+Enhanced schema mapper for parliamentary petition files (Peticoes<Legislatura>.xml).
+Based on Peticoes_DetalhePesquisaPeticoesOut specification from official Parliament documentation.
 
-Maps to comprehensive database schema with full relational structure.
+Imports EVERY SINGLE FIELD and structure from the XML including:
+
+Core Petition Data (Peticoes_DetalhePesquisaPeticoesOut):
+- petId: Petition identifier and primary key
+- petNr: Sequential petition number within legislature
+- petLeg: Legislature designation (Roman numeral)
+- petSel: Legislative session number
+- petAssunto: Petition subject/topic description
+- petSituacao: Current processing status
+- petNrAssinaturas: Number of petition signatures
+- petDataEntrada: Entry date into Parliament system
+- petActividadeId: Associated parliamentary activity identifier
+- petAutor: Petition author/submitter information
+- dataDebate: Date when petition was debated
+
+Committee Processing (Peticoes_ComissoesPetOut):
+- Complete committee assignment and workflow tracking
+- Admissibility decisions with dates and status
+- Committee transfers and transitional handling
+- Archive and reactivation lifecycle management
+- Multiple committee handling across different legislatures
+
+Related Structures:
+- RelatoresOut: Committee reporters with appointment/cessation dates
+- RelatoriosFinaisOut: Final reports with voting outcomes using VotacaoOut structure
+- DocsOut: Document management with multiple document types
+- IntervencoesOut: Parliamentary interventions and debate contributions
+- PublicacoesOut: Publications using TipodePublicacao enum for type standardization
+- TipodeReuniao: Meeting type enum for committee sessions (8 types: AG, AS, AU, CO, CR, GA, IE, PP)
+
+Maps to comprehensive database schema with full relational structure and complete audit trail.
 """
 
 import xml.etree.ElementTree as ET
@@ -23,7 +45,10 @@ from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
 
-from .enhanced_base_mapper import SchemaMapper, SchemaError
+from .enhanced_base_mapper import EnhancedSchemaMapper, SchemaError
+
+# For backward compatibility
+SchemaMapper = EnhancedSchemaMapper
 
 # Import our models
 import sys
@@ -40,31 +65,56 @@ logger = logging.getLogger(__name__)
 
 
 class PeticoesMapper(SchemaMapper):
-    """Comprehensive schema mapper for parliamentary petition files"""
+    """
+    Comprehensive schema mapper for parliamentary petition files
+    
+    Processes Peticoes<Legislatura>.xml files using the Peticoes_DetalhePesquisaPeticoesOut
+    specification learned from official Parliament documentation.
+    
+    Key Features:
+    - Complete petition lifecycle tracking from entry to final resolution
+    - Multi-committee handling with admissibility workflow
+    - Integration with existing TipodeReuniao and TipodePublicacao enums
+    - Comprehensive document and intervention management
+    - Full audit trail with dates and status transitions
+    
+    Inherits from EnhancedSchemaMapper for:
+    - Standardized XML processing methods (_get_text_value, _get_int_value, _get_boolean_value)
+    - Legislature extraction and management
+    - Database session handling with integrity controls
+    - Schema validation and error handling
+    """
     
     def __init__(self, session):
         # Accept SQLAlchemy session directly (passed by unified importer)
         super().__init__(session)
     
     def get_expected_fields(self) -> Set[str]:
-        # Complete field list with full XML hierarchy paths to avoid field name conflicts
+        """
+        Complete field list based on Peticoes_DetalhePesquisaPeticoesOut specification
+        from official Parliament documentation.
+        
+        Uses full XML hierarchy paths to avoid field name conflicts across different
+        nested structures (committees, documents, interventions, voting).
+        """
         return {
-            # Root elements
+            # Root elements (both legacy and current format support)
             'ArrayOfPeticaoOut',
             'ArrayOfPeticaoOut.PeticaoOut',
+            'Peticoes_DetalhePesquisaPeticoesOut',
             
-            # Core petition fields - with full hierarchy
-            'ArrayOfPeticaoOut.PeticaoOut.PetId',
-            'ArrayOfPeticaoOut.PeticaoOut.PetNr', 
-            'ArrayOfPeticaoOut.PeticaoOut.PetLeg',
-            'ArrayOfPeticaoOut.PeticaoOut.PetSel',
-            'ArrayOfPeticaoOut.PeticaoOut.PetAssunto',
-            'ArrayOfPeticaoOut.PeticaoOut.PetSituacao',
-            'ArrayOfPeticaoOut.PeticaoOut.PetNrAssinaturas',
-            'ArrayOfPeticaoOut.PeticaoOut.PetDataEntrada',
-            'ArrayOfPeticaoOut.PeticaoOut.PetActividadeId',
-            'ArrayOfPeticaoOut.PeticaoOut.PetAutor',
-            'ArrayOfPeticaoOut.PeticaoOut.DataDebate',
+            # Core petition fields from Peticoes_DetalhePesquisaPeticoesOut
+            'ArrayOfPeticaoOut.PeticaoOut.PetId',           # petId: Petition identifier
+            'ArrayOfPeticaoOut.PeticaoOut.PetNr',           # petNr: Petition number
+            'ArrayOfPeticaoOut.PeticaoOut.PetLeg',          # petLeg: Legislature designation
+            'ArrayOfPeticaoOut.PeticaoOut.PetSel',          # petSel: Legislative session
+            'ArrayOfPeticaoOut.PeticaoOut.PetAssunto',      # petAssunto: Petition subject
+            'ArrayOfPeticaoOut.PeticaoOut.PetSituacao',     # petSituacao: Current status
+            'ArrayOfPeticaoOut.PeticaoOut.PetNrAssinaturas', # petNrAssinaturas: Signature count
+            'ArrayOfPeticaoOut.PeticaoOut.PetDataEntrada',  # petDataEntrada: Entry date
+            'ArrayOfPeticaoOut.PeticaoOut.PetActividadeId', # petActividadeId: Activity ID
+            'ArrayOfPeticaoOut.PeticaoOut.PetAutor',        # petAutor: Petition author
+            'ArrayOfPeticaoOut.PeticaoOut.DataDebate',      # dataDebate: Debate date
             
             # Publications - with full hierarchy
             'ArrayOfPeticaoOut.PeticaoOut.PublicacaoPeticao',

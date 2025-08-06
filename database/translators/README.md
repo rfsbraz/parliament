@@ -64,6 +64,11 @@ This directory contains thematic field translation modules for Portuguese Parlia
 - **CirculoEleitoralType** enum for electoral circles (22 codes: 18 districts + 4 special)
 - Used across biographical models: Deputado, DeputadoHabilitacao, DeputadoCargoFuncao, DeputadoAtividadeOrgao, DeputadoMandatoLegislativo
 
+### `reunioes_visitas.py`
+- **TipoReuniaoVisita** enum for meeting/visit types (3 codes: RNI, RNN, VEE)
+- **TipoParticipanteReuniao** enum for meeting participant types (1 code: D)
+- Used across meeting models: ReuniaoNacional, ParticipanteReuniaoNacional
+
 ## Usage Patterns
 
 ### Individual Model Translation
@@ -137,6 +142,8 @@ else:
 | DeputadoAtividadeOrgao | tia_des | registo_biografico | organ_position_type() |
 | DeputadoMandatoLegislativo | leg_des | registo_biografico | legislature_designation() |
 | DeputadoMandatoLegislativo | ce_des | registo_biografico | electoral_circle() |
+| ReuniaoNacional | tipo | reunioes_visitas | meeting_type() |
+| ParticipanteReuniaoNacional | tipo | reunioes_visitas | participant_type() |
 
 ### Official Documentation Mapping
 
@@ -147,5 +154,6 @@ All translations are based on multiple official sources:
 - **DelegacoesEventuais**: "DelegacoesEventuais.xml" structure documentation (December 2017)
 - **DelegacoesPermanentes**: "DelegacoesPermanentes.xml" structure documentation (December 2017)
 - **RegistoBiografico**: "Estruturas de dados do Registo Biográfico dos Deputados" specifications (December 2017 and May 2023)
+- **ReunioesNacionais**: "Significado das Tags do Ficheiro ReunioesNacionais.xml" specification (December 2017)
 - **Validation**: Consistent across legislatures with version-specific updates
 - **Location**: `E:\dev\parliament\scripts\data_processing\data\downloads\`

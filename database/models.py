@@ -6446,3 +6446,125 @@ class OrcamentoEstadoIniciativa(Base):
     def __repr__(self):
         return f"<OrcamentoEstadoIniciativa(numero='{self.numero}', titulo='{self.titulo[:50] if self.titulo else ''}...')>"
 
+
+# =====================================================
+# REUNIÕES E VISITAS (MEETINGS AND VISITS) MODELS
+# =====================================================
+
+class ReuniaoNacional(Base):
+    """
+    National Meetings and Visits Model - Based on ReunioesNacionais.xml specification
+    
+    Manages meetings and visits outside the scope of other external relations categories
+    promoted by the Portuguese Parliament (Assembleia da República).
+    
+    ReunioesNacionais.xml Mapping (Reuniao structure):
+    - Id: reuniao_id (Meeting registry identifier)
+    - Nome: nome (Meeting title)
+    - Tipo: tipo (Meeting type: RNI/RNN/VEE using TipoReuniaoVisita enum)
+    - Local: local (Meeting location)
+    - Legislatura: legislatura_id (Legislature identifier - foreign key)
+    - Sessão: sessao (Legislative session number)
+    - DataInicio: data_inicio (Meeting start date)
+    - DataFim: data_fim (Meeting end date)
+    - Promotor: promotor (Meeting organizer/promoter)
+    - Participantes: participantes (List via ParticipanteReuniaoNacional relationship)
+    
+    Meeting Types (Tipo field):
+    - RNI: Reunião Internacional (International Meeting)
+    - RNN: Reunião Nacional (National Meeting)
+    - VEE: Visita de entidade estrangeira (Foreign Entity Visit)
+    
+    External Relations Context:
+    - Covers meetings and visits outside standard parliamentary categories
+    - Focuses on external relations and international cooperation activities
+    - Includes visits from foreign entities and international meeting participation
+    
+    Usage:
+        Central model for external relations meetings and visits
+        Links to deputy participants via ParticipanteReuniaoNacional
+        References legislature periods for temporal organization
+    """
+    __tablename__ = 'reunioes_nacionais'
+    __table_args__ = (
+        Index('idx_reuniao_nacional_reuniao_id', 'reuniao_id'),
+        Index('idx_reuniao_nacional_tipo', 'tipo'),
+        Index('idx_reuniao_nacional_legislatura', 'legislatura_id'),
+        Index('idx_reuniao_nacional_data', 'data_inicio'),
+    )
+    
+    id = Column(Integer, primary_key=True)
+    reuniao_id = Column(Integer, unique=True, nullable=False, comment="Meeting registry identifier (XML: Id)")
+    nome = Column(Text, comment="Meeting title (XML: Nome)")
+    tipo = Column(String(10), comment="Meeting type: RNI/RNN/VEE (XML: Tipo)")
+    local = Column(Text, comment="Meeting location (XML: Local)")
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False, comment="Legislature identifier (XML: Legislatura)")
+    sessao = Column(Integer, comment="Legislative session number (XML: Sessão)")
+    data_inicio = Column(Date, comment="Meeting start date (XML: DataInicio)")
+    data_fim = Column(Date, comment="Meeting end date (XML: DataFim)")
+    promotor = Column(Text, comment="Meeting organizer/promoter (XML: Promotor)")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    legislatura = relationship("Legislatura")
+    participantes = relationship("ParticipanteReuniaoNacional", back_populates="reuniao", cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<ReuniaoNacional(id={self.reuniao_id}, nome='{self.nome[:50] if self.nome else ''}...', tipo='{self.tipo}')>"
+
+
+class ParticipanteReuniaoNacional(Base):
+    """
+    National Meeting Participant Model - Based on ReunioesNacionais.xml Participante structure
+    
+    Tracks deputy participation in external relations meetings and visits,
+    providing complete deputy information and parliamentary group affiliation.
+    
+    ReunioesNacionais.xml Mapping (Participante structure):
+    - Tipo: tipo (Participant type: D=Deputado using TipoParticipanteReuniao enum)
+    - Nome: nome (Deputy participant name)
+    - Gp: grupo_parlamentar (Parliamentary group affiliation)
+    - Leg: legislatura (Legislature identifier for deputy context)
+    - Id: deputado_id (Deputy identifier)
+    
+    Participant Type:
+    - D: Deputado (Deputy) - currently the only supported participant type
+    - Indicates focus on deputy participation in external relations activities
+    
+    Parliamentary Context:
+    - Links meeting participation to specific deputy records
+    - Preserves parliamentary group affiliation at time of meeting
+    - Maintains legislature context for deputy identification
+    
+    Usage:
+        Links deputies to specific meetings/visits
+        Tracks parliamentary group representation in external relations
+        Supports analysis of deputy international engagement patterns
+    """
+    __tablename__ = 'participantes_reunioes_nacionais'
+    __table_args__ = (
+        Index('idx_participante_reuniao_nacional_reuniao', 'reuniao_id'),
+        Index('idx_participante_reuniao_nacional_deputado', 'deputado_id'),
+        Index('idx_participante_reuniao_nacional_gp', 'grupo_parlamentar'),
+    )
+    
+    id = Column(Integer, primary_key=True)
+    reuniao_id = Column(Integer, ForeignKey('reunioes_nacionais.id'), nullable=False, comment="Meeting foreign key reference")
+    tipo = Column(String(10), comment="Participant type: D=Deputado (XML: Tipo)")
+    nome = Column(String(200), comment="Deputy participant name (XML: Nome)")
+    grupo_parlamentar = Column(String(50), comment="Parliamentary group affiliation (XML: Gp)")
+    legislatura = Column(String(20), comment="Legislature identifier for deputy context (XML: Leg)")
+    deputado_id = Column(Integer, comment="Deputy identifier (XML: Id)")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    reuniao = relationship("ReuniaoNacional", back_populates="participantes")
+    
+    def __repr__(self):
+        return f"<ParticipanteReuniaoNacional(nome='{self.nome}', gp='{self.grupo_parlamentar}', tipo='{self.tipo}')>"
+

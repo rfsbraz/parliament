@@ -23,6 +23,7 @@ from .peticoes import PeticoesMapper
 from .perguntas_requerimentos import PerguntasRequerimentosMapper
 from .diplomas_aprovados import DiplomasAprovadosMapper
 from .orcamento_estado_mapper import OrcamentoEstadoMapper
+from .reunioes_nacionais import ReunioesNacionaisMapper
 
 __all__ = [
     'SchemaMapper',
@@ -42,5 +43,6 @@ __all__ = [
     'PeticoesMapper',
     'PerguntasRequerimentosMapper',
     'DiplomasAprovadosMapper',
-    'OrcamentoEstadoMapper'
+    'OrcamentoEstadoMapper',
+    'ReunioesNacionaisMapper'
 ]
