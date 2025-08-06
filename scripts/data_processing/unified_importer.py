@@ -75,6 +75,7 @@ from scripts.data_processing.mappers import (
     PeticoesMapper,
     RegistoBiograficoMapper,
     RegistoInteressesMapper,
+    ReunioesNacionaisMapper,
     SchemaError,
     SchemaMapper,
 )
@@ -152,10 +153,11 @@ class FileTypeResolver:
         "reunioes_visitas": [
             r"Reunioes.*\.xml",
             r"ReuniaoNacional.*\.xml",
-            r".*[/\\]Reuniões _ Visitas[/\\].*\.xml",
-            r".*[/\\]Reunies _ Visitas[/\\].*\.xml",
-            r".*Reunioe.*\.xml\.xml",
-            r".*ReuniaoNacional.*\.xml\.xml",
+            r".*[/\\]Reunioes_Visitas[/\\].*\.xml",
+            r".*[/\\]Reuniões.*Visitas[/\\].*\.xml",
+            r".*[/\\]Reunies.*Visitas[/\\].*\.xml",
+            r".*Reunioe.*\.xml",
+            r".*ReunioesVisitas.*\.xml",
         ],
         "grupos_amizade": [
             r"GrupoDeAmizade.*\.xml",
@@ -289,6 +291,7 @@ class UnifiedImporter:
             "perguntas_requerimentos": PerguntasRequerimentosMapper,
             "diplomas_aprovados": DiplomasAprovadosMapper,
             "orcamento_estado": OrcamentoEstadoMapper,
+            "reunioes_visitas": ReunioesNacionaisMapper,
         }
 
     def init_database(self):

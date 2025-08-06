@@ -28,5 +28,5 @@ FLASK_CONFIG = {
 }
 
 # Parliament data paths
-PARLIAMENT_DATA_DIR = os.path.join(DATA_DIR, 'downloads')
-DOWNLOADS_DIR = os.path.join(DATA_DIR, "downloads")
+PARLIAMENT_DATA_DIR = os.path.join(BASE_DIR, 'scripts', 'data_processing', 'data', 'downloads')
+DOWNLOADS_DIR = os.path.join(BASE_DIR, 'scripts', 'data_processing', 'data', 'downloads')
