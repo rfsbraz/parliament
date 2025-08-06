@@ -22,24 +22,51 @@ Base = declarative_base()
 # =====================================================
 
 class Legislatura(Base):
+    """
+    Legislature Model - Based on InformacaoBase LegislaturaOut specification
+    
+    Contains comprehensive legislature information including dates, identifiers and status.
+    
+    InformacaoBase Mapping (LegislaturaOut):
+    - dtini: data_inicio (Start date of legislature)
+    - dtfim: data_fim (End date of legislature)  
+    - sigla: numero (Legislature abbreviation/number - e.g., "XV", "Cons")
+    
+    Usage:
+        Used as root container in InformacaoBase<Legislatura>.xml files
+        References: DetalheLegislatura structure
+    """
     __tablename__ = 'legislaturas'
     
     id = Column(Integer, primary_key=True)
-    numero = Column(String(20), unique=True, nullable=False)
-    designacao = Column(String(100), nullable=False)
-    data_inicio = Column(Date)
-    data_fim = Column(Date)
-    ativa = Column(Boolean, default=False)
+    numero = Column(String(20), unique=True, nullable=False, comment="Legislature abbreviation (XML: sigla)")
+    designacao = Column(String(100), nullable=False, comment="Full legislature designation")
+    data_inicio = Column(Date, comment="Legislature start date (XML: dtini)")
+    data_fim = Column(Date, comment="Legislature end date (XML: dtfim)")
+    ativa = Column(Boolean, default=False, comment="Whether legislature is currently active")
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 
 class Partido(Base):
+    """
+    Political Party Model - Based on InformacaoBase GPOut specification
+    
+    Contains parliamentary group information as represented in parliament structure.
+    
+    InformacaoBase Mapping (GPOut):
+    - sigla: sigla (Parliamentary group abbreviation - e.g., "PS", "PSD") 
+    - nome: nome (Full parliamentary group name)
+    
+    Usage:
+        Referenced in GruposParlamentares section of InformacaoBase files
+        Used for deputy parliamentary group associations
+    """
     __tablename__ = 'partidos'
     
     id = Column(Integer, primary_key=True)
-    sigla = Column(String(10), unique=True, nullable=False)
-    nome = Column(String(200), nullable=False)
+    sigla = Column(String(10), unique=True, nullable=False, comment="Parliamentary group abbreviation (XML: sigla)")
+    nome = Column(String(200), nullable=False, comment="Full parliamentary group name (XML: nome)")
     designacao_completa = Column(Text)
     cor_hex = Column(String(7))
     ativo = Column(Boolean, default=True)
@@ -51,11 +78,25 @@ class Partido(Base):
 
 
 class CirculoEleitoral(Base):
+    """
+    Electoral Circle Model - Based on InformacaoBase DadosCirculoEleitoralList specification
+    
+    Contains electoral constituency information for deputy elections.
+    
+    InformacaoBase Mapping (DadosCirculoEleitoralList):
+    - cpId: codigo (Electoral circle code/identifier)
+    - cpDes: designacao (Electoral circle description/name)
+    - legDes: legislature reference (not stored, used for context)
+    
+    Usage:
+        Referenced in CirculosEleitorais section of InformacaoBase files
+        Used for deputy constituency associations (DepCPId field)
+    """
     __tablename__ = 'circulos_eleitorais'
     
     id = Column(Integer, primary_key=True)
-    designacao = Column(String(100), unique=True, nullable=False)
-    codigo = Column(String(10))
+    designacao = Column(String(100), unique=True, nullable=False, comment="Electoral circle name (XML: cpDes)")
+    codigo = Column(String(10), comment="Electoral circle code (XML: cpId)")
     regiao = Column(String(50))
     distrito = Column(String(50))
     num_deputados = Column(Integer, default=0)
@@ -67,7 +108,9 @@ class CirculoEleitoral(Base):
 
 class Deputado(Base):
     """
-    Deputy/Parliament Member Model
+    Deputy/Parliament Member Model - Based on InformacaoBase DadosDeputadoOrgaoPlenario specification
+    
+    Contains comprehensive deputy information including identity, affiliations and status.
     
     IMPORTANT: Deputy Identity Across Legislatures
     ==============================================
@@ -78,13 +121,28 @@ class Deputado(Base):
       
     A person may serve in multiple legislatures and will have different `id` values
     but the same `id_cadastro` throughout their parliamentary career.
+    
+    InformacaoBase Mapping (DadosDeputadoOrgaoPlenario):
+    - DepId: id (Legislature-specific deputy identifier)  
+    - DepCadId: id_cadastro (Unique person registration ID across all legislatures)
+    - DepNomeParlamentar: nome (Parliamentary name - shortened version)
+    - DepNomeCompleto: nome_completo (Full deputy name)
+    - DepCPId: Electoral circle identifier (links to CirculoEleitoral)
+    - DepCPDes: Electoral circle name (for reference)
+    - DepGP: Parliamentary group associations (DadosSituacaoGP structure)
+    - DepSituacao: Deputy situations (DadosSituacaoDeputado structure)
+    - LegDes: Legislature reference (not stored, used for context)
+    
+    Usage:
+        Central entity in InformacaoBase files linking all deputy-related information
+        References parliamentary groups, electoral circles, and situational data
     """
     __tablename__ = 'deputados'
     
-    id = Column(Integer, primary_key=True)  # Legislature-specific ID
-    id_cadastro = Column(Integer, unique=True, nullable=False)  # Person's unique registration ID
-    nome = Column(String(200), nullable=False)
-    nome_completo = Column(String(300))
+    id = Column(Integer, primary_key=True, comment="Legislature-specific deputy ID (XML: DepId)")
+    id_cadastro = Column(Integer, unique=True, nullable=False, comment="Person's unique registration ID across all legislatures (XML: DepCadId)")
+    nome = Column(String(200), nullable=False, comment="Parliamentary name - shortened version (XML: DepNomeParlamentar)")
+    nome_completo = Column(String(300), comment="Full deputy name (XML: DepNomeCompleto)")
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     sexo = Column(String(1))  # M/F - cadSexo field
     profissao = Column(String(200))
@@ -645,16 +703,31 @@ class DeputyLegislativeDataPublication(Base):
 # =====================================================
 
 class DeputyGPSituation(Base):
-    """Deputy Parliamentary Group Situation - unified model for all contexts"""
+    """
+    Deputy Parliamentary Group Situation - Based on InformacaoBase DadosSituacaoGP specification
+    
+    Contains deputy's parliamentary group membership information with dates.
+    
+    InformacaoBase Mapping (DadosSituacaoGP):
+    - gpId: gp_id (Parliamentary group identifier) 
+    - gpSigla: gp_sigla (Parliamentary group acronym - e.g., "PS", "PSD")
+    - gpDtInicio: gp_dt_inicio (Group membership start date)
+    - gpDtFim: gp_dt_fim (Group membership end date)
+    
+    Usage:
+        Nested within DepGP structure in InformacaoBase files
+        Tracks deputy parliamentary group changes over time
+        Unified model for all contexts (InformacaoBase, activities, etc.)
+    """
     __tablename__ = 'deputy_gp_situations'
     
     id = Column(Integer, primary_key=True)
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
-    gp_id = Column(Integer)  # Parliamentary Group ID
-    gp_sigla = Column(String(20))  # Parliamentary Group acronym/sigla
-    gp_dt_inicio = Column(Date)  # Start date of GP membership
-    gp_dt_fim = Column(Date)  # End date of GP membership
+    gp_id = Column(Integer, comment="Parliamentary group ID (XML: gpId)")
+    gp_sigla = Column(String(20), comment="Parliamentary group acronym (XML: gpSigla)")
+    gp_dt_inicio = Column(Date, comment="GP membership start date (XML: gpDtInicio)")
+    gp_dt_fim = Column(Date, comment="GP membership end date (XML: gpDtFim)")
     composition_context = Column(String(50))  # Context where this GP situation was recorded (ar_board, commission, etc.)
     created_at = Column(DateTime, default=func.now())
     
@@ -1855,13 +1928,27 @@ class DeputadoSituacao(Base):
 
 
 class DadosSituacaoDeputado(Base):
+    """
+    Deputy Situation Data - Based on InformacaoBase DadosSituacaoDeputado specification
+    
+    Contains deputy situational information with dates and descriptions.
+    
+    InformacaoBase Mapping (DadosSituacaoDeputado):
+    - sioDes: sio_des (Situation description - e.g., "Efetivo", "Suplente")
+    - sioDtInicio: sio_dt_inicio (Situation start date)  
+    - sioDtFim: sio_dt_fim (Situation end date)
+    
+    Usage:
+        Nested within DepSituacao structure in InformacaoBase files
+        Tracks deputy status changes over time within legislature
+    """
     __tablename__ = 'dados_situacao_deputados'
     
     id = Column(Integer, primary_key=True)
     deputado_situacao_id = Column(Integer, ForeignKey('deputado_situacoes.id'), nullable=False)
-    sio_des = Column(String(100))  # SioDes - situation description
-    sio_dt_inicio = Column(Date)   # SioDtInicio - start date
-    sio_dt_fim = Column(Date)      # SioDtFim - end date
+    sio_des = Column(String(100), comment="Situation description (XML: sioDes)")
+    sio_dt_inicio = Column(Date, comment="Situation start date (XML: sioDtInicio)")
+    sio_dt_fim = Column(Date, comment="Situation end date (XML: sioDtFim)")
     created_at = Column(DateTime, default=func.now())
     
     deputado_situacao = relationship("DeputadoSituacao", back_populates="dados_situacao")
@@ -2940,22 +3027,56 @@ class AudienciasParlamentares(Base):
 
 # Initiative models
 class IniciativaParlamentar(Base):
+    """
+    Parliamentary Initiative Model - Based on Iniciativas<Legislatura>.xml specification
+    
+    Iniciativas Mapping (Iniciativas_DetalhePesquisaIniciativasOut):
+    - iniId: ini_id (Identificador da Iniciativa)
+    - iniNr: ini_nr (Número da Iniciativa)
+    - iniTipo: ini_tipo (Indica o Tipo de Iniciativa)
+    - iniDescTipo: ini_desc_tipo (Descrição do Tipo de Iniciativa)
+    - iniLeg: ini_leg (Legislatura da iniciativa)
+    - iniSel: ini_sel (Sessão legislativa da iniciativa)
+    - dataInicioleg: data_inicio_leg (Data de Inicio da Legislatura)
+    - dataFimleg: data_fim_leg (Data de Fim da Legislatura)
+    - iniTitulo: ini_titulo (Indica o Titulo da Iniciativa)
+    - iniTextoSubst: ini_texto_subst (Indica se tem texto de substituição)
+    - iniTextoSubstCampo: ini_texto_subst_campo (Observações sobre substituição do ficheiro)
+    - iniLinkTexto: ini_link_texto (Link para o texto da iniciativa)
+    - iniObs: ini_obs (Observações associadas)
+    
+    Related Structures:
+    - iniAutorDeputados: Deputado autor (Iniciativas_AutoresDeputadosOut)
+    - iniAutorGruposParlamentares: Grupo Parlamentar autor (AutoresGruposParlamentaresOut)
+    - iniAutorOutros: Outros autores (AutoresOutrosOut)
+    - iniEventos: Eventos associados (Iniciativas_EventosOut)
+    - iniAnexos: Anexos representados (Iniciativas_AnexosOut)
+    - propostasAlteracao: Propostas de alteração (Iniciativas_PropostasAlteracaoOut)
+    - iniciativasOrigem: Iniciativas que deram origem (Iniciativa_DadosGeraisOut)
+    - iniciativasOriginadas: Iniciativas originadas (Iniciativa_DadosGeraisOut)
+    - peticoes: Petições relacionadas (Iniciativas_DadosGeraisOut)
+    - links: Links diversos associados
+    
+    Additional Fields:
+    - iniEpigrafe: Indica se tem texto em epígrafe
+    - iniciativasEuropeias: Iniciativas Europeias que deram origem
+    """
     __tablename__ = 'iniciativas_detalhadas'
     
     id = Column(Integer, primary_key=True)
-    ini_id = Column(Integer, unique=True, nullable=False)  # External ID
-    ini_nr = Column(Integer)
-    ini_tipo = Column(Text)
-    ini_desc_tipo = Column(Text)
-    ini_leg = Column(Text)
-    ini_sel = Column(Integer)
-    data_inicio_leg = Column(Date)
-    data_fim_leg = Column(Date)
-    ini_titulo = Column(Text)
-    ini_texto_subst = Column(Text)
-    ini_texto_subst_campo = Column(Text)  # IniTextoSubstCampo - XII Legislature specific field
-    ini_link_texto = Column(Text)
-    ini_obs = Column(Text)
+    ini_id = Column(Integer, unique=True, nullable=False, comment="Identificador da Iniciativa (XML: iniId)")
+    ini_nr = Column(Integer, comment="Número da Iniciativa (XML: iniNr)")
+    ini_tipo = Column(Text, comment="Tipo de Iniciativa - código (XML: iniTipo)")
+    ini_desc_tipo = Column(Text, comment="Descrição do Tipo de Iniciativa (XML: iniDescTipo)")
+    ini_leg = Column(Text, comment="Legislatura da iniciativa (XML: iniLeg)")
+    ini_sel = Column(Integer, comment="Sessão legislativa da iniciativa (XML: iniSel)")
+    data_inicio_leg = Column(Date, comment="Data de Inicio da Legislatura (XML: dataInicioleg)")
+    data_fim_leg = Column(Date, comment="Data de Fim da Legislatura (XML: dataFimleg)")
+    ini_titulo = Column(Text, comment="Titulo da Iniciativa (XML: iniTitulo)")
+    ini_texto_subst = Column(Text, comment="Indica se tem texto de substituição (XML: iniTextoSubst)")
+    ini_texto_subst_campo = Column(Text, comment="Observações sobre substituição do ficheiro (XML: iniTextoSubstCampo)")
+    ini_link_texto = Column(Text, comment="Link para o texto da iniciativa (XML: iniLinkTexto)")
+    ini_obs = Column(Text, comment="Observações associadas (XML: iniObs)")
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     updated_at = Column(DateTime, default=func.now, onupdate=func.now)
     
@@ -3060,20 +3181,43 @@ class IniciativaEvento(Base):
     anexos_fase = relationship("IniciativaEventoAnexo", back_populates="evento", cascade="all, delete-orphan")
 
 class IniciativaEventoPublicacao(Base):
+    """
+    Initiative Event Publication Model - Based on PublicacoesOut specification
+    
+    Publication Mapping (PublicacoesOut):
+    - pubNr: pub_nr (Número da Publicação)
+    - pubTipo: pub_tipo (Descrição do Tipo de Publicação)
+    - pubTp: pub_tp (Abreviatura do Tipo de Publicação)  
+    - pubLeg: pub_leg (Legislatura em que ocorreu a Publicação)
+    - pubSL: pub_sl (Sessão legislativa em que ocorreu a Publicação)
+    - pubdt: pub_dt (Data da Publicação)
+    - pag: pag (Páginas)
+    - idPag: id_pag (Identificador da Paginação)
+    - idInt: id_int (Identificador da Intervenção associada à Publicação)
+    - URLDiario: url_diario (Link para o DAR da Publicação)
+    
+    Additional Fields from Specification:
+    - idAct: Identificador da Atividade associada à Publicação
+    - idDeb: Identificador do Debate associado à Publicação
+    - obs: Observações
+    - pagFinalDiarioSupl: Página final do suplemento
+    - Supl: Suplemento da Publicação
+    - debateDtReu: Data da reunião plenária onde ocorreu o Debate
+    """
     __tablename__ = 'iniciativas_eventos_publicacoes'
     
     id = Column(Integer, primary_key=True)
     evento_id = Column(Integer, ForeignKey('iniciativas_eventos.id'), nullable=False)
-    pub_nr = Column(Integer)
-    pub_tipo = Column(Text)
-    pub_tp = Column(Text)
-    pub_leg = Column(Text)
-    pub_sl = Column(Integer)
-    pub_dt = Column(Date)
-    pag = Column(Text)
-    id_pag = Column(Integer)
-    id_int = Column(Integer)  # Internal ID field
-    url_diario = Column(Text)
+    pub_nr = Column(Integer, comment="Número da Publicação (XML: pubNr)")
+    pub_tipo = Column(Text, comment="Descrição do Tipo de Publicação (XML: pubTipo)")
+    pub_tp = Column(Text, comment="Abreviatura do Tipo de Publicação (XML: pubTp)")
+    pub_leg = Column(Text, comment="Legislatura em que ocorreu a Publicação (XML: pubLeg)")
+    pub_sl = Column(Integer, comment="Sessão legislativa em que ocorreu a Publicação (XML: pubSL)")
+    pub_dt = Column(Date, comment="Data da Publicação (XML: pubdt)")
+    pag = Column(Text, comment="Páginas (XML: pag)")
+    id_pag = Column(Integer, comment="Identificador da Paginação (XML: idPag)")
+    id_int = Column(Integer, comment="Identificador da Intervenção associada à Publicação (XML: idInt)")
+    url_diario = Column(Text, comment="Link para o DAR da Publicação (XML: URLDiario)")
     
     # Relationships
     evento = relationship("IniciativaEvento", back_populates="publicacoes")
@@ -5449,4 +5593,409 @@ class GrupoAmizadeParticipante(Base):
     
     def __repr__(self):
         return f"<GrupoAmizadeParticipante(id={self.participant_id}, nome='{self.nome}', tipo='{self.tipo}')>"
+
+
+# =====================================================
+# ORÇAMENTO DO ESTADO (STATE BUDGET) MODELS
+# =====================================================
+
+class OrcamentoEstado(Base):
+    """
+    Base State Budget Model
+    ======================
+    
+    Root container for State Budget data across all legislative periods.
+    Handles both legacy (OEPropostasAlteracao) and current (OE) formats.
+    
+    Format Detection:
+    - Legacy: OEPropostasAlteracao<numOE>*.xml (Legislaturas X-XV)
+    - Current: OE<numOE>*.xml (Legislatura XVI+)
+    
+    Based on official Parliament documentation:
+    - "Significado das Tags dos Ficheiros OEPropostasAlteracao<numOE>Or.xml/Al.xml"
+    - "Significado das Tags dos Ficheiros OE<numOE>Or.xml/Al.xml"
+    """
+    __tablename__ = 'orcamento_estado'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # File metadata
+    file_path = Column(String(500), nullable=False)
+    format_type = Column(String(10), nullable=False)  # 'legacy' or 'current'
+    numero_orcamento = Column(String(20))  # OE number (e.g., "2020", "2021")
+    tipo_arquivo = Column(String(10))  # 'Or' (Original) or 'Al' (Alterações)
+    
+    # Processing metadata
+    total_propostas = Column(Integer, default=0)
+    total_items = Column(Integer, default=0)
+    data_processamento = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    legislatura = relationship("Legislatura")
+    propostas_alteracao = relationship("OrcamentoEstadoPropostaAlteracao", back_populates="orcamento")
+    items = relationship("OrcamentoEstadoItem", back_populates="orcamento")
+    
+    def __repr__(self):
+        return f"<OrcamentoEstado(id={self.id}, format='{self.format_type}', num_orcamento='{self.numero_orcamento}')>"
+
+
+class OrcamentoEstadoPropostaAlteracao(Base):
+    """
+    State Budget Amendment Proposal Model
+    ====================================
+    
+    Represents amendment proposals in both legacy and current formats.
+    Legacy format has more detailed workflow tracking.
+    
+    Legacy Structure (OEPropostasAlteracao):
+    - Complex amendment proposal workflow with proponents, voting, regional opinions
+    - Rich metadata about amendment scope and parliamentary processing
+    
+    Current Structure (OE/Item/PropostasDeAlteracao/Proposta):
+    - Simplified proposal structure within budget items
+    - Basic amendment information with less workflow detail
+    
+    XML Mapping:
+    - ID/ID_PA: proposta_id (Unique proposal identifier)
+    - Numero: numero (Proposal number)
+    - Data: data_proposta (Proposal date)
+    - Titulo/Objeto: titulo (Proposal title)
+    """
+    __tablename__ = 'orcamento_estado_propostas_alteracao'
+    
+    id = Column(Integer, primary_key=True)
+    orcamento_id = Column(Integer, ForeignKey('orcamento_estado.id'), nullable=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core proposal identification
+    proposta_id = Column(Integer, nullable=False, index=True)  # XML: ID/ID_PA
+    numero = Column(String(50))  # XML: Numero
+    data_proposta = Column(Date)  # XML: Data
+    titulo = Column(Text)  # XML: Titulo/Objeto
+    
+    # Legacy format specific fields
+    tema = Column(Text)  # XML: Tema (legacy only)
+    apresentada = Column(String(200))  # XML: Apresentada (legacy only)
+    incide = Column(String(50))  # XML: Incide (legacy only)
+    incide_desc = Column(String(200))  # Translated incide value
+    tipo = Column(String(50))  # XML: Tipo
+    tipo_desc = Column(String(200))  # Translated tipo value
+    estado = Column(String(100))  # XML: Estado
+    estado_desc = Column(String(200))  # Translated estado value
+    numero_artigo_novo = Column(String(50))  # XML: NumeroArtigoNovo (legacy only)
+    conteudo = Column(Text)  # XML: Conteudo (legacy only)
+    ficheiro_url = Column(String(500))  # XML: Ficheiro
+    grupo_parlamentar = Column(String(200))  # XML: GrupoParlamentar_Partido (legacy only)
+    
+    # Current format specific fields
+    id_pai = Column(Integer)  # XML: ID_Pai (current only)
+    apresentado = Column(String(200))  # XML: Apresentado (current only)
+    
+    # Format identification
+    format_type = Column(String(10), nullable=False)  # 'legacy' or 'current'
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    orcamento = relationship("OrcamentoEstado", back_populates="propostas_alteracao")
+    legislatura = relationship("Legislatura")
+    proponentes = relationship("OrcamentoEstadoProponente", back_populates="proposta")
+    votacoes = relationship("OrcamentoEstadoVotacao", back_populates="proposta")
+    artigos = relationship("OrcamentoEstadoArtigo", back_populates="proposta")
+    
+    __table_args__ = (
+        Index('idx_oe_proposta_id', 'proposta_id'),
+        Index('idx_oe_proposta_legislatura', 'legislatura_id'),
+        Index('idx_oe_proposta_format', 'format_type'),
+    )
+    
+    def __repr__(self):
+        return f"<OrcamentoEstadoPropostaAlteracao(id={self.proposta_id}, numero='{self.numero}', format='{self.format_type}')>"
+
+
+class OrcamentoEstadoItem(Base):
+    """
+    State Budget Item Model (Current Format)
+    =======================================
+    
+    Represents budget items in current OE format (Legislatura XVI+).
+    Items are hierarchical and can contain proposals, articles, diplomas, etc.
+    
+    Current Structure (OE/Item):
+    - Hierarchical budget item structure with parent-child relationships
+    - Type-based categorization (1=Diplomas, 2=Iniciativas/Artigos, 3=Iniciativas/Mapas)
+    - Contains nested amendment proposals, voting records, and related data
+    
+    XML Mapping:
+    - ID: item_id (Unique item identifier)
+    - ID_Pai: id_pai (Parent item reference)
+    - Tipo: tipo (Item type: 1, 2, or 3)
+    - Numero: numero (Item number)
+    - Titulo: titulo (Item title)
+    - Texto: texto (Item text content)
+    - Estado: estado (Item state)
+    """
+    __tablename__ = 'orcamento_estado_items'
+    
+    id = Column(Integer, primary_key=True)
+    orcamento_id = Column(Integer, ForeignKey('orcamento_estado.id'), nullable=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    # Core item identification
+    item_id = Column(Integer, nullable=False, index=True)  # XML: ID
+    id_pai = Column(Integer)  # XML: ID_Pai (parent item reference)
+    tipo = Column(String(10))  # XML: Tipo (1, 2, or 3)
+    tipo_desc = Column(String(200))  # Translated tipo value
+    numero = Column(String(50))  # XML: Numero
+    titulo = Column(Text)  # XML: Titulo
+    texto = Column(Text)  # XML: Texto
+    estado = Column(String(100))  # XML: Estado
+    estado_desc = Column(String(200))  # Translated estado value
+    
+    # Format identification
+    format_type = Column(String(10), default='current')
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    orcamento = relationship("OrcamentoEstado", back_populates="items")
+    legislatura = relationship("Legislatura")
+    artigos = relationship("OrcamentoEstadoArtigo", back_populates="item")
+    propostas = relationship("OrcamentoEstadoPropostaAlteracao")  # Via foreign key
+    diplomas = relationship("OrcamentoEstadoDiploma", back_populates="item")
+    iniciativas = relationship("OrcamentoEstadoIniciativa", back_populates="item")
+    votacoes = relationship("OrcamentoEstadoVotacao", back_populates="item")
+    
+    __table_args__ = (
+        Index('idx_oe_item_id', 'item_id'),
+        Index('idx_oe_item_pai', 'id_pai'),
+        Index('idx_oe_item_tipo', 'tipo'),
+        Index('idx_oe_item_legislatura', 'legislatura_id'),
+    )
+    
+    def __repr__(self):
+        return f"<OrcamentoEstadoItem(id={self.item_id}, tipo='{self.tipo}', titulo='{self.titulo[:50] if self.titulo else ''}...')>"
+
+
+class OrcamentoEstadoProponente(Base):
+    """
+    State Budget Proposal Proponent Model
+    ====================================
+    
+    Represents proponents (deputies/groups) of amendment proposals.
+    Primarily used in legacy format with detailed proponent information.
+    
+    Legacy Structure (PropostasDeAlteracao/PropostaDeAlteracao/Proponentes/Proponente):
+    - GP_Partido: grupo_parlamentar (Parliamentary group)
+    - Deputado: deputado_nome (Deputy name)
+    
+    XML Mapping:
+    - GP_Partido: grupo_parlamentar (Parliamentary group/party)
+    - Deputado: deputado_nome (Deputy name if individual proponent)
+    """
+    __tablename__ = 'orcamento_estado_proponentes'
+    
+    id = Column(Integer, primary_key=True)
+    proposta_id = Column(Integer, ForeignKey('orcamento_estado_propostas_alteracao.id'), nullable=False)
+    
+    # Proponent information
+    grupo_parlamentar = Column(String(200))  # XML: GP_Partido
+    deputado_nome = Column(String(200))  # XML: Deputado
+    tipo_proponente = Column(String(50))  # 'grupo' or 'deputado'
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    proposta = relationship("OrcamentoEstadoPropostaAlteracao", back_populates="proponentes")
+    
+    def __repr__(self):
+        return f"<OrcamentoEstadoProponente(gp='{self.grupo_parlamentar}', deputado='{self.deputado_nome}')>"
+
+
+class OrcamentoEstadoVotacao(Base):
+    """
+    State Budget Voting Records Model
+    ================================
+    
+    Represents voting records for proposals and items in both formats.
+    Contains voting results and parliamentary group positions.
+    
+    Legacy Structure (PropostasDeAlteracao/PropostaDeAlteracao/Votacoes/Votacao):
+    - More detailed voting information with group-by-group results
+    
+    Current Structure (Item/Votacoes/Votacao):
+    - Simplified voting records within budget items
+    
+    XML Mapping:
+    - Data: data_votacao (Voting date)
+    - Resultado/ResultadoCompleto: resultado (Voting result)
+    - Descricoes: descricao (Voting description)
+    """
+    __tablename__ = 'orcamento_estado_votacoes'
+    
+    id = Column(Integer, primary_key=True)
+    proposta_id = Column(Integer, ForeignKey('orcamento_estado_propostas_alteracao.id'), nullable=True)
+    item_id = Column(Integer, ForeignKey('orcamento_estado_items.id'), nullable=True)
+    
+    # Voting information
+    data_votacao = Column(Date)  # XML: Data
+    descricao = Column(Text)  # XML: Descricoes
+    sub_descricao = Column(Text)  # XML: SubDescricao
+    resultado = Column(Text)  # XML: Resultado/ResultadoCompleto
+    diplomas_terceiros = Column(Text)  # XML: DiplomasTerceiros
+    grupos_parlamentares = Column(Text)  # XML: GruposParlamentares (JSON-like storage)
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    proposta = relationship("OrcamentoEstadoPropostaAlteracao", back_populates="votacoes")
+    item = relationship("OrcamentoEstadoItem", back_populates="votacoes")
+    
+    def __repr__(self):
+        return f"<OrcamentoEstadoVotacao(data='{self.data_votacao}', resultado='{self.resultado[:50] if self.resultado else ''}...')>"
+
+
+class OrcamentoEstadoArtigo(Base):
+    """
+    State Budget Article Model
+    =========================
+    
+    Represents articles within proposals and items.
+    Can be nested within both legacy proposals and current items.
+    
+    Legacy Structure (PropostasDeAlteracao/PropostaDeAlteracao/Iniciativas_Artigos/Iniciativa_Artigo):
+    - Artigo: numero (Article number)
+    - Titulo: titulo (Article title)
+    - Texto: texto (Article text)
+    - Estado: estado (Article state)
+    
+    Current Structure (Item/Artigos/Artigo):
+    - ID_Art: artigo_id (Article identifier)
+    - ID_Pai: id_pai (Parent reference)
+    - Similar structure with type, number, title, text, state
+    
+    XML Mapping:
+    - ID_Art/Artigo: artigo_id/numero (Article identifier)
+    - Numero: numero (Article number)
+    - Titulo: titulo (Article title)
+    - Texto: texto (Article text content)
+    - Estado: estado (Article state)
+    """
+    __tablename__ = 'orcamento_estado_artigos'
+    
+    id = Column(Integer, primary_key=True)
+    proposta_id = Column(Integer, ForeignKey('orcamento_estado_propostas_alteracao.id'), nullable=True)
+    item_id = Column(Integer, ForeignKey('orcamento_estado_items.id'), nullable=True)
+    
+    # Article identification
+    artigo_id = Column(Integer)  # XML: ID_Art (current format)
+    id_pai = Column(Integer)  # XML: ID_Pai (current format)
+    numero = Column(String(50))  # XML: Artigo/Numero
+    tipo = Column(String(50))  # XML: Tipo (current format)
+    titulo = Column(Text)  # XML: Titulo
+    texto = Column(Text)  # XML: Texto
+    estado = Column(String(100))  # XML: Estado
+    estado_desc = Column(String(200))  # Translated estado value
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    proposta = relationship("OrcamentoEstadoPropostaAlteracao", back_populates="artigos")
+    item = relationship("OrcamentoEstadoItem", back_populates="artigos")
+    
+    def __repr__(self):
+        return f"<OrcamentoEstadoArtigo(numero='{self.numero}', titulo='{self.titulo[:50] if self.titulo else ''}...')>"
+
+
+class OrcamentoEstadoDiploma(Base):
+    """
+    State Budget Diploma Model (Current Format)
+    ==========================================
+    
+    Represents diplomas to be modified within budget items.
+    Used in current format for type 1 items (Diplomas a modificar).
+    
+    Current Structure (Item/DiplomasaModificar/DiplomaModificar):
+    - ID_Dip: diploma_id (Diploma identifier)
+    - DiplomaTitulo: titulo (Diploma title)
+    - DiplomaSubTitulo: sub_titulo (Diploma subtitle)
+    - DiplomasArtigos: artigos_texto (Related articles text)
+    
+    XML Mapping:
+    - ID_Dip: diploma_id (Diploma identifier)
+    - DiplomaTitulo: titulo (Diploma title)
+    - DiplomaSubTitulo: sub_titulo (Diploma subtitle)
+    - DiplomasArtigos: artigos_texto (Related articles)
+    """
+    __tablename__ = 'orcamento_estado_diplomas'
+    
+    id = Column(Integer, primary_key=True)
+    item_id = Column(Integer, ForeignKey('orcamento_estado_items.id'), nullable=False)
+    
+    # Diploma identification
+    diploma_id = Column(Integer)  # XML: ID_Dip
+    titulo = Column(Text)  # XML: DiplomaTitulo
+    sub_titulo = Column(Text)  # XML: DiplomaSubTitulo
+    artigos_texto = Column(Text)  # XML: DiplomasArtigos
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    item = relationship("OrcamentoEstadoItem", back_populates="diplomas")
+    
+    def __repr__(self):
+        return f"<OrcamentoEstadoDiploma(id={self.diploma_id}, titulo='{self.titulo[:50] if self.titulo else ''}...')>"
+
+
+class OrcamentoEstadoIniciativa(Base):
+    """
+    State Budget Initiative/Map Model (Current Format)
+    =================================================
+    
+    Represents initiatives and maps within budget items.
+    Used in current format for type 3 items (Iniciativas/Mapas).
+    
+    Current Structure (Item/IniciativasMapas/IniciativaMapa):
+    - MapasNumero: numero (Map number)
+    - MapasTitulo: titulo (Map title)
+    - MapasEstado: estado (Map state)
+    - MapasLink: link_url (Map link/URL)
+    
+    XML Mapping:
+    - MapasNumero: numero (Map/initiative number)
+    - MapasTitulo: titulo (Map/initiative title)
+    - MapasEstado: estado (Map/initiative state)
+    - MapasLink: link_url (Map/initiative link)
+    """
+    __tablename__ = 'orcamento_estado_iniciativas'
+    
+    id = Column(Integer, primary_key=True)
+    item_id = Column(Integer, ForeignKey('orcamento_estado_items.id'), nullable=False)
+    
+    # Initiative/Map information
+    numero = Column(String(50))  # XML: MapasNumero
+    titulo = Column(Text)  # XML: MapasTitulo
+    estado = Column(String(100))  # XML: MapasEstado
+    estado_desc = Column(String(200))  # Translated estado value
+    link_url = Column(String(500))  # XML: MapasLink
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    item = relationship("OrcamentoEstadoItem", back_populates="iniciativas")
+    
+    def __repr__(self):
+        return f"<OrcamentoEstadoIniciativa(numero='{self.numero}', titulo='{self.titulo[:50] if self.titulo else ''}...')>"
 

@@ -2,17 +2,30 @@
 Comprehensive Legislative Initiatives Mapper
 ===========================================
 
-Enhanced schema mapper for legislative initiatives files (Iniciativas*.xml).
-Imports EVERY SINGLE FIELD and structure from the XML including:
-- Main initiative data
-- Authors (deputies, groups, others)
-- Events timeline with detailed phases
-- Voting data with results and parliamentary group positions
-- Committee assignments and publications
-- Amendment proposals
-- Joint discussions
-- Publication data for all phases
+Enhanced schema mapper for legislative initiatives files (Iniciativas<Legislatura>.xml).
+Based on official Parliament documentation (December 2017):
+"Significado das Tags do Ficheiro Iniciativas<Legislatura>.xml"
 
+XML Structure (Iniciativas_DetalhePesquisaIniciativasOut):
+- Root initiative metadata with comprehensive field mapping
+- Complex authorship tracking (deputies, parliamentary groups, committees)
+- Event timeline with detailed legislative phases (Iniciativas_EventosOut)
+- Voting records with results and parliamentary group positions (VotacaoOut)
+- Committee processing with publications and reporters (Iniciativas_ComissoesIniOut)
+- Amendment proposals with publication tracking (Iniciativas_PropostasAlteracaoOut)
+- Joint discussions and related initiatives (Iniciativas_DiscussaoConjuntaOut)
+- Publication data for all phases (PublicacoesOut)
+- Intervention records with speaker details (IntervencoesOut)
+
+Key Features:
+- Comprehensive coded value translation (initiative types, voting results, meeting types, phases)
+- Complex relationship mapping between initiatives (origin, originated, European)
+- Full event lifecycle tracking with phase transitions
+- Committee workflow processing with reporter assignments
+- Publication integration across all structures
+- Joint discussion and petition relationship mapping
+
+All field mappings validated against December 2017 specification.
 Maps to comprehensive database schema with full relational structure.
 """
 

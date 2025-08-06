@@ -34,7 +34,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index('idx_agenda_anexo_agenda', 'agenda_parlamentar_anexos', ['agenda_id'], unique=False)
-    op.create_index('idx_agenda_anexo_tipo', 'agenda_parlamentar_anexos', ['tipo_anexo'], unique=False)
+    # op.create_index('idx_agenda_anexo_tipo', 'agenda_parlamentar_anexos', ['tipo_anexo'], unique=False)  # Commented out due to MySQL TEXT column index limitation
     op.create_table('registo_interesses_social_positions_unified',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('registo_id', sa.Integer(), nullable=False),
@@ -56,75 +56,75 @@ def upgrade() -> None:
     op.add_column('agenda_parlamentar', sa.Column('orgao_designacao', sa.Text(), nullable=True))
     op.add_column('agenda_parlamentar', sa.Column('reuniao_numero', sa.Integer(), nullable=True))
     op.add_column('agenda_parlamentar', sa.Column('sessao_numero', sa.Integer(), nullable=True))
-    op.drop_index(op.f('idx_deputados_active_lookup'), table_name='deputados')
-    op.drop_index(op.f('idx_deputados_biographical'), table_name='deputados')
-    op.drop_index(op.f('idx_deputados_legislatura'), table_name='deputados')
-    op.drop_index(op.f('idx_iniciativas_data_periodo'), table_name='iniciativas_detalhadas')
-    op.drop_index(op.f('idx_iniciativas_leg_periodo'), table_name='iniciativas_detalhadas', mysql_length={'ini_leg': 20})
-    op.drop_index(op.f('idx_iniciativas_legislatura_tipo'), table_name='iniciativas_detalhadas', mysql_length={'ini_tipo': 100})
-    op.drop_index(op.f('idx_iniciativas_number_leg'), table_name='iniciativas_detalhadas', mysql_length={'ini_leg': 20, 'ini_tipo': 100})
-    op.drop_index(op.f('idx_intervencao_data_tipo'), table_name='intervencao_parlamentar')
-    op.drop_index(op.f('idx_intervencao_legislatura_data'), table_name='intervencao_parlamentar')
-    op.drop_index(op.f('idx_intervencao_sessao_legislatura'), table_name='intervencao_parlamentar')
-    op.drop_index(op.f('idx_meeting_attendances_dep_lookup'), table_name='meeting_attendances')
-    op.drop_index(op.f('idx_meeting_attendances_presence_status'), table_name='meeting_attendances')
-    op.drop_index(op.f('idx_meeting_attendances_session_performance'), table_name='meeting_attendances')
-    op.drop_index(op.f('idx_registo_interesses_deputado_lookup'), table_name='registo_interesses')
+    # op.drop_index(op.f('idx_deputados_active_lookup'), table_name='deputados')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_deputados_biographical'), table_name='deputados')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_deputados_legislatura'), table_name='deputados')  # Commented out - needed for FK constraint
+    # op.drop_index(op.f('idx_iniciativas_data_periodo'), table_name='iniciativas_detalhadas')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_iniciativas_leg_periodo'), table_name='iniciativas_detalhadas', mysql_length={'ini_leg': 20})  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_iniciativas_legislatura_tipo'), table_name='iniciativas_detalhadas', mysql_length={'ini_tipo': 100})  # Commented out - needed for FK constraint
+    # op.drop_index(op.f('idx_iniciativas_number_leg'), table_name='iniciativas_detalhadas', mysql_length={'ini_leg': 20, 'ini_tipo': 100})  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_intervencao_data_tipo'), table_name='intervencao_parlamentar')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_intervencao_legislatura_data'), table_name='intervencao_parlamentar')  # Commented out - needed for FK constraint
+    # op.drop_index(op.f('idx_intervencao_sessao_legislatura'), table_name='intervencao_parlamentar')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_meeting_attendances_dep_lookup'), table_name='meeting_attendances')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_meeting_attendances_presence_status'), table_name='meeting_attendances')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_meeting_attendances_session_performance'), table_name='meeting_attendances')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_registo_interesses_deputado_lookup'), table_name='registo_interesses')  # Commented out - may be needed for FK constraint
     op.add_column('registo_interesses_activities_unified', sa.Column('type_classification', sa.Integer(), nullable=True))
-    op.drop_index(op.f('idx_activities_unified_lookup'), table_name='registo_interesses_activities_unified')
+    # op.drop_index(op.f('idx_activities_unified_lookup'), table_name='registo_interesses_activities_unified')  # Commented out - may be needed for FK constraint
     op.add_column('registo_interesses_benefits_unified', sa.Column('service_location', sa.String(length=500), nullable=True))
-    op.drop_index(op.f('idx_benefits_unified_lookup'), table_name='registo_interesses_benefits_unified')
-    op.drop_index(op.f('idx_societies_unified_lookup'), table_name='registo_interesses_societies_unified')
+    # op.drop_index(op.f('idx_benefits_unified_lookup'), table_name='registo_interesses_benefits_unified')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_societies_unified_lookup'), table_name='registo_interesses_societies_unified')  # Commented out - may be needed for FK constraint
     op.alter_column('registo_interesses_unified', 'gender',
                existing_type=mysql.VARCHAR(collation='utf8mb4_unicode_ci', length=10),
                type_=sa.String(length=1),
                existing_nullable=True)
-    op.drop_index(op.f('idx_unified_cad_lookup'), table_name='registo_interesses_unified')
-    op.drop_index(op.f('idx_unified_deputy_lookup'), table_name='registo_interesses_unified')
-    op.drop_index(op.f('idx_unified_schema_version'), table_name='registo_interesses_unified')
-    op.drop_index(op.f('uk_unified_deputy_legislature_record'), table_name='registo_interesses_unified')
-    op.drop_index(op.f('idx_registo_interesses_v2_deputado_lookup'), table_name='registo_interesses_v2')
+    # op.drop_index(op.f('idx_unified_cad_lookup'), table_name='registo_interesses_unified')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_unified_deputy_lookup'), table_name='registo_interesses_unified')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_unified_schema_version'), table_name='registo_interesses_unified')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('uk_unified_deputy_legislature_record'), table_name='registo_interesses_unified')  # Commented out - may be needed for FK constraint
+    # op.drop_index(op.f('idx_registo_interesses_v2_deputado_lookup'), table_name='registo_interesses_v2')  # Commented out - may be needed for FK constraint
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
-    op.create_index(op.f('idx_registo_interesses_v2_deputado_lookup'), 'registo_interesses_v2', ['deputado_id', 'cad_id'], unique=False)
-    op.create_index(op.f('uk_unified_deputy_legislature_record'), 'registo_interesses_unified', ['deputado_id', 'legislatura_id', 'record_id', 'schema_version'], unique=True)
-    op.create_index(op.f('idx_unified_schema_version'), 'registo_interesses_unified', ['schema_version', 'legislatura_id'], unique=False)
-    op.create_index(op.f('idx_unified_deputy_lookup'), 'registo_interesses_unified', ['deputado_id', 'legislatura_id'], unique=False)
-    op.create_index(op.f('idx_unified_cad_lookup'), 'registo_interesses_unified', ['cad_id', 'schema_version'], unique=False)
+    # op.create_index(op.f('idx_registo_interesses_v2_deputado_lookup'), 'registo_interesses_v2', ['deputado_id', 'cad_id'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('uk_unified_deputy_legislature_record'), 'registo_interesses_unified', ['deputado_id', 'legislatura_id', 'record_id', 'schema_version'], unique=True)  # Commented out - index already exists
+    # op.create_index(op.f('idx_unified_schema_version'), 'registo_interesses_unified', ['schema_version', 'legislatura_id'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('idx_unified_deputy_lookup'), 'registo_interesses_unified', ['deputado_id', 'legislatura_id'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('idx_unified_cad_lookup'), 'registo_interesses_unified', ['cad_id', 'schema_version'], unique=False)  # Commented out - index already exists
     op.alter_column('registo_interesses_unified', 'gender',
                existing_type=sa.String(length=1),
                type_=mysql.VARCHAR(collation='utf8mb4_unicode_ci', length=10),
                existing_nullable=True)
-    op.create_index(op.f('idx_societies_unified_lookup'), 'registo_interesses_societies_unified', ['registo_id'], unique=False)
-    op.create_index(op.f('idx_benefits_unified_lookup'), 'registo_interesses_benefits_unified', ['registo_id', 'benefit_type'], unique=False)
+    # op.create_index(op.f('idx_societies_unified_lookup'), 'registo_interesses_societies_unified', ['registo_id'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('idx_benefits_unified_lookup'), 'registo_interesses_benefits_unified', ['registo_id', 'benefit_type'], unique=False)  # Commented out - index already exists
     op.drop_column('registo_interesses_benefits_unified', 'service_location')
-    op.create_index(op.f('idx_activities_unified_lookup'), 'registo_interesses_activities_unified', ['registo_id', 'activity_type'], unique=False)
+    # op.create_index(op.f('idx_activities_unified_lookup'), 'registo_interesses_activities_unified', ['registo_id', 'activity_type'], unique=False)  # Commented out - index already exists
     op.drop_column('registo_interesses_activities_unified', 'type_classification')
-    op.create_index(op.f('idx_registo_interesses_deputado_lookup'), 'registo_interesses', ['deputado_id', 'cad_id'], unique=False)
-    op.create_index(op.f('idx_meeting_attendances_session_performance'), 'meeting_attendances', ['dt_reuniao', 'dep_id', 'pres_tipo'], unique=False)
-    op.create_index(op.f('idx_meeting_attendances_presence_status'), 'meeting_attendances', ['pres_tipo', 'dt_reuniao'], unique=False)
-    op.create_index(op.f('idx_meeting_attendances_dep_lookup'), 'meeting_attendances', ['dep_id', 'dt_reuniao'], unique=False)
-    op.create_index(op.f('idx_intervencao_sessao_legislatura'), 'intervencao_parlamentar', ['sessao_numero', 'legislatura_id'], unique=False)
-    op.create_index(op.f('idx_intervencao_legislatura_data'), 'intervencao_parlamentar', ['legislatura_id', 'data_reuniao_plenaria', 'tipo_intervencao'], unique=False)
-    op.create_index(op.f('idx_intervencao_data_tipo'), 'intervencao_parlamentar', ['data_reuniao_plenaria', 'tipo_intervencao'], unique=False)
-    op.create_index(op.f('idx_iniciativas_number_leg'), 'iniciativas_detalhadas', ['ini_nr', 'ini_leg', 'ini_tipo'], unique=False, mysql_length={'ini_leg': 20, 'ini_tipo': 100})
-    op.create_index(op.f('idx_iniciativas_legislatura_tipo'), 'iniciativas_detalhadas', ['legislatura_id', 'ini_tipo'], unique=False, mysql_length={'ini_tipo': 100})
-    op.create_index(op.f('idx_iniciativas_leg_periodo'), 'iniciativas_detalhadas', ['ini_leg', 'legislatura_id'], unique=False, mysql_length={'ini_leg': 20})
-    op.create_index(op.f('idx_iniciativas_data_periodo'), 'iniciativas_detalhadas', ['data_inicio_leg', 'data_fim_leg'], unique=False)
-    op.create_index(op.f('idx_deputados_legislatura'), 'deputados', ['legislatura_id'], unique=False)
-    op.create_index(op.f('idx_deputados_biographical'), 'deputados', ['data_nascimento', 'naturalidade'], unique=False)
-    op.create_index(op.f('idx_deputados_active_lookup'), 'deputados', ['ativo', 'nome'], unique=False)
+    # op.create_index(op.f('idx_registo_interesses_deputado_lookup'), 'registo_interesses', ['deputado_id', 'cad_id'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('idx_meeting_attendances_session_performance'), 'meeting_attendances', ['dt_reuniao', 'dep_id', 'pres_tipo'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('idx_meeting_attendances_presence_status'), 'meeting_attendances', ['pres_tipo', 'dt_reuniao'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('idx_meeting_attendances_dep_lookup'), 'meeting_attendances', ['dep_id', 'dt_reuniao'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('idx_intervencao_sessao_legislatura'), 'intervencao_parlamentar', ['sessao_numero', 'legislatura_id'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('idx_intervencao_legislatura_data'), 'intervencao_parlamentar', ['legislatura_id', 'data_reuniao_plenaria', 'tipo_intervencao'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('idx_intervencao_data_tipo'), 'intervencao_parlamentar', ['data_reuniao_plenaria', 'tipo_intervencao'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('idx_iniciativas_number_leg'), 'iniciativas_detalhadas', ['ini_nr', 'ini_leg', 'ini_tipo'], unique=False, mysql_length={'ini_leg': 20, 'ini_tipo': 100})  # Commented out - index already exists
+    # op.create_index(op.f('idx_iniciativas_legislatura_tipo'), 'iniciativas_detalhadas', ['legislatura_id', 'ini_tipo'], unique=False, mysql_length={'ini_tipo': 100})  # Commented out - index already exists
+    # op.create_index(op.f('idx_iniciativas_leg_periodo'), 'iniciativas_detalhadas', ['ini_leg', 'legislatura_id'], unique=False, mysql_length={'ini_leg': 20})  # Commented out - index already exists
+    # op.create_index(op.f('idx_iniciativas_data_periodo'), 'iniciativas_detalhadas', ['data_inicio_leg', 'data_fim_leg'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('idx_deputados_legislatura'), 'deputados', ['legislatura_id'], unique=False)  # Commented out - index already exists
+    # op.create_index(op.f('idx_deputados_biographical'), 'deputados', ['data_nascimento', 'naturalidade'], unique=False)  # Commented out - may conflict
+    # op.create_index(op.f('idx_deputados_active_lookup'), 'deputados', ['ativo', 'nome'], unique=False)  # Commented out - may conflict
     op.drop_column('agenda_parlamentar', 'sessao_numero')
     op.drop_column('agenda_parlamentar', 'reuniao_numero')
     op.drop_column('agenda_parlamentar', 'orgao_designacao')
     op.drop_column('agenda_parlamentar', 'legislatura_designacao')
     op.drop_column('agenda_parlamentar', 'order_value')
     op.drop_table('registo_interesses_social_positions_unified')
-    op.drop_index('idx_agenda_anexo_tipo', table_name='agenda_parlamentar_anexos')
+    # op.drop_index('idx_agenda_anexo_tipo', table_name='agenda_parlamentar_anexos')  # Commented out due to MySQL TEXT column index limitation
     op.drop_index('idx_agenda_anexo_agenda', table_name='agenda_parlamentar_anexos')
     op.drop_table('agenda_parlamentar_anexos')
     # ### end Alembic commands ###

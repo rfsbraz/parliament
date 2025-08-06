@@ -18,9 +18,11 @@ from .composicao_orgaos import ComposicaoOrgaosMapper
 from .cooperacao import CooperacaoMapper
 from .delegacao_eventual import DelegacaoEventualMapper
 from .delegacao_permanente import DelegacaoPermanenteMapper
+from .informacao_base_mapper import InformacaoBaseMapper
 from .peticoes import PeticoesMapper
 from .perguntas_requerimentos import PerguntasRequerimentosMapper
 from .diplomas_aprovados import DiplomasAprovadosMapper
+from .orcamento_estado_mapper import OrcamentoEstadoMapper
 
 __all__ = [
     'SchemaMapper',
@@ -36,7 +38,9 @@ __all__ = [
     'CooperacaoMapper',
     'DelegacaoEventualMapper',
     'DelegacaoPermanenteMapper',
+    'InformacaoBaseMapper',
     'PeticoesMapper',
     'PerguntasRequerimentosMapper',
-    'DiplomasAprovadosMapper'
+    'DiplomasAprovadosMapper',
+    'OrcamentoEstadoMapper'
 ]

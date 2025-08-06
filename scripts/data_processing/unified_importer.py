@@ -67,8 +67,10 @@ from scripts.data_processing.mappers import (
     DelegacaoEventualMapper,
     DelegacaoPermanenteMapper,
     DiplomasAprovadosMapper,
+    InformacaoBaseMapper,
     InitiativasMapper,
     IntervencoesMapper,
+    OrcamentoEstadoMapper,
     PerguntasRequerimentosMapper,
     PeticoesMapper,
     RegistoBiograficoMapper,
@@ -235,6 +237,7 @@ class UnifiedImporter:
     # Import order respecting foreign key dependencies
     IMPORT_ORDER = [
         # 1. Foundation data (no dependencies)
+        "informacao_base",  # Creates: Legislatura, Partido, CirculoEleitoral, Deputado (base information)
         "registo_biografico",  # Creates: Deputado, Legislatura, CirculoEleitoral, Partido
         # 2. Basic organizational structure
         "composicao_orgaos",  # Creates: OrganMeeting, Committee data (depends on Deputado, Legislatura)
@@ -243,18 +246,20 @@ class UnifiedImporter:
         # 4. Parliamentary activities (depends on Deputado, Legislatura)
         "atividades",  # Creates: AtividadeParlamentar (depends on Deputado, Legislatura)
         "agenda_parlamentar",  # Creates: AgendaParlamentar (depends on Legislatura)
-        # 5. Complex activities (depends on previous activities)
+        # 5. Budget and State financial activities (depends on Legislatura)
+        "orcamento_estado",  # Creates: OrcamentoEstado* models (depends on Legislatura)
+        # 6. Complex activities (depends on previous activities)
         "iniciativas",  # Creates: IniciativaParlamentar (depends on Deputado, Legislatura)
         "intervencoes",  # Creates: IntervencaoParlamentar (depends on Deputado, activities)
-        # 6. Related processes (depends on initiatives/activities)
+        # 7. Related processes (depends on initiatives/activities)
         "peticoes",  # Creates: PeticaoParlamentar (depends on Deputado, committees)
         "perguntas_requerimentos",  # Creates: PerguntaRequerimento (depends on Deputado, Legislatura)
         "diplomas_aprovados",  # Creates: DiplomaAprovado (depends on initiatives)
-        # 7. Cooperative and delegation activities (depends on deputies/committees)
+        # 8. Cooperative and delegation activities (depends on deputies/committees)
         "cooperacao",  # Creates: CooperacaoParlamentar (depends on Deputado)
         "delegacao_eventual",  # Creates: DelegacaoEventual (depends on Deputado)
         "delegacao_permanente",  # Creates: DelegacaoPermanente (depends on Deputado)
-        # 8. Interest registrations (depends on Deputado)
+        # 9. Interest registrations (depends on Deputado)
         "registo_interesses",  # Creates: RegistoInteresses (depends on Deputado)
     ]
 
@@ -279,9 +284,11 @@ class UnifiedImporter:
             "cooperacao": CooperacaoMapper,
             "delegacao_eventual": DelegacaoEventualMapper,
             "delegacao_permanente": DelegacaoPermanenteMapper,
+            "informacao_base": InformacaoBaseMapper,
             "peticoes": PeticoesMapper,
             "perguntas_requerimentos": PerguntasRequerimentosMapper,
             "diplomas_aprovados": DiplomasAprovadosMapper,
+            "orcamento_estado": OrcamentoEstadoMapper,
         }
 
     def init_database(self):
@@ -473,20 +480,22 @@ class UnifiedImporter:
         # Check file type filter
         file_type = self.file_type_resolver.resolve_file_type(file_path)
         if not file_type:
+            # PANIC: If we found an XML/JSON file but can't determine its type, this is a bug
+            if file_path.endswith(('.xml', '.json', '_json.txt')):
+                logger.error(f"PANIC: Cannot determine file type for XML/JSON file: {file_path}")
+                logger.error("This indicates missing file type patterns in FileTypeResolver.FILE_TYPE_PATTERNS")
+                logger.error("All XML/JSON files must have defined patterns and mappers")
+                sys.exit(1)
             return False
 
         # Check if we have a mapper for this file type
         if file_type not in self.schema_mappers:
-            error_msg = f"No mapper for file type: {file_type}"
-            if strict_mode:
-                logger.error(f"STRICT MODE: {error_msg} in {file_path}")
-                logger.error(
-                    "Available mappers: " + ", ".join(self.schema_mappers.keys())
-                )
-                sys.exit(1)
-            else:
-                logger.debug(error_msg)
-                return False
+            error_msg = f"PANIC: No mapper for file type: {file_type}"
+            logger.error(f"{error_msg} in {file_path}")
+            logger.error(f"Available mappers: {', '.join(sorted(self.schema_mappers.keys()))}")
+            logger.error(f"Detected file type '{file_type}' has no corresponding mapper implementation")
+            logger.error("This indicates missing mapper development - exiting to prevent data loss")
+            sys.exit(1)
 
         # If force reimport, always process
         if force_reimport:
