@@ -855,12 +855,98 @@ class AgendaParlamentarAnexo(Base):
 # PARLIAMENTARY ORGANIZATION STRUCTURE (OrganizacaoAR)
 # =====================================================
 
+"""
+PARLIAMENTARY ORGANIZATION MODELS - FIELD DOCUMENTATION
+========================================================
+
+Based on official Portuguese Parliament documentation for OrgaoComposicao*.xml files.
+Documentation is identical across all legislatures (Constituinte through XIII_Legislatura).
+
+MAIN ORGANIZATIONAL STRUCTURE:
+- OrganizacaoAR: Root container for all parliamentary organizational data
+- Contains hierarchical structure of parliamentary bodies:
+  * ConselhoAdministracao (Administrative Council)
+  * ConferenciaLideres (Leaders Conference) 
+  * ConferenciaPresidentesComissoes (Commission Presidents Conference)
+  * MesaAR (Assembly Board)
+  * Comissoes (Commissions)
+  * SubComissoes (Sub-committees)
+  * GruposTrabalho (Work Groups)
+  * ComissaoPermanente (Permanent Committee)
+  * Plenario (Plenary)
+
+ORGAN DETAIL STRUCTURE (DetalheOrgao):
+- idOrgao: Unique organ identifier (integer)
+- siglaOrgao: Organ acronym/abbreviation (string)
+- nomeSigla: Full organ name or description (string)
+- numeroOrgao: Sequential organ number (integer)
+- siglaLegislatura: Legislature designation (string)
+
+COMPOSITION DATA (Composicao/HistoricoComposicao):
+- depId: Deputy ID within legislature (integer)
+- depCadId: Deputy registration/cadastral ID - unique person identifier (integer)
+- depNomeParlamentar: Deputy's parliamentary name (string)
+- depNomeCompleto: Deputy's full civil name (string)
+- orgId: Associated organ ID (integer)
+- legDes: Legislature designation (string)
+
+PARLIAMENTARY GROUP DATA (DadosSituacaoGP):
+- gpId: Parliamentary group ID (integer)
+- gpSigla: Parliamentary group acronym (string)
+- gpDtInicio: Group membership start date (date)
+- gpDtFim: Group membership end date (date)
+
+DEPUTY SITUATION DATA (DadosSituacaoDeputado):
+- sioDes: Situation description (effective/substitute/etc.) (string)
+- sioDtInicio: Situation start date (date)
+- sioDtFim: Situation end date (date)
+
+CARGO/POSITION DATA (for committees):
+- carId: Position/role ID (integer)
+- carDes: Position/role description (string)
+- dtInicio: Position start date (date)
+- dtFim: Position end date (date)
+
+REUNIAO/MEETING DATA:
+- reuId: Meeting ID (integer)
+- reuData: Meeting date (date)
+- reuHora: Meeting time (time)
+- reuSumario: Meeting summary (text)
+- reuTipoReuniao: Meeting type (string)
+- reuLocal: Meeting location (string)
+- reuObservacoes: Meeting observations (text)
+
+MEETING ATTENDANCE:
+- depId: Deputy ID (integer)
+- depCadId: Deputy cadastral ID (integer)
+- depNomeParlamentar: Deputy parliamentary name (string)
+- depNomeCompleto: Deputy full name (string)
+- depPresente: Attendance status (boolean)
+- depJustificacao: Absence justification (string)
+- depMotivoFalta: Reason for absence (string)
+
+VIDEO DATA:
+- videoId: Video identifier (string)
+- videoURL: Video URL (string)
+- videoDataPublicacao: Video publication date (date)
+- videoTitulo: Video title (string)
+- videoDescricao: Video description (text)
+
+Source: Official Parliament documentation - identical across all legislatures
+"""
+
 class ParliamentaryOrganization(Base):
+    """
+    Root parliamentary organization container (OrganizacaoAR)
+    
+    Contains all parliamentary bodies for a given legislature.
+    Maps to OrganizacaoAR root element in XML files.
+    """
     __tablename__ = 'parliamentary_organizations'
     
     id = Column(Integer, primary_key=True)
-    legislatura_sigla = Column(String(20), nullable=False)
-    xml_file_path = Column(String(500))
+    legislatura_sigla = Column(String(20), nullable=False)  # Legislature designation
+    xml_file_path = Column(String(500))  # Source XML file path
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     
@@ -881,15 +967,21 @@ class ParliamentaryOrganization(Base):
 
 
 class AdministrativeCouncil(Base):
+    """
+    Administrative Council (ConselhoAdministracao)
+    
+    Parliamentary body responsible for administrative oversight.
+    Contains organ details and historical composition data.
+    """
     __tablename__ = 'administrative_councils'
     
     id = Column(Integer, primary_key=True)
     organization_id = Column(Integer, ForeignKey('parliamentary_organizations.id'), nullable=False)
-    id_orgao = Column(Integer)
-    sigla_orgao = Column(String(50))
-    nome_sigla = Column(String(500))
-    numero_orgao = Column(Integer)
-    sigla_legislatura = Column(String(20))
+    id_orgao = Column(Integer)  # Unique organ identifier from XML
+    sigla_orgao = Column(String(50))  # Organ acronym/abbreviation
+    nome_sigla = Column(String(500))  # Full organ name or description
+    numero_orgao = Column(Integer)  # Sequential organ number
+    sigla_legislatura = Column(String(20))  # Legislature designation
     created_at = Column(DateTime, default=func.now())
     
     organization = relationship("ParliamentaryOrganization", back_populates="administrative_councils")
@@ -897,15 +989,21 @@ class AdministrativeCouncil(Base):
 
 
 class LeaderConference(Base):
+    """
+    Leader Conference (ConferenciaLideres)
+    
+    Parliamentary body comprising party leaders for coordination.
+    Contains organ details and historical composition data.
+    """
     __tablename__ = 'leader_conferences'
     
     id = Column(Integer, primary_key=True)
     organization_id = Column(Integer, ForeignKey('parliamentary_organizations.id'), nullable=False)
-    id_orgao = Column(Integer)
-    sigla_orgao = Column(String(50))
-    nome_sigla = Column(String(500))
-    numero_orgao = Column(Integer)
-    sigla_legislatura = Column(String(20))
+    id_orgao = Column(Integer)  # Unique organ identifier from XML
+    sigla_orgao = Column(String(50))  # Organ acronym/abbreviation
+    nome_sigla = Column(String(500))  # Full organ name or description
+    numero_orgao = Column(Integer)  # Sequential organ number
+    sigla_legislatura = Column(String(20))  # Legislature designation
     created_at = Column(DateTime, default=func.now())
     
     organization = relationship("ParliamentaryOrganization", back_populates="leader_conferences")
@@ -913,15 +1011,21 @@ class LeaderConference(Base):
 
 
 class CommissionPresidentConference(Base):
+    """
+    Commission President Conference (ConferenciaPresidentesComissoes)
+    
+    Parliamentary body comprising committee chairs for coordination.
+    Contains organ details and historical composition data.
+    """
     __tablename__ = 'commission_president_conferences'
     
     id = Column(Integer, primary_key=True)
     organization_id = Column(Integer, ForeignKey('parliamentary_organizations.id'), nullable=False)
-    id_orgao = Column(Integer)
-    sigla_orgao = Column(String(50))
-    nome_sigla = Column(String(500))
-    numero_orgao = Column(Integer)
-    sigla_legislatura = Column(String(20))
+    id_orgao = Column(Integer)  # Unique organ identifier from XML
+    sigla_orgao = Column(String(50))  # Organ acronym/abbreviation
+    nome_sigla = Column(String(500))  # Full organ name or description
+    numero_orgao = Column(Integer)  # Sequential organ number
+    sigla_legislatura = Column(String(20))  # Legislature designation
     created_at = Column(DateTime, default=func.now())
     
     organization = relationship("ParliamentaryOrganization", back_populates="commission_president_conferences")
@@ -1122,16 +1226,22 @@ class DeputyVideo(Base):
 
 # Historical Composition Models
 class AdministrativeCouncilHistoricalComposition(Base):
+    """
+    Administrative Council Historical Composition (HistoricoComposicao)
+    
+    Records of deputies who served on the Administrative Council over time.
+    Contains deputy identification and parliamentary group/situation data.
+    """
     __tablename__ = 'administrative_council_historical_compositions'
     
     id = Column(Integer, primary_key=True)
     council_id = Column(Integer, ForeignKey('administrative_councils.id'), nullable=False)
-    leg_des = Column(String(20))
-    dep_id = Column(Integer)
-    dep_cad_id = Column(Integer)
-    dep_nome_parlamentar = Column(String(200))
-    dep_nome_completo = Column(String(200))
-    org_id = Column(Integer)
+    leg_des = Column(String(20))  # Legislature designation
+    dep_id = Column(Integer)  # Deputy ID within legislature
+    dep_cad_id = Column(Integer)  # Deputy cadastral ID (unique person identifier)
+    dep_nome_parlamentar = Column(String(200))  # Deputy's parliamentary name
+    dep_nome_completo = Column(String(200))  # Deputy's full civil name
+    org_id = Column(Integer)  # Associated organ ID
     created_at = Column(DateTime, default=func.now())
     
     council = relationship("AdministrativeCouncil", back_populates="historical_compositions")
@@ -1179,16 +1289,22 @@ class CommissionPresidentConferenceHistoricalComposition(Base):
 
 
 class PlenaryComposition(Base):
+    """
+    Plenary Composition (Composicao)
+    
+    Records of all deputies who serve in the plenary session.
+    Contains comprehensive deputy data including parliamentary group and situation information.
+    """
     __tablename__ = 'plenary_compositions'
     
     id = Column(Integer, primary_key=True)
     plenary_id = Column(Integer, ForeignKey('plenaries.id'), nullable=False)
-    leg_des = Column(String(20))
-    dep_id = Column(Integer)
-    dep_cad_id = Column(Integer)
-    dep_nome_parlamentar = Column(String(200))
-    dep_nome_completo = Column(String(300))
-    org_id = Column(Integer)
+    leg_des = Column(String(20))  # Legislature designation
+    dep_id = Column(Integer)  # Deputy ID within legislature
+    dep_cad_id = Column(Integer)  # Deputy cadastral ID (unique person identifier)
+    dep_nome_parlamentar = Column(String(200))  # Deputy's parliamentary name
+    dep_nome_completo = Column(String(300))  # Deputy's full civil name
+    org_id = Column(Integer)  # Associated organ ID
     created_at = Column(DateTime, default=func.now())
     
     plenary = relationship("Plenary", back_populates="compositions")

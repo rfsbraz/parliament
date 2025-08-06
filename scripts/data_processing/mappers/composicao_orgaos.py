@@ -3,9 +3,102 @@ Parliamentary Organ Composition Mapper - SQLAlchemy ORM Version
 ==============================================================
 
 Schema mapper for parliamentary organ composition files (OrgaoComposicao*.xml).
-Handles composition of various parliamentary organs including plenary, committees,
-and other parliamentary bodies with their member assignments.
+Based on official Portuguese Parliament documentation (identical across all legislatures).
+
+DOCUMENTATION SOURCE:
+Official PDF documentation from Portuguese Parliament data downloads.
+Documentation is identical from Constituinte through XIII_Legislatura.
+
+MAIN XML STRUCTURE MAPPED:
+- OrganizacaoAR: Root container for all parliamentary organizational data
+  
+PARLIAMENTARY BODIES HANDLED:
+1. ConselhoAdministracao (Administrative Council)
+   - DetalheOrgao: Organ identification and metadata
+   - HistoricoComposicao: Historical membership records
+   
+2. ConferenciaLideres (Leaders Conference)
+   - DetalheOrgao: Organ identification and metadata
+   - HistoricoComposicao: Historical membership records
+   
+3. ConferenciaPresidentesComissoes (Commission Presidents Conference)
+   - DetalheOrgao: Organ identification and metadata
+   - HistoricoComposicaoCPC: Historical membership with presidency data
+   
+4. MesaAR (Assembly Board)
+   - DetalheOrgao: Organ identification and metadata
+   - HistoricoComposicaoMesa: Historical membership records
+   
+5. Plenario (Plenary)
+   - DetalheOrgao: Organ identification and metadata
+   - Composicao: Current membership composition
+   
+6. Comissoes (Commissions)
+   - Multiple commission entries with organ details
+   - HistoricoComposicao: Historical membership records
+   - Reuniao: Meeting data and attendance records
+   
+7. SubComissoes (Sub-committees)
+   - DetalheOrgao: Organ identification and metadata
+   - HistoricoComposicao: Historical membership records
+   
+8. GruposTrabalho (Work Groups)
+   - DetalheOrgao: Organ identification and metadata
+   - HistoricoComposicao: Historical membership records
+   
+9. ComissaoPermanente (Permanent Committee)
+   - DetalheOrgao: Organ identification and metadata
+   - HistoricoComposicao: Historical membership records
+
+FIELD MAPPINGS (from official documentation):
+- DetalheOrgao fields:
+  * idOrgao: Unique organ identifier
+  * siglaOrgao: Organ acronym/abbreviation
+  * nomeSigla: Full organ name or description
+  * numeroOrgao: Sequential organ number
+  * siglaLegislatura: Legislature designation
+
+- Deputy/Composition fields:
+  * depId: Deputy ID within legislature
+  * depCadId: Deputy registration ID (unique person identifier)
+  * depNomeParlamentar: Deputy's parliamentary name
+  * depNomeCompleto: Deputy's full civil name
+  * orgId: Associated organ ID
+  * legDes: Legislature designation
+
+- Parliamentary Group fields:
+  * gpId: Parliamentary group ID
+  * gpSigla: Parliamentary group acronym
+  * gpDtInicio: Group membership start date
+  * gpDtFim: Group membership end date
+
+- Deputy Situation fields:
+  * sioDes: Situation description (effective/substitute/etc.)
+  * sioDtInicio: Situation start date
+  * sioDtFim: Situation end date
+
+- Position/Cargo fields:
+  * carId: Position/role ID
+  * carDes: Position/role description
+  * dtInicio: Position start date
+  * dtFim: Position end date
+
+- Meeting fields:
+  * reuId: Meeting ID
+  * reuData: Meeting date
+  * reuHora: Meeting time
+  * reuSumario: Meeting summary
+  * reuTipoReuniao: Meeting type
+  * reuLocal: Meeting location
+  * reuObservacoes: Meeting observations
+
+- Attendance fields:
+  * depPresente: Attendance status
+  * depJustificacao: Absence justification
+  * depMotivoFalta: Reason for absence
+
 Uses comprehensive OrganizacaoAR SQLAlchemy models for zero data loss.
+All field mappings preserve official XML structure and naming conventions.
 """
 
 import xml.etree.ElementTree as ET
@@ -39,7 +132,17 @@ logger = logging.getLogger(__name__)
 
 
 class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
-    """Schema mapper for parliamentary organ composition files"""
+    """
+    Schema mapper for parliamentary organ composition files (OrgaoComposicao*.xml)
+    
+    Processes OrganizacaoAR XML structure containing all parliamentary bodies:
+    - Administrative councils, leader conferences, commission president conferences
+    - Assembly boards, plenaries, commissions, sub-committees, work groups
+    - Permanent committees with comprehensive membership and meeting data
+    
+    Maps to comprehensive SQLAlchemy ORM models maintaining all field relationships
+    and historical composition data as documented in official Parliament specifications.
+    """
     
     def __init__(self, db_connection_or_session):
         super().__init__(db_connection_or_session)
