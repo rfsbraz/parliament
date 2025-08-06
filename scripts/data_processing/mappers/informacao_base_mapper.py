@@ -87,6 +87,12 @@ class InformacaoBaseMapper(SchemaMapper):
             'Legislatura.DetalheLegislatura.siglaAntiga',
             'Legislatura.DetalheLegislatura.id',
             
+            # Legislative sessions (SessaoLegislativaOut)
+            'Legislatura.SessoesLegislativas.pt_gov_ar_objectos_SessaoLegislativaOut',
+            'Legislatura.SessoesLegislativas.pt_gov_ar_objectos_SessaoLegislativaOut.numSessao',
+            'Legislatura.SessoesLegislativas.pt_gov_ar_objectos_SessaoLegislativaOut.dataInicio',
+            'Legislatura.SessoesLegislativas.pt_gov_ar_objectos_SessaoLegislativaOut.dataFim',
+            
             # Parliamentary groups (GPOut)
             'Legislatura.GruposParlamentares.pt_gov_ar_objectos_GPOut',
             'Legislatura.GruposParlamentares.pt_gov_ar_objectos_GPOut.sigla',
@@ -121,7 +127,31 @@ class InformacaoBaseMapper(SchemaMapper):
             'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado',
             'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDes',
             'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtInicio',
-            'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtFim'
+            'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.DepSituacao.pt_ar_wsgode_objectos_DadosSituacaoDeputado.sioDtFim',
+            
+            # Deputy positions/roles (DadosCargoDeputado) - IX Legislature and later
+            'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.DepCargo',
+            'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado',
+            'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carId',
+            'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDes',
+            'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtInicio',
+            'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.DepCargo.pt_ar_wsgode_objectos_DadosCargoDeputado.carDtFim',
+            
+            # I_Legislatura specific deputy structure (DadosDeputadoSearch)
+            'Legislatura.Deputados.pt_ar_wsgode_objectos_DadosDeputadoSearch',
+            'Legislatura.Deputados.pt_ar_wsgode_objectos_DadosDeputadoSearch.depId',
+            'Legislatura.Deputados.pt_ar_wsgode_objectos_DadosDeputadoSearch.depCadId',
+            'Legislatura.Deputados.pt_ar_wsgode_objectos_DadosDeputadoSearch.depNomeParlamentar',
+            'Legislatura.Deputados.pt_ar_wsgode_objectos_DadosDeputadoSearch.depNomeCompleto',
+            'Legislatura.Deputados.pt_ar_wsgode_objectos_DadosDeputadoSearch.depCPId',
+            'Legislatura.Deputados.pt_ar_wsgode_objectos_DadosDeputadoSearch.depCPDes',
+            'Legislatura.Deputados.pt_ar_wsgode_objectos_DadosDeputadoSearch.legDes',
+            
+            # Deputy videos (DadosVideo) - XIII Legislature and later
+            'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.Videos',
+            'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.Videos.pt_ar_wsgode_objectos_DadosVideo',
+            'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.Videos.pt_ar_wsgode_objectos_DadosVideo.url',
+            'Legislatura.Deputados.DadosDeputadoOrgaoPlenario.Videos.pt_ar_wsgode_objectos_DadosVideo.tipo'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -172,6 +202,11 @@ class InformacaoBaseMapper(SchemaMapper):
                 results['errors'].append(error_msg)
                 return results
                 
+            # Process legislative sessions (optional - just log for now)
+            sessoes_leg = xml_root.find('SessoesLegislativas')
+            if sessoes_leg is not None:
+                self._process_legislative_sessions(sessoes_leg, legislatura)
+                
             # Process parliamentary groups
             grupos_parl = xml_root.find('GruposParlamentares')
             if grupos_parl is not None:
@@ -190,7 +225,10 @@ class InformacaoBaseMapper(SchemaMapper):
             deputados = xml_root.find('Deputados')
             if deputados is not None:
                 self._process_deputies(deputados, legislatura)
-                results['records_processed'] += len(deputados.findall('DadosDeputadoOrgaoPlenario'))
+                # Count both structure types
+                standard_deputies = len(deputados.findall('DadosDeputadoOrgaoPlenario'))
+                i_leg_deputies = len(deputados.findall('pt_ar_wsgode_objectos_DadosDeputadoSearch'))
+                results['records_processed'] += standard_deputies + i_leg_deputies
                 results['records_imported'] += self.processed_deputies
             
             logger.info(f"Successfully processed InformacaoBase file: {file_info.get('file_path', 'unknown')}")
@@ -255,6 +293,33 @@ class InformacaoBaseMapper(SchemaMapper):
         except Exception as e:
             logger.error(f"Error processing legislature details: {e}")
             return None
+    
+    def _process_legislative_sessions(self, sessoes_element: ET.Element, legislatura: Legislatura) -> None:
+        """Process legislative sessions (SessoesLegislativas -> SessaoLegislativaOut) - for logging only"""
+        try:
+            sessions_count = 0
+            for sessao_element in sessoes_element.findall('pt_gov_ar_objectos_SessaoLegislativaOut'):
+                # Extract session information
+                num_sessao = self._get_text_value(sessao_element, 'numSessao')
+                data_inicio_str = self._get_text_value(sessao_element, 'dataInicio')
+                data_fim_str = self._get_text_value(sessao_element, 'dataFim')
+                
+                # Parse dates
+                data_inicio = None
+                data_fim = None
+                if data_inicio_str:
+                    data_inicio = DataValidationUtils.parse_date_flexible(data_inicio_str)
+                if data_fim_str:
+                    data_fim = DataValidationUtils.parse_date_flexible(data_fim_str)
+                
+                sessions_count += 1
+                logger.debug(f"Legislative session {num_sessao} for legislature {legislatura.numero}: {data_inicio} - {data_fim}")
+                
+            if sessions_count > 0:
+                logger.info(f"Processed {sessions_count} legislative sessions for legislature {legislatura.numero}")
+                
+        except Exception as e:
+            logger.error(f"Error processing legislative sessions: {e}")
     
     def _process_parliamentary_groups(self, grupos_element: ET.Element) -> None:
         """Process parliamentary groups (GruposParlamentares -> GPOut)"""
@@ -326,41 +391,60 @@ class InformacaoBaseMapper(SchemaMapper):
             logger.error(f"Error processing electoral circles: {e}")
     
     def _process_deputies(self, deputados_element: ET.Element, legislatura: Legislatura) -> None:
-        """Process deputies (Deputados -> DadosDeputadoOrgaoPlenario)"""
+        """Process deputies - handles both standard and I_Legislatura formats"""
         try:
+            # Process standard deputies (DadosDeputadoOrgaoPlenario)
             for deputado_element in deputados_element.findall('DadosDeputadoOrgaoPlenario'):
-                # Extract deputy information
-                dep_id_str = self._get_text_value(deputado_element, 'DepId')
-                dep_cad_id_str = self._get_text_value(deputado_element, 'DepCadId')
-                dep_nome_parlamentar = self._get_text_value(deputado_element, 'DepNomeParlamentar')
-                dep_nome_completo = self._get_text_value(deputado_element, 'DepNomeCompleto')
+                self._process_standard_deputy(deputado_element, legislatura)
                 
-                if not dep_id_str or not dep_cad_id_str or not dep_nome_parlamentar:
-                    logger.warning("Deputy missing required fields, skipping")
-                    continue
-                
-                # Parse IDs (may have .0 suffix)
-                dep_id = DataValidationUtils.safe_float_convert(dep_id_str)
-                dep_cad_id = DataValidationUtils.safe_float_convert(dep_cad_id_str)
-                
-                if dep_id is not None:
-                    dep_id = int(dep_id)
-                if dep_cad_id is not None:
-                    dep_cad_id = int(dep_cad_id)
-                
-                # Check if deputy already exists for this legislature
-                existing_deputy = self.session.query(Deputado).filter_by(
+            # Process I_Legislatura deputies (DadosDeputadoSearch)
+            for deputado_element in deputados_element.findall('pt_ar_wsgode_objectos_DadosDeputadoSearch'):
+                self._process_i_legislatura_deputy(deputado_element, legislatura)
+                    
+        except Exception as e:
+            logger.error(f"Error processing deputies: {e}")
+    
+    def _process_standard_deputy(self, deputado_element: ET.Element, legislatura: Legislatura) -> None:
+        """Process standard deputy format (DadosDeputadoOrgaoPlenario)"""
+        try:
+            # Extract deputy information
+            dep_id_str = self._get_text_value(deputado_element, 'DepId')
+            dep_cad_id_str = self._get_text_value(deputado_element, 'DepCadId')
+            dep_nome_parlamentar = self._get_text_value(deputado_element, 'DepNomeParlamentar')
+            dep_nome_completo = self._get_text_value(deputado_element, 'DepNomeCompleto')
+            
+            if not dep_id_str or not dep_cad_id_str or not dep_nome_parlamentar:
+                logger.warning("Deputy missing required fields, skipping")
+                return
+            
+            # Parse IDs (may have .0 suffix)
+            dep_id = DataValidationUtils.safe_float_convert(dep_id_str)
+            dep_cad_id = DataValidationUtils.safe_float_convert(dep_cad_id_str)
+            
+            if dep_id is not None:
+                dep_id = int(dep_id)
+            if dep_cad_id is not None:
+                dep_cad_id = int(dep_cad_id)
+            
+            # Check if deputy already exists (by id_cadastro across all legislatures first)
+            existing_deputy_global = self.session.query(Deputado).filter_by(
+                id_cadastro=dep_cad_id
+            ).first()
+            
+            if existing_deputy_global:
+                # Check if this specific legislature combination exists
+                existing_deputy_leg = self.session.query(Deputado).filter_by(
                     id_cadastro=dep_cad_id,
                     legislatura_id=legislatura.id
                 ).first()
                 
-                if existing_deputy:
+                if existing_deputy_leg:
                     logger.debug(f"Deputy {dep_nome_parlamentar} already exists for legislature {legislatura.numero}")
-                    deputado = existing_deputy
+                    deputado = existing_deputy_leg
                     deputado.nome = dep_nome_parlamentar
                     deputado.nome_completo = dep_nome_completo or dep_nome_parlamentar
                 else:
-                    # Create new deputy
+                    # Same deputy but different legislature - create new record
                     deputado = Deputado(
                         id_cadastro=dep_cad_id,
                         nome=dep_nome_parlamentar,
@@ -369,23 +453,110 @@ class InformacaoBaseMapper(SchemaMapper):
                     )
                     self.session.add(deputado)
                     self.processed_deputies += 1
+            else:
+                # Completely new deputy
+                deputado = Deputado(
+                    id_cadastro=dep_cad_id,
+                    nome=dep_nome_parlamentar,
+                    nome_completo=dep_nome_completo or dep_nome_parlamentar,
+                    legislatura_id=legislatura.id
+                )
+                self.session.add(deputado)
+                self.processed_deputies += 1
+            
+            self.session.flush()  # Get the ID
+            
+            # Process parliamentary group situations
+            dep_gp = deputado_element.find('DepGP')
+            if dep_gp is not None:
+                self._process_deputy_gp_situations(dep_gp, deputado, legislatura)
+            
+            # Process deputy situations
+            dep_situacao = deputado_element.find('DepSituacao')
+            if dep_situacao is not None:
+                self._process_deputy_situations(dep_situacao, deputado)
+            
+            # Process deputy positions/roles (DepCargo) - IX Legislature and later
+            dep_cargo = deputado_element.find('DepCargo')
+            if dep_cargo is not None:
+                self._process_deputy_positions(dep_cargo, deputado)
+            
+            # Process deputy videos (Videos) - XIII Legislature and later
+            dep_videos = deputado_element.find('Videos')
+            if dep_videos is not None:
+                self._process_deputy_videos(dep_videos, deputado)
+            
+            logger.debug(f"Processed deputy: {dep_nome_parlamentar} (ID: {dep_cad_id})")
                 
-                self.session.flush()  # Get the ID
-                
-                # Process parliamentary group situations
-                dep_gp = deputado_element.find('DepGP')
-                if dep_gp is not None:
-                    self._process_deputy_gp_situations(dep_gp, deputado, legislatura)
-                
-                # Process deputy situations
-                dep_situacao = deputado_element.find('DepSituacao')
-                if dep_situacao is not None:
-                    self._process_deputy_situations(dep_situacao, deputado)
-                
-                logger.debug(f"Processed deputy: {dep_nome_parlamentar} (ID: {dep_cad_id})")
-                    
         except Exception as e:
-            logger.error(f"Error processing deputies: {e}")
+            logger.error(f"Error processing standard deputy: {e}")
+    
+    def _process_i_legislatura_deputy(self, deputado_element: ET.Element, legislatura: Legislatura) -> None:
+        """Process I_Legislatura deputy format (DadosDeputadoSearch)"""
+        try:
+            # Extract deputy information from I_Legislatura structure
+            dep_id_str = self._get_text_value(deputado_element, 'depId')
+            dep_cad_id_str = self._get_text_value(deputado_element, 'depCadId')
+            dep_nome_parlamentar = self._get_text_value(deputado_element, 'depNomeParlamentar')
+            dep_nome_completo = self._get_text_value(deputado_element, 'depNomeCompleto')
+            
+            if not dep_id_str or not dep_cad_id_str or not dep_nome_parlamentar:
+                logger.warning("I_Legislatura deputy missing required fields, skipping")
+                return
+            
+            # Parse IDs (may have .0 suffix)
+            dep_id = DataValidationUtils.safe_float_convert(dep_id_str)
+            dep_cad_id = DataValidationUtils.safe_float_convert(dep_cad_id_str)
+            
+            if dep_id is not None:
+                dep_id = int(dep_id)
+            if dep_cad_id is not None:
+                dep_cad_id = int(dep_cad_id)
+            
+            # Check if deputy already exists (by id_cadastro across all legislatures first)
+            existing_deputy_global = self.session.query(Deputado).filter_by(
+                id_cadastro=dep_cad_id
+            ).first()
+            
+            if existing_deputy_global:
+                # Check if this specific legislature combination exists
+                existing_deputy_leg = self.session.query(Deputado).filter_by(
+                    id_cadastro=dep_cad_id,
+                    legislatura_id=legislatura.id
+                ).first()
+                
+                if existing_deputy_leg:
+                    logger.debug(f"I_Legislatura deputy {dep_nome_parlamentar} already exists for legislature {legislatura.numero}")
+                    deputado = existing_deputy_leg
+                    deputado.nome = dep_nome_parlamentar
+                    deputado.nome_completo = dep_nome_completo or dep_nome_parlamentar
+                else:
+                    # Same deputy but different legislature - create new record
+                    deputado = Deputado(
+                        id_cadastro=dep_cad_id,
+                        nome=dep_nome_parlamentar,
+                        nome_completo=dep_nome_completo or dep_nome_parlamentar,
+                        legislatura_id=legislatura.id
+                    )
+                    self.session.add(deputado)
+                    self.processed_deputies += 1
+            else:
+                # Completely new deputy
+                deputado = Deputado(
+                    id_cadastro=dep_cad_id,
+                    nome=dep_nome_parlamentar,
+                    nome_completo=dep_nome_completo or dep_nome_parlamentar,
+                    legislatura_id=legislatura.id
+                )
+                self.session.add(deputado)
+                self.processed_deputies += 1
+            
+            self.session.flush()  # Get the ID
+            
+            logger.debug(f"Processed I_Legislatura deputy: {dep_nome_parlamentar} (ID: {dep_cad_id})")
+                
+        except Exception as e:
+            logger.error(f"Error processing I_Legislatura deputy: {e}")
     
     def _process_deputy_gp_situations(self, dep_gp_element: ET.Element, deputado: Deputado, legislatura: Legislatura) -> None:
         """Process deputy parliamentary group situations (DepGP -> DadosSituacaoGP)"""
@@ -461,6 +632,60 @@ class InformacaoBaseMapper(SchemaMapper):
                 
         except Exception as e:
             logger.error(f"Error processing deputy situations: {e}")
+    
+    def _process_deputy_positions(self, dep_cargo_element: ET.Element, deputado: Deputado) -> None:
+        """Process deputy positions/roles (DepCargo -> DadosCargoDeputado) - IX Legislature and later"""
+        try:
+            positions_count = 0
+            for cargo_element in dep_cargo_element.findall('pt_ar_wsgode_objectos_DadosCargoDeputado'):
+                # Extract position information
+                car_id = self._get_text_value(cargo_element, 'carId')
+                car_des = self._get_text_value(cargo_element, 'carDes')
+                car_dt_inicio_str = self._get_text_value(cargo_element, 'carDtInicio')
+                car_dt_fim_str = self._get_text_value(cargo_element, 'carDtFim')
+                
+                # Parse dates
+                car_dt_inicio = None
+                car_dt_fim = None
+                if car_dt_inicio_str:
+                    car_dt_inicio = DataValidationUtils.parse_date_flexible(car_dt_inicio_str)
+                if car_dt_fim_str:
+                    car_dt_fim = DataValidationUtils.parse_date_flexible(car_dt_fim_str)
+                
+                positions_count += 1
+                logger.debug(f"Deputy position: {deputado.nome} -> {car_des} ({car_dt_inicio} - {car_dt_fim})")
+                
+                # Note: For now, just logging the positions. These could be stored in a separate 
+                # DeputyPosition model if needed for detailed analysis, but the core deputy data 
+                # is already captured in the main Deputado model.
+                
+            if positions_count > 0:
+                logger.info(f"Processed {positions_count} positions for deputy {deputado.nome}")
+                
+        except Exception as e:
+            logger.error(f"Error processing deputy positions: {e}")
+    
+    def _process_deputy_videos(self, dep_videos_element: ET.Element, deputado: Deputado) -> None:
+        """Process deputy videos (Videos -> DadosVideo) - XIII Legislature and later"""
+        try:
+            videos_count = 0
+            for video_element in dep_videos_element.findall('pt_ar_wsgode_objectos_DadosVideo'):
+                # Extract video information
+                video_url = self._get_text_value(video_element, 'url')
+                video_tipo = self._get_text_value(video_element, 'tipo')
+                
+                videos_count += 1
+                logger.debug(f"Deputy video: {deputado.nome} -> {video_tipo} ({video_url})")
+                
+                # Note: For now, just logging the videos. These could be stored in a separate 
+                # DeputyVideo model if needed for detailed analysis, but the core deputy data 
+                # is already captured in the main Deputado model.
+                
+            if videos_count > 0:
+                logger.info(f"Processed {videos_count} videos for deputy {deputado.nome}")
+                
+        except Exception as e:
+            logger.error(f"Error processing deputy videos: {e}")
     
     def _get_text_value(self, element: ET.Element, tag: str) -> Optional[str]:
         """Safely extract text value from XML element"""

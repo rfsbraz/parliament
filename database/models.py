@@ -164,7 +164,7 @@ class Deputado(Base):
     __tablename__ = 'deputados'
     
     id = Column(Integer, primary_key=True, comment="Legislature-specific deputy ID (XML: DepId)")
-    id_cadastro = Column(Integer, unique=True, nullable=False, comment="Person's unique registration ID across all legislatures (XML: DepCadId)")
+    id_cadastro = Column(Integer, nullable=False, comment="Person's unique registration ID across all legislatures (XML: DepCadId)")
     nome = Column(String(200), nullable=False, comment="Parliamentary name - shortened version (XML: DepNomeParlamentar)")
     nome_completo = Column(String(300), comment="Full deputy name (XML: DepNomeCompleto)")
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
@@ -196,6 +196,14 @@ class Deputado(Base):
     registo_interesses_v2 = relationship("RegistoInteressesV2", back_populates="deputado", cascade="all, delete-orphan")
     gp_situations = relationship("DeputyGPSituation", back_populates="deputado", cascade="all, delete-orphan")
     situations = relationship("DeputySituation", back_populates="deputado", cascade="all, delete-orphan")
+
+    # Indexes and constraints for query optimization
+    __table_args__ = (
+        Index('idx_deputy_cadastro', 'id_cadastro'),
+        Index('idx_deputy_legislature', 'legislatura_id'),
+        Index('idx_deputy_name', 'nome'),
+        UniqueConstraint('id_cadastro', 'legislatura_id', name='uq_deputy_cadastro_legislature'),
+    )
 
 
 class DepCargo(Base):
