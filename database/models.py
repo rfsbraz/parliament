@@ -1539,10 +1539,25 @@ class DadosLegisDeputado(Base):
 
 
 class ActividadeAudiencia(Base):
+    """
+    Activity Audience Association
+    ============================
+    
+    Links activities to parliamentary audiences (formal hearings).
+    Based on official Portuguese Parliament documentation (December 2017):
+    "Audiencias" structure from VI_Legislatura documentation.
+    
+    This model represents the relationship between general activities and
+    formal parliamentary audiences where external entities present to committees.
+    
+    MAPPED RELATIONSHIPS:
+    - Links ActividadeOut to AudienciasParlamentares data
+    - Enables committee activities to reference formal hearings
+    """
     __tablename__ = 'actividade_audiencias'
     
     id = Column(Integer, primary_key=True)
-    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
+    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False, comment="Reference to general activity record")
     created_at = Column(DateTime, default=func.now())
     
     actividade_out = relationship("ActividadeOut", back_populates="audiencias")
@@ -1550,10 +1565,27 @@ class ActividadeAudiencia(Base):
 
 
 class ActividadeAudicao(Base):
+    """
+    Activity Audition Association
+    ============================
+    
+    Links activities to parliamentary auditions (hearings).
+    Based on official Portuguese Parliament documentation (December 2017):
+    "Audicoes" structure from VI_Legislatura documentation.
+    
+    This model represents the relationship between general activities and
+    parliamentary auditions, which are committee hearings for specific purposes.
+    
+    MAPPED RELATIONSHIPS:
+    - Links ActividadeOut to audition/hearing data
+    - Enables committee activities to reference specific hearings
+    
+    Note: Audicoes (auditions) are distinct from Audiencias (formal audiences).
+    """
     __tablename__ = 'actividade_audicoes'
     
     id = Column(Integer, primary_key=True)
-    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False)
+    actividade_out_id = Column(Integer, ForeignKey('actividade_outs.id'), nullable=False, comment="Reference to general activity record")
     created_at = Column(DateTime, default=func.now())
     
     actividade_out = relationship("ActividadeOut", back_populates="audicoes")
@@ -2066,26 +2098,56 @@ class DelegacaoPermanenteComissaoMembro(Base):
 
 
 class AtividadeParlamentar(Base):
+    """
+    Parliamentary Activities Root Container
+    ======================================
+    
+    Root container for all parliamentary activities from Atividades.xml.
+    Based on official Portuguese Parliament documentation (December 2017):
+    "AtividadesGerais" structure from VI_Legislatura documentation.
+    
+    MAPPED STRUCTURES (from official documentation):
+    
+    1. **AtividadesGerais** - General parliamentary activities
+       - IDAtividade: Activity identifier (atividade_id)
+       - Tipo: Activity type code (tipo) - requires TipodeAtividade translator
+       - DescTipo: Activity type description (desc_tipo)
+       - Assunto: Activity subject matter (assunto)
+       - Numero: Activity number (numero)
+       - Data: Activity date (data_atividade)
+       - DataEntrada: Entry date (data_entrada)
+       - DataAgendamentoDebate: Scheduled debate date (data_agendamento_debate)
+       - TipoAutor: Author type (tipo_autor) - requires TipodeAutor translator
+       - AutoresGP: Group authors list (autores_gp)
+       - OutrosSubscritores: Other subscribers (outros_subscritores)
+       - TextosAprovados: Approved texts (textos_aprovados)
+       - ResultadoVotacaoPontos: Voting results by points (resultado_votacao_pontos)
+       - Observacoes: General observations (observacoes)
+    
+    Translation Requirements:
+    - tipo: Maps to TipodeAtividade enum (24 codes: AUD, AUDI, etc.)
+    - tipo_autor: Maps to TipodeAutor enum (author type classifications)
+    """
     __tablename__ = 'atividade_parlamentar'
     
     id = Column(Integer, primary_key=True)
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     
-    # Core fields
-    atividade_id = Column(Integer, unique=True)  # External ID
-    tipo = Column(String(100))
-    desc_tipo = Column(String(200))
-    assunto = Column(Text)
-    numero = Column(String(50))
-    data_atividade = Column(Date)
-    data_entrada = Column(Date)
-    data_agendamento_debate = Column(Date)
-    tipo_autor = Column(String(100))
-    autores_gp = Column(Text)
-    outros_subscritores = Column(Text)  # OutrosSubscritores field
-    textos_aprovados = Column(Text)  # Missing approved texts field
-    resultado_votacao_pontos = Column(Text)  # Missing ResultadoVotacaoPontos field
-    observacoes = Column(Text)
+    # Core fields from AtividadesGerais structure
+    atividade_id = Column(Integer, unique=True, comment="Activity identifier (IDAtividade) - unique registry ID")
+    tipo = Column(String(100), comment="Activity type code (Tipo) - requires TipodeAtividade translator")
+    desc_tipo = Column(String(200), comment="Activity type description (DescTipo) - official classification name")
+    assunto = Column(Text, comment="Activity subject matter (Assunto) - descriptive text of activity topic")
+    numero = Column(String(50), comment="Activity number (Numero) - sequential or reference number")
+    data_atividade = Column(Date, comment="Activity date (Data) - when the activity took place")
+    data_entrada = Column(Date, comment="Entry date (DataEntrada) - when activity was registered in system")
+    data_agendamento_debate = Column(Date, comment="Scheduled debate date (DataAgendamentoDebate) - planned discussion date")
+    tipo_autor = Column(String(100), comment="Author type (TipoAutor) - requires TipodeAutor translator for classification")
+    autores_gp = Column(Text, comment="Group authors (AutoresGP) - parliamentary groups authoring the activity")
+    outros_subscritores = Column(Text, comment="Other subscribers (OutrosSubscritores) - additional supporters or co-authors")
+    textos_aprovados = Column(Text, comment="Approved texts (TextosAprovados) - texts that were approved during activity")
+    resultado_votacao_pontos = Column(Text, comment="Voting results by points (ResultadoVotacaoPontos) - detailed voting outcomes")
+    observacoes = Column(Text, comment="General observations (Observacoes) - additional notes and comments")
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -2379,18 +2441,39 @@ class RelatorioParlamentarLink(Base):
 
 
 class EventoParlamentar(Base):
+    """
+    Parliamentary Events Container
+    =============================
+    
+    Container for parliamentary events from Atividades.xml.
+    Based on official Portuguese Parliament documentation (December 2017):
+    "Eventos" structure from VI_Legislatura documentation.
+    
+    MAPPED STRUCTURES (from official documentation):
+    
+    1. **DadosEventosComissaoOut** - Committee event data
+       - IDEvento: Event identifier (id_evento)
+       - Data: Event date (data)
+       - Designacao: Event designation/title (designacao)
+       - LocalEvento: Event location (local_evento)
+       - SessaoLegislativa: Legislative session (sessao_legislativa)
+       - TipoEvento: Event type (tipo_evento) - requires TipodeEvento translator
+    
+    Translation Requirements:
+    - tipo_evento: Maps to TipodeEvento enum from reference tables
+    """
     __tablename__ = 'eventos_parlamentares'
     
     id = Column(Integer, primary_key=True)
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     
-    # Event fields from Eventos.DadosEventosComissaoOut
-    id_evento = Column(Integer, nullable=False)
-    data = Column(Date)
-    designacao = Column(Text)
-    local_evento = Column(String(500))
-    sessao_legislativa = Column(Integer)
-    tipo_evento = Column(String(200))
+    # Event fields from DadosEventosComissaoOut structure
+    id_evento = Column(Integer, nullable=False, comment="Event identifier (IDEvento) - unique event registry ID")
+    data = Column(Date, comment="Event date (Data) - when the event took place")
+    designacao = Column(Text, comment="Event designation (Designacao) - official title or name of event")
+    local_evento = Column(String(500), comment="Event location (LocalEvento) - where the event was held")
+    sessao_legislativa = Column(Integer, comment="Legislative session (SessaoLegislativa) - session number when event occurred")
+    tipo_evento = Column(String(200), comment="Event type (TipoEvento) - requires TipodeEvento translator for classification")
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -2408,16 +2491,36 @@ class EventoParlamentar(Base):
 
 
 class DeslocacaoParlamentar(Base):
+    """
+    Parliamentary Displacements Container
+    ====================================
+    
+    Container for parliamentary displacements from Atividades.xml.
+    Based on official Portuguese Parliament documentation (December 2017):
+    "Deslocacoes" structure from VI_Legislatura documentation.
+    
+    MAPPED STRUCTURES (from official documentation):
+    
+    1. **DadosDeslocacoesComissaoOut** - Committee displacement data
+       - IDDeslocacao: Displacement identifier (id_deslocacao)
+       - DataIni: Start date (data_ini)
+       - DataFim: End date (data_fim)
+       - Designacao: Displacement designation (designacao)
+       - TipoDeslocacao: Displacement type - requires TipodeDeslocacoes translator
+    
+    Translation Requirements:
+    - Displacement type classification from TipodeDeslocacoes reference table
+    """
     __tablename__ = 'deslocacoes_parlamentares'
     
     id = Column(Integer, primary_key=True)
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
     
-    # Displacement fields from Deslocacoes.DadosDeslocacoesComissaoOut
-    id_deslocacao = Column(Integer, nullable=False)
-    data_ini = Column(Date)
-    data_fim = Column(Date)
-    designacao = Column(Text)
+    # Displacement fields from DadosDeslocacoesComissaoOut structure
+    id_deslocacao = Column(Integer, nullable=False, comment="Displacement identifier (IDDeslocacao) - unique displacement registry ID")
+    data_ini = Column(Date, comment="Start date (DataIni) - when displacement begins")
+    data_fim = Column(Date, comment="End date (DataFim) - when displacement ends")
+    designacao = Column(Text, comment="Displacement designation (Designacao) - official purpose or destination description")
     local_evento = Column(String(500))
     sessao_legislativa = Column(Integer)
     tipo = Column(String(200))
@@ -2534,22 +2637,46 @@ class AudicoesParlamentares(Base):
 
 
 class AudienciasParlamentares(Base):
+    """
+    Parliamentary Audiences Container
+    ================================
+    
+    Container for parliamentary audiences from Atividades.xml.
+    Based on official Portuguese Parliament documentation (December 2017):
+    "Audiencias" structure from VI_Legislatura documentation.
+    
+    MAPPED STRUCTURES (from official documentation):
+    
+    1. **DadosAudienciasComissaoOut** - Committee audience data
+       - IDAudiencia: Audience identifier (id_audiencia)
+       - NumeroAudiencia: Audience sequential number (numero_audiencia)
+       - SessaoLegislativa: Legislative session (sessao_legislativa)
+       - Assunto: Audience subject matter (assunto)
+       - Data: Audience date (data_audiencia, data)
+       - Comissao: Committee name (comissao)
+       - Concedida: Whether audience was granted (concedida)
+       - TipoAudiencia: Audience type (tipo_audiencia)
+       - Entidades: Participating entities (entidades)
+       - Observacoes: Additional observations (observacoes)
+    
+    Note: Audiences are formal hearings where external entities present to committees.
+    """
     __tablename__ = 'audiencias_parlamentares'
     
     id = Column(Integer, primary_key=True)
     legislatura_id = Column(Integer, ForeignKey('legislaturas.id'))
     
-    id_audiencia = Column(Integer)  # IDAudiencia field
-    numero_audiencia = Column(Integer)  # NumeroAudiencia
-    sessao_legislativa = Column(String(100))  # SessaoLegislativa field
-    assunto = Column(Text)
-    data_audiencia = Column(Date)
-    data = Column(Date)  # Data field (alternative date format)
-    comissao = Column(String(200))
-    concedida = Column(Boolean)  # Concedida
-    tipo_audiencia = Column(String(100))
-    entidades = Column(Text)  # Entidades field
-    observacoes = Column(Text)
+    id_audiencia = Column(Integer, comment="Audience identifier (IDAudiencia) - unique audience registry ID")
+    numero_audiencia = Column(Integer, comment="Audience number (NumeroAudiencia) - sequential numbering within session")
+    sessao_legislativa = Column(String(100), comment="Legislative session (SessaoLegislativa) - session when audience occurred")
+    assunto = Column(Text, comment="Audience subject (Assunto) - topic or matter being discussed")
+    data_audiencia = Column(Date, comment="Audience date (Data) - when the audience took place")
+    data = Column(Date, comment="Alternative date field (Data) - additional date reference")
+    comissao = Column(String(200), comment="Committee (Comissao) - committee conducting the audience")
+    concedida = Column(Boolean, comment="Granted status (Concedida) - whether the audience request was approved")
+    tipo_audiencia = Column(String(100), comment="Audience type (TipoAudiencia) - classification of audience format")
+    entidades = Column(Text, comment="Participating entities (Entidades) - organizations or individuals presenting")
+    observacoes = Column(Text, comment="Observations (Observacoes) - additional notes and remarks")
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

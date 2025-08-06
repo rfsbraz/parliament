@@ -3,8 +3,53 @@ Parliamentary Activities Mapper
 ===============================
 
 Schema mapper for parliamentary activities files (Atividades*.xml).
-Handles various types of parliamentary activities including debates, 
-interpellations, elections, ceremonies, and reports.
+Based on official Portuguese Parliament documentation (December 2017):
+"VI_Legislatura Atividades.xml" structure documentation.
+
+MAJOR SECTIONS MAPPED (from official documentation):
+
+1. **AtividadesGerais** - General parliamentary activities
+   - Contains main parliamentary activities, reports, and debates
+   - Maps activity types via TipodeAtividade translator
+   - Maps author types via TipodeAutor translator
+   - Includes publication details via TipodePublicacao translator
+
+2. **Debates** - Parliamentary debates
+   - DadosPesquisaDebatesOut: Structured debate information
+   - Includes interventions, publications, and debate metadata
+   - Maps debate types and author classifications
+
+3. **Deslocacoes** - Parliamentary displacements
+   - DadosDeslocacoesComissaoOut: Committee displacement data
+   - Maps displacement types via TipodeDeslocacoes translator
+   - Includes dates, locations, and purposes
+
+4. **Audicoes** - Parliamentary auditions (hearings)
+   - Committee hearing data and participants
+   - Links to committee work and external presentations
+
+5. **Audiencias** - Parliamentary audiences (formal hearings)
+   - DadosAudienciasComissaoOut: Formal audience structure
+   - External entity presentations to committees
+   - Grant status and entity information
+
+6. **Eventos** - Parliamentary events
+   - DadosEventosComissaoOut: Event information
+   - Maps event types via TipodeEvento translator
+   - Includes locations, dates, and event classifications
+
+REFERENCE TABLES USED:
+- TipodeAtividade: 24 activity type codes (AUD, AUDI, etc.)
+- TipodeAutor: Author type classifications
+- TipodePublicacao: 21 publication type codes (A, B, C, etc.)
+- TipodeDeslocacoes: Displacement type codes
+- TipodeEvento: Event type codes
+- TipodeIniciativa: 11 initiative type codes (A, C, D, etc.)
+
+Translation Support:
+- All coded fields mapped to appropriate translator modules
+- Maintains consistency with AtividadeDeputado translations
+- Cross-references with shared TipodePublicacao enums
 """
 
 import xml.etree.ElementTree as ET
@@ -29,7 +74,21 @@ logger = logging.getLogger(__name__)
 
 
 class AtividadesMapper(SchemaMapper):
-    """Schema mapper for parliamentary activities files"""
+    """
+    Schema mapper for parliamentary activities files
+    
+    Processes Atividades*.xml files containing comprehensive parliamentary
+    activity data across multiple functional areas:
+    
+    - AtividadesGerais: General parliamentary work
+    - Debates: Parliamentary debates and discussions  
+    - Deslocacoes: Parliamentary missions and displacements
+    - Audicoes/Audiencias: Committee hearings and audiences
+    - Eventos: Parliamentary events and meetings
+    
+    All field mappings based on official VI_Legislatura documentation
+    with proper translator integration for coded field values.
+    """
     
     def __init__(self, session):
         # Accept SQLAlchemy session directly (passed by unified importer)

@@ -27,6 +27,13 @@ This directory contains thematic field translation modules for Portuguese Parlia
 - Combines intervention-specific logic with shared publication types
 - Used across models: IntervencaoParlamentar, IntervencaoPublicacao
 
+### `general_activities.py`
+- **TipodeAutor** enum for parliamentary activity author types (11 codes: A, C, D, G, I, M, P, R, U, V, Z)
+- **TipodeEvento** enum for parliamentary event types (11 codes: 2, 3, 4, 5, 42, 61, 81, 101, 121, 141, 161)
+- **TipodeDeslocacoes** enum for displacement types (6 codes: CO, DV, MI, PR, SM, VO)
+- **TipodeReuniao** enum for meeting types (8 codes: AG, AS, AU, CO, CR, GA, IE, PP)
+- Used across models: AtividadeParlamentar, EventoParlamentar, DeslocacaoParlamentar, VotacaoOut
+
 ## Usage Patterns
 
 ### Individual Model Translation
@@ -83,6 +90,10 @@ else:
 | IniciativasOut | ini_tp | initiatives | initiative_type() |
 | RequerimentosOut | req_tp | deputy_activities | request_type() |
 | ComissoesOut | cms_situacao | deputy_activities | committee_status() |
+| AtividadeParlamentar | tipo_autor | general_activities | author_type() |
+| EventoParlamentar | tipo_evento | general_activities | event_type() |
+| DeslocacaoParlamentar | displacement_type | general_activities | displacement_type() |
+| VotacaoOut | TipoReuniao | general_activities | meeting_type() |
 
 ### Official Documentation Mapping
 

@@ -10,10 +10,12 @@ from .deputy_activities import DeputyActivityTranslator
 from .parliamentary_interventions import InterventionTranslator  
 from .initiatives import InitiativeTranslator
 from .publications import PublicationTranslator
+from .general_activities import GeneralActivityTranslator
 
 __all__ = [
     'DeputyActivityTranslator',
     'InterventionTranslator', 
     'InitiativeTranslator',
-    'PublicationTranslator'
+    'PublicationTranslator',
+    'GeneralActivityTranslator'
 ]
