@@ -108,9 +108,14 @@ class CirculoEleitoral(Base):
 
 class Deputado(Base):
     """
-    Deputy/Parliament Member Model - Based on InformacaoBase DadosDeputadoOrgaoPlenario specification
+    Deputy/Parliament Member Model - Central biographical data repository
     
-    Contains comprehensive deputy information including identity, affiliations and status.
+    Combines data from multiple sources:
+    1. InformacaoBase DadosDeputadoOrgaoPlenario specification
+    2. RegistoBiografico<Legislatura>.xml DadosRegistoBiograficoWeb structure
+    
+    Contains comprehensive deputy information including identity, affiliations, status,
+    and complete biographical profile.
     
     IMPORTANT: Deputy Identity Across Legislatures
     ==============================================
@@ -133,9 +138,28 @@ class Deputado(Base):
     - DepSituacao: Deputy situations (DadosSituacaoDeputado structure)
     - LegDes: Legislature reference (not stored, used for context)
     
+    Biographical Registry Mapping (DadosRegistoBiograficoWeb):
+    - cadId: id_cadastro (Unique registration ID - matches across sources)
+    - cadNomeCompleto: nome_completo (Full name)
+    - cadDtNascimento: data_nascimento (Birth date)
+    - cadSexo: sexo (Gender M/F)
+    - cadProfissao: profissao (Profession)
+    - cadNaturalidade: naturalidade (Place of birth)
+    - cadHabilitacoes: habilitacoes (Linked via DeputadoHabilitacao relationship)
+    - cadCargosFuncoes: cargos_funcoes (Linked via DeputadoCargoFuncao relationship)
+    - cadTitulos: titulos (Linked via DeputadoTitulo relationship)
+    - cadCondecoracoes: condecoracoes (Linked via DeputadoCondecoracao relationship)
+    - cadObrasPublicadas: obras_publicadas (Linked via DeputadoObraPublicada relationship)
+    - cadActividadeOrgaos: atividades_orgaos (Linked via DeputadoAtividadeOrgao relationship)
+    - cadDeputadoLegis: mandatos_legislativos (Linked via DeputadoMandatoLegislativo relationship)
+    
+    Interest Registry Integration:
+    - DadosDeputadoRgiWeb: registo_interesses_v2 (V2 structure)
+    - RegistoInteressesV3/V5: registo_interesses_unified (Modern unified structure)
+    
     Usage:
-        Central entity in InformacaoBase files linking all deputy-related information
-        References parliamentary groups, electoral circles, and situational data
+        Central entity linking all deputy-related information across multiple data sources
+        Supports both current parliament operations and comprehensive biographical research
     """
     __tablename__ = 'deputados'
     
@@ -3776,6 +3800,41 @@ class IniciativaLink(Base):
 
 # Petition models
 class PeticaoParlamentar(Base):
+    """
+    Parliamentary Petitions Model - Based on Peticoes_DetalhePesquisaPeticoesOut specification
+    
+    Contains comprehensive petition information following the official Parliament documentation.
+    Maps to the complete Peticoes<Legislatura>.xml structure including all lifecycle tracking.
+    
+    Peticoes_DetalhePesquisaPeticoesOut Mapping:
+    - petId: pet_id (Petition identifier)
+    - petNr: pet_nr (Petition number)  
+    - petLeg: pet_leg (Legislature designation)
+    - petSel: pet_sel (Legislative session)
+    - petAssunto: pet_assunto (Petition subject/topic)
+    - petSituacao: pet_situacao (Current status of petition)
+    - petNrAssinaturas: pet_nr_assinaturas (Number of signatures)
+    - petDataEntrada: pet_data_entrada (Entry date)
+    - petActividadeId: pet_atividade_id (Associated activity identifier)
+    - petAutor: pet_autor (Petition author/submitter)
+    - dataDebate: data_debate (Debate date)
+    - petObs: pet_obs (Observations - IX Legislature)
+    - iniciativasConjuntas: iniciativas_conjuntas (Joint initiatives - XIII Legislature)
+    - peticoesAssociadas: peticoes_associadas (Associated petitions - XIII Legislature)  
+    - petNrAssinaturasInicial: pet_nr_assinaturas_inicial (Initial signature count - XIII Legislature)
+    - iniciativasOriginadas: iniciativas_originadas (Originated initiatives - XIII Legislature)
+    
+    Related Structures:
+    - Peticoes_ComissoesPetOut: Committee handling data (relationship: comissoes)
+    - DocsOut: Document management (relationship: documentos)
+    - IntervencoesOut: Interventions and debates (relationship: intervencoes)
+    - VotacaoOut: Voting results (via committee relationships)
+    - PublicacoesOut: Publications using TipodePublicacao enum (relationship: publicacoes)
+    
+    Usage:
+        Core container for petition lifecycle tracking with comprehensive audit trail
+        References: Multiple committee assignments, voting records, debate interventions
+    """
     __tablename__ = 'peticoes_detalhadas'
     __table_args__ = (
         Index('idx_peticao_pet_id', 'pet_id'),
@@ -3785,23 +3844,23 @@ class PeticaoParlamentar(Base):
     )
     
     id = Column(Integer, primary_key=True)
-    pet_id = Column(Integer, unique=True, nullable=False)  # External ID
-    pet_nr = Column(Integer)
-    pet_leg = Column(Text)
-    pet_sel = Column(Integer)
-    pet_assunto = Column(Text)
-    pet_situacao = Column(Text)
-    pet_nr_assinaturas = Column(Integer)
-    pet_data_entrada = Column(Date)
-    pet_atividade_id = Column(Integer)
-    pet_autor = Column(Text)
-    data_debate = Column(Date)
-    pet_obs = Column(Text)  # PetObs field from IX Legislature
-    iniciativas_conjuntas = Column(Text)  # IniciativasConjuntas from XIII Legislature (comma-separated)
-    peticoes_associadas = Column(Text)  # PeticoesAssociadas from XIII Legislature (comma-separated)
-    pet_nr_assinaturas_inicial = Column(Integer)  # PetNrAssinaturasInicial from XIII Legislature
-    iniciativas_originadas = Column(Text)  # Iniciativasoriginadas from XIII Legislature (comma-separated)
-    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    pet_id = Column(Integer, unique=True, nullable=False, comment="Petition identifier (XML: petId)")
+    pet_nr = Column(Integer, comment="Petition number (XML: petNr)")
+    pet_leg = Column(Text, comment="Legislature designation (XML: petLeg)")
+    pet_sel = Column(Integer, comment="Legislative session (XML: petSel)")
+    pet_assunto = Column(Text, comment="Petition subject/topic (XML: petAssunto)")
+    pet_situacao = Column(Text, comment="Current status of petition (XML: petSituacao)")
+    pet_nr_assinaturas = Column(Integer, comment="Number of signatures (XML: petNrAssinaturas)")
+    pet_data_entrada = Column(Date, comment="Entry date (XML: petDataEntrada)")
+    pet_atividade_id = Column(Integer, comment="Associated activity identifier (XML: petActividadeId)")
+    pet_autor = Column(Text, comment="Petition author/submitter (XML: petAutor)")
+    data_debate = Column(Date, comment="Debate date (XML: dataDebate)")
+    pet_obs = Column(Text, comment="Observations - IX Legislature (XML: petObs)")
+    iniciativas_conjuntas = Column(Text, comment="Joint initiatives - XIII Legislature (XML: iniciativasConjuntas)")
+    peticoes_associadas = Column(Text, comment="Associated petitions - XIII Legislature (XML: peticoesAssociadas)")
+    pet_nr_assinaturas_inicial = Column(Integer, comment="Initial signature count - XIII Legislature (XML: petNrAssinaturasInicial)")
+    iniciativas_originadas = Column(Text, comment="Originated initiatives - XIII Legislature (XML: iniciativasOriginadas)")
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False, comment="Legislature foreign key reference")
     updated_at = Column(DateTime, default=func.now, onupdate=func.now)
     
     # Relationships
@@ -3830,28 +3889,82 @@ class PeticaoLink(Base):
 
 
 class PeticaoPublicacao(Base):
+    """
+    Petition Publications Model - Based on PublicacoesOut specification
+    
+    Manages publication records for petitions using the standard TipodePublicacao enum.
+    Handles both PublicacaoPeticao and PublicacaoDebate types from the XML structure.
+    
+    PublicacoesOut Mapping:
+    - pubNr: pub_nr (Publication number)
+    - pubTipo: pub_tipo (Publication type description using TipodePublicacao)
+    - pubTp: pub_tp (Publication type code using TipodePublicacao enum)
+    - pubLeg: pub_leg (Publication legislature)
+    - pubSL: pub_sl (Publication legislative session)
+    - pubdt: pub_dt (Publication date)
+    - pag: pag (Page numbers)
+    - idPag: id_pag (Page identifier)
+    - URLDiario: url_diario (Parliamentary diary URL)
+    - supl: supl (Supplement designation - IX Legislature)
+    - pagFinalDiarioSupl: pag_final_diario_supl (Final supplement page - IX Legislature)
+    - obs: obs (Observations - XIV Legislature)
+    
+    Usage:
+        Tracks all publication records for petition lifecycle phases
+        References: TipodePublicacao enum for type standardization
+    """
     __tablename__ = 'peticoes_publicacoes'
     
     id = Column(Integer, primary_key=True)
-    peticao_id = Column(Integer, ForeignKey('peticoes_detalhadas.id'), nullable=False)
-    tipo = Column(Text)  # PublicacaoPeticao or PublicacaoDebate
-    pub_nr = Column(Integer)
-    pub_tipo = Column(Text)
-    pub_tp = Column(Text)
-    pub_leg = Column(Text)
-    pub_sl = Column(Integer)
-    pub_dt = Column(Date)
-    pag = Column(Text)
-    id_pag = Column(Integer)
-    url_diario = Column(Text)
-    supl = Column(Text)  # supl field from IX Legislature
-    pag_final_diario_supl = Column(Text)  # pagFinalDiarioSupl field from IX Legislature
-    obs = Column(Text)  # obs field from XIV Legislature
+    peticao_id = Column(Integer, ForeignKey('peticoes_detalhadas.id'), nullable=False, comment="Petition foreign key reference")
+    tipo = Column(Text, comment="Publication category (PublicacaoPeticao or PublicacaoDebate)")
+    pub_nr = Column(Integer, comment="Publication number (XML: pubNr)")
+    pub_tipo = Column(Text, comment="Publication type description using TipodePublicacao (XML: pubTipo)")
+    pub_tp = Column(Text, comment="Publication type code using TipodePublicacao enum (XML: pubTp)")
+    pub_leg = Column(Text, comment="Publication legislature (XML: pubLeg)")
+    pub_sl = Column(Integer, comment="Publication legislative session (XML: pubSL)")
+    pub_dt = Column(Date, comment="Publication date (XML: pubdt)")
+    pag = Column(Text, comment="Page numbers (XML: pag)")
+    id_pag = Column(Integer, comment="Page identifier (XML: idPag)")
+    url_diario = Column(Text, comment="Parliamentary diary URL (XML: URLDiario)")
+    supl = Column(Text, comment="Supplement designation - IX Legislature (XML: supl)")
+    pag_final_diario_supl = Column(Text, comment="Final supplement page - IX Legislature (XML: pagFinalDiarioSupl)")
+    obs = Column(Text, comment="Observations - XIV Legislature (XML: obs)")
     
     # Relationships
     peticao = relationship("PeticaoParlamentar", back_populates="publicacoes")
 
 class PeticaoComissao(Base):
+    """
+    Petition Committee Model - Based on Peticoes_ComissoesPetOut specification
+    
+    Manages committee assignment and processing workflow for petitions.
+    Tracks complete committee lifecycle including admissibility, transfers, and archiving.
+    
+    Peticoes_ComissoesPetOut Mapping:
+    - legislatura: legislatura (Committee legislature)
+    - numero: numero (Committee number)
+    - idComissao: id_comissao (Committee identifier)
+    - nome: nome (Committee name)
+    - admissibilidade: admissibilidade (Admissibility status)
+    - dataAdmissibilidade: data_admissibilidade (Admissibility decision date)
+    - dataEnvioPar: data_envio_par (Date sent to Parliament)
+    - dataArquivo: data_arquivo (Archive date)
+    - situacao: situacao (Current processing status)
+    - dataReaberta: data_reaberta (Reopening date)
+    - dataBaixaComissao: data_baixa_comissao (Committee discharge date)
+    - transitada: transitada (Transfer status)
+    
+    Related Structures:
+    - RelatoresOut: Committee reporters (relationship: relatores)
+    - RelatoriosFinaisOut: Final reports and voting (relationship: relatorios_finais)
+    - DocsOut: Committee documents (relationship: documentos)
+    - TipodeReuniao: Meeting type enum for committee sessions
+    
+    Usage:
+        Central workflow management for petition committee processing
+        References: Multiple committee handling across different legislatures
+    """
     __tablename__ = 'peticoes_comissoes'
     __table_args__ = (
         Index('idx_peticao_comissao_peticao', 'peticao_id'),
@@ -3860,19 +3973,19 @@ class PeticaoComissao(Base):
     )
     
     id = Column(Integer, primary_key=True)
-    peticao_id = Column(Integer, ForeignKey('peticoes_detalhadas.id'), nullable=False)
-    legislatura = Column(Text)
-    numero = Column(Integer)
-    id_comissao = Column(Integer)
-    nome = Column(Text)
-    admissibilidade = Column(Text)
-    data_admissibilidade = Column(Date)
-    data_envio_par = Column(Date)
-    data_arquivo = Column(Date)
-    situacao = Column(Text)
-    data_reaberta = Column(Date)
-    data_baixa_comissao = Column(Date)
-    transitada = Column(Text)
+    peticao_id = Column(Integer, ForeignKey('peticoes_detalhadas.id'), nullable=False, comment="Petition foreign key reference")
+    legislatura = Column(Text, comment="Committee legislature (XML: legislatura)")
+    numero = Column(Integer, comment="Committee number (XML: numero)")
+    id_comissao = Column(Integer, comment="Committee identifier (XML: idComissao)")
+    nome = Column(Text, comment="Committee name (XML: nome)")
+    admissibilidade = Column(Text, comment="Admissibility status (XML: admissibilidade)")
+    data_admissibilidade = Column(Date, comment="Admissibility decision date (XML: dataAdmissibilidade)")
+    data_envio_par = Column(Date, comment="Date sent to Parliament (XML: dataEnvioPar)")
+    data_arquivo = Column(Date, comment="Archive date (XML: dataArquivo)")
+    situacao = Column(Text, comment="Current processing status (XML: situacao)")
+    data_reaberta = Column(Date, comment="Reopening date (XML: dataReaberta)")
+    data_baixa_comissao = Column(Date, comment="Committee discharge date (XML: dataBaixaComissao)")
+    transitada = Column(Text, comment="Transfer status (XML: transitada)")
     
     # Relationships
     peticao = relationship("PeticaoParlamentar", back_populates="comissoes")
@@ -4829,15 +4942,42 @@ class RelatoresContasPublicasOut(Base):
 # =====================================================
 
 class DeputadoHabilitacao(Base):
-    """Deputy Academic Qualifications (cadHabilitacoes)"""
+    """
+    Deputy Academic Qualifications - Based on RegistoBiografico DadosHabilitacoes
+    
+    Stores comprehensive academic and professional qualifications for deputies
+    from the biographical registry (cadHabilitacoes structure).
+    
+    RegistoBiografico Mapping (pt_ar_wsgode_objectos_DadosHabilitacoes):
+    - habId: hab_id (Qualification unique identifier)
+    - habDes: hab_des (Complete qualification description)
+    - habTipoId: hab_tipo_id (Qualification type classification ID)
+    - habEstado: hab_estado (Current status: completed/in progress/suspended)
+    
+    Qualification Types (habTipoId examples):
+    - Academic degrees (Bachelor, Master, PhD)
+    - Professional certifications
+    - Technical qualifications
+    - Honorary degrees
+    
+    Status Values (habEstado):
+    - "Concluída" (Completed)
+    - "Em curso" (In progress) 
+    - "Interrompida" (Interrupted/Suspended)
+    
+    Usage:
+        Links to Deputado via deputado_id foreign key
+        Multiple qualifications per deputy supported
+        Order preserved through database insertion sequence
+    """
     __tablename__ = 'deputado_habilitacoes'
     
     id = Column(Integer, primary_key=True)
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
-    hab_id = Column(Integer)  # habId - qualification ID
-    hab_des = Column(String(500))  # habDes - qualification description
-    hab_tipo_id = Column(Integer)  # habTipoId - qualification type ID
-    hab_estado = Column(String(50))  # habEstado - qualification state/status
+    hab_id = Column(Integer, comment="Qualification unique identifier (XML: habId)")
+    hab_des = Column(String(500), comment="Complete qualification description (XML: habDes)")
+    hab_tipo_id = Column(Integer, comment="Qualification type classification ID (XML: habTipoId)")
+    hab_estado = Column(String(50), comment="Current status: completed/in progress/suspended (XML: habEstado)")
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
@@ -4845,15 +4985,44 @@ class DeputadoHabilitacao(Base):
 
 
 class DeputadoCargoFuncao(Base):
-    """Deputy Positions/Functions (cadCargosFuncoes)"""
+    """
+    Deputy Career Positions/Functions - Based on RegistoBiografico DadosCargosFuncoes
+    
+    Stores comprehensive professional positions and career functions held by deputies
+    throughout their careers, both before and during parliamentary service.
+    
+    RegistoBiografico Mapping (pt_ar_wsgode_objectos_DadosCargosFuncoes):
+    - funId: fun_id (Function unique identifier)
+    - funDes: fun_des (Complete function/position description)
+    - funOrdem: fun_ordem (Display order for biographical presentation)
+    - funAntiga: fun_antiga (S/N flag indicating if position is historical)
+    
+    Position Categories (examples from funDes):
+    - Academic positions (Professor, Researcher, Dean)
+    - Government positions (Minister, Secretary of State, Mayor)
+    - Private sector positions (CEO, Director, Manager)
+    - Professional associations (President, Vice-President, Board Member)
+    - Judicial positions (Judge, Prosecutor, Lawyer)
+    
+    Historical Flag (funAntiga):
+    - "S": Historical/previous position (no longer held)
+    - "N": Current position (actively held)
+    - Note: Used to distinguish current from past professional roles
+    
+    Usage:
+        Links to Deputado via deputado_id foreign key
+        Multiple positions per deputy supported
+        Chronological ordering via fun_ordem field
+        Historical tracking via funAntiga flag
+    """
     __tablename__ = 'deputado_cargos_funcoes'
     
     id = Column(Integer, primary_key=True)
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
-    fun_id = Column(Integer)  # funId - function ID
-    fun_des = Column(Text)  # funDes - function description
-    fun_ordem = Column(Integer)  # funOrdem - function order
-    fun_antiga = Column(String(1))  # funAntiga - S/N whether it's an old function
+    fun_id = Column(Integer, comment="Function unique identifier (XML: funId)")
+    fun_des = Column(Text, comment="Complete function/position description (XML: funDes)")
+    fun_ordem = Column(Integer, comment="Display order for biographical presentation (XML: funOrdem)")
+    fun_antiga = Column(String(1), comment="S/N flag indicating if position is historical (XML: funAntiga)")
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
@@ -4861,14 +5030,37 @@ class DeputadoCargoFuncao(Base):
 
 
 class DeputadoTitulo(Base):
-    """Deputy Titles/Awards (cadTitulos)"""
+    """
+    Deputy Academic and Honorary Titles - Based on RegistoBiografico DadosTitulos
+    
+    Stores academic titles, honorary degrees, and professional distinctions
+    awarded to deputies throughout their careers.
+    
+    RegistoBiografico Mapping (pt_ar_wsgode_objectos_DadosTitulos):
+    - titId: tit_id (Title unique identifier)
+    - titDes: tit_des (Complete title description)
+    - titOrdem: tit_ordem (Display order for biographical presentation)
+    
+    Title Categories (examples from titDes):
+    - Academic titles (Professor Catedrático, Professor Associado, Doutor Honoris Causa)
+    - Professional titles (Engenheiro, Médico, Advogado, Arquitecto)
+    - Honorary titles (Comendador, Oficial, Cavaleiro)
+    - Recognition awards (Prémio Nacional, Distinção Científica)
+    - International honors (Foreign decorations, Academic distinctions)
+    
+    Usage:
+        Links to Deputado via deputado_id foreign key
+        Multiple titles per deputy supported
+        Ordered presentation via tit_ordem field
+        Complements DeputadoCondecoracao for comprehensive honors tracking
+    """
     __tablename__ = 'deputado_titulos'
     
     id = Column(Integer, primary_key=True)
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
-    tit_id = Column(Integer)  # titId - title ID
-    tit_des = Column(Text)  # titDes - title description
-    tit_ordem = Column(Integer)  # titOrdem - title order
+    tit_id = Column(Integer, comment="Title unique identifier (XML: titId)")
+    tit_des = Column(Text, comment="Complete title description (XML: titDes)")
+    tit_ordem = Column(Integer, comment="Display order for biographical presentation (XML: titOrdem)")
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
@@ -4876,14 +5068,44 @@ class DeputadoTitulo(Base):
 
 
 class DeputadoCondecoracao(Base):
-    """Deputy Decorations/Honors (cadCondecoracoes)"""
+    """
+    Deputy Decorations and Honors - Based on RegistoBiografico DadosCondecoracoes
+    
+    Stores state decorations, honors, and official recognitions awarded to deputies
+    by Portuguese and foreign governmental entities.
+    
+    RegistoBiografico Mapping (pt_ar_wsgode_objectos_DadosCondecoracoes):
+    - codId: cod_id (Decoration unique identifier)
+    - codDes: cod_des (Complete decoration description)
+    - codOrdem: cod_ordem (Display order for biographical presentation)
+    
+    Decoration Categories (examples from codDes):
+    - Portuguese Orders (Ordem do Infante D. Henrique, Ordem de Cristo, Ordem da Torre e Espada)
+    - Portuguese Medals (Medalha de Ouro dos Bons Serviços, Medalha de Mérito)
+    - Military decorations (Cruz de Guerra, Medalha Militar de Serviços Distintos)
+    - Foreign orders and decorations (awarded by other countries)
+    - Civic recognition (municipal honors, professional association awards)
+    
+    Hierarchical Levels:
+    - Grã-Cruz (Grand Cross) - highest level
+    - Grande-Oficial (Grand Officer)
+    - Comendador (Commander) 
+    - Oficial (Officer)
+    - Cavaleiro (Knight) - entry level
+    
+    Usage:
+        Links to Deputado via deputado_id foreign key
+        Multiple decorations per deputy supported
+        Ordered presentation via cod_ordem field
+        Distinct from DeputadoTitulo (focuses on state/official honors)
+    """
     __tablename__ = 'deputado_condecoracoes'
     
     id = Column(Integer, primary_key=True)
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
-    cod_id = Column(Integer)  # codId - decoration ID
-    cod_des = Column(Text)  # codDes - decoration description
-    cod_ordem = Column(Integer)  # codOrdem - decoration order
+    cod_id = Column(Integer, comment="Decoration unique identifier (XML: codId)")
+    cod_des = Column(Text, comment="Complete decoration description (XML: codDes)")
+    cod_ordem = Column(Integer, comment="Display order for biographical presentation (XML: codOrdem)")
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
@@ -4891,14 +5113,46 @@ class DeputadoCondecoracao(Base):
 
 
 class DeputadoObraPublicada(Base):
-    """Deputy Published Works (cadObrasPublicadas)"""
+    """
+    Deputy Published Works - Based on RegistoBiografico DadosObrasPublicadas
+    
+    Stores comprehensive bibliography of works authored, co-authored, or edited by deputies
+    including books, academic papers, articles, and other publications.
+    
+    RegistoBiografico Mapping (pt_ar_wsgode_objectos_DadosObrasPublicadas):
+    - pubId: pub_id (Publication unique identifier)
+    - pubDes: pub_des (Complete publication description with bibliographic details)
+    - pubOrdem: pub_ordem (Display order for biographical presentation)
+    
+    Publication Categories (examples from pubDes):
+    - Academic books (monographs, textbooks, edited volumes)
+    - Scholarly articles (journal papers, conference proceedings)
+    - Professional publications (reports, technical manuals, policy papers)
+    - Literary works (novels, poetry, essays)
+    - Popular publications (magazine articles, newspaper columns)
+    - Translations and edited works
+    
+    Bibliographic Information Included:
+    - Full titles and subtitles
+    - Co-authors and editors
+    - Publication dates and editions
+    - Publishers and institutions
+    - ISBN/ISSN when available
+    - Page counts and formats
+    
+    Usage:
+        Links to Deputado via deputado_id foreign key
+        Multiple publications per deputy supported
+        Chronological or thematic ordering via pub_ordem field
+        Supports comprehensive academic and intellectual biography
+    """
     __tablename__ = 'deputado_obras_publicadas'
     
     id = Column(Integer, primary_key=True)
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
-    pub_id = Column(Integer)  # pubId - publication ID
-    pub_des = Column(Text)  # pubDes - publication description
-    pub_ordem = Column(Integer)  # pubOrdem - publication order
+    pub_id = Column(Integer, comment="Publication unique identifier (XML: pubId)")
+    pub_des = Column(Text, comment="Complete publication description with bibliographic details (XML: pubDes)")
+    pub_ordem = Column(Integer, comment="Display order for biographical presentation (XML: pubOrdem)")
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
@@ -4906,25 +5160,66 @@ class DeputadoObraPublicada(Base):
 
 
 class DeputadoAtividadeOrgao(Base):
-    """Deputy Activity in Parliamentary Organs (cadActividadeOrgaos)"""
+    """
+    Deputy Parliamentary Organ Activities - Based on RegistoBiografico cadActividadeOrgaos
+    
+    Stores detailed information about deputy participation in parliamentary committees
+    and working groups, including positions held and mandate periods.
+    
+    This model handles two distinct activity types with parallel structure:
+    1. Committee Activities (actividadeCom) - permanent and specialized committees
+    2. Working Group Activities (actividadeGT) - temporary thematic working groups
+    
+    RegistoBiografico Mapping Structure:
+    - cadActividadeOrgaos (Root container)
+      ├── actividadeCom (Committee activities)
+      └── actividadeGT (Working group activities)
+    
+    Both activity types use pt_ar_wsgode_objectos_DadosOrgaos structure:
+    - orgId: org_id (Organ unique identifier)
+    - orgSigla: org_sigla (Official organ acronym)
+    - orgDes: org_des (Full organ name/description)
+    - legDes: leg_des (Legislature designation: IA, IB, II, III, etc.)
+    - timDes: tim_des (Mandate period description)
+    - cargoDes: cargo_des (Contains nested DadosCargosOrgao with position details)
+    
+    Position Details (pt_ar_wsgode_objectos_DadosCargosOrgao):
+    - tiaDes: tia_des (Position type: Presidente, Vice-Presidente, Relator, Vogal, etc.)
+    
+    Activity Types:
+    - "actividadeCom": Committee membership and leadership
+    - "actividadeGT": Working group participation and roles
+    
+    Common Position Types (tiaDes):
+    - "Presidente" (President/Chair)
+    - "Vice-Presidente" (Vice-President/Vice-Chair)  
+    - "Relator" (Rapporteur)
+    - "Vogal" (Member)
+    - "Secretário" (Secretary)
+    
+    Usage:
+        Links to Deputado via deputado_id foreign key
+        Multiple organ activities per deputy supported
+        Tracks complete parliamentary service history across all legislatures
+        Essential for understanding deputy's areas of specialization and leadership roles
+    """
     __tablename__ = 'deputado_atividades_orgaos'
     
     id = Column(Integer, primary_key=True)
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
     
-    # Activity type - 'committee' or 'working_group'
-    tipo_atividade = Column(String(50), nullable=False)  # 'actividadeCom' or 'actividadeGT'
+    # Activity type - 'actividadeCom' or 'actividadeGT'
+    tipo_atividade = Column(String(50), nullable=False, comment="Activity type: actividadeCom (committee) or actividadeGT (working group)")
     
     # Organ details (pt_ar_wsgode_objectos_DadosOrgaos)
-    org_id = Column(Integer)        # orgId - organ ID
-    org_sigla = Column(String(50))  # orgSigla - organ acronym
-    org_des = Column(String(200))   # orgDes - organ description
-    cargo_des = Column(String(200)) # cargoDes - position description
-    tim_des = Column(String(50))    # timDes - mandate period description
-    leg_des = Column(String(50))    # legDes - legislature description
+    org_id = Column(Integer, comment="Organ unique identifier (XML: orgId)")
+    org_sigla = Column(String(50), comment="Official organ acronym (XML: orgSigla)")
+    org_des = Column(String(200), comment="Full organ name/description (XML: orgDes)")
+    leg_des = Column(String(50), comment="Legislature designation: IA, IB, II, III, etc. (XML: legDes)")
+    tim_des = Column(String(50), comment="Mandate period description (XML: timDes)")
     
     # Position details (pt_ar_wsgode_objectos_DadosCargosOrgao)
-    tia_des = Column(String(200))   # tiaDes - position type description
+    tia_des = Column(String(200), comment="Position type: Presidente, Vice-Presidente, Relator, Vogal, etc. (XML: tiaDes)")
     
     created_at = Column(DateTime, default=func.now())
     
@@ -4933,23 +5228,64 @@ class DeputadoAtividadeOrgao(Base):
 
 
 class DeputadoMandatoLegislativo(Base):
-    """Deputy Legislative Mandates (cadDeputadoLegis) - Enhanced with all fields"""
+    """
+    Deputy Legislative Mandates - Based on RegistoBiografico cadDeputadoLegis
+    
+    Stores comprehensive information about each legislative mandate served by a deputy,
+    including electoral details, party affiliations, and parliamentary group memberships.
+    
+    Each record represents one legislative period where the deputy served, creating
+    a complete electoral and political history for biographical research.
+    
+    RegistoBiografico Mapping (pt_ar_wsgode_objectos_DadosDeputadoLegis):
+    - depNomeParlamentar: dep_nome_parlamentar (Parliamentary name used during mandate)
+    - legDes: leg_des (Legislature designation: IA, IB, II, III, IV, V, etc.)
+    - ceDes: ce_des (Electoral circle description: Aveiro, Braga, Lisboa, etc.)
+    - parSigla: par_sigla (Political party acronym: PS, PSD, CDS, BE, etc.)
+    - parDes: par_des (Full political party name)
+    - gpSigla: gp_sigla (Parliamentary group acronym - may differ from party)
+    - gpDes: gp_des (Parliamentary group full name)
+    - indDes: ind_des (Indication/appointment description for special cases)
+    - urlVideoBiografia: url_video_biografia (Biography video URL if available)
+    - indData: ind_data (Indication/appointment date for special appointments)
+    
+    Legislature Designations (legDes):
+    - "IA", "IB": First legislature divided phases
+    - "II" through "XV": Standard numbered legislatures
+    - "CONSTITUINTE": Constitutional Assembly (1975-1976)
+    
+    Electoral Circles (ceDes examples):
+    - District-based: "Aveiro", "Braga", "Coimbra", "Lisboa", "Porto"
+    - Island-based: "Açores", "Madeira"  
+    - Special: "Emigração" (Emigration), "Europa" (European)
+    
+    Political Context:
+    - Party (par*) vs Parliamentary Group (gp*) distinction important
+    - Deputies may switch groups during mandate (tracked via parliamentary group models)
+    - Special appointments (indDes/indData) for interim or replacement deputies
+    
+    Usage:
+        Links to Deputado via deputado_id foreign key
+        One record per legislature served by deputy
+        Essential for electoral history and political affiliation tracking
+        Supports longitudinal analysis of deputy careers
+    """
     __tablename__ = 'deputado_mandatos_legislativos'
     
     id = Column(Integer, primary_key=True)
     deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
     
     # Core mandate data
-    dep_nome_parlamentar = Column(String(200))  # depNomeParlamentar
-    leg_des = Column(String(50))  # legDes - legislature designation (IA, IB, II, etc.)
-    ce_des = Column(String(100))  # ceDes - electoral circle description
-    par_sigla = Column(String(20))  # parSigla - party acronym
-    par_des = Column(String(200))  # parDes - party description
-    gp_sigla = Column(String(20))  # gpSigla - parliamentary group acronym
-    gp_des = Column(String(200))  # gpDes - parliamentary group description
-    ind_des = Column(String(200))  # indDes - indication description
-    url_video_biografia = Column(String(500))  # urlVideoBiografia - biography video URL
-    ind_data = Column(Date)  # indData - indication date
+    dep_nome_parlamentar = Column(String(200), comment="Parliamentary name used during mandate (XML: depNomeParlamentar)")
+    leg_des = Column(String(50), comment="Legislature designation: IA, IB, II, III, etc. (XML: legDes)")
+    ce_des = Column(String(100), comment="Electoral circle: Aveiro, Braga, Lisboa, Porto, etc. (XML: ceDes)")
+    par_sigla = Column(String(20), comment="Political party acronym: PS, PSD, CDS, BE, etc. (XML: parSigla)")
+    par_des = Column(String(200), comment="Full political party name (XML: parDes)")
+    gp_sigla = Column(String(20), comment="Parliamentary group acronym - may differ from party (XML: gpSigla)")
+    gp_des = Column(String(200), comment="Parliamentary group full name (XML: gpDes)")
+    ind_des = Column(String(200), comment="Indication/appointment description for special cases (XML: indDes)")
+    url_video_biografia = Column(String(500), comment="Biography video URL if available (XML: urlVideoBiografia)")
+    ind_data = Column(Date, comment="Indication/appointment date for special appointments (XML: indData)")
     
     created_at = Column(DateTime, default=func.now())
     

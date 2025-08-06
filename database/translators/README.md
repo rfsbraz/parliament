@@ -53,6 +53,17 @@ This directory contains thematic field translation modules for Portuguese Parlia
 - Shared across multiple modules to avoid duplication
 - Used in both eventual and permanent delegations
 
+### `registo_biografico.py`
+- **SexoType** enum for gender classification (2 codes: M, F)
+- **EstadoCivilType** enum for marital status (5 codes: S, C, D, V, UF)
+- **HabilitacaoEstadoType** enum for qualification status (5 codes: CONCLUIDA, EM_CURSO, INTERROMPIDA, ABANDONADA, SUSPENSA)
+- **CargoFuncaoAntigaType** enum for historical position flag (2 codes: S, N)
+- **TipoAtividadeOrgaoType** enum for parliamentary organ activity types (2 codes: ATIVIDADE_COM, ATIVIDADE_GT)
+- **PosicaoOrgaoType** enum for parliamentary positions (6 codes: PRESIDENTE, VICE_PRESIDENTE, RELATOR, VOGAL, SECRETARIO, MEMBRO)
+- **LegislaturaDesignacaoType** enum for legislature designations (15 codes: CONSTITUINTE, IA-XV)
+- **CirculoEleitoralType** enum for electoral circles (22 codes: 18 districts + 4 special)
+- Used across biographical models: Deputado, DeputadoHabilitacao, DeputadoCargoFuncao, DeputadoAtividadeOrgao, DeputadoMandatoLegislativo
+
 ## Usage Patterns
 
 ### Individual Model Translation
@@ -118,6 +129,14 @@ else:
 | DelegacaoEventualParticipante | tipo_participante | delegacao_eventual | participant_type() |
 | DelegacaoPermanente | meeting_type | delegacoes_permanentes | meeting_type() |
 | DelegacaoPermanente | participant_type | delegacoes_permanentes | participant_type() |
+| Deputado | sexo | registo_biografico | gender() |
+| Deputado | estado_civil_cod | registo_biografico | marital_status() |
+| DeputadoHabilitacao | hab_estado | registo_biografico | qualification_status() |
+| DeputadoCargoFuncao | fun_antiga | registo_biografico | position_historical_flag() |
+| DeputadoAtividadeOrgao | tipo_atividade | registo_biografico | organ_activity_type() |
+| DeputadoAtividadeOrgao | tia_des | registo_biografico | organ_position_type() |
+| DeputadoMandatoLegislativo | leg_des | registo_biografico | legislature_designation() |
+| DeputadoMandatoLegislativo | ce_des | registo_biografico | electoral_circle() |
 
 ### Official Documentation Mapping
 
@@ -127,5 +146,6 @@ All translations are based on multiple official sources:
 - **AgendaParlamentar**: "AgendaParlamentar.xml/.json" structure documentation (June 2023)
 - **DelegacoesEventuais**: "DelegacoesEventuais.xml" structure documentation (December 2017)
 - **DelegacoesPermanentes**: "DelegacoesPermanentes.xml" structure documentation (December 2017)
+- **RegistoBiografico**: "Estruturas de dados do Registo Biográfico dos Deputados" specifications (December 2017 and May 2023)
 - **Validation**: Consistent across legislatures with version-specific updates
 - **Location**: `E:\dev\parliament\scripts\data_processing\data\downloads\`

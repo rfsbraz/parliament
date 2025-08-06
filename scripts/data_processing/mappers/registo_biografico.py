@@ -2,8 +2,37 @@
 Biographical Registry Mapper
 ============================
 
-Schema mapper for biographical registry files (RegistoBiografico*.xml).
-Handles complete deputy biographical data including qualifications, roles, and organ activities.
+Comprehensive schema mapper for biographical registry files (RegistoBiografico<Legislatura>.xml).
+Based on official Parliament documentation (December 2017 and May 2023):
+"Estruturas de dados do Registo Biográfico dos Deputados" specifications.
+
+Handles complete deputy biographical data with multi-version structure support:
+- Basic biographical data (name, birth date, gender, profession, birthplace)
+- Academic qualifications with completion status tracking
+- Professional career positions with historical/current distinction  
+- Academic and honorary titles with hierarchical ordering
+- State decorations and honors with classification levels
+- Published works with comprehensive bibliographic details
+- Parliamentary organ activities (committees and working groups)
+- Legislative mandates with electoral and party affiliation history
+- Interest registry integration across multiple schema versions (V1, V2, V3, V5)
+
+Multi-Legislature Structure Support:
+- I Legislature format: RegistoBiograficoList with pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb
+- VIII Legislature format: ArrayOfDadosRegistoBiografico with DadosRegistoBiografico structure  
+- XV Legislature format: Enhanced with modern interest registry (RegistoInteressesV5)
+- Cross-format compatibility with automatic structure detection
+
+Data Evolution Tracking:
+- V1: Basic biographical and interest registry data
+- V2: Enhanced with professional activities (DadosDeputadoRgiWebV2)
+- V3: Expanded social positions and professional services
+- V5: Modern unified structure with comprehensive interest declarations
+
+Parliamentary Integration:
+- Maps to 10 specialized models: Deputado (core) + 9 biographical detail models
+- Cross-references with interest registry unified models for complete deputy profiles
+- Supports biographical research across all Portuguese legislature periods
 """
 
 import xml.etree.ElementTree as ET
@@ -23,7 +52,41 @@ logger = logging.getLogger(__name__)
 
 
 class RegistoBiograficoMapper(EnhancedSchemaMapper):
-    """Schema mapper for biographical registry files"""
+    """
+    Comprehensive Biographical Registry Schema Mapper
+    
+    Processes RegistoBiografico<Legislatura>.xml files containing complete deputy biographical
+    profiles across all Portuguese legislature periods from Constituinte to XV Legislature.
+    
+    Key Capabilities:
+    1. Multi-format structure detection and processing
+    2. Cross-legislature data consistency and evolution tracking
+    3. Comprehensive biographical detail extraction and mapping
+    4. Interest registry integration across schema versions
+    5. Parliamentary activity history and position tracking
+    
+    Data Processing Flow:
+    1. Structure Detection: Automatically identifies I vs VIII Legislature XML formats
+    2. Core Biography: Maps basic biographical data to Deputado model
+    3. Academic Record: Processes qualifications with status tracking (DeputadoHabilitacao)
+    4. Career History: Maps professional positions with temporal flags (DeputadoCargoFuncao)
+    5. Recognition Record: Processes titles and decorations (DeputadoTitulo, DeputadoCondecoracao)
+    6. Publication Record: Maps scholarly and literary works (DeputadoObraPublicada)
+    7. Parliamentary History: Tracks committee and working group activities (DeputadoAtividadeOrgao)
+    8. Electoral History: Maps legislative mandates and party affiliations (DeputadoMandatoLegislativo)
+    9. Interest Registry: Integrates professional interest declarations across versions
+    
+    Legislature Format Support:
+    - Early Legislatures (I): RegistoBiograficoList format with comprehensive nested structures
+    - Middle Legislatures (VIII): ArrayOfDadosRegistoBiografico with flattened hierarchy
+    - Modern Legislatures (XV+): Enhanced formats with unified interest registry integration
+    
+    Data Quality Features:
+    - Duplicate detection and handling across multiple data imports
+    - Data consistency validation between biographical and interest registry data
+    - Temporal data tracking for career and parliamentary position evolution
+    - Cross-reference validation with existing deputy records
+    """
     
     def __init__(self, session):
         super().__init__(session)
