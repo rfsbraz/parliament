@@ -18,6 +18,7 @@ import xml.etree.ElementTree as ET
 # SQLAlchemy session handling (sessions passed from unified importer)
 from abc import ABC, abstractmethod
 from datetime import datetime
+from .common_utilities import DataValidationUtils
 from typing import Any, Dict, List, Optional, Set
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -494,11 +495,31 @@ class XMLProcessingMixin:
         return None
 
     def _safe_int(self, value) -> Optional[int]:
-        """Safely convert value to int - handles strings, floats, None"""
-        if not value:
+        """Safely convert value to int - handles strings, floats, None, and float strings like '7890.0'"""
+        if value is None or value == '':
             return None
         try:
-            return int(value)
+            # First try direct int conversion for normal cases
+            if isinstance(value, int):
+                return value
+            elif isinstance(value, float):
+                return int(value)
+            elif isinstance(value, str):
+                # Handle whitespace-only strings
+                if not value.strip():
+                    return None
+                
+                stripped_value = value.strip()
+                
+                # Reject scientific notation (e.g., "1e5", "1.23e4")
+                if 'e' in stripped_value.lower():
+                    return None
+                
+                # Handle float format strings like '7890.0' by converting to float first
+                float_value = DataValidationUtils.safe_float_convert(stripped_value)
+                if float_value is not None:
+                    return int(float_value)
+            return None
         except (ValueError, TypeError):
             return None
 

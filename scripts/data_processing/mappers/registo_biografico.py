@@ -41,6 +41,7 @@ from typing import Dict, Optional, Set
 import logging
 
 from .enhanced_base_mapper import EnhancedSchemaMapper, SchemaError
+from .common_utilities import DataValidationUtils
 
 # Import our models
 import sys
@@ -404,7 +405,10 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             if not cad_id:
                 return False
                 
-            cad_id = int(cad_id)
+            cad_id = self._safe_int(cad_id)
+            if cad_id is None:
+                logger.warning("Invalid cadId format, skipping record")
+                return False
             
             # Get or create deputy
             deputy = self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
@@ -440,15 +444,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         # Check if already exists
                         existing = self.session.query(DeputadoHabilitacao).filter(
                             DeputadoHabilitacao.deputado_id == deputy.id,
-                            DeputadoHabilitacao.hab_id == int(hab_id)
+                            DeputadoHabilitacao.hab_id == self._safe_int(hab_id)
                         ).first()
                         
                         if not existing:
                             qualification = DeputadoHabilitacao(
                                 deputado_id=deputy.id,
-                                hab_id=int(hab_id),
+                                hab_id=self._safe_int(hab_id),
                                 hab_des=self._get_text_value(hab, 'habDes'),
-                                hab_tipo_id=self._parse_int(self._get_text_value(hab, 'habTipoId')),
+                                hab_tipo_id=self._safe_int(self._get_text_value(hab, 'habTipoId')),
                                 hab_estado=self._get_text_value(hab, 'habEstado')  # New I Legislature field
                             )
                             self.session.add(qualification)
@@ -464,15 +468,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         # Check if already exists
                         existing = self.session.query(DeputadoCargoFuncao).filter(
                             DeputadoCargoFuncao.deputado_id == deputy.id,
-                            DeputadoCargoFuncao.fun_id == int(fun_id)
+                            DeputadoCargoFuncao.fun_id == self._safe_int(fun_id)
                         ).first()
                         
                         if not existing:
                             role = DeputadoCargoFuncao(
                                 deputado_id=deputy.id,
-                                fun_id=int(fun_id),
+                                fun_id=self._safe_int(fun_id),
                                 fun_des=self._get_text_value(cargo, 'funDes'),
-                                fun_ordem=self._parse_int(self._get_text_value(cargo, 'funOrdem')),  # New I Legislature field
+                                fun_ordem=self._safe_int(self._get_text_value(cargo, 'funOrdem')),  # New I Legislature field
                                 fun_antiga=self._get_text_value(cargo, 'funAntiga')  # New I Legislature field
                             )
                             self.session.add(role)
@@ -488,15 +492,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         # Check if already exists
                         existing = self.session.query(DeputadoTitulo).filter(
                             DeputadoTitulo.deputado_id == deputy.id,
-                            DeputadoTitulo.tit_id == int(tit_id)
+                            DeputadoTitulo.tit_id == self._safe_int(tit_id)
                         ).first()
                         
                         if not existing:
                             title = DeputadoTitulo(
                                 deputado_id=deputy.id,
-                                tit_id=int(tit_id),
+                                tit_id=self._safe_int(tit_id),
                                 tit_des=self._get_text_value(titulo, 'titDes'),
-                                tit_ordem=self._parse_int(self._get_text_value(titulo, 'titOrdem'))
+                                tit_ordem=self._safe_int(self._get_text_value(titulo, 'titOrdem'))
                             )
                             self.session.add(title)
             
@@ -511,15 +515,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         # Check if already exists
                         existing = self.session.query(DeputadoCondecoracao).filter(
                             DeputadoCondecoracao.deputado_id == deputy.id,
-                            DeputadoCondecoracao.cod_id == int(cod_id)
+                            DeputadoCondecoracao.cod_id == self._safe_int(cod_id)
                         ).first()
                         
                         if not existing:
                             decoration = DeputadoCondecoracao(
                                 deputado_id=deputy.id,
-                                cod_id=int(cod_id),
+                                cod_id=self._safe_int(cod_id),
                                 cod_des=self._get_text_value(cond, 'codDes'),
-                                cod_ordem=self._parse_int(self._get_text_value(cond, 'codOrdem'))
+                                cod_ordem=self._safe_int(self._get_text_value(cond, 'codOrdem'))
                             )
                             self.session.add(decoration)
             
@@ -534,15 +538,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         # Check if already exists
                         existing = self.session.query(DeputadoObraPublicada).filter(
                             DeputadoObraPublicada.deputado_id == deputy.id,
-                            DeputadoObraPublicada.pub_id == int(pub_id)
+                            DeputadoObraPublicada.pub_id == self._safe_int(pub_id)
                         ).first()
                         
                         if not existing:
                             publication = DeputadoObraPublicada(
                                 deputado_id=deputy.id,
-                                pub_id=int(pub_id),
+                                pub_id=self._safe_int(pub_id),
                                 pub_des=self._get_text_value(obra, 'pubDes'),
-                                pub_ordem=self._parse_int(self._get_text_value(obra, 'pubOrdem'))
+                                pub_ordem=self._safe_int(self._get_text_value(obra, 'pubOrdem'))
                             )
                             self.session.add(publication)
             
@@ -571,7 +575,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         atividade = DeputadoAtividadeOrgao(
                             deputado_id=deputy.id,
                             tipo_atividade='committee',
-                            org_id=self._parse_int(self._get_text_value(dados_orgao, 'orgId')),
+                            org_id=self._safe_int(self._get_text_value(dados_orgao, 'orgId')),
                             org_sigla=self._get_text_value(dados_orgao, 'orgSigla'),
                             org_des=self._get_text_value(dados_orgao, 'orgDes'),
                             cargo_des=self._get_text_value(dados_orgao, 'cargoDes'),
@@ -603,7 +607,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         atividade = DeputadoAtividadeOrgao(
                             deputado_id=deputy.id,
                             tipo_atividade='working_group',
-                            org_id=self._parse_int(self._get_text_value(dados_orgao, 'orgId')),
+                            org_id=self._safe_int(self._get_text_value(dados_orgao, 'orgId')),
                             org_sigla=self._get_text_value(dados_orgao, 'orgSigla'),
                             org_des=self._get_text_value(dados_orgao, 'orgDes'),
                             cargo_des=self._get_text_value(dados_orgao, 'cargoDes'),
@@ -678,7 +682,10 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 return False
                 
             logger.debug(f"Processing deputy with CadId: {cad_id}")
-            cad_id = int(cad_id)
+            cad_id = self._safe_int(cad_id)
+            if cad_id is None:
+                logger.warning("Invalid cadId format, skipping record")
+                return False
             
             # Get or create deputy
             deputy = self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
@@ -711,15 +718,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     if hab_id:
                         existing = self.session.query(DeputadoHabilitacao).filter(
                             DeputadoHabilitacao.deputado_id == deputy.id,
-                            DeputadoHabilitacao.hab_id == int(hab_id)
+                            DeputadoHabilitacao.hab_id == self._safe_int(hab_id)
                         ).first()
                         
                         if not existing:
                             qualification = DeputadoHabilitacao(
                                 deputado_id=deputy.id,
-                                hab_id=int(hab_id),
+                                hab_id=self._safe_int(hab_id),
                                 hab_des=self._get_text_value(hab, 'HabDes'),
-                                hab_tipo_id=self._parse_int(self._get_text_value(hab, 'HabTipoId')),
+                                hab_tipo_id=self._safe_int(self._get_text_value(hab, 'HabTipoId')),
                                 hab_estado=self._get_text_value(hab, 'HabEstado')
                             )
                             self.session.add(qualification)
@@ -732,15 +739,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     if fun_id:
                         existing = self.session.query(DeputadoCargoFuncao).filter(
                             DeputadoCargoFuncao.deputado_id == deputy.id,
-                            DeputadoCargoFuncao.fun_id == int(fun_id)
+                            DeputadoCargoFuncao.fun_id == self._safe_int(fun_id)
                         ).first()
                         
                         if not existing:
                             role = DeputadoCargoFuncao(
                                 deputado_id=deputy.id,
-                                fun_id=int(fun_id),
+                                fun_id=self._safe_int(fun_id),
                                 fun_des=self._get_text_value(cargo, 'FunDes'),
-                                fun_ordem=self._parse_int(self._get_text_value(cargo, 'FunOrdem')),
+                                fun_ordem=self._safe_int(self._get_text_value(cargo, 'FunOrdem')),
                                 fun_antiga=self._get_text_value(cargo, 'FunAntiga')
                             )
                             self.session.add(role)
@@ -753,15 +760,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     if tit_id:
                         existing = self.session.query(DeputadoTitulo).filter(
                             DeputadoTitulo.deputado_id == deputy.id,
-                            DeputadoTitulo.tit_id == int(tit_id)
+                            DeputadoTitulo.tit_id == self._safe_int(tit_id)
                         ).first()
                         
                         if not existing:
                             title = DeputadoTitulo(
                                 deputado_id=deputy.id,
-                                tit_id=int(tit_id),
+                                tit_id=self._safe_int(tit_id),
                                 tit_des=self._get_text_value(titulo, 'TitDes'),
-                                tit_ordem=self._parse_int(self._get_text_value(titulo, 'TitOrdem'))
+                                tit_ordem=self._safe_int(self._get_text_value(titulo, 'TitOrdem'))
                             )
                             self.session.add(title)
             
@@ -773,15 +780,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     if cod_id:
                         existing = self.session.query(DeputadoCondecoracao).filter(
                             DeputadoCondecoracao.deputado_id == deputy.id,
-                            DeputadoCondecoracao.cod_id == int(cod_id)
+                            DeputadoCondecoracao.cod_id == self._safe_int(cod_id)
                         ).first()
                         
                         if not existing:
                             decoration = DeputadoCondecoracao(
                                 deputado_id=deputy.id,
-                                cod_id=int(cod_id),
+                                cod_id=self._safe_int(cod_id),
                                 cod_des=self._get_text_value(cond, 'CodDes'),
-                                cod_ordem=self._parse_int(self._get_text_value(cond, 'CodOrdem'))
+                                cod_ordem=self._safe_int(self._get_text_value(cond, 'CodOrdem'))
                             )
                             self.session.add(decoration)
             
@@ -793,15 +800,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     if pub_id:
                         existing = self.session.query(DeputadoObraPublicada).filter(
                             DeputadoObraPublicada.deputado_id == deputy.id,
-                            DeputadoObraPublicada.pub_id == int(pub_id)
+                            DeputadoObraPublicada.pub_id == self._safe_int(pub_id)
                         ).first()
                         
                         if not existing:
                             publication = DeputadoObraPublicada(
                                 deputado_id=deputy.id,
-                                pub_id=int(pub_id),
+                                pub_id=self._safe_int(pub_id),
                                 pub_des=self._get_text_value(obra, 'PubDes'),
-                                pub_ordem=self._parse_int(self._get_text_value(obra, 'PubOrdem'))
+                                pub_ordem=self._safe_int(self._get_text_value(obra, 'PubOrdem'))
                             )
                             self.session.add(publication)
             
@@ -854,7 +861,10 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             if not cad_id:
                 return False
                 
-            cad_id = int(cad_id)
+            cad_id = self._safe_int(cad_id)
+            if cad_id is None:
+                logger.warning("Invalid cadId format, skipping record")
+                return False
             
             # Find or create the deputy
             deputy = self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
@@ -916,14 +926,6 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             logger.error(f"Error in _get_text_value for tag '{tag}': {e}")
             return None
     
-    def _parse_int(self, value: str) -> Optional[int]:
-        """Parse integer from string"""
-        if not value:
-            return None
-        try:
-            return int(value)
-        except (ValueError, TypeError):
-            return None
     
     def _parse_date(self, date_str: str) -> Optional[datetime]:
         """Parse date from string"""
