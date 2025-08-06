@@ -737,10 +737,21 @@ class AgendaParlamentar(Base):
     link_externo = Column(Text)
     pos_plenario = Column(Boolean, default=False)
     estado = Column(Text, default='agendado')
+    
+    # Additional documented fields from XV Legislature documentation
+    order_value = Column(Integer)  # OrderValue - meeting/event order number
+    legislatura_designacao = Column(Text)  # LegDes - legislature reference
+    orgao_designacao = Column(Text)  # OrgDes - organ reference
+    reuniao_numero = Column(Integer)  # ReuNumero - meeting number
+    sessao_numero = Column(Integer)  # SelNumero - legislative session number
+    
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     secao_parlamentar_id = Column(Integer, ForeignKey('secoes_parlamentares.id'))
     tema_parlamentar_id = Column(Integer, ForeignKey('temas_parlamentares.id'))
+    
+    # Relationships
+    anexos = relationship("AgendaParlamentarAnexo", back_populates="agenda", cascade="all, delete-orphan")
     
     __table_args__ = (
         Index('idx_agenda_data', 'data_evento'),
@@ -751,6 +762,29 @@ class AgendaParlamentar(Base):
     )
 
 
+class AgendaParlamentarAnexo(Base):
+    """Parliamentary Agenda Attachments (AnexoEventos structures)"""
+    __tablename__ = 'agenda_parlamentar_anexos'
+    
+    id = Column(Integer, primary_key=True)
+    agenda_id = Column(Integer, ForeignKey('agenda_parlamentar.id'), nullable=False)
+    
+    # AnexoEventos fields from XV Legislature documentation
+    id_field = Column(Text)  # idField - document unique identifier
+    tipo_documento_field = Column(Text)  # tipoDocumentoField - document type
+    titulo_field = Column(Text, nullable=False)  # tituloField - document title (required)
+    url_field = Column(Text)  # uRLField - document URL
+    tipo_anexo = Column(Text)  # 'comissao_permanente' or 'plenario'
+    
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    agenda = relationship("AgendaParlamentar", back_populates="anexos")
+    
+    __table_args__ = (
+        Index('idx_agenda_anexo_agenda', 'agenda_id'),
+        Index('idx_agenda_anexo_tipo', 'tipo_anexo'),
+    )
 
 
 # =====================================================
@@ -1355,33 +1389,108 @@ class ImportStatus(Base):
 # AtividadeDeputado Models for Deputy Activity Data
 
 class AtividadeDeputado(Base):
+    """
+    Deputy Activities Root Container
+    ===============================
+    
+    Root container for all activities performed by a deputy during their mandate.
+    Based on official Portuguese Parliament documentation (December 2017):
+    "AtividadeDeputado<Legislatura>.xml"
+    
+    This model represents the top-level structure containing information about
+    deputy activities such as initiatives presented, questions and requirements
+    submitted, committee appointments, parliamentary interventions, and other
+    parliamentary activities performed during their mandate.
+    
+    Structure: ArrayOfAtividadeDeputado.AtividadeDeputado
+    
+    Related Documentation Fields:
+    - Contains: AtividadeDeputadoList (list of deputy activities)
+    - Contains: Deputado (deputy information via DadosDeputadoSearch)
+    """
     __tablename__ = 'atividade_deputados'
     
     id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False)
-    dep_cad_id = Column(Integer)  # DepCadId field
-    leg_des = Column(String(20))  # LegDes field
-    created_at = Column(DateTime, default=func.now())
     
-    deputado = relationship("Deputado", back_populates="atividades")
-    atividade_list = relationship("AtividadeDeputadoList", back_populates="atividade_deputado", cascade="all, delete-orphan")
-    deputado_situacoes = relationship("DeputadoSituacao", back_populates="atividade_deputado", cascade="all, delete-orphan")
-    initiatives = relationship("DeputyInitiative", back_populates="deputy_activity", cascade="all, delete-orphan")
-    interventions = relationship("DeputyIntervention", back_populates="deputy_activity", cascade="all, delete-orphan")
-    reports = relationship("DeputyReport", back_populates="deputy_activity", cascade="all, delete-orphan")
-    parliamentary_activities = relationship("DeputyParliamentaryActivity", back_populates="deputy_activity", cascade="all, delete-orphan")
-    legislative_data = relationship("DeputyLegislativeData", back_populates="deputy_activity", cascade="all, delete-orphan")
+    # Core deputy reference
+    deputado_id = Column(Integer, ForeignKey('deputados.id'), nullable=False, 
+                        comment="Reference to the deputy this activity record belongs to")
+    
+    # Official Parliament fields from documentation
+    dep_cad_id = Column(Integer, comment="Deputy's cadastral identifier (DepCadId) - unique registry ID")
+    leg_des = Column(String(20), comment="Legislature designation (LegDes) - which legislature this activity pertains to")
+    
+    # System tracking
+    created_at = Column(DateTime, default=func.now(), comment="Record creation timestamp")
+    
+    # Relationships - following official documentation structure
+    deputado = relationship("Deputado", back_populates="atividades",
+                           doc="Deputy who performed these activities")
+    
+    atividade_list = relationship("AtividadeDeputadoList", back_populates="atividade_deputado", 
+                                 cascade="all, delete-orphan",
+                                 doc="List of deputy activities (AtividadeDeputadoList structure)")
+    
+    deputado_situacoes = relationship("DeputadoSituacao", back_populates="atividade_deputado", 
+                                     cascade="all, delete-orphan",
+                                     doc="Deputy status/situation records")
+    
+    initiatives = relationship("DeputyInitiative", back_populates="deputy_activity", 
+                              cascade="all, delete-orphan",
+                              doc="Initiatives presented by the deputy (IniciativasOut)")
+    
+    interventions = relationship("DeputyIntervention", back_populates="deputy_activity", 
+                                cascade="all, delete-orphan",
+                                doc="Parliamentary interventions (IntervencoesOut)")
+    
+    reports = relationship("DeputyReport", back_populates="deputy_activity", 
+                          cascade="all, delete-orphan",
+                          doc="Reports where deputy acted as rapporteur (RelatoresOut)")
+    
+    parliamentary_activities = relationship("DeputyParliamentaryActivity", back_populates="deputy_activity", 
+                                           cascade="all, delete-orphan",
+                                           doc="Parliamentary activities (ActividadesParlamentaresOut)")
+    
+    legislative_data = relationship("DeputyLegislativeData", back_populates="deputy_activity", 
+                                   cascade="all, delete-orphan",
+                                   doc="Legislative data related to deputy (DadosLegisDeputado)")
 
 
 class AtividadeDeputadoList(Base):
+    """
+    Deputy Activity List Container
+    =============================
+    
+    Container for the detailed list of deputy activities represented by the
+    ActividadeOut structure. Based on official Portuguese Parliament documentation:
+    
+    Structure: ArrayOfAtividadeDeputado.AtividadeDeputado.AtividadeDeputadoList
+    
+    This model serves as the bridge between the deputy root record and the
+    detailed activity data (ActividadeOut), which contains all the specific
+    activities like initiatives, requirements, committee memberships, etc.
+    
+    Documentation Reference:
+    - AtividadeDeputadoList: "Lista de atividades do deputado representadas por estrutura ActividadeOut"
+    """
     __tablename__ = 'atividade_deputado_lists'
     
     id = Column(Integer, primary_key=True)
-    atividade_deputado_id = Column(Integer, ForeignKey('atividade_deputados.id'), nullable=False)
-    created_at = Column(DateTime, default=func.now())
     
-    atividade_deputado = relationship("AtividadeDeputado", back_populates="atividade_list")
-    actividade_outs = relationship("ActividadeOut", back_populates="atividade_list", cascade="all, delete-orphan")
+    # Parent reference
+    atividade_deputado_id = Column(Integer, ForeignKey('atividade_deputados.id'), nullable=False,
+                                  comment="Reference to parent AtividadeDeputado record")
+    
+    # System tracking
+    created_at = Column(DateTime, default=func.now(), comment="Record creation timestamp")
+    
+    # Relationships following official documentation structure
+    atividade_deputado = relationship("AtividadeDeputado", back_populates="atividade_list",
+                                     doc="Parent deputy activity record")
+    
+    actividade_outs = relationship("ActividadeOut", back_populates="atividade_list", 
+                                  cascade="all, delete-orphan",
+                                  doc="Detailed activity data (ActividadeOut structure)")
 
 
 class ActividadeOut(Base):
@@ -3333,35 +3442,85 @@ class PeticaoPedidoReiteracao(Base):
 
 
 class IntervencaoParlamentar(Base):
+    """
+    Parliamentary Interventions
+    ==========================
+    
+    Parliamentary interventions made by deputies during plenary sessions.
+    Based on official Portuguese Parliament documentation (December 2017):
+    "IntervencoesOut" structure from AtividadeDeputado documentation.
+    
+    Documentation Reference:
+    - intId: "Identificador da intervenção" - Intervention identifier
+    - intTe: "Resumo da Intervenção" - Intervention summary/abstract
+    - intSu: "Sumário da intervenção" - Intervention summary
+    - pubDtreu: "Data de publicação da reunião da intervenção" - Meeting publication date
+    - pubTp: "Tipo de publicação da intervenção, campo tipo em TipodePublicacao" - Publication type (coded)
+    - pubSup: "Suplemento onde foi publicada a intervenção" - Publication supplement
+    - pubLg: "Legislatura" - Legislature
+    - pubSl: "Sessão legislativa" - Legislative session
+    - pubNr: "Número da publicação da intervenção" - Publication number
+    - tinDs: "Tipo de intervenção" - Intervention type
+    - pubDar: "Número do Diário da Assembleia da República da publicação da intervenção" - Assembly Diary number
+    
+    Translation Requirements:
+    - pubTp: Use TipodePublicacao translator for publication types
+    - tinDs: Intervention type descriptions
+    """
     __tablename__ = 'intervencao_parlamentar'
     
     id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False,
+                           comment="Reference to legislature")
     
-    # Core fields
-    intervencao_id = Column(Integer, unique=True)  # External ID
-    legislatura_numero = Column(String(50))
-    sessao_numero = Column(String(50))
-    tipo_intervencao = Column(String(200))
-    data_reuniao_plenaria = Column(Date)
-    qualidade = Column(String(100))
-    fase_sessao = Column(String(100))
-    sumario = Column(Text)
-    resumo = Column(Text)
-    atividade_id = Column(Integer)
-    id_debate = Column(Integer)
+    # Core fields from IntervencoesOut documentation
+    intervencao_id = Column(Integer, unique=True, comment="Intervention identifier (intId)")
+    legislatura_numero = Column(String(50), comment="Legislature number (pubLg)")
+    sessao_numero = Column(String(50), comment="Legislative session number (pubSl)")
+    tipo_intervencao = Column(String(200), comment="Intervention type (tinDs) - human readable description")
+    data_reuniao_plenaria = Column(Date, comment="Plenary meeting date (pubDtreu)")
+    qualidade = Column(String(100), comment="Intervention quality/context")
+    fase_sessao = Column(String(100), comment="Session phase when intervention occurred")
+    sumario = Column(Text, comment="Intervention summary (intSu)")
+    resumo = Column(Text, comment="Intervention abstract/resume (intTe)")
+    atividade_id = Column(Integer, comment="Related activity identifier")
+    id_debate = Column(Integer, comment="Related debate identifier")
     
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    # System tracking
+    created_at = Column(DateTime, default=func.now(), comment="Record creation timestamp")
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), comment="Record update timestamp")
     
-    legislatura = relationship("Legislatura", backref="intervencoes_parlamentares")
-    publicacoes = relationship("IntervencaoPublicacao", back_populates="intervencao", cascade="all, delete-orphan")
-    deputados = relationship("IntervencaoDeputado", back_populates="intervencao", cascade="all, delete-orphan")
-    membros_governo = relationship("IntervencaoMembroGoverno", back_populates="intervencao", cascade="all, delete-orphan")
-    convidados = relationship("IntervencaoConvidado", back_populates="intervencao", cascade="all, delete-orphan")
-    atividades_relacionadas = relationship("IntervencaoAtividadeRelacionada", back_populates="intervencao", cascade="all, delete-orphan")
-    iniciativas = relationship("IntervencaoIniciativa", back_populates="intervencao", cascade="all, delete-orphan")
-    audiovisuais = relationship("IntervencaoAudiovisual", back_populates="intervencao", cascade="all, delete-orphan")
+    # Relationships following official documentation structure
+    legislatura = relationship("Legislatura", backref="intervencoes_parlamentares",
+                              doc="Legislature where intervention occurred")
+    
+    publicacoes = relationship("IntervencaoPublicacao", back_populates="intervencao", 
+                              cascade="all, delete-orphan",
+                              doc="Publication details (pubTp, pubNr, pubDar, etc.)")
+    
+    deputados = relationship("IntervencaoDeputado", back_populates="intervencao", 
+                            cascade="all, delete-orphan",
+                            doc="Deputies who made this intervention")
+    
+    membros_governo = relationship("IntervencaoMembroGoverno", back_populates="intervencao", 
+                                  cascade="all, delete-orphan",
+                                  doc="Government members involved in intervention")
+    
+    convidados = relationship("IntervencaoConvidado", back_populates="intervencao", 
+                             cascade="all, delete-orphan",
+                             doc="Invited guests who participated")
+    
+    atividades_relacionadas = relationship("IntervencaoAtividadeRelacionada", back_populates="intervencao", 
+                                          cascade="all, delete-orphan",
+                                          doc="Related parliamentary activities")
+    
+    iniciativas = relationship("IntervencaoIniciativa", back_populates="intervencao", 
+                              cascade="all, delete-orphan",
+                              doc="Related parliamentary initiatives")
+    
+    audiovisuais = relationship("IntervencaoAudiovisual", back_populates="intervencao", 
+                               cascade="all, delete-orphan",
+                               doc="Audiovisual materials related to intervention")
 
 
 class IntervencaoPublicacao(Base):

@@ -247,13 +247,14 @@ class DelegacaoEventualMapper(SchemaMapper):
                 gp = self._get_text_value(relacoes_externas, 'Gp')
                 
                 if nome or participante_id:
+                    if not tipo:
+                        raise ValueError("Missing required participant type. Data integrity violation - cannot generate artificial participant types")
+                    
                     participante_record = DelegacaoEventualParticipante(
                         delegacao_id=delegacao.id,
                         participante_id=participante_id,
                         nome=nome,
                         gp=gp,
                         tipo_participante=tipo
-                    if not tipo:
-                        raise ValueError("Missing required participant type. Data integrity violation - cannot generate artificial participant types")
                     )
                     self.session.add(participante_record)

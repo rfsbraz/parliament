@@ -557,6 +557,12 @@ class AtividadesMapper(SchemaMapper):
                 # Process displacements
                 self._process_deslocacoes(xml_root, legislatura)
                 
+                # Process auditions (committee hearings)
+                self._process_audicoes(xml_root, legislatura)
+                
+                # Process audiences
+                self._process_audiencias(xml_root, legislatura)
+                
             except Exception as e:
                 error_msg = f"XIII Legislature structures processing error: {str(e)}"
                 logger.error(error_msg)
@@ -1280,6 +1286,102 @@ class AtividadesMapper(SchemaMapper):
             return True
         except Exception as e:
             logger.error(f"Error processing displacements: {e}")
+            return False
+    
+    def _process_audicoes(self, xml_root: ET.Element, legislatura) -> bool:
+        """Process parliamentary auditions (committee hearings)"""
+        try:
+            from database.models import AudicaoParlamentar
+            
+            audicoes = xml_root.find('.//Audicoes')
+            if audicoes is None:
+                return True
+                
+            for audicao in audicoes.findall('DadosAudicoesComissaoOut'):
+                id_audicao = self._get_int_value(audicao, 'IDAudicao')
+                numero_audicao = self._get_text_value(audicao, 'NumeroAudicao')
+                data_str = self._get_text_value(audicao, 'Data')
+                assunto = self._get_text_value(audicao, 'Assunto')
+                entidades = self._get_text_value(audicao, 'Entidades')
+                sessao_legislativa = self._get_int_value(audicao, 'SessaoLegislativa')
+                
+                if not id_audicao:
+                    continue
+                    
+                data_audicao = self._parse_date(data_str) if data_str else None
+                
+                # Check if audition already exists
+                existing = self.session.query(AudicaoParlamentar).filter_by(
+                    id_audicao=id_audicao,
+                    legislatura_id=legislatura.id
+                ).first()
+                
+                if existing:
+                    continue
+                    
+                audicao_obj = AudicaoParlamentar(
+                    id_audicao=id_audicao,
+                    numero_audicao=numero_audicao,
+                    data=data_audicao,
+                    assunto=assunto,
+                    entidades=entidades,
+                    sessao_legislativa=sessao_legislativa,
+                    legislatura_id=legislatura.id
+                )
+                self.session.add(audicao_obj)
+                
+            return True
+        except Exception as e:
+            logger.error(f"Error processing auditions: {e}")
+            return False
+    
+    def _process_audiencias(self, xml_root: ET.Element, legislatura) -> bool:
+        """Process parliamentary audiences"""
+        try:
+            from database.models import AudienciaParlamentar
+            
+            audiencias = xml_root.find('.//Audiencias')
+            if audiencias is None:
+                return True
+                
+            for audiencia in audiencias.findall('DadosAudienciasComissaoOut'):
+                id_audiencia = self._get_int_value(audiencia, 'IDAudiencia')
+                numero_audiencia = self._get_text_value(audiencia, 'NumeroAudiencia')
+                data_str = self._get_text_value(audiencia, 'Data')
+                assunto = self._get_text_value(audiencia, 'Assunto')
+                entidades = self._get_text_value(audiencia, 'Entidades')
+                sessao_legislativa = self._get_int_value(audiencia, 'SessaoLegislativa')
+                concedida = self._get_text_value(audiencia, 'Concedida')
+                
+                if not id_audiencia:
+                    continue
+                    
+                data_audiencia = self._parse_date(data_str) if data_str else None
+                
+                # Check if audience already exists
+                existing = self.session.query(AudienciaParlamentar).filter_by(
+                    id_audiencia=id_audiencia,
+                    legislatura_id=legislatura.id
+                ).first()
+                
+                if existing:
+                    continue
+                    
+                audiencia_obj = AudienciaParlamentar(
+                    id_audiencia=id_audiencia,
+                    numero_audiencia=numero_audiencia,
+                    data=data_audiencia,
+                    assunto=assunto,
+                    entidades=entidades,
+                    sessao_legislativa=sessao_legislativa,
+                    concedida=concedida,
+                    legislatura_id=legislatura.id
+                )
+                self.session.add(audiencia_obj)
+                
+            return True
+        except Exception as e:
+            logger.error(f"Error processing audiences: {e}")
             return False
     
     def _process_relatorio_iniciativas_conjuntas(self, relatorio: ET.Element, relatorio_parlamentar_id: int) -> bool:

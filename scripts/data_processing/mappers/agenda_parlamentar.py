@@ -19,7 +19,7 @@ from .enhanced_base_mapper import SchemaMapper, SchemaError
 # Import our models
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-from database.models import AgendaParlamentar, Legislatura
+from database.models import AgendaParlamentar, AgendaParlamentarAnexo, Legislatura
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,14 @@ class AgendaParlamentarMapper(SchemaMapper):
             secao_nome = self._get_text_value(agenda_item, 'Section')
             tema_id = self._get_int_value(agenda_item, 'ThemeId')
             tema_nome = self._get_text_value(agenda_item, 'Theme')
+            order_value = self._get_int_value(agenda_item, 'OrderValue')
             grupo_parlamentar = self._get_text_value(agenda_item, 'ParlamentGroup')
+            
+            # Extract additional documented fields
+            legislatura_designacao = self._get_text_value(agenda_item, 'LegDes')
+            orgao_designacao = self._get_text_value(agenda_item, 'OrgDes')
+            reuniao_numero = self._get_int_value(agenda_item, 'ReuNumero')
+            sessao_numero = self._get_int_value(agenda_item, 'SelNumero')
             
             # Extract dates and times
             event_start_date = self._get_text_value(agenda_item, 'EventStartDate')
@@ -141,7 +148,12 @@ class AgendaParlamentarMapper(SchemaMapper):
                 existing_agenda.secao_nome = secao_nome
                 existing_agenda.tema_id = tema_id
                 existing_agenda.tema_nome = tema_nome
+                existing_agenda.order_value = order_value
                 existing_agenda.grupo_parlamentar = grupo_parlamentar
+                existing_agenda.legislatura_designacao = legislatura_designacao
+                existing_agenda.orgao_designacao = orgao_designacao
+                existing_agenda.reuniao_numero = reuniao_numero
+                existing_agenda.sessao_numero = sessao_numero
                 existing_agenda.data_evento = data_evento
                 existing_agenda.hora_inicio = hora_inicio
                 existing_agenda.hora_fim = hora_fim
@@ -161,7 +173,12 @@ class AgendaParlamentarMapper(SchemaMapper):
                     secao_nome=secao_nome,
                     tema_id=tema_id,
                     tema_nome=tema_nome,
+                    order_value=order_value,
                     grupo_parlamentar=grupo_parlamentar,
+                    legislatura_designacao=legislatura_designacao,
+                    orgao_designacao=orgao_designacao,
+                    reuniao_numero=reuniao_numero,
+                    sessao_numero=sessao_numero,
                     data_evento=data_evento,
                     hora_inicio=hora_inicio,
                     hora_fim=hora_fim,
@@ -174,6 +191,9 @@ class AgendaParlamentarMapper(SchemaMapper):
                     pos_plenario=pos_plenario
                 )
                 self.session.add(new_agenda)
+            
+            # Process attachments (AnexoEventos structures)
+            self._process_agenda_anexos(agenda_item, new_agenda if 'new_agenda' in locals() else existing_agenda)
             
             self.session.commit()
             return True
@@ -232,6 +252,69 @@ class AgendaParlamentarMapper(SchemaMapper):
             logger.warning(f"Could not parse time: {time_str}")
         
         return None
+    
+    def _process_agenda_anexos(self, agenda_item: ET.Element, agenda_record) -> bool:
+        """Process agenda attachments (AnexoEventos structures)"""
+        try:
+            # Process Permanent Committee attachments
+            anexos_comissao = agenda_item.find('AnexosComissaoPermanente')
+            if anexos_comissao is not None:
+                logger.debug(f"Processing AnexosComissaoPermanente for agenda {agenda_record.id}")
+                self._process_anexo_eventos(anexos_comissao, agenda_record.id, 'comissao_permanente')
+            
+            # Process Plenary attachments
+            anexos_plenario = agenda_item.find('AnexosPlenario')
+            if anexos_plenario is not None:
+                logger.debug(f"Processing AnexosPlenario for agenda {agenda_record.id}")
+                self._process_anexo_eventos(anexos_plenario, agenda_record.id, 'plenario')
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error processing agenda attachments: {e}")
+            return False
+    
+    def _process_anexo_eventos(self, anexos_container: ET.Element, agenda_id: int, tipo_anexo: str) -> bool:
+        """Process individual AnexoEventos structures"""
+        try:
+            for anexo in anexos_container.findall('.//AnexoEventos'):
+                id_field = self._get_text_value(anexo, 'idField')
+                tipo_documento = self._get_text_value(anexo, 'tipoDocumentoField')
+                titulo = self._get_text_value(anexo, 'tituloField')
+                url = self._get_text_value(anexo, 'uRLField')
+                
+                if not titulo:  # At minimum require titulo for data integrity
+                    continue
+                
+                # Check if anexo already exists
+                existing_anexo = self.session.query(AgendaParlamentarAnexo).filter_by(
+                    agenda_id=agenda_id,
+                    id_field=id_field,
+                    tipo_anexo=tipo_anexo
+                ).first()
+                
+                if existing_anexo:
+                    # Update existing record
+                    existing_anexo.tipo_documento_field = tipo_documento
+                    existing_anexo.titulo_field = titulo
+                    existing_anexo.url_field = url
+                else:
+                    # Create new attachment record
+                    anexo_record = AgendaParlamentarAnexo(
+                        agenda_id=agenda_id,
+                        id_field=id_field,
+                        tipo_documento_field=tipo_documento,
+                        titulo_field=titulo,
+                        url_field=url,
+                        tipo_anexo=tipo_anexo
+                    )
+                    self.session.add(anexo_record)
+                
+                logger.debug(f"Processed anexo: {titulo} ({tipo_documento})")
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error processing anexo eventos: {e}")
+            return False
     
     def _get_or_create_legislatura(self, legislatura_sigla: str) -> int:
         """Get or create legislatura record using SQLAlchemy ORM"""

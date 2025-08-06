@@ -18,7 +18,8 @@
 - Import, process, and store every property
 - Design unified data model across all legislative periods (no versioned tables)
 - When marking fields as "mapped", ensure you rely on the full hierarchy of the XML document, to prevent mixing fields from different contexts with the same name.
-
+- data integrity guideline: use only data that matches the source exactly, never generate artificial data or provide defaults.
+- 
 ## Field Management
 - Don't derive fields from other fields without explicit data
 - New fields allowed if well-justified and documented
