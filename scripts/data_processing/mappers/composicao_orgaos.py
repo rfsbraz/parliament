@@ -1934,19 +1934,21 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             if detalhe_orgao is None:
                 return False
 
-            id_orgao = self._get_text_value(detalhe_orgao, "idOrgao")
-            sigla_orgao = self._get_text_value(detalhe_orgao, "siglaOrgao")
-            nome_sigla = self._get_text_value(detalhe_orgao, "nomeSigla")
+            # Mesa AR uses DadosOrgaoSearch structure, not OrgaosListOut
+            # Field mapping: orgId, orgSigla, orgDes, orgNumero
+            id_orgao = self._get_text_value(detalhe_orgao, "orgId")
+            sigla_orgao = self._get_text_value(detalhe_orgao, "orgSigla")
+            nome_sigla = self._get_text_value(detalhe_orgao, "orgDes")  # orgDes is the description
 
-            # For Mesa AR, nomeSigla may not exist - use siglaOrgao as fallback
+            # For Mesa AR, orgDes may not exist - use orgSigla as fallback
             if not nome_sigla and sigla_orgao:
                 nome_sigla = sigla_orgao
 
             if not sigla_orgao:
                 raise ValueError(
-                    f"Missing required organ identifier: siglaOrgao='{sigla_orgao}'. Data integrity violation - cannot generate artificial identifiers"
+                    f"Missing required organ identifier: orgSigla='{sigla_orgao}'. Data integrity violation - cannot generate artificial identifiers"
                 )
-            numero_orgao = self._get_text_value(detalhe_orgao, "numeroOrgao")
+            numero_orgao = self._get_text_value(detalhe_orgao, "orgNumero")
 
             if not id_orgao:
                 return False
