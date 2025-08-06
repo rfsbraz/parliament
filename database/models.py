@@ -716,34 +716,76 @@ class SecoesParliamentares(Base):
 
 
 class AgendaParlamentar(Base):
+    """
+    Parliamentary Agenda Root Container
+    ==================================
+    
+    Root container for parliamentary agenda events from AgendaParlamentar.xml/.json.
+    Based on official Portuguese Parliament documentation (June 2023):
+    "AgendaParlamentar/RootObject" structure from XV_Legislatura documentation.
+    
+    MAPPED STRUCTURES (from official documentation):
+    
+    1. **AgendaParlamentar/RootObject** - Main agenda event structure
+       - Id: Unique meeting/event identifier (id_externo)
+       - SectionId: Section unique identifier (secao_id) - requires SectionType translator
+       - Section: Section description (secao_nome) - mapped from SectionType enum
+       - ThemeId: Theme unique identifier (tema_id) - requires ThemeType translator  
+       - Theme: Theme description (tema_nome) - mapped from ThemeType enum
+       - ParlamentGroup: Parliamentary group ID (grupo_parlamentar)
+       - AllDayEvent: Full day event indicator (evento_dia_inteiro)
+       - EventStartDate: Event start date (data_evento)
+       - EventStartTime: Event start time (hora_inicio)
+       - EventEndDate: Event end date (calculated from start + duration)
+       - EventEndTime: Event end time (hora_fim)
+       - Title: Event title (titulo)
+       - Subtitle: Event subtitle (subtitulo)
+       - InternetText: HTML encoded descriptive text (descricao)
+       - Local: Event location (local_evento)
+       - Link: Parliament website link (link_externo)
+       - LegDes: Legislature reference (legislatura_designacao)
+       - OrgDes: Organ reference (orgao_designacao)
+       - ReuNumero: Meeting number (reuniao_numero)
+       - SelNumero: Legislative session number (sessao_numero)
+       - PostPlenary: After plenary session indicator (pos_plenario)
+       - OrderValue: Meeting/event order number (order_value)
+    
+    Translation Requirements:
+    - secao_id: Maps to SectionType enum (24 section codes: 1-24)
+    - tema_id: Maps to ThemeType enum (16 theme codes: 1-16)
+    
+    Attachment Support:
+    - AnexosComissaoPermanente: Permanent committee attachments
+    - AnexosPlenario: Plenary session attachments
+    """
     __tablename__ = 'agenda_parlamentar'
     
     id = Column(Integer, primary_key=True)
-    id_externo = Column(Integer)
+    id_externo = Column(Integer, comment="Unique meeting/event identifier (Id) - external system ID")
     legislatura_id = Column(Integer, nullable=False)
-    secao_id = Column(Integer)
-    secao_nome = Column(Text)
-    tema_id = Column(Integer)
-    tema_nome = Column(Text)
-    grupo_parlamentar = Column(Text)
-    data_evento = Column(Date, nullable=False)
-    hora_inicio = Column(Text)  # TIME field stored as TEXT
-    hora_fim = Column(Text)     # TIME field stored as TEXT
-    evento_dia_inteiro = Column(Boolean, default=False)
-    titulo = Column(Text, nullable=False)
-    subtitulo = Column(Text)
-    descricao = Column(Text)
-    local_evento = Column(Text)
-    link_externo = Column(Text)
-    pos_plenario = Column(Boolean, default=False)
+    secao_id = Column(Integer, comment="Section unique identifier (SectionId) - requires SectionType translator")
+    secao_nome = Column(Text, comment="Section description (Section) - derived from SectionType enum")
+    tema_id = Column(Integer, comment="Theme unique identifier (ThemeId) - requires ThemeType translator")
+    tema_nome = Column(Text, comment="Theme description (Theme) - derived from ThemeType enum")
+    grupo_parlamentar = Column(Text, comment="Parliamentary group ID (ParlamentGroup) - when associated with event")
+    data_evento = Column(Date, nullable=False, comment="Event start date (EventStartDate) - when event occurs")
+    hora_inicio = Column(Text, comment="Event start time (EventStartTime) - local time format")  # TIME field stored as TEXT
+    hora_fim = Column(Text, comment="Event end time (EventEndTime) - local time format")     # TIME field stored as TEXT
+    evento_dia_inteiro = Column(Boolean, default=False, comment="Full day event indicator (AllDayEvent) - true if all day")
+    titulo = Column(Text, nullable=False, comment="Event title (Title) - main event name")
+    subtitulo = Column(Text, comment="Event subtitle (Subtitle) - additional event description")
+    descricao = Column(Text, comment="HTML encoded descriptive text (InternetText) - detailed event information")
+    local_evento = Column(Text, comment="Event location (Local) - where the event takes place")
+    link_externo = Column(Text, comment="Parliament website link (Link) - URL to event page if exists")
+    pos_plenario = Column(Boolean, default=False, comment="After plenary session indicator (PostPlenary) - occurs after plenary")
     estado = Column(Text, default='agendado')
     
     # Additional documented fields from XV Legislature documentation
-    order_value = Column(Integer)  # OrderValue - meeting/event order number
-    legislatura_designacao = Column(Text)  # LegDes - legislature reference
-    orgao_designacao = Column(Text)  # OrgDes - organ reference
-    reuniao_numero = Column(Integer)  # ReuNumero - meeting number
-    sessao_numero = Column(Integer)  # SelNumero - legislative session number
+    order_value = Column(Integer, comment="Meeting/event order number (OrderValue) - sequence within agenda")
+    legislatura_designacao = Column(Text, comment="Legislature reference (LegDes) - which legislature event belongs to")
+    orgao_designacao = Column(Text, comment="Organ reference (OrgDes) - which organ event belongs to")
+    reuniao_numero = Column(Integer, comment="Meeting number (ReuNumero) - sequential meeting identifier")
+    sessao_numero = Column(Integer, comment="Legislative session number (SelNumero) - session reference")
     
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
@@ -763,18 +805,40 @@ class AgendaParlamentar(Base):
 
 
 class AgendaParlamentarAnexo(Base):
-    """Parliamentary Agenda Attachments (AnexoEventos structures)"""
+    """
+    Parliamentary Agenda Attachments Container
+    =========================================
+    
+    Container for agenda event attachments from AgendaParlamentar.xml/.json.
+    Based on official Portuguese Parliament documentation (June 2023):
+    "AnexoEventos" structure from XV_Legislatura documentation.
+    
+    MAPPED STRUCTURES (from official documentation):
+    
+    1. **AnexoEventos** - Document associated with agenda event
+       - idField: Document unique identifier (id_field)
+       - tipoDocumentoField: Document type (tipo_documento_field)
+       - tituloField: Document title (titulo_field) - required
+       - uRLField: Parliament website document link (url_field)
+    
+    2. **Attachment Types** - Based on parent structure
+       - AnexosComissaoPermanente: Permanent committee attachments
+       - AnexosPlenario: Plenary session attachments
+    
+    Note: Documents provide supplementary information for agenda events,
+    typically including meeting agendas, reports, and supporting materials.
+    """
     __tablename__ = 'agenda_parlamentar_anexos'
     
     id = Column(Integer, primary_key=True)
     agenda_id = Column(Integer, ForeignKey('agenda_parlamentar.id'), nullable=False)
     
     # AnexoEventos fields from XV Legislature documentation
-    id_field = Column(Text)  # idField - document unique identifier
-    tipo_documento_field = Column(Text)  # tipoDocumentoField - document type
-    titulo_field = Column(Text, nullable=False)  # tituloField - document title (required)
-    url_field = Column(Text)  # uRLField - document URL
-    tipo_anexo = Column(Text)  # 'comissao_permanente' or 'plenario'
+    id_field = Column(Text, comment="Document unique identifier (idField) - external document ID")
+    tipo_documento_field = Column(Text, comment="Document type (tipoDocumentoField) - classification of document")
+    titulo_field = Column(Text, nullable=False, comment="Document title (tituloField) - descriptive name of document")
+    url_field = Column(Text, comment="Parliament website document link (uRLField) - URL to access document")
+    tipo_anexo = Column(Text, comment="Attachment type - 'comissao_permanente' or 'plenario' based on parent structure")
     
     created_at = Column(DateTime, default=func.now())
     

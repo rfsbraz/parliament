@@ -11,11 +11,13 @@ from .parliamentary_interventions import InterventionTranslator
 from .initiatives import InitiativeTranslator
 from .publications import PublicationTranslator
 from .general_activities import GeneralActivityTranslator
+from .agenda_parlamentar import AgendaTranslator
 
 __all__ = [
     'DeputyActivityTranslator',
     'InterventionTranslator', 
     'InitiativeTranslator',
     'PublicationTranslator',
-    'GeneralActivityTranslator'
+    'GeneralActivityTranslator',
+    'AgendaTranslator'
 ]

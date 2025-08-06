@@ -2,8 +2,45 @@
 Parliamentary Agenda Mapper - SQLAlchemy ORM Version
 ===================================================
 
-Schema mapper for parliamentary agenda files (AgendaParlamentar*.xml).
-Handles parliamentary session agendas, meetings, and event scheduling.
+Schema mapper for parliamentary agenda files (AgendaParlamentar*.xml/.json).
+Based on official Portuguese Parliament documentation (June 2023):
+"AgendaParlamentar.xml/.json" structure from XV_Legislatura documentation.
+
+MAJOR STRUCTURES MAPPED (from official documentation):
+
+1. **AgendaParlamentar/RootObject** - Main agenda event structure
+   - Contains all event metadata including dates, times, locations
+   - Maps section/theme IDs via SectionType/ThemeType translators
+   - Includes parliamentary group associations and scheduling info
+
+2. **Section Classification** - 24 section types (SectionId 1-24)
+   - Maps from "Comissão Permanente" to "Grelhas de Tempos"
+   - Requires SectionType translator for human-readable descriptions
+
+3. **Theme Classification** - 16 theme types (ThemeId 1-16)  
+   - Maps parliamentary activity themes and categories
+   - Requires ThemeType translator for proper categorization
+
+4. **AnexoEventos** - Document attachments
+   - AnexosComissaoPermanente: Permanent committee attachments
+   - AnexosPlenario: Plenary session attachments
+   - Links to supporting documents and materials
+
+5. **Scheduling Information** - Complete event timing
+   - AllDayEvent: Full day event indicator
+   - EventStartDate/EventStartTime: Event start timing
+   - EventEndDate/EventEndTime: Event end timing
+   - PostPlenary: After plenary session scheduling
+
+REFERENCE TABLES USED:
+- SectionType: 24 section codes (1-24) for meeting/event sections
+- ThemeType: 16 theme codes (1-16) for parliamentary activity themes
+
+Translation Support:
+- All coded fields mapped to appropriate translator modules
+- Cross-references with AgendaTranslator for section/theme resolution
+- Maintains data integrity with official XV_Legislatura specifications
+
 Uses SQLAlchemy ORM models for clean, type-safe database operations.
 """
 
@@ -25,7 +62,19 @@ logger = logging.getLogger(__name__)
 
 
 class AgendaParlamentarMapper(SchemaMapper):
-    """Schema mapper for parliamentary agenda files - SQLAlchemy ORM Version"""
+    """
+    Schema mapper for parliamentary agenda files - SQLAlchemy ORM Version
+    
+    Processes AgendaParlamentar*.xml/.json files containing comprehensive
+    parliamentary agenda data:
+    
+    - AgendaParlamentar/RootObject: Main event and meeting scheduling
+    - AnexoEventos: Document attachments and supporting materials
+    - Section/Theme Classification: Event categorization and organization
+    
+    All field mappings based on official XV_Legislatura documentation
+    with proper translator integration for coded field values.
+    """
     
     def __init__(self, session):
         # Accept SQLAlchemy session directly (passed by unified importer)

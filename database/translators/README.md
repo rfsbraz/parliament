@@ -34,6 +34,11 @@ This directory contains thematic field translation modules for Portuguese Parlia
 - **TipodeReuniao** enum for meeting types (8 codes: AG, AS, AU, CO, CR, GA, IE, PP)
 - Used across models: AtividadeParlamentar, EventoParlamentar, DeslocacaoParlamentar, VotacaoOut
 
+### `agenda_parlamentar.py`
+- **SectionType** enum for agenda section types (24 codes: 1-24)
+- **ThemeType** enum for agenda theme types (16 codes: 1-16)
+- Used across models: AgendaParlamentar (secao_id, tema_id fields)
+
 ## Usage Patterns
 
 ### Individual Model Translation
@@ -94,11 +99,14 @@ else:
 | EventoParlamentar | tipo_evento | general_activities | event_type() |
 | DeslocacaoParlamentar | displacement_type | general_activities | displacement_type() |
 | VotacaoOut | TipoReuniao | general_activities | meeting_type() |
+| AgendaParlamentar | secao_id | agenda_parlamentar | section_type() |
+| AgendaParlamentar | tema_id | agenda_parlamentar | theme_type() |
 
 ### Official Documentation Mapping
 
-All translations are based on:
-- **Source**: "Significado das Tags do Ficheiro AtividadeDeputado<Legislatura>.xml"
-- **Date**: December 2017
-- **Validation**: Consistent across Constituinte through X Legislatures
-- **Location**: `E:\dev\parliament\scripts\data_processing\data\downloads\atividade_Deputado\`
+All translations are based on multiple official sources:
+- **AtividadeDeputado**: "Significado das Tags do Ficheiro AtividadeDeputado<Legislatura>.xml" (December 2017)
+- **Atividades**: "VI_Legislatura Atividades.xml" structure documentation (December 2017)
+- **AgendaParlamentar**: "AgendaParlamentar.xml/.json" structure documentation (June 2023)
+- **Validation**: Consistent across legislatures with version-specific updates
+- **Location**: `E:\dev\parliament\scripts\data_processing\data\downloads\`
