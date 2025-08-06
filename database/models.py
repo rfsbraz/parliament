@@ -911,7 +911,7 @@ class AgendaParlamentarAnexo(Base):
     tipo_documento_field = Column(Text, comment="Document type (tipoDocumentoField) - classification of document")
     titulo_field = Column(Text, nullable=False, comment="Document title (tituloField) - descriptive name of document")
     url_field = Column(Text, comment="Parliament website document link (uRLField) - URL to access document")
-    tipo_anexo = Column(Text, comment="Attachment type - 'comissao_permanente' or 'plenario' based on parent structure")
+    tipo_anexo = Column(String(100), comment="Attachment type - 'comissao_permanente' or 'plenario' based on parent structure")
     
     created_at = Column(DateTime, default=func.now())
     
