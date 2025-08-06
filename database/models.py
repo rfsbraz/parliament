@@ -5226,7 +5226,7 @@ class DeputadoAtividadeOrgao(Base):
     leg_des = Column(String(50), comment="Legislature designation: IA, IB, II, III, etc. (XML: legDes)")
     tim_des = Column(String(50), comment="Mandate period description (XML: timDes)")
     
-    # Position details (pt_ar_wsgode_objectos_DadosCargosOrgao)
+    # Position details (extracted from pt_ar_wsgode_objectos_DadosCargosOrgao within cargoDes)
     tia_des = Column(String(200), comment="Position type: Presidente, Vice-Presidente, Relator, Vogal, etc. (XML: tiaDes)")
     
     created_at = Column(DateTime, default=func.now())

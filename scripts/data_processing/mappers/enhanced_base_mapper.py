@@ -319,6 +319,7 @@ class LegislatureHandlerMixin:
         return deputado
 
 
+
 class XMLProcessingMixin:
     """Mixin providing common XML processing utilities"""
 

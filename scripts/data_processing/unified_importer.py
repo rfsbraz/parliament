@@ -49,11 +49,16 @@ from database.models import ImportStatus
 # Constants
 CORRUPTED_FILE_PREFIX = "CORRUPTED FILE:"
 
-# Configure logging
+# Configure logging with Unicode-safe console handler
+from utils.unicode_safe_logging import UnicodeSafeHandler
+
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("unified_importer.log"), logging.StreamHandler()],
+    handlers=[
+        logging.FileHandler("unified_importer.log", encoding='utf-8'),
+        UnicodeSafeHandler()
+    ],
 )
 logger = logging.getLogger(__name__)
 
