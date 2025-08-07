@@ -20,12 +20,17 @@ class ParliamentConstants:
     
     # Legislature mappings
     ROMAN_TO_NUMBER = {
-        'CONSTITUINTE': 0, 'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5,
+        'CONSTITUINTE': 0, 'I': 1, 'IA': 1, 'IB': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5,
         'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10, 'XI': 11,
         'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17
     }
     
-    NUMBER_TO_ROMAN = {v: k for k, v in ROMAN_TO_NUMBER.items()}
+    # Create NUMBER_TO_ROMAN mapping, preferring main periods over sub-periods  
+    NUMBER_TO_ROMAN = {
+        0: 'CONSTITUINTE', 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V',
+        6: 'VI', 7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X', 11: 'XI',
+        12: 'XII', 13: 'XIII', 14: 'XIV', 15: 'XV', 16: 'XVI', 17: 'XVII'
+    }
     
     # Common date formats found in Parliament XML files
     DATE_FORMATS = [
@@ -41,7 +46,7 @@ class ParliamentConstants:
     ]
     
     # Common regex patterns
-    LEGISLATURE_PATTERN = r'(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)'
+    LEGISLATURE_PATTERN = r'(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|IB|IA|CONSTITUINTE|X|V|I)'
     CLEAN_TEXT_PATTERN = r'\s+'
 
 

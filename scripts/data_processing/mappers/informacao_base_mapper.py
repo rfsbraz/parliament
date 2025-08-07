@@ -185,17 +185,33 @@ class InformacaoBaseMapper(SchemaMapper):
 
             # Process legislature details first
             detalhe_leg = xml_root.find("DetalheLegislatura")
+            legislatura = None
+            
             if detalhe_leg is not None:
                 legislatura = self._process_legislatura_details(detalhe_leg)
-                if not legislatura:
-                    error_msg = "Failed to process legislature details"
+                
+            # If legislature details processing failed or element was empty,
+            # fall back to extracting from filename (handles IA/IB sub-periods)
+            if not legislatura:
+                logger.info("Legislature details missing or empty, extracting from filename")
+                try:
+                    legislatura_sigla = self._extract_legislatura(file_info["file_path"], xml_root)
+                    legislatura = self._get_or_create_legislatura(legislatura_sigla)
+                    if legislatura:
+                        logger.info(f"Created legislature from filename: {legislatura_sigla}")
+                        results["records_processed"] += 1
+                        results["records_imported"] += 1
+                except Exception as e:
+                    error_msg = f"Failed to process legislature details and extract from filename: {e}"
                     logger.error(error_msg)
                     results["errors"].append(error_msg)
                     return results
+            else:
                 results["records_processed"] += 1
                 results["records_imported"] += 1
-            else:
-                error_msg = "No DetalheLegislatura found in file"
+            
+            if not legislatura:
+                error_msg = "Unable to determine legislature information"
                 logger.error(error_msg)
                 results["errors"].append(error_msg)
                 return results
@@ -266,7 +282,7 @@ class InformacaoBaseMapper(SchemaMapper):
             dtfim_str = self._get_text_value(detalhe_element, "dtfim")
 
             if not sigla:
-                logger.warning("Legislature missing required sigla field")
+                logger.debug("DetalheLegislatura element is empty or missing sigla field - will extract from filename")
                 return None
 
             # Parse dates

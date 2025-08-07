@@ -532,17 +532,26 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
         # Validate schema coverage according to strict mode
         self.validate_schema_coverage(xml_root, file_info, strict_mode)
 
-        # Extract legislatura from filename
+        # Extract legislatura from filename using comprehensive pattern
         filename = os.path.basename(file_info["file_path"])
-        leg_match = re.search(
-            r"AtividadeDeputado(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)\.xml",
-            filename,
-        )
-        if not leg_match:
+        
+        # Use same comprehensive list as enhanced_base_mapper.py - includes IA, IB sub-periods
+        sorted_legislatures = [
+            "CONSTITUINTE", "XVII", "XVI", "XV", "XIV", "XIII", "XII", "XI", 
+            "VIII", "VII", "VI", "IV", "III", "IB", "IA", "II", "IX", "X", "V", "I"
+        ]
+        
+        legislatura_sigla = None
+        for legislature in sorted_legislatures:
+            pattern = rf"AtividadeDeputado{legislature}\.xml$"
+            if re.search(pattern, filename, re.IGNORECASE):
+                legislatura_sigla = legislature
+                break
+                
+        if not legislatura_sigla:
             raise ValueError(
                 f"Cannot extract legislature from filename: {filename}. Data integrity violation - cannot generate artificial legislature"
             )
-        legislatura_sigla = leg_match.group(1)
 
         # Process each deputy's activities - ACTUAL XML STRUCTURE
         for atividade_deputado in xml_root.findall(".//AtividadeDeputado"):

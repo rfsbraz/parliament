@@ -56,7 +56,8 @@ def test_comprehensive_mapping():
     # Insert sample legislaturas
     legislaturas_data = [
         ('CONSTITUINTE', 'Assembleia Constituinte'),
-        ('I', '1.ª Legislatura'), ('II', '2.ª Legislatura'), ('III', '3.ª Legislatura'),
+        ('I', '1.ª Legislatura'), ('IA', '1.ª Legislatura - Período A'), ('IB', '1.ª Legislatura - Período B'), 
+        ('II', '2.ª Legislatura'), ('III', '3.ª Legislatura'),
         ('IV', '4.ª Legislatura'), ('V', '5.ª Legislatura'), ('VI', '6.ª Legislatura'),
         ('VII', '7.ª Legislatura'), ('VIII', '8.ª Legislatura'), ('IX', '9.ª Legislatura'),
         ('X', '10.ª Legislatura'), ('XI', '11.ª Legislatura'), ('XII', '12.ª Legislatura'),

@@ -52,8 +52,9 @@ CORRUPTED_FILE_PREFIX = "CORRUPTED FILE:"
 # Configure logging with Unicode-safe console handler
 from utils.unicode_safe_logging import UnicodeSafeHandler
 
+# Default logging setup - will be reconfigured in main() based on CLI args
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,  # Default to INFO, will be overridden
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler("unified_importer.log", encoding="utf-8"),
@@ -244,15 +245,15 @@ class UnifiedImporter:
 
     # Import order respecting foreign key dependencies
     IMPORT_ORDER = [
+        "atividade_deputados",  # Creates: AtividadeDeputado, DeputySituations (depends on Deputado)
+        "atividades",  # Creates: AtividadeParlamentar (depends on Deputado, Legislatura)
+        "registo_biografico",  # Creates: Deputado, Legislatura, CirculoEleitoral, Partido
         # 1. Foundation data (no dependencies)
         "informacao_base",  # Creates: Legislatura, Partido, CirculoEleitoral, Deputado (base information)
         # 2. Basic organizational structure
         "composicao_orgaos",  # Creates: OrganMeeting, Committee data (depends on Deputado, Legislatura)
         # 3. Deputy activities (depends on Deputado)
-        "atividade_deputados",  # Creates: AtividadeDeputado, DeputySituations (depends on Deputado)
         # 4. Parliamentary activities (depends on Deputado, Legislatura)
-        "atividades",  # Creates: AtividadeParlamentar (depends on Deputado, Legislatura)
-        "registo_biografico",  # Creates: Deputado, Legislatura, CirculoEleitoral, Partido
         "agenda_parlamentar",  # Creates: AgendaParlamentar (depends on Legislatura)
         # 5. Budget and State financial activities (depends on Legislatura)
         "orcamento_estado",  # Creates: OrcamentoEstado* models (depends on Legislatura)
@@ -890,8 +891,23 @@ def main():
         action="store_true",
         help="Skip video URL validation and thumbnail extraction to speed up processing",
     )
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
+        help="Set logging level (default: INFO)",
+    )
 
     args = parser.parse_args()
+
+    # Configure logging level based on CLI argument
+    log_level = getattr(logging, args.log_level.upper())
+    logging.getLogger().setLevel(log_level)
+    
+    # Also update all existing handlers
+    for handler in logging.getLogger().handlers:
+        handler.setLevel(log_level)
 
     importer = UnifiedImporter()
 

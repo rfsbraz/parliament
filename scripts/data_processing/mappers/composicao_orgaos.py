@@ -110,6 +110,7 @@ import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Dict, List, Optional, Set
+from sqlalchemy import or_
 
 from .common_utilities import (
     DataValidationUtils,
@@ -127,6 +128,7 @@ from database.models import (
     AdministrativeCouncilHistoricalComposition,
     ARBoard,
     ARBoardHistoricalComposition,
+    AtividadeDeputado,
     Commission,
     CommissionHistoricalComposition,
     CommissionPresidentConference,
@@ -2460,7 +2462,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 # Process attendance data (Presencas)
                 presencas = reuniao_plenario.find("Presencas")
                 if presencas is not None:
-                    self._process_meeting_attendance(presencas, meeting)
+                    self._process_meeting_attendance(presencas, meeting, legislatura)
 
             return True
 
@@ -2563,8 +2565,86 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             logger.error(f"Error processing namespace meeting data: {e}")
             return False
 
+    def _match_deputy_by_name_and_group(
+        self,
+        nome_parlamentar: str,
+        sigla_grupo: str,
+        dt_reuniao: datetime,
+        legislatura: Legislatura
+    ) -> tuple:
+        """
+        Match a deputy by parliamentary name, group, and time period.
+        
+        Uses a two-tiered matching approach with OR logic:
+        1. (Deputado.nome OR Deputado.nome_completo) + group + date
+        2. (Deputado.nome OR Deputado.nome_completo) only (legislature context)
+        
+        Returns:
+            tuple: (dep_id, dep_cad_id) if found, (None, None) otherwise
+        """
+        if not nome_parlamentar:
+            return None, None
+            
+        try:
+            # First tier: exact match with parliamentary group and date using nome OR nome_completo
+            if sigla_grupo and dt_reuniao:
+                # Query deputy through parliamentary group membership for the given period
+                query = (
+                    self.session.query(Deputado.id, Deputado.id_cadastro)
+                    .join(DeputyGPSituation, DeputyGPSituation.deputado_id == Deputado.id)
+                    .filter(
+                        or_(
+                            Deputado.nome.ilike(f"%{nome_parlamentar}%"),
+                            Deputado.nome_completo.ilike(f"%{nome_parlamentar}%")
+                        ),
+                        DeputyGPSituation.gp_sigla == sigla_grupo,
+                        DeputyGPSituation.legislatura_id == legislatura.id
+                    )
+                )
+                
+                # Filter by date range if available
+                if dt_reuniao:
+                    query = query.filter(
+                        or_(
+                            DeputyGPSituation.gp_dt_inicio <= dt_reuniao,
+                            DeputyGPSituation.gp_dt_inicio.is_(None)
+                        ),
+                        or_(
+                            DeputyGPSituation.gp_dt_fim >= dt_reuniao,
+                            DeputyGPSituation.gp_dt_fim.is_(None)
+                        )
+                    )
+                
+                result = query.first()
+                if result:
+                    logger.debug(f"Deputy matched via name+group+date: '{nome_parlamentar}' -> {result.id}")
+                    return result.id, result.id_cadastro
+            
+            # Second tier: match by name only (nome OR nome_completo) in the same legislature
+            query = (
+                self.session.query(Deputado.id, Deputado.id_cadastro)
+                .join(AtividadeDeputado, AtividadeDeputado.deputado_id == Deputado.id)
+                .filter(
+                    or_(
+                        Deputado.nome.ilike(f"%{nome_parlamentar}%"),
+                        Deputado.nome_completo.ilike(f"%{nome_parlamentar}%")
+                    ),
+                    AtividadeDeputado.legislatura_id == legislatura.id
+                )
+            )
+            
+            result = query.first()
+            if result:
+                logger.debug(f"Deputy matched via name only: '{nome_parlamentar}' -> {result.id}")
+                return result.id, result.id_cadastro
+                
+        except Exception as e:
+            logger.warning(f"Error matching deputy '{nome_parlamentar}' with group '{sigla_grupo}': {e}")
+            
+        return None, None
+
     def _process_meeting_attendance(
-        self, presencas: ET.Element, meeting: OrganMeeting
+        self, presencas: ET.Element, meeting: OrganMeeting, legislatura: Legislatura = None
     ) -> bool:
         """Process meeting attendance data (Presencas) - now stores in MeetingAttendance model"""
         try:
@@ -2657,9 +2737,20 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                         dados_presenca_alt, "motivoFalta"
                     )
 
+                    # Attempt to match the deputy by name, group, and legislature period
+                    dep_id, dep_cad_id = None, None
+                    if nome_deputado and legislatura:
+                        dep_id, dep_cad_id = self._match_deputy_by_name_and_group(
+                            nome_deputado, sigla_grupo, dt_reuniao, legislatura
+                        )
+                        if dep_id:
+                            logger.debug(f"Successfully matched deputy '{nome_deputado}' (group: {sigla_grupo}) to dep_id={dep_id}, dep_cad_id={dep_cad_id}")
+
                     # Create attendance record with available data
                     attendance = MeetingAttendance(
                         meeting_id=meeting.id,
+                        dep_id=dep_id,
+                        dep_cad_id=dep_cad_id,
                         dep_nome_parlamentar=nome_deputado,
                         dt_reuniao=dt_reuniao,
                         tipo_reuniao=tipo_reuniao,

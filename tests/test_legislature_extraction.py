@@ -27,7 +27,7 @@ class TestLegislatureExtraction(unittest.TestCase):
     def test_roman_to_number_mapping(self):
         """Test the ROMAN_TO_NUMBER mapping contains all expected values"""
         expected_mapping = {
-            'CONSTITUINTE': 0, 'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5,
+            'CONSTITUINTE': 0, 'I': 1, 'IA': 1, 'IB': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5,
             'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10, 'XI': 11,
             'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17
         }
@@ -46,6 +46,8 @@ class TestLegislatureExtraction(unittest.TestCase):
         """Test extraction from filenames with roman numerals"""
         test_cases = [
             ('RegistoBiograficoI.xml', 'I'),
+            ('RegistoBiograficoIA.xml', 'IA'),
+            ('RegistoBiograficoIB.xml', 'IB'),
             ('RegistoBiograficoII.xml', 'II'),
             ('RegistoBiograficoIII.xml', 'III'),
             ('RegistoBiograficoIV.xml', 'IV'),
@@ -103,12 +105,16 @@ class TestLegislatureExtraction(unittest.TestCase):
         """Test extraction from directory paths"""
         test_cases = [
             ('/data/I_Legislatura/file.xml', 'I'),
+            ('/data/IA_Legislatura/file.xml', 'IA'),
+            ('/data/IB_Legislatura/file.xml', 'IB'),
             ('/data/II_Legislatura/file.xml', 'II'),
             ('C:\\data\\III_Legislatura\\file.xml', 'III'),
             ('/path/to/XVII_Legislatura/data.xml', 'XVII'),
             ('/some/path/CONSTITUINTE_Legislatura/file.xml', 'CONSTITUINTE'),
             # Test case insensitive
             ('/data/i_legislatura/file.xml', 'I'),
+            ('/data/ia_legislatura/file.xml', 'IA'),
+            ('/data/ib_legislatura/file.xml', 'IB'),
             ('/data/II_legislatura/file.xml', 'II'),
         ]
         

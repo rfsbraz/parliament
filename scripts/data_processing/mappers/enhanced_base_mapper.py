@@ -73,6 +73,8 @@ class LegislatureHandlerMixin:
     ROMAN_TO_NUMBER = {
         "CONSTITUINTE": 0,
         "I": 1,
+        "IA": 1,
+        "IB": 1,
         "II": 2,
         "III": 3,
         "IV": 4,
@@ -91,7 +93,12 @@ class LegislatureHandlerMixin:
         "XVII": 17,
     }
 
-    NUMBER_TO_ROMAN = {v: k for k, v in ROMAN_TO_NUMBER.items()}
+    # Create NUMBER_TO_ROMAN mapping, preferring main periods over sub-periods
+    NUMBER_TO_ROMAN = {
+        0: 'CONSTITUINTE', 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V',
+        6: 'VI', 7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X', 11: 'XI',
+        12: 'XII', 13: 'XIII', 14: 'XIV', 15: 'XV', 16: 'XVI', 17: 'XVII'
+    }
 
     def _extract_legislatura(self, file_path: str, xml_root: ET.Element) -> str:
         """Extract legislatura from filename or XML content with comprehensive fallback"""
@@ -114,6 +121,8 @@ class LegislatureHandlerMixin:
             "VI",
             "IV",
             "III",
+            "IB",
+            "IA",
             "II",
             "IX",
             "X",
@@ -173,7 +182,7 @@ class LegislatureHandlerMixin:
 
         # Final fallback - extract from directory structure (case-insensitive)
         path_match = re.search(
-            r"[/\\\\](CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|XI|VIII|VII|VI|IV|III|IX|II|X|V|I)_?[Ll]egislatura",
+            r"[/\\\\](CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|XI|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)_?[Ll]egislatura",
             file_path,
             re.IGNORECASE,
         )
