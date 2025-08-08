@@ -20,8 +20,7 @@ class AnalyticsSystemTester:
         self.test_results.append({'test': test_name, 'passed': passed, 'details': details})
         
     def test_stored_procedures_exist(self):
-        print("
-=== Testing Stored Procedures ===")
+        print("\n=== Testing Stored Procedures ===")
         with self.engine.connect() as conn:
             procedures = ['CalculateActivityScore', 'PopulateInitialAnalytics']
             for proc in procedures:

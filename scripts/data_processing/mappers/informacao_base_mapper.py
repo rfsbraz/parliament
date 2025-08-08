@@ -293,25 +293,16 @@ class InformacaoBaseMapper(SchemaMapper):
             if dtfim_str:
                 data_fim = DataValidationUtils.parse_date_flexible(dtfim_str)
 
-            # Check if legislature already exists
-            existing_leg = (
-                self.session.query(Legislatura).filter_by(numero=sigla).first()
-            )
-
-            if existing_leg:
-                logger.info(f"Legislature {sigla} already exists, updating")
-                legislatura = existing_leg
+            # Use our improved legislature lookup that handles variations and case sensitivity
+            legislatura = self._get_or_create_legislatura(sigla)
+            
+            # Update the dates if we found an existing legislature
+            if legislatura.data_inicio is None and data_inicio is not None:
                 legislatura.data_inicio = data_inicio
+            if legislatura.data_fim is None and data_fim is not None:
                 legislatura.data_fim = data_fim
-            else:
-                # Create new legislature
-                legislatura = Legislatura(
-                    numero=sigla,
-                    designacao=f"Legislatura {sigla}",
-                    data_inicio=data_inicio,
-                    data_fim=data_fim,
-                )
-                self.session.add(legislatura)
+                
+            logger.info(f"Using legislature {legislatura.numero} (ID: {legislatura.id}) for sigla '{sigla}'")
 
             self.session.flush()  # Get the ID
             self.processed_legislatures += 1

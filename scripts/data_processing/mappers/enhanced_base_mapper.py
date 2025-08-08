@@ -204,7 +204,7 @@ class LegislatureHandlerMixin:
         raise SchemaError(f"Could not extract legislatura from file path: {file_path}")
 
     def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
-        """Get existing or create new legislatura record"""
+        """Get existing or create new legislatura record with case-insensitive and variation matching"""
         logger.debug(f"_get_or_create_legislatura called with sigla: '{legislatura_sigla}'")
         
         if not hasattr(self, "session"):
@@ -212,38 +212,146 @@ class LegislatureHandlerMixin:
                 "Session not available - ensure DatabaseSessionMixin is used"
             )
 
-        # Query for existing legislatura
-        logger.debug(f"Querying database for existing legislatura: {legislatura_sigla}")
-        legislatura = (
-            self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
-        )
+        # Normalize the input sigla
+        normalized_sigla = legislatura_sigla.upper().strip()
         
-        if legislatura:
-            logger.debug(f"Found existing legislatura: {legislatura_sigla} (ID: {legislatura.id})")
-            return legislatura
+        # Define variations to check for each legislature
+        legislature_variations = {
+            "CONSTITUINTE": ["CONSTITUINTE", "CONSTITUENTE", "CONS", "CONST"],
+            "I": ["I", "IA", "IB"],
+            "II": ["II"],
+            "III": ["III"],
+            "IV": ["IV"],
+            "V": ["V"],
+            "VI": ["VI"],
+            "VII": ["VII"],
+            "VIII": ["VIII"],
+            "IX": ["IX"],
+            "X": ["X"],
+            "XI": ["XI"],
+            "XII": ["XII"],
+            "XIII": ["XIII"],
+            "XIV": ["XIV"],
+            "XV": ["XV"],
+            "XVI": ["XVI"],
+            "XVII": ["XVII"],
+        }
 
-        logger.debug(f"Legislatura {legislatura_sigla} not found, creating new one")
+        # Find which standard legislature this sigla represents
+        target_legislature = None
+        for standard_leg, variations in legislature_variations.items():
+            if normalized_sigla in [v.upper() for v in variations]:
+                target_legislature = standard_leg
+                break
         
-        # Create new legislatura
-        leg_number = self.ROMAN_TO_NUMBER.get(legislatura_sigla, 17)  # Default to XVII
+        if not target_legislature:
+            target_legislature = normalized_sigla  # Fallback to original
+
+        logger.debug(f"Normalized '{legislatura_sigla}' to target legislature: '{target_legislature}'")
+
+        # Query for existing legislatura with comprehensive matching
+        # Try all possible variations that could exist in the database
+        variations_to_check = legislature_variations.get(target_legislature, [target_legislature])
+        
+        logger.debug(f"Searching for existing legislatura. Target: '{target_legislature}', Variations to check: {variations_to_check}")
+        
+        # First, let's see what legislaturas actually exist in the database
+        all_legislaturas = self.session.query(Legislatura).all()
+        existing_numeros = [leg.numero for leg in all_legislaturas]
+        logger.debug(f"Existing legislaturas in database: {existing_numeros}")
+        
+        legislatura = None
+        
+        # SPECIAL HANDLING FOR CONSTITUINTE - be extra aggressive in finding existing record
+        if target_legislature == "CONSTITUINTE":
+            logger.debug("Special CONSTITUINTE handling - searching for any legislature with ID 1 or CONSTITUINTE-like name")
+            
+            # Try to find legislature with ID 1 (most likely the original CONSTITUINTE)
+            legislatura_id_1 = self.session.query(Legislatura).filter_by(id=1).first()
+            if legislatura_id_1:
+                logger.debug(f"Found legislature with ID 1: '{legislatura_id_1.numero}', using it as CONSTITUINTE")
+                return legislatura_id_1
+            
+            # Try broader search for any record containing "cons" (case-insensitive)
+            constituinte_like = self.session.query(Legislatura).filter(
+                Legislatura.numero.ilike('%cons%')
+            ).first()
+            if constituinte_like:
+                logger.debug(f"Found legislature containing 'cons': '{constituinte_like.numero}' (ID: {constituinte_like.id}), using it as CONSTITUINTE")
+                return constituinte_like
+            
+            # Try searching by designation containing "constituinte" or "assembleia"
+            constituinte_by_designation = self.session.query(Legislatura).filter(
+                Legislatura.designacao.ilike('%constituinte%') | 
+                Legislatura.designacao.ilike('%assembleia%')
+            ).first()
+            if constituinte_by_designation:
+                logger.debug(f"Found legislature by designation: '{constituinte_by_designation.designacao}' (ID: {constituinte_by_designation.id}), using it as CONSTITUINTE")
+                return constituinte_by_designation
+        
+        # Standard search for all variations
+        for variation in variations_to_check:
+            logger.debug(f"Trying variation: '{variation}'")
+            
+            # Try exact match first
+            legislatura = (
+                self.session.query(Legislatura).filter_by(numero=variation).first()
+            )
+            if legislatura:
+                logger.debug(f"Found existing legislatura with exact match '{variation}': (ID: {legislatura.id})")
+                return legislatura
+            else:
+                logger.debug(f"No exact match found for '{variation}'")
+                
+            # Try case-insensitive match
+            legislatura = (
+                self.session.query(Legislatura)
+                .filter(Legislatura.numero.ilike(variation))
+                .first()
+            )
+            if legislatura:
+                logger.debug(f"Found existing legislatura with case-insensitive match '{variation}': (ID: {legislatura.id})")
+                return legislatura
+            else:
+                logger.debug(f"No case-insensitive match found for '{variation}'")
+
+        logger.warning(f"Legislatura {target_legislature} not found with any variations - this may create duplicates!")
+        logger.warning(f"Existing legislaturas were: {existing_numeros}")
+        
+        # LAST RESORT: For CONSTITUINTE, if nothing found, check if there's already a record with numero="0" or similar
+        if target_legislature == "CONSTITUINTE":
+            zero_legislature = self.session.query(Legislatura).filter_by(numero="0").first()
+            if zero_legislature:
+                logger.warning(f"Using legislature with numero='0' as fallback CONSTITUINTE (ID: {zero_legislature.id})")
+                return zero_legislature
+        
+        # Create new legislatura using the normalized target legislature
+        leg_number = self.ROMAN_TO_NUMBER.get(target_legislature, 17)  # Default to XVII
         logger.debug(
-            f"Creating new legislatura: sigla='{legislatura_sigla}', number={leg_number}"
+            f"Creating new legislatura: sigla='{target_legislature}', number={leg_number}"
         )
+        
+        # Use appropriate designacao for CONSTITUINTE
+        if target_legislature == "CONSTITUINTE":
+            designacao = "Assembleia Constituinte"
+        else:
+            designacao = f"{leg_number}.ª Legislatura"
+            
         legislatura = Legislatura(
-            numero=legislatura_sigla,
-            designacao=f"{leg_number}.ª Legislatura",
+            numero=target_legislature,  # Use normalized target legislature
+            designacao=designacao,
             data_inicio=datetime.now().date(),  # Should be updated with real dates
             data_fim=None,
             ativa=False,
         )
 
-        logger.debug(f"Adding legislatura {legislatura_sigla} to session")
+        logger.debug(f"Adding legislatura {target_legislature} to session")
         self.session.add(legislatura)
         
-        logger.debug(f"Flushing session to get ID for legislatura {legislatura_sigla}")
+        logger.debug(f"Flushing session to get ID for legislatura {target_legislature}")
         self.session.flush()  # Flush to get the auto-generated ID
         
-        logger.info(f"Created new legislatura: {legislatura_sigla} (ID: {legislatura.id})")
+        logger.info(f"Created new legislatura: {target_legislature} (ID: {legislatura.id})")
         logger.debug(f"Session state after legislatura creation: {self.session.new}, {self.session.dirty}")
         
         return legislatura
