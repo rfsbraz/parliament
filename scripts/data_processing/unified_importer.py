@@ -247,11 +247,11 @@ class UnifiedImporter:
     IMPORT_ORDER = [
         "atividade_deputados",  # Creates: AtividadeDeputado, DeputySituations (depends on Deputado)
         "atividades",  # Creates: AtividadeParlamentar (depends on Deputado, Legislatura)
+        "composicao_orgaos",  # Creates: OrganMeeting, Committee data (depends on Deputado, Legislatura)
+        "informacao_base",  # Creates: Legislatura, Partido, CirculoEleitoral, Deputado (base information)
         "registo_biografico",  # Creates: Deputado, Legislatura, CirculoEleitoral, Partido
         # 1. Foundation data (no dependencies)
-        "informacao_base",  # Creates: Legislatura, Partido, CirculoEleitoral, Deputado (base information)
         # 2. Basic organizational structure
-        "composicao_orgaos",  # Creates: OrganMeeting, Committee data (depends on Deputado, Legislatura)
         # 3. Deputy activities (depends on Deputado)
         # 4. Parliamentary activities (depends on Deputado, Legislatura)
         "agenda_parlamentar",  # Creates: AgendaParlamentar (depends on Legislatura)
@@ -904,7 +904,7 @@ def main():
     # Configure logging level based on CLI argument
     log_level = getattr(logging, args.log_level.upper())
     logging.getLogger().setLevel(log_level)
-    
+
     # Also update all existing handlers
     for handler in logging.getLogger().handlers:
         handler.setLevel(log_level)

@@ -6243,6 +6243,7 @@ class OrcamentoEstadoPropostaAlteracao(Base):
     proponentes = relationship("OrcamentoEstadoProponente", back_populates="proposta")
     votacoes = relationship("OrcamentoEstadoVotacao", back_populates="proposta")
     artigos = relationship("OrcamentoEstadoArtigo", back_populates="proposta")
+    diploma_medidas = relationship("OrcamentoEstadoDiplomaMedida", back_populates="proposta", cascade="all, delete-orphan")
     
     __table_args__ = (
         Index('idx_oe_proposta_id', 'proposta_id'),
@@ -6387,8 +6388,8 @@ class OrcamentoEstadoVotacao(Base):
     descricao = Column(Text)  # XML: Descricoes
     sub_descricao = Column(Text)  # XML: SubDescricao
     resultado = Column(Text)  # XML: Resultado/ResultadoCompleto
-    diplomas_terceiros = Column(Text)  # XML: DiplomasTerceiros
-    grupos_parlamentares = Column(Text)  # XML: GruposParlamentares (JSON-like storage)
+    diplomas_terceiros_texto = Column(Text)  # XML: DiplomasTerceiros (text storage)
+    grupos_parlamentares_texto = Column(Text)  # XML: GruposParlamentares (JSON-like storage)
     
     # Metadata
     created_at = Column(DateTime, default=func.now())
@@ -6396,6 +6397,8 @@ class OrcamentoEstadoVotacao(Base):
     # Relationships
     proposta = relationship("OrcamentoEstadoPropostaAlteracao", back_populates="votacoes")
     item = relationship("OrcamentoEstadoItem", back_populates="votacoes")
+    grupos_parlamentares_votos = relationship("OrcamentoEstadoGrupoParlamentarVoto", back_populates="votacao", cascade="all, delete-orphan")
+    diplomas_terceiros = relationship("OrcamentoEstadoDiplomaTerceiro", back_populates="votacao", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<OrcamentoEstadoVotacao(data='{self.data_votacao}', resultado='{self.resultado[:50] if self.resultado else ''}...')>"
@@ -6449,6 +6452,7 @@ class OrcamentoEstadoArtigo(Base):
     # Relationships
     proposta = relationship("OrcamentoEstadoPropostaAlteracao", back_populates="artigos")
     item = relationship("OrcamentoEstadoItem", back_populates="artigos")
+    numeros = relationship("OrcamentoEstadoArtigoNumero", back_populates="artigo", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<OrcamentoEstadoArtigo(numero='{self.numero}', titulo='{self.titulo[:50] if self.titulo else ''}...')>"
@@ -6667,6 +6671,199 @@ class OrcamentoEstadoRequerimentoAvocacao(Base):
     
     # Relationships
     item = relationship("OrcamentoEstadoItem", back_populates="requerimentos_avocacao")
+
+
+class OrcamentoEstadoGrupoParlamentarVoto(Base):
+    """
+    State Budget Parliamentary Group Vote Model
+    ==========================================
+    
+    Represents individual parliamentary group votes within voting records.
+    Handles the GruposParlamentares nested structure within Votacao.
+    
+    XML Structure: Votacoes/Votacao/GruposParlamentares
+    The structure alternates between GrupoParlamentar and Voto elements:
+    <GruposParlamentares>
+        <GrupoParlamentar>Partido Social Democrata</GrupoParlamentar>
+        <Voto>Abstenção</Voto>
+        <GrupoParlamentar>Partido Socialista</GrupoParlamentar>
+        <Voto>Favor</Voto>
+    </GruposParlamentares>
+    
+    XML Mapping:
+    - GrupoParlamentar: grupo_parlamentar (Parliamentary group name)
+    - Voto: voto (Vote result: Favor, Contra, Abstenção)
+    """
+    __tablename__ = 'orcamento_estado_grupos_parlamentares_votos'
+    
+    id = Column(Integer, primary_key=True)
+    votacao_id = Column(Integer, ForeignKey('orcamento_estado_votacoes.id'), nullable=False)
+    
+    # Parliamentary group and vote information
+    grupo_parlamentar = Column(String(200), comment="Parliamentary group name (GrupoParlamentar)")
+    voto = Column(String(50), comment="Vote result (Voto): Favor, Contra, Abstenção")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    votacao = relationship("OrcamentoEstadoVotacao", back_populates="grupos_parlamentares_votos")
+
+
+class OrcamentoEstadoArtigoNumero(Base):
+    """
+    State Budget Article Number Model
+    ================================
+    
+    Represents numbers within articles.
+    Handles the Numeros.Numero structure within Iniciativas_Artigos.
+    
+    XML Structure: Iniciativa_Artigo/Numeros/Numero
+    
+    XML Mapping:
+    - Numero: numero (Number identifier e.g., "N.º 1", "N.º 2")
+    - Titulo: titulo (Number title)
+    - Texto: texto (Number text content)  
+    - Estado: estado (Number state)
+    """
+    __tablename__ = 'orcamento_estado_artigo_numeros'
+    
+    id = Column(Integer, primary_key=True)
+    artigo_id = Column(Integer, ForeignKey('orcamento_estado_artigos.id'), nullable=False)
+    
+    # Number information
+    numero = Column(String(50), comment="Number identifier (Numero)")
+    titulo = Column(Text, comment="Number title (Titulo)")
+    texto = Column(Text, comment="Number text content (Texto)")
+    estado = Column(String(100), comment="Number state (Estado)")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    artigo = relationship("OrcamentoEstadoArtigo", back_populates="numeros")
+    alineas = relationship("OrcamentoEstadoArtigoAlinea", back_populates="numero", cascade="all, delete-orphan")
+
+
+class OrcamentoEstadoArtigoAlinea(Base):
+    """
+    State Budget Article Alinea Model
+    =================================
+    
+    Represents alineas within article numbers.
+    Handles the Alineas.Alinea structure within Numeros.
+    
+    XML Structure: Iniciativa_Artigo/Numeros/Numero/Alineas/Alinea
+    
+    XML Mapping:
+    - Alinea: alinea (Alinea identifier e.g., "Alínea a)", "Alínea b)")
+    - Titulo: titulo (Alinea title)
+    - Texto: texto (Alinea text content)
+    - Estado: estado (Alinea state)
+    """
+    __tablename__ = 'orcamento_estado_artigo_alineas'
+    
+    id = Column(Integer, primary_key=True)
+    numero_id = Column(Integer, ForeignKey('orcamento_estado_artigo_numeros.id'), nullable=False)
+    
+    # Alinea information
+    alinea = Column(String(50), comment="Alinea identifier (Alinea)")
+    titulo = Column(Text, comment="Alinea title (Titulo)")
+    texto = Column(Text, comment="Alinea text content (Texto)")
+    estado = Column(String(100), comment="Alinea state (Estado)")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    numero = relationship("OrcamentoEstadoArtigoNumero", back_populates="alineas")
+
+
+class OrcamentoEstadoDiplomaTerceiro(Base):
+    """
+    State Budget Third-Party Diploma Model
+    ======================================
+    
+    Represents references to third-party diplomas or law proposals.
+    Handles the DiplomasTerceirosouPropostasDeLeiMapas.Diploma structure.
+    
+    XML Structure: Votacao/DiplomasTerceirosouPropostasDeLeiMapas/Diploma
+    
+    XML Mapping:
+    - Diploma: diploma_referencia (Diploma reference code or description)
+    """
+    __tablename__ = 'orcamento_estado_diplomas_terceiros'
+    
+    id = Column(Integer, primary_key=True)
+    votacao_id = Column(Integer, ForeignKey('orcamento_estado_votacoes.id'), nullable=False)
+    
+    # Diploma reference information
+    diploma_referencia = Column(Text, comment="Diploma reference (Diploma)")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    votacao = relationship("OrcamentoEstadoVotacao", back_populates="diplomas_terceiros")
+
+
+class OrcamentoEstadoDiplomaMedida(Base):
+    """
+    State Budget Diploma Measure Model
+    =================================
+    
+    Represents diploma measures within proposals.
+    Handles the DiplomasMedidas.DiplomaMedida structure.
+    
+    XML Structure: PropostaDeAlteracao/DiplomasMedidas/DiplomaMedida
+    
+    XML Mapping:
+    - Titulo: titulo (Diploma measure title)
+    - Texto: texto (Diploma measure text content)
+    """
+    __tablename__ = 'orcamento_estado_diploma_medidas'
+    
+    id = Column(Integer, primary_key=True)
+    proposta_id = Column(Integer, ForeignKey('orcamento_estado_propostas_alteracao.id'), nullable=False)
+    
+    # Diploma measure information
+    titulo = Column(Text, comment="Diploma measure title (Titulo)")
+    texto = Column(Text, comment="Diploma measure text (Texto)")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    proposta = relationship("OrcamentoEstadoPropostaAlteracao", back_populates="diploma_medidas")
+    numeros_medidas = relationship("OrcamentoEstadoDiplomaMedidaNumero", back_populates="diploma_medida", cascade="all, delete-orphan")
+
+
+class OrcamentoEstadoDiplomaMedidaNumero(Base):
+    """
+    State Budget Diploma Measure Number Model
+    ========================================
+    
+    Represents numbered measures within diploma measures.
+    Handles the NumerosMedidas.NumeroMedida structure.
+    
+    XML Structure: DiplomaMedida/NumerosMedidas/NumeroMedida
+    
+    XML Mapping:
+    - Designacao: designacao (Measure number designation)
+    """
+    __tablename__ = 'orcamento_estado_diploma_medida_numeros'
+    
+    id = Column(Integer, primary_key=True)
+    diploma_medida_id = Column(Integer, ForeignKey('orcamento_estado_diploma_medidas.id'), nullable=False)
+    
+    # Measure number information
+    designacao = Column(Text, comment="Measure number designation (Designacao)")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    diploma_medida = relationship("OrcamentoEstadoDiplomaMedida", back_populates="numeros_medidas")
 
 
 # =====================================================

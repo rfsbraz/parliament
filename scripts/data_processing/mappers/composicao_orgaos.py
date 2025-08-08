@@ -110,6 +110,7 @@ import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Dict, List, Optional, Set
+
 from sqlalchemy import or_
 
 from .common_utilities import (
@@ -801,7 +802,42 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                     )
                     self._handle_processing_error(error_msg, results, strict_mode)
 
-            # Process plenary composition
+            # Process working groups FIRST (before plenario processing)
+            grupos_trabalho = xml_root.find(".//GruposTrabalho")
+            if grupos_trabalho is not None:
+                for grupo in grupos_trabalho:
+                    try:
+                        # Check if this is an OrgaoBase structure (VIII Legislature)
+                        if grupo.tag == "OrgaoBase":
+                            success = self._process_working_group_orgao_base(
+                                grupo, legislatura
+                            )
+                        else:
+                            # Simple working group structure (I Legislature)
+                            success = self._process_grupo_trabalho(grupo, legislatura)
+                        results["records_processed"] += 1
+                        if success:
+                            results["records_imported"] += 1
+                    except Exception as e:
+                        error_msg = f"Working group processing error: {str(e)}"
+                        self._handle_processing_error(error_msg, results, strict_mode)
+
+            # Process I Legislature working groups (GruposTrabalhoAR)
+            grupos_trabalho_ar = xml_root.find(".//GruposTrabalhoAR")
+            if grupos_trabalho_ar is not None:
+                for grupo in grupos_trabalho_ar:
+                    try:
+                        success = self._process_grupo_trabalho(grupo, legislatura)
+                        results["records_processed"] += 1
+                        if success:
+                            results["records_imported"] += 1
+                    except Exception as e:
+                        error_msg = (
+                            f"I Legislature working group processing error: {str(e)}"
+                        )
+                        self._handle_processing_error(error_msg, results, strict_mode)
+
+            # Process plenary composition (AFTER working groups)
             plenario = xml_root.find(".//Plenario")
             if plenario is not None:
                 try:
@@ -847,41 +883,6 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                             results["records_imported"] += 1
                     except Exception as e:
                         error_msg = f"Subcommittee processing error: {str(e)}"
-                        self._handle_processing_error(error_msg, results, strict_mode)
-
-            # Process working groups
-            grupos_trabalho = xml_root.find(".//GruposTrabalho")
-            if grupos_trabalho is not None:
-                for grupo in grupos_trabalho:
-                    try:
-                        # Check if this is an OrgaoBase structure (VIII Legislature)
-                        if grupo.tag == "OrgaoBase":
-                            success = self._process_working_group_orgao_base(
-                                grupo, legislatura
-                            )
-                        else:
-                            # Simple working group structure (I Legislature)
-                            success = self._process_grupo_trabalho(grupo, legislatura)
-                        results["records_processed"] += 1
-                        if success:
-                            results["records_imported"] += 1
-                    except Exception as e:
-                        error_msg = f"Working group processing error: {str(e)}"
-                        self._handle_processing_error(error_msg, results, strict_mode)
-
-            # Process I Legislature working groups (GruposTrabalhoAR)
-            grupos_trabalho_ar = xml_root.find(".//GruposTrabalhoAR")
-            if grupos_trabalho_ar is not None:
-                for grupo in grupos_trabalho_ar:
-                    try:
-                        success = self._process_grupo_trabalho(grupo, legislatura)
-                        results["records_processed"] += 1
-                        if success:
-                            results["records_imported"] += 1
-                    except Exception as e:
-                        error_msg = (
-                            f"I Legislature working group processing error: {str(e)}"
-                        )
                         self._handle_processing_error(error_msg, results, strict_mode)
 
             # Finalize processing with commit
@@ -1929,6 +1930,55 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         parsed_date = DataValidationUtils.parse_date_flexible(date_str)
         return parsed_date.strftime("%Y-%m-%d") if parsed_date else None
 
+    def _extract_detalhe_orgao_data(self, detalhe_orgao: ET.Element) -> Dict[str, str]:
+        """
+        Extract organ detail data from DetalheOrgao element supporting dual formats.
+
+        Handles two different XML formats:
+        - Format 1 (newer): orgId, orgSigla, orgDes, orgNumero, orgTioId, orgSuoId, legDes
+        - Format 2 (older): idOrgao, siglaOrgao, nomeSigla, numeroOrgao, siglaLegislatura
+
+        Returns:
+            Dict with standardized keys: id_orgao, sigla_orgao, nome_sigla, numero_orgao, sigla_legislatura
+        """
+        if detalhe_orgao is None:
+            return {}
+
+        # Try newer format first, fall back to older format
+        id_orgao = self._get_text_value(detalhe_orgao, "orgId") or self._get_text_value(
+            detalhe_orgao, "idOrgao"
+        )
+
+        sigla_orgao = self._get_text_value(
+            detalhe_orgao, "orgSigla"
+        ) or self._get_text_value(detalhe_orgao, "siglaOrgao")
+
+        nome_sigla = self._get_text_value(
+            detalhe_orgao, "orgDes"
+        ) or self._get_text_value(detalhe_orgao, "nomeSigla")
+
+        numero_orgao = self._get_text_value(
+            detalhe_orgao, "orgNumero"
+        ) or self._get_text_value(detalhe_orgao, "numeroOrgao")
+
+        sigla_legislatura = self._get_text_value(
+            detalhe_orgao, "legDes"
+        ) or self._get_text_value(detalhe_orgao, "siglaLegislatura")
+
+        # Additional newer format fields
+        org_tio_id = self._get_text_value(detalhe_orgao, "orgTioId")
+        org_suo_id = self._get_text_value(detalhe_orgao, "orgSuoId")
+
+        return {
+            "id_orgao": id_orgao,
+            "sigla_orgao": sigla_orgao,
+            "nome_sigla": nome_sigla,
+            "numero_orgao": numero_orgao,
+            "sigla_legislatura": sigla_legislatura,
+            "org_tio_id": org_tio_id,
+            "org_suo_id": org_suo_id,
+        }
+
     def _process_mesa_ar(self, mesa_ar: ET.Element, legislatura: Legislatura) -> bool:
         """Process AR Board (Mesa da Assembleia da República)"""
         try:
@@ -1936,27 +1986,28 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             if detalhe_orgao is None:
                 return False
 
-            # Mesa AR uses DadosOrgaoSearch structure, not OrgaosListOut
-            # Field mapping: orgId, orgSigla, orgDes, orgNumero
-            id_orgao = self._get_text_value(detalhe_orgao, "orgId")
-            sigla_orgao = self._get_text_value(detalhe_orgao, "orgSigla")
-            nome_sigla = self._get_text_value(
-                detalhe_orgao, "orgDes"
-            )  # orgDes is the description
+            # Extract organ details using the flexible dual-format method
+            orgao_data = self._extract_detalhe_orgao_data(detalhe_orgao)
 
-            # For Mesa AR, orgDes may not exist - use orgSigla as fallback
+            id_orgao = orgao_data["id_orgao"]
+            sigla_orgao = orgao_data["sigla_orgao"]
+            nome_sigla = orgao_data["nome_sigla"]
+            numero_orgao = orgao_data["numero_orgao"]
+            sigla_legislatura = orgao_data["sigla_legislatura"]
+
+            # For Mesa AR, use sigla_orgao as fallback for nome_sigla
             if not nome_sigla and sigla_orgao:
                 nome_sigla = sigla_orgao
 
+            # Validate required fields
             if not sigla_orgao:
                 raise ValueError(
-                    f"Missing required organ identifier: orgSigla='{sigla_orgao}'. Data integrity violation - cannot generate artificial identifiers"
+                    f"Missing required organ identifier in both formats: orgSigla/siglaOrgao='{sigla_orgao}'. Data integrity violation - cannot generate artificial identifiers"
                 )
-            numero_orgao = self._get_text_value(detalhe_orgao, "orgNumero")
 
             if not id_orgao:
                 raise ValueError(
-                    f"Missing required organ identifier: orgId='{id_orgao}'. Data integrity violation - cannot generate artificial identifiers"
+                    f"Missing required organ identifier in both formats: orgId/idOrgao='{id_orgao}'. Data integrity violation - cannot generate artificial identifiers"
                 )
 
             # Create or get AR Board record
@@ -2570,81 +2621,92 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         nome_parlamentar: str,
         sigla_grupo: str,
         dt_reuniao: datetime,
-        legislatura: Legislatura
+        legislatura: Legislatura,
     ) -> tuple:
         """
         Match a deputy by parliamentary name, group, and time period.
-        
+
         Uses a two-tiered matching approach with OR logic:
         1. (Deputado.nome OR Deputado.nome_completo) + group + date
         2. (Deputado.nome OR Deputado.nome_completo) only (legislature context)
-        
+
         Returns:
             tuple: (dep_id, dep_cad_id) if found, (None, None) otherwise
         """
         if not nome_parlamentar:
             return None, None
-            
+
         try:
             # First tier: exact match with parliamentary group and date using nome OR nome_completo
             if sigla_grupo and dt_reuniao:
                 # Query deputy through parliamentary group membership for the given period
                 query = (
                     self.session.query(Deputado.id, Deputado.id_cadastro)
-                    .join(DeputyGPSituation, DeputyGPSituation.deputado_id == Deputado.id)
+                    .join(
+                        DeputyGPSituation, DeputyGPSituation.deputado_id == Deputado.id
+                    )
                     .filter(
                         or_(
                             Deputado.nome.ilike(f"%{nome_parlamentar}%"),
-                            Deputado.nome_completo.ilike(f"%{nome_parlamentar}%")
+                            Deputado.nome_completo.ilike(f"%{nome_parlamentar}%"),
                         ),
                         DeputyGPSituation.gp_sigla == sigla_grupo,
-                        DeputyGPSituation.legislatura_id == legislatura.id
+                        DeputyGPSituation.legislatura_id == legislatura.id,
                     )
                 )
-                
+
                 # Filter by date range if available
                 if dt_reuniao:
                     query = query.filter(
                         or_(
                             DeputyGPSituation.gp_dt_inicio <= dt_reuniao,
-                            DeputyGPSituation.gp_dt_inicio.is_(None)
+                            DeputyGPSituation.gp_dt_inicio.is_(None),
                         ),
                         or_(
                             DeputyGPSituation.gp_dt_fim >= dt_reuniao,
-                            DeputyGPSituation.gp_dt_fim.is_(None)
-                        )
+                            DeputyGPSituation.gp_dt_fim.is_(None),
+                        ),
                     )
-                
+
                 result = query.first()
                 if result:
-                    logger.debug(f"Deputy matched via name+group+date: '{nome_parlamentar}' -> {result.id}")
+                    logger.debug(
+                        f"Deputy matched via name+group+date: '{nome_parlamentar}' -> {result.id}"
+                    )
                     return result.id, result.id_cadastro
-            
+
             # Second tier: match by name only (nome OR nome_completo) in the same legislature
             query = (
                 self.session.query(Deputado.id, Deputado.id_cadastro)
-                .join(AtividadeDeputado, AtividadeDeputado.deputado_id == Deputado.id)
+                .join(DeputyGPSituation, DeputyGPSituation.deputado_id == Deputado.id)
                 .filter(
                     or_(
                         Deputado.nome.ilike(f"%{nome_parlamentar}%"),
-                        Deputado.nome_completo.ilike(f"%{nome_parlamentar}%")
+                        Deputado.nome_completo.ilike(f"%{nome_parlamentar}%"),
                     ),
-                    AtividadeDeputado.legislatura_id == legislatura.id
+                    DeputyGPSituation.legislatura_id == legislatura.id,
                 )
             )
-            
+
             result = query.first()
             if result:
-                logger.debug(f"Deputy matched via name only: '{nome_parlamentar}' -> {result.id}")
+                logger.debug(
+                    f"Deputy matched via name only: '{nome_parlamentar}' -> {result.id}"
+                )
                 return result.id, result.id_cadastro
-                
+
         except Exception as e:
-            logger.warning(f"Error matching deputy '{nome_parlamentar}' with group '{sigla_grupo}': {e}")
-            
+            logger.warning(
+                f"Error matching deputy '{nome_parlamentar}' with group '{sigla_grupo}': {e}"
+            )
+
         return None, None
 
     def _process_meeting_attendance(
-        self, presencas: ET.Element, meeting: OrganMeeting, legislatura: Legislatura = None
+        self,
+        presencas: ET.Element,
+        meeting: OrganMeeting,
+        legislatura: Legislatura = None,
     ) -> bool:
         """Process meeting attendance data (Presencas) - now stores in MeetingAttendance model"""
         try:
@@ -2744,7 +2806,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                             nome_deputado, sigla_grupo, dt_reuniao, legislatura
                         )
                         if dep_id:
-                            logger.debug(f"Successfully matched deputy '{nome_deputado}' (group: {sigla_grupo}) to dep_id={dep_id}, dep_cad_id={dep_cad_id}")
+                            logger.debug(
+                                f"Successfully matched deputy '{nome_deputado}' (group: {sigla_grupo}) to dep_id={dep_id}, dep_cad_id={dep_cad_id}"
+                            )
 
                     # Create attendance record with available data
                     attendance = MeetingAttendance(

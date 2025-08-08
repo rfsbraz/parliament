@@ -39,7 +39,10 @@ from database.models import (
     OrcamentoEstadoProponente, OrcamentoEstadoVotacao, OrcamentoEstadoArtigo,
     OrcamentoEstadoDiploma, OrcamentoEstadoIniciativa, OrcamentoEstadoDiplomaArtigo,
     OrcamentoEstadoDiplomaNumero, OrcamentoEstadoDiplomaAlinea, 
-    OrcamentoEstadoRequerimentoAvocacao, Legislatura
+    OrcamentoEstadoRequerimentoAvocacao, OrcamentoEstadoGrupoParlamentarVoto,
+    OrcamentoEstadoArtigoNumero, OrcamentoEstadoArtigoAlinea,
+    OrcamentoEstadoDiplomaTerceiro, OrcamentoEstadoDiplomaMedida,
+    OrcamentoEstadoDiplomaMedidaNumero, Legislatura
 )
 
 # Import translator for coded values
@@ -123,6 +126,15 @@ class OrcamentoEstadoMapper(SchemaMapper):
             'PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Texto',
             'PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Estado',
             
+            # Nested Numeros and Alineas structures within articles
+            'PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros',
+            'PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Numero',
+            'PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Titulo',
+            'PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Estado',
+            'PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Alineas',
+            'PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Alineas.Alinea',
+            'PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Alineas.Titulo',
+            
             'PropostasDeAlteracao.PropostaDeAlteracao.ProgramasMedidas',
             'PropostasDeAlteracao.PropostaDeAlteracao.ProgramasMedidas.Nome',
             'PropostasDeAlteracao.PropostaDeAlteracao.ProgramasMedidas.Descricao',
@@ -131,6 +143,8 @@ class OrcamentoEstadoMapper(SchemaMapper):
             'PropostasDeAlteracao.PropostaDeAlteracao.DiplomasMedidas.DiplomaMedida',
             'PropostasDeAlteracao.PropostaDeAlteracao.DiplomasMedidas.DiplomaMedida.Titulo',
             'PropostasDeAlteracao.PropostaDeAlteracao.DiplomasMedidas.DiplomaMedida.NumerosMedidas',
+            'PropostasDeAlteracao.PropostaDeAlteracao.DiplomasMedidas.DiplomaMedida.NumerosMedidas.NumeroMedida',
+            'PropostasDeAlteracao.PropostaDeAlteracao.DiplomasMedidas.DiplomaMedida.NumerosMedidas.NumeroMedida.Designacao',
             'PropostasDeAlteracao.PropostaDeAlteracao.DiplomasMedidas.DiplomaMedida.Texto',
             
             'PropostasDeAlteracao.PropostaDeAlteracao.Requerimentos',
@@ -152,12 +166,15 @@ class OrcamentoEstadoMapper(SchemaMapper):
             'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes',
             'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao',
             'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.Descricoes',
-            'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.DiplomasTerceiros',
+            'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.DiplomasTerceirosouPropostasDeLeiMapas',
+            'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.DiplomasTerceirosouPropostasDeLeiMapas.Diploma',
             'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.SubDescricao',
             'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.Data',
             'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.ResultadoCompleto',
             'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.Resultado',
             'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.GruposParlamentares',
+            'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.GruposParlamentares.GrupoParlamentar',
+            'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.GruposParlamentares.Voto',
             
             # Root wrapper structure
             'Itens',

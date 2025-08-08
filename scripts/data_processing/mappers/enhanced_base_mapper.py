@@ -181,13 +181,24 @@ class LegislatureHandlerMixin:
                         return "CONSTITUINTE"
 
         # Final fallback - extract from directory structure (case-insensitive)
+        # Pattern 1: Full legislature directory names (with or without "_Legislatura" suffix)
         path_match = re.search(
-            r"[/\\\\](CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|XI|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)_?[Ll]egislatura",
+            r"[/\\\\](CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|XI|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)(_?[Ll]egislatura)?[/\\\\]",
             file_path,
             re.IGNORECASE,
         )
         if path_match:
             result = path_match.group(1).upper()
+            return result
+            
+        # Pattern 2: Legislature names in filename (with word boundaries to avoid false matches)
+        filename_match = re.search(
+            r"\b(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|XI|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\b",
+            filename,
+            re.IGNORECASE,
+        )
+        if filename_match:
+            result = filename_match.group(1).upper()
             return result
 
         raise SchemaError(f"Could not extract legislatura from file path: {file_path}")
