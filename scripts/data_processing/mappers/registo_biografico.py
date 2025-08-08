@@ -425,6 +425,9 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 .first()
             )
             if not deputy:
+                import pdb
+
+                pdb.set_trace()
                 raise ValueError(f"Deputy with cadId {cad_id} not found in database")
             else:
                 # Update existing fields
@@ -789,6 +792,9 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 .first()
             )
             if not deputy:
+                import pdb
+
+                pdb.set_trace()
                 raise ValueError(f"Deputy with cadId {cad_id} not found in database")
             else:
                 # Update existing fields
@@ -1016,6 +1022,9 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 .first()
             )
             if not deputy:
+                import pdb
+
+                pdb.set_trace()
                 raise ValueError(f"Deputy with cadId {cad_id} not found in database")
 
             # Check if already exists

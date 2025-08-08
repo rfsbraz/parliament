@@ -37,7 +37,9 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 from database.models import (
     OrcamentoEstado, OrcamentoEstadoPropostaAlteracao, OrcamentoEstadoItem,
     OrcamentoEstadoProponente, OrcamentoEstadoVotacao, OrcamentoEstadoArtigo,
-    OrcamentoEstadoDiploma, OrcamentoEstadoIniciativa, Legislatura
+    OrcamentoEstadoDiploma, OrcamentoEstadoIniciativa, OrcamentoEstadoDiplomaArtigo,
+    OrcamentoEstadoDiplomaNumero, OrcamentoEstadoDiplomaAlinea, 
+    OrcamentoEstadoRequerimentoAvocacao, Legislatura
 )
 
 # Import translator for coded values
@@ -157,6 +159,116 @@ class OrcamentoEstadoMapper(SchemaMapper):
             'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.Resultado',
             'PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.GruposParlamentares',
             
+            # Root wrapper structure
+            'Itens',
+            'Itens.Item',
+            'Itens.Item.ID',
+            'Itens.Item.ID_Pai',
+            'Itens.Item.Tipo',
+            'Itens.Item.Numero',
+            'Itens.Item.Titulo',
+            'Itens.Item.Texto',
+            'Itens.Item.Estado',
+            
+            # Itens wrapper nested structures
+            'Itens.Item.Artigos',
+            'Itens.Item.Artigos.Artigo',
+            'Itens.Item.Artigos.Artigo.ID_Art',
+            'Itens.Item.Artigos.Artigo.ID_Pai',
+            'Itens.Item.Artigos.Artigo.Tipo',
+            'Itens.Item.Artigos.Artigo.Numero',
+            'Itens.Item.Artigos.Artigo.Titulo',
+            'Itens.Item.Artigos.Artigo.Texto',
+            'Itens.Item.Artigos.Artigo.Estado',
+            
+            'Itens.Item.PropostasDeAlteracao',
+            'Itens.Item.PropostasDeAlteracao.Proposta',
+            'Itens.Item.PropostasDeAlteracao.Proposta.ID_Pai',
+            'Itens.Item.PropostasDeAlteracao.Proposta.ID_PA',
+            'Itens.Item.PropostasDeAlteracao.Proposta.Objeto',
+            'Itens.Item.PropostasDeAlteracao.Proposta.Data',
+            'Itens.Item.PropostasDeAlteracao.Proposta.Apresentado',
+            'Itens.Item.PropostasDeAlteracao.Proposta.Incide',
+            'Itens.Item.PropostasDeAlteracao.Proposta.Tipo',
+            'Itens.Item.PropostasDeAlteracao.Proposta.Estado',
+            'Itens.Item.PropostasDeAlteracao.Proposta.Ficheiro',
+            
+            'Itens.Item.DiplomasaModificar',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.TextoOuEstado',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.ID_Dip',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomaTitulo',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomaSubTitulo',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.ID_Art',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.Numero',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.Titulo',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.Texto',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.Estado',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaArtigoEstado',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaArtigoID',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaArtigoTituto',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaArtigoSubTitulo',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaArtigoTexto',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaNumeroTitulo',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaNumeroEstado',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaNumeroID',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas.DiplomaAlinea',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas.DiplomaAlinea.DiplomaAlineaTitulo',
+            'Itens.Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas.DiplomaAlinea.DiplomaAlineaEstado',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.ID_Dip',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomaTitulo',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomaSubTitulo',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.ID_Art',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.Numero',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.Titulo',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.Texto',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.Estado',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaNumeroTitulo',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaNumeroEstado',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas.DiplomaAlinea',
+            'Itens.Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas.DiplomaAlinea.DiplomaAlineaTitulo',
+            
+            'Itens.Item.IniciativasMapas',
+            'Itens.Item.IniciativasMapas.IniciativaMapa',
+            'Itens.Item.IniciativasMapas.IniciativaMapa.MapasNumero',
+            'Itens.Item.IniciativasMapas.IniciativaMapa.MapasTitulo',
+            'Itens.Item.IniciativasMapas.IniciativaMapa.MapasEstado',
+            'Itens.Item.IniciativasMapas.IniciativaMapa.MapasLink',
+            
+            'Itens.Item.Votacoes',
+            'Itens.Item.Votacoes.Votacao',
+            'Itens.Item.Votacoes.Votacao.Descricoes',
+            'Itens.Item.Votacoes.Votacao.Descricoes.Descricao',
+            'Itens.Item.Votacoes.Votacao.DiplomasTerceiros',
+            'Itens.Item.Votacoes.Votacao.DiplomasTerceirosouPropostasDeLeiMapas',
+            'Itens.Item.Votacoes.Votacao.DiplomasTerceirosouPropostasDeLeiMapas.Diploma',
+            'Itens.Item.Votacoes.Votacao.Data',
+            'Itens.Item.Votacoes.Votacao.Resultado',
+            'Itens.Item.Votacoes.Votacao.ResultadoCompleto',
+            'Itens.Item.Votacoes.Votacao.SubDescricao',
+            'Itens.Item.Votacoes.Votacao.GruposParlamentares',
+            'Itens.Item.Votacoes.Votacao.GruposParlamentares.GrupoParlamentar',
+            'Itens.Item.Votacoes.Votacao.GruposParlamentares.Voto',
+            
+            'Itens.Item.RequerimentosDeAvocacao',
+            'Itens.Item.RequerimentosDeAvocacao.RequerimentoDeAvocacao',
+            'Itens.Item.RequerimentosDeAvocacao.RequerimentoDeAvocacao.AvocacaoDescricao',
+            'Itens.Item.RequerimentosDeAvocacao.RequerimentoDeAvocacao.AvocacaoData',
+            'Itens.Item.RequerimentosDeAvocacao.RequerimentoDeAvocacao.AvocacaoTitulo',
+            'Itens.Item.RequerimentosDeAvocacao.RequerimentoDeAvocacao.AvocacaoEstado',
+            'Itens.Item.RequerimentosDeAvocacao.RequerimentoDeAvocacao.AvocacaoFicheiro',
+            
             # Current structure (OE) - Simplified budget item structure
             'Item',
             'Item.ID',
@@ -191,10 +303,42 @@ class OrcamentoEstadoMapper(SchemaMapper):
             
             'Item.DiplomasaModificar',
             'Item.DiplomasaModificar.DiplomaModificar',
+            'Item.DiplomasaModificar.DiplomaaModificar',
+            'Item.DiplomasaModificar.DiplomaaModificar.TextoOuEstado',
+            'Item.DiplomasaModificar.DiplomaaModificar.ID_Dip',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomaTitulo',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomaSubTitulo',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.ID_Art',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.Numero',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.Titulo',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.Texto',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.Estado',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaNumeroTitulo',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaNumeroEstado',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas.DiplomaAlinea',
+            'Item.DiplomasaModificar.DiplomaaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas.DiplomaAlinea.DiplomaAlineaTitulo',
             'Item.DiplomasaModificar.DiplomaModificar.ID_Dip',
             'Item.DiplomasaModificar.DiplomaModificar.DiplomaTitulo',
             'Item.DiplomasaModificar.DiplomaModificar.DiplomaSubTitulo',
             'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.ID_Art',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.Numero',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.Titulo',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.Texto',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.Estado',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaNumeroTitulo',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaNumeroEstado',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas.DiplomaAlinea',
+            'Item.DiplomasaModificar.DiplomaModificar.DiplomasArtigos.DiplomaArtigo.DiplomaNumeros.DiplomaNumero.DiplomaAlineas.DiplomaAlinea.DiplomaAlineaTitulo',
             
             'Item.IniciativasMapas',
             'Item.IniciativasMapas.IniciativaMapa',
@@ -206,8 +350,11 @@ class OrcamentoEstadoMapper(SchemaMapper):
             'Item.Votacoes',
             'Item.Votacoes.Votacao',
             'Item.Votacoes.Votacao.Descricoes',
+            'Item.Votacoes.Votacao.Descricoes.Descricao',
             'Item.Votacoes.Votacao.DiplomasTerceiros',
+            'Item.Votacoes.Votacao.DiplomasTerceirosouPropostasDeLeiMapas',
             'Item.Votacoes.Votacao.Data',
+            'Item.Votacoes.Votacao.Resultado',
             
             'Item.RequerimentosDeAvocacao',
             'Item.RequerimentosDeAvocacao.RequerimentoDeAvocacao',
@@ -716,7 +863,9 @@ class OrcamentoEstadoMapper(SchemaMapper):
             # Process DiplomasaModificar (Diplomas to Modify)
             diplomas_elem = item.find('DiplomasaModificar')
             if diplomas_elem is not None:
-                for diploma_elem in diplomas_elem.findall('DiplomaModificar'):
+                # Check both variants: DiplomaModificar and DiplomaaModificar
+                diploma_elements = diplomas_elem.findall('DiplomaModificar') + diplomas_elem.findall('DiplomaaModificar')
+                for diploma_elem in diploma_elements:
                     diploma_id = DataValidationUtils.safe_float_convert(self._get_text_value(diploma_elem, 'ID_Dip'))
                     titulo = self._get_text_value(diploma_elem, 'DiplomaTitulo')
                     sub_titulo = self._get_text_value(diploma_elem, 'DiplomaSubTitulo')
@@ -730,7 +879,79 @@ class OrcamentoEstadoMapper(SchemaMapper):
                         artigos_texto=artigos_texto
                     )
                     self.session.add(diploma_obj)
+                    self.session.flush()  # Get the ID
                     self.processed_diplomas += 1
+                    
+                    # Process TextoOuEstado field for DiplomaaModificar variants
+                    texto_ou_estado = self._get_text_value(diploma_elem, 'TextoOuEstado')
+                    if texto_ou_estado:
+                        # Store in appropriate field - could be additional text or state info
+                        if not diploma_obj.artigos_texto:
+                            diploma_obj.artigos_texto = texto_ou_estado
+                        else:
+                            diploma_obj.artigos_texto += f" | {texto_ou_estado}"
+                    
+                    # Process detailed diploma articles (DiplomasArtigos.DiplomaArtigo)
+                    diplomas_artigos = diploma_elem.find('DiplomasArtigos')
+                    if diplomas_artigos is not None:
+                        for diploma_artigo_elem in diplomas_artigos.findall('DiplomaArtigo'):
+                            artigo_id = self._get_int_value(diploma_artigo_elem, 'ID_Art')
+                            diploma_artigo_id_alt = self._get_int_value(diploma_artigo_elem, 'DiplomaArtigoID')
+                            artigo_numero = self._get_text_value(diploma_artigo_elem, 'Numero')
+                            artigo_titulo = self._get_text_value(diploma_artigo_elem, 'Titulo')
+                            diploma_artigo_titulo_alt = self._get_text_value(diploma_artigo_elem, 'DiplomaArtigoTituto')
+                            diploma_artigo_subtitulo = self._get_text_value(diploma_artigo_elem, 'DiplomaArtigoSubTitulo')
+                            artigo_texto = self._get_text_value(diploma_artigo_elem, 'Texto')
+                            diploma_artigo_texto = self._get_text_value(diploma_artigo_elem, 'DiplomaArtigoTexto')
+                            artigo_estado = self._get_text_value(diploma_artigo_elem, 'Estado')
+                            diploma_artigo_estado = self._get_text_value(diploma_artigo_elem, 'DiplomaArtigoEstado')
+                            
+                            diploma_artigo_obj = OrcamentoEstadoDiplomaArtigo(
+                                diploma_id=diploma_obj.id,
+                                artigo_id=artigo_id,
+                                diploma_artigo_id_alt=diploma_artigo_id_alt,
+                                numero=artigo_numero,
+                                titulo=artigo_titulo,
+                                diploma_artigo_titulo_alt=diploma_artigo_titulo_alt,
+                                diploma_artigo_subtitulo=diploma_artigo_subtitulo,
+                                texto=artigo_texto,
+                                diploma_artigo_texto=diploma_artigo_texto,
+                                estado=artigo_estado,
+                                diploma_artigo_estado=diploma_artigo_estado
+                            )
+                            self.session.add(diploma_artigo_obj)
+                            self.session.flush()  # Get the ID
+                            
+                            # Process diploma numbers (DiplomaNumeros.DiplomaNumero)
+                            diploma_numeros = diploma_artigo_elem.find('DiplomaNumeros')
+                            if diploma_numeros is not None:
+                                for diploma_numero_elem in diploma_numeros.findall('DiplomaNumero'):
+                                    diploma_numero_id = self._get_int_value(diploma_numero_elem, 'DiplomaNumeroID')
+                                    numero_titulo = self._get_text_value(diploma_numero_elem, 'DiplomaNumeroTitulo')
+                                    numero_estado = self._get_text_value(diploma_numero_elem, 'DiplomaNumeroEstado')
+                                    
+                                    diploma_numero_obj = OrcamentoEstadoDiplomaNumero(
+                                        diploma_artigo_id=diploma_artigo_obj.id,
+                                        diploma_numero_id=diploma_numero_id,
+                                        titulo=numero_titulo,
+                                        estado=numero_estado
+                                    )
+                                    self.session.add(diploma_numero_obj)
+                                    self.session.flush()  # Get the ID
+                                    
+                                    # Process diploma alineas (DiplomaAlineas.DiplomaAlinea)
+                                    diploma_alineas = diploma_numero_elem.find('DiplomaAlineas')
+                                    if diploma_alineas is not None:
+                                        for diploma_alinea_elem in diploma_alineas.findall('DiplomaAlinea'):
+                                            alinea_titulo = self._get_text_value(diploma_alinea_elem, 'DiplomaAlineaTitulo')
+                                            alinea_estado = self._get_text_value(diploma_alinea_elem, 'DiplomaAlineaEstado')
+                                            
+                                            diploma_alinea_obj = OrcamentoEstadoDiplomaAlinea(
+                                                diploma_numero_id=diploma_numero_obj.id,
+                                                titulo=alinea_titulo,
+                                                estado=alinea_estado
+                                            )
+                                            self.session.add(diploma_alinea_obj)
 
             # Process IniciativasMapas (Initiative Maps)
             iniciativas_elem = item.find('IniciativasMapas')
@@ -759,7 +980,52 @@ class OrcamentoEstadoMapper(SchemaMapper):
                 for votacao_elem in votacoes_elem.findall('Votacao'):
                     data_str = self._get_text_value(votacao_elem, 'Data')
                     descricoes = self._get_text_value(votacao_elem, 'Descricoes')
+                    
+                    # Handle nested Descricoes.Descricao structure
+                    if not descricoes:
+                        descricoes_elem = votacao_elem.find('Descricoes')
+                        if descricoes_elem is not None:
+                            descricao_elem = descricoes_elem.find('Descricao')
+                            if descricao_elem is not None and descricao_elem.text:
+                                descricoes = descricao_elem.text.strip()
+                    
                     diplomas_terceiros = self._get_text_value(votacao_elem, 'DiplomasTerceiros')
+                    
+                    # Handle DiplomasTerceirosouPropostasDeLeiMapas
+                    diplomas_terceiros_alt = self._get_text_value(votacao_elem, 'DiplomasTerceirosouPropostasDeLeiMapas')
+                    if not diplomas_terceiros and diplomas_terceiros_alt:
+                        diplomas_terceiros = diplomas_terceiros_alt
+                    elif diplomas_terceiros_alt:
+                        # Handle nested Diploma structure
+                        diplomas_elem = votacao_elem.find('DiplomasTerceirosouPropostasDeLeiMapas')
+                        if diplomas_elem is not None:
+                            diploma_elems = diplomas_elem.findall('Diploma')
+                            if diploma_elems:
+                                diploma_texts = [d.text.strip() for d in diploma_elems if d.text]
+                                if diploma_texts:
+                                    diplomas_terceiros += '; ' + '; '.join(diploma_texts)
+                    
+                    resultado = self._get_text_value(votacao_elem, 'Resultado')
+                    resultado_completo = self._get_text_value(votacao_elem, 'ResultadoCompleto')
+                    if not resultado and resultado_completo:
+                        resultado = resultado_completo
+                    
+                    sub_descricao = self._get_text_value(votacao_elem, 'SubDescricao')
+                    
+                    # Handle GruposParlamentares structure
+                    grupos_parlamentares = self._get_text_value(votacao_elem, 'GruposParlamentares')
+                    grupos_elem = votacao_elem.find('GruposParlamentares')
+                    if grupos_elem is not None and not grupos_parlamentares:
+                        # Process nested GrupoParlamentar and Voto elements
+                        grupo_texts = []
+                        for grupo_elem in grupos_elem.findall('GrupoParlamentar'):
+                            if grupo_elem.text:
+                                grupo_texts.append(grupo_elem.text.strip())
+                        for voto_elem in grupos_elem.findall('Voto'):
+                            if voto_elem.text:
+                                grupo_texts.append(f"Voto: {voto_elem.text.strip()}")
+                        if grupo_texts:
+                            grupos_parlamentares = '; '.join(grupo_texts)
                     
                     data_votacao = None
                     if data_str:
@@ -769,10 +1035,37 @@ class OrcamentoEstadoMapper(SchemaMapper):
                         item_id=item_obj.id,
                         data_votacao=data_votacao,
                         descricao=descricoes,
-                        diplomas_terceiros=diplomas_terceiros
+                        sub_descricao=sub_descricao,
+                        resultado=resultado,
+                        diplomas_terceiros=diplomas_terceiros,
+                        grupos_parlamentares=grupos_parlamentares
                     )
                     self.session.add(votacao_obj)
                     self.processed_votes += 1
+
+            # Process RequerimentosDeAvocacao (Avocation Requests)
+            requerimentos_elem = item.find('RequerimentosDeAvocacao')
+            if requerimentos_elem is not None:
+                for requerimento_elem in requerimentos_elem.findall('RequerimentoDeAvocacao'):
+                    descricao = self._get_text_value(requerimento_elem, 'AvocacaoDescricao')
+                    data_str = self._get_text_value(requerimento_elem, 'AvocacaoData')
+                    titulo = self._get_text_value(requerimento_elem, 'AvocacaoTitulo')
+                    estado = self._get_text_value(requerimento_elem, 'AvocacaoEstado')
+                    ficheiro = self._get_text_value(requerimento_elem, 'AvocacaoFicheiro')
+                    
+                    data_requerimento = None
+                    if data_str:
+                        data_requerimento = DataValidationUtils.parse_date_flexible(data_str)
+                    
+                    requerimento_obj = OrcamentoEstadoRequerimentoAvocacao(
+                        item_id=item_obj.id,
+                        descricao=descricao,
+                        data_requerimento=data_requerimento,
+                        titulo=titulo,
+                        estado=estado,
+                        ficheiro_url=ficheiro
+                    )
+                    self.session.add(requerimento_obj)
 
             logger.debug(f"Processed current nested data for item {item_obj.item_id}")
 
@@ -785,6 +1078,17 @@ class OrcamentoEstadoMapper(SchemaMapper):
         child = element.find(tag)
         if child is not None and child.text:
             return child.text.strip()
+        return None
+    
+    def _get_int_value(self, element: ET.Element, tag: str) -> Optional[int]:
+        """Safely extract integer value from XML element"""
+        text_val = self._get_text_value(element, tag)
+        if text_val:
+            try:
+                return int(text_val)
+            except ValueError:
+                logger.warning(f"Could not convert '{text_val}' to integer for tag '{tag}'")
+                return None
         return None
     
     def get_processing_stats(self) -> Dict[str, int]:

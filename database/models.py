@@ -3167,6 +3167,86 @@ class AudienciasParlamentares(Base):
     legislatura = relationship("Legislatura", backref="audiencias_parlamentares")
 
 
+class AudicaoParlamentar(Base):
+    """
+    Parliamentary Auditions Model - Based on Atividades.xml DadosAudicoesComissaoOut
+    
+    Model for parliamentary auditions (committee hearings) from Atividades.xml.
+    Maps DadosAudicoesComissaoOut structure from the XML files.
+    
+    Fields:
+    - IDAudicao: Audition identifier (id_audicao)
+    - NumeroAudicao: Audition sequential number (numero_audicao) 
+    - Data: Audition date (data)
+    - Assunto: Subject matter (assunto)
+    - Entidades: Participating entities (entidades)
+    - SessaoLegislativa: Legislative session number (sessao_legislativa)
+    """
+    __tablename__ = 'audicao_parlamentar'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    id_audicao = Column(Integer, comment="Audition identifier (IDAudicao)")
+    numero_audicao = Column(String(100), comment="Audition number (NumeroAudicao)")
+    data = Column(Date, comment="Audition date (Data)")
+    assunto = Column(Text, comment="Subject matter (Assunto)")
+    entidades = Column(Text, comment="Participating entities (Entidades)")
+    sessao_legislativa = Column(Integer, comment="Legislative session (SessaoLegislativa)")
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Index for performance
+    __table_args__ = (
+        Index('idx_audicao_parlamentar_id_audicao_leg', 'id_audicao', 'legislatura_id'),
+    )
+    
+    # Relationships
+    legislatura = relationship("Legislatura", backref="audicoes")
+
+
+class AudienciaParlamentar(Base):
+    """
+    Parliamentary Audiences Model - Based on Atividades.xml DadosAudienciasComissaoOut
+    
+    Model for parliamentary audiences from Atividades.xml.
+    Maps DadosAudienciasComissaoOut structure from the XML files.
+    
+    Fields:
+    - IDAudiencia: Audience identifier (id_audiencia)
+    - NumeroAudiencia: Audience sequential number (numero_audiencia)
+    - Data: Audience date (data)
+    - Assunto: Subject matter (assunto)
+    - Entidades: Participating entities (entidades)
+    - SessaoLegislativa: Legislative session number (sessao_legislativa)
+    - Concedida: Whether audience was granted (concedida)
+    """
+    __tablename__ = 'audiencia_parlamentar'
+    
+    id = Column(Integer, primary_key=True)
+    legislatura_id = Column(Integer, ForeignKey('legislaturas.id'), nullable=False)
+    
+    id_audiencia = Column(Integer, comment="Audience identifier (IDAudiencia)")
+    numero_audiencia = Column(String(100), comment="Audience number (NumeroAudiencia)")
+    data = Column(Date, comment="Audience date (Data)")
+    assunto = Column(Text, comment="Subject matter (Assunto)")
+    entidades = Column(Text, comment="Participating entities (Entidades)")
+    sessao_legislativa = Column(Integer, comment="Legislative session (SessaoLegislativa)")
+    concedida = Column(String(50), comment="Granted status (Concedida)")
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Index for performance
+    __table_args__ = (
+        Index('idx_audiencia_parlamentar_id_audiencia_leg', 'id_audiencia', 'legislatura_id'),
+    )
+    
+    # Relationships
+    legislatura = relationship("Legislatura", backref="audiencias")
+
+
 # Initiative models
 class IniciativaParlamentar(Base):
     """
@@ -6228,6 +6308,7 @@ class OrcamentoEstadoItem(Base):
     diplomas = relationship("OrcamentoEstadoDiploma", back_populates="item")
     iniciativas = relationship("OrcamentoEstadoIniciativa", back_populates="item")
     votacoes = relationship("OrcamentoEstadoVotacao", back_populates="item")
+    requerimentos_avocacao = relationship("OrcamentoEstadoRequerimentoAvocacao", back_populates="item")
     
     __table_args__ = (
         Index('idx_oe_item_id', 'item_id'),
@@ -6409,6 +6490,7 @@ class OrcamentoEstadoDiploma(Base):
     
     # Relationships
     item = relationship("OrcamentoEstadoItem", back_populates="diplomas")
+    artigos_detalhados = relationship("OrcamentoEstadoDiplomaArtigo", back_populates="diploma")
     
     def __repr__(self):
         return f"<OrcamentoEstadoDiploma(id={self.diploma_id}, titulo='{self.titulo[:50] if self.titulo else ''}...')>"
@@ -6454,6 +6536,137 @@ class OrcamentoEstadoIniciativa(Base):
     
     def __repr__(self):
         return f"<OrcamentoEstadoIniciativa(numero='{self.numero}', titulo='{self.titulo[:50] if self.titulo else ''}...')>"
+
+
+class OrcamentoEstadoDiplomaArtigo(Base):
+    """
+    State Budget Diploma Article Model
+    =================================
+    
+    Represents individual articles within diploma modifications.
+    Handles the nested DiplomasArtigos.DiplomaArtigo structure.
+    
+    XML Mapping (DiplomasArtigos.DiplomaArtigo):
+    - ID_Art: artigo_id (Article identifier)
+    - Numero: numero (Article number)
+    - Titulo: titulo (Article title)  
+    - Texto: texto (Article content)
+    - Estado: estado (Article state)
+    """
+    __tablename__ = 'orcamento_estado_diploma_artigos'
+    
+    id = Column(Integer, primary_key=True)
+    diploma_id = Column(Integer, ForeignKey('orcamento_estado_diplomas.id'), nullable=False)
+    
+    # Article identification
+    artigo_id = Column(Integer, comment="Article ID (ID_Art)")
+    diploma_artigo_id_alt = Column(Integer, comment="Alternative Article ID (DiplomaArtigoID)")
+    numero = Column(String(100), comment="Article number (Numero)")
+    titulo = Column(Text, comment="Article title (Titulo)")
+    diploma_artigo_titulo_alt = Column(Text, comment="Alternative Article title (DiplomaArtigoTituto)")
+    diploma_artigo_subtitulo = Column(Text, comment="Alternative Article subtitle (DiplomaArtigoSubTitulo)")
+    texto = Column(Text, comment="Article content (Texto)")
+    diploma_artigo_texto = Column(Text, comment="Alternative Article text (DiplomaArtigoTexto)")
+    estado = Column(String(100), comment="Article state (Estado)")
+    diploma_artigo_estado = Column(String(100), comment="Alternative Article state (DiplomaArtigoEstado)")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    diploma = relationship("OrcamentoEstadoDiploma", back_populates="artigos_detalhados")
+    numeros = relationship("OrcamentoEstadoDiplomaNumero", back_populates="diploma_artigo")
+
+
+class OrcamentoEstadoDiplomaNumero(Base):
+    """
+    State Budget Diploma Number Model
+    ================================
+    
+    Represents diploma numbers within diploma articles.
+    Handles the nested DiplomaNumeros.DiplomaNumero structure.
+    
+    XML Mapping (DiplomaNumeros.DiplomaNumero):
+    - DiplomaNumeroTitulo: titulo (Number title)
+    - DiplomaNumeroEstado: estado (Number state)
+    """
+    __tablename__ = 'orcamento_estado_diploma_numeros'
+    
+    id = Column(Integer, primary_key=True)
+    diploma_artigo_id = Column(Integer, ForeignKey('orcamento_estado_diploma_artigos.id'), nullable=False)
+    
+    # Number information  
+    diploma_numero_id = Column(Integer, comment="Number ID (DiplomaNumeroID)")
+    titulo = Column(Text, comment="Number title (DiplomaNumeroTitulo)")
+    estado = Column(String(100), comment="Number state (DiplomaNumeroEstado)")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    diploma_artigo = relationship("OrcamentoEstadoDiplomaArtigo", back_populates="numeros")
+    alineas = relationship("OrcamentoEstadoDiplomaAlinea", back_populates="diploma_numero")
+
+
+class OrcamentoEstadoDiplomaAlinea(Base):
+    """
+    State Budget Diploma Alinea Model
+    ================================
+    
+    Represents diploma alineas within diploma numbers.
+    Handles the nested DiplomaAlineas.DiplomaAlinea structure.
+    
+    XML Mapping (DiplomaAlineas.DiplomaAlinea):
+    - DiplomaAlineaTitulo: titulo (Alinea title)
+    """
+    __tablename__ = 'orcamento_estado_diploma_alineas'
+    
+    id = Column(Integer, primary_key=True)
+    diploma_numero_id = Column(Integer, ForeignKey('orcamento_estado_diploma_numeros.id'), nullable=False)
+    
+    # Alinea information
+    titulo = Column(Text, comment="Alinea title (DiplomaAlineaTitulo)")
+    estado = Column(String(100), comment="Alinea state (DiplomaAlineaEstado)")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    diploma_numero = relationship("OrcamentoEstadoDiplomaNumero", back_populates="alineas")
+
+
+class OrcamentoEstadoRequerimentoAvocacao(Base):
+    """
+    State Budget Avocation Request Model
+    ===================================
+    
+    Represents avocation requests within budget items.
+    Handles the RequerimentosDeAvocacao.RequerimentoDeAvocacao structure.
+    
+    XML Mapping (RequerimentosDeAvocacao.RequerimentoDeAvocacao):
+    - AvocacaoDescricao: descricao (Request description)
+    - AvocacaoData: data_avocacao (Request date)
+    - AvocacaoTitulo: titulo (Request title)
+    - AvocacaoEstado: estado (Request state)
+    - AvocacaoFicheiro: ficheiro_url (Request file URL)
+    """
+    __tablename__ = 'orcamento_estado_requerimentos_avocacao'
+    
+    id = Column(Integer, primary_key=True)
+    item_id = Column(Integer, ForeignKey('orcamento_estado_items.id'), nullable=False)
+    
+    # Avocation request information
+    descricao = Column(Text, comment="Request description (AvocacaoDescricao)")
+    data_avocacao = Column(Date, comment="Request date (AvocacaoData)")
+    titulo = Column(Text, comment="Request title (AvocacaoTitulo)")
+    estado = Column(String(100), comment="Request state (AvocacaoEstado)")
+    ficheiro_url = Column(String(500), comment="Request file URL (AvocacaoFicheiro)")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    item = relationship("OrcamentoEstadoItem", back_populates="requerimentos_avocacao")
 
 
 # =====================================================
