@@ -611,7 +611,8 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 deputado, "DepNomeCompleto"
             ) or self._get_text_value(deputado, "depNomeCompleto")
             deputado_record = self._get_or_create_deputado(
-                dep_id_text, dep_cad_id_text, dep_nome, dep_nome_completo
+                dep_id_text, dep_cad_id_text, dep_nome, dep_nome_completo,
+                xml_context=deputado  # CRITICAL: Pass XML context for LegDes extraction
             )
             if not deputado_record:
                 logger.warning("Could not create/find deputado record")

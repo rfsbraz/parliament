@@ -1156,7 +1156,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             record_id = self._safe_int(dep_id)
             cadastral_id = self._safe_int(dep_cad_id)
             deputado = self._get_or_create_deputado(
-                record_id, cadastral_id, dep_nome, dep_nome_completo
+                record_id, cadastral_id, dep_nome, dep_nome_completo,
+                xml_context=deputado_data  # Pass XML context for LegDes extraction
             )
 
             # Process deputy positions (DepCargo) - IX Legislature structure
@@ -1253,7 +1254,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             record_id = self._safe_int(dep_id)
             cadastral_id = self._safe_int(dep_cad_id)
             deputado = self._get_or_create_deputado(
-                record_id, cadastral_id, dep_nome, dep_nome_completo
+                record_id, cadastral_id, dep_nome, dep_nome_completo,
+                xml_context=deputado_data  # Pass XML context for LegDes extraction
             )
 
             # Create commission historical composition record
@@ -1312,7 +1314,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             record_id = self._safe_int(dep_id)
             cadastral_id = self._safe_int(dep_cad_id)
             deputado = self._get_or_create_deputado(
-                record_id, cadastral_id, dep_nome, dep_nome_completo
+                record_id, cadastral_id, dep_nome, dep_nome_completo,
+                xml_context=deputado_data  # Pass XML context for LegDes extraction
             )
 
             # Create subcommittee historical composition record
@@ -1371,7 +1374,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             record_id = self._safe_int(dep_id)
             cadastral_id = self._safe_int(dep_cad_id)
             deputado = self._get_or_create_deputado(
-                record_id, cadastral_id, dep_nome, dep_nome_completo
+                record_id, cadastral_id, dep_nome, dep_nome_completo,
+                xml_context=deputado_data  # Pass XML context for LegDes extraction
             )
 
             # Create work group historical composition record
@@ -1417,7 +1421,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             record_id = self._safe_int(dep_id)
             cadastral_id = self._safe_int(dep_cad_id)
             deputado = self._get_or_create_deputado(
-                record_id, cadastral_id, dep_nome_parlamentar, dep_nome_completo
+                record_id, cadastral_id, dep_nome_parlamentar, dep_nome_completo,
+                xml_context=deputado_data  # Pass XML context for LegDes extraction
             )
 
             # Process parliamentary group information (depGP)
@@ -1485,7 +1490,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 # Get or create deputy using both record_id and cadastral_id
                 record_id = dep_id if dep_id else dep_cad_id
                 deputado = self._get_or_create_deputado(
-                    record_id, dep_cad_id, dep_nome, dep_nome
+                    record_id, dep_cad_id, dep_nome, dep_nome,
+                    xml_context=data_element  # Pass XML context for LegDes extraction
                 )
 
                 # Get legislatura from file context
@@ -3033,7 +3039,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 # Get or create deputy using both record_id and cadastral_id
                 record_id = dep_id if dep_id else dep_cad_id
                 deputado = self._get_or_create_deputado(
-                    record_id, dep_cad_id, dep_nome, dep_nome
+                    record_id, dep_cad_id, dep_nome, dep_nome,
+                    xml_context=data_element  # Pass XML context for LegDes extraction
                 )
 
                 # Get legislatura from file context

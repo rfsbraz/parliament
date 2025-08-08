@@ -500,26 +500,26 @@ class InformacaoBaseMapper(SchemaMapper):
                     deputado.nome = dep_nome_parlamentar
                     deputado.nome_completo = dep_nome_completo or dep_nome_parlamentar
                 else:
-                    # Same deputy but different legislature - create new record
-                    deputado = Deputado(
-                        id=dep_id,
+                    # Same deputy but different legislature - use enhanced method with XML context
+                    deputado = self._get_or_create_deputado(
+                        record_id=dep_id,
                         id_cadastro=dep_cad_id,
                         nome=dep_nome_parlamentar,
                         nome_completo=dep_nome_completo or dep_nome_parlamentar,
-                        legislatura_id=legislatura.id,
+                        legislatura_id=None,  # Let the method determine from XML LegDes
+                        xml_context=deputado_element  # CRITICAL: Pass XML context for LegDes extraction
                     )
-                    self.session.add(deputado)
                     self.processed_deputies += 1
             else:
-                # Completely new deputy
-                deputado = Deputado(
-                    id=dep_id,
+                # Completely new deputy - use enhanced method with XML context
+                deputado = self._get_or_create_deputado(
+                    record_id=dep_id,
                     id_cadastro=dep_cad_id,
                     nome=dep_nome_parlamentar,
                     nome_completo=dep_nome_completo or dep_nome_parlamentar,
-                    legislatura_id=legislatura.id,
+                    legislatura_id=None,  # Let the method determine from XML LegDes
+                    xml_context=deputado_element  # CRITICAL: Pass XML context for LegDes extraction
                 )
-                self.session.add(deputado)
                 self.processed_deputies += 1
 
             self.session.flush()  # Get the ID
@@ -596,26 +596,26 @@ class InformacaoBaseMapper(SchemaMapper):
                     deputado.nome = dep_nome_parlamentar
                     deputado.nome_completo = dep_nome_completo or dep_nome_parlamentar
                 else:
-                    # Same deputy but different legislature - create new record
-                    deputado = Deputado(
-                        id=dep_id,
+                    # Same deputy but different legislature - use enhanced method with XML context
+                    deputado = self._get_or_create_deputado(
+                        record_id=dep_id,
                         id_cadastro=dep_cad_id,
                         nome=dep_nome_parlamentar,
                         nome_completo=dep_nome_completo or dep_nome_parlamentar,
-                        legislatura_id=legislatura.id,
+                        legislatura_id=None,  # Let the method determine from XML LegDes
+                        xml_context=deputado_element  # CRITICAL: Pass XML context for LegDes extraction
                     )
-                    self.session.add(deputado)
                     self.processed_deputies += 1
             else:
-                # Completely new deputy
-                deputado = Deputado(
-                    id=dep_id,
+                # Completely new deputy - use enhanced method with XML context
+                deputado = self._get_or_create_deputado(
+                    record_id=dep_id,
                     id_cadastro=dep_cad_id,
                     nome=dep_nome_parlamentar,
                     nome_completo=dep_nome_completo or dep_nome_parlamentar,
-                    legislatura_id=legislatura.id,
+                    legislatura_id=None,  # Let the method determine from XML LegDes
+                    xml_context=deputado_element  # CRITICAL: Pass XML context for LegDes extraction
                 )
-                self.session.add(deputado)
                 self.processed_deputies += 1
 
             self.session.flush()  # Get the ID

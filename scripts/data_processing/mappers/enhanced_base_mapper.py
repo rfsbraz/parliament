@@ -386,7 +386,7 @@ class LegislatureHandlerMixin:
 
         return legislatura.id
 
-    def _get_or_create_deputado(self, record_id: int, id_cadastro: int, nome: str, nome_completo: str = None, legislatura_id: int = None) -> Deputado:
+    def _get_or_create_deputado(self, record_id: int, id_cadastro: int, nome: str, nome_completo: str = None, legislatura_id: int = None, xml_context: ET.Element = None) -> Deputado:
         """
         Get or create deputy record with CORRECT primary key handling
         
@@ -394,12 +394,16 @@ class LegislatureHandlerMixin:
         not id_cadastro. This method uses record_id as the deputado.id (primary key) that other
         records will reference, while id_cadastro tracks the same person across legislatures.
         
+        IMPORTANT: LegDes from XML takes precedence over filename-based legislature extraction
+        to handle cases where files contain data for multiple legislatures.
+        
         Args:
             record_id: The ID from XML data that becomes deputado.id (primary key for foreign key references)
             id_cadastro: The cadastral ID for linking the same person across legislatures
             nome: Deputy's parliamentary name
             nome_completo: Deputy's full name (optional)
             legislatura_id: Legislature ID (optional, can be derived from context)
+            xml_context: XML element context to extract LegDes (takes precedence over filename)
             
         Returns:
             Deputado record that can be referenced by its .id field (which equals record_id)
@@ -422,13 +426,31 @@ class LegislatureHandlerMixin:
         if existing_person:
             logger.info(f"Deputy {nome} (cadastro {id_cadastro}) already exists with different record ID {existing_person.id}, creating new record with ID {record_id}")
         
-        # Get legislature ID if not provided
+        # Get legislature ID if not provided - prioritize XML LegDes over filename
         if legislatura_id is None:
-            if hasattr(self, 'file_info'):
-                legislatura_id = self._get_legislatura_id(self.file_info)
-            else:
-                # Fallback - get current legislature from context
-                raise ValueError("Cannot determine legislature_id - please provide explicitly")
+            # CRITICAL FIX: First try to extract from XML context (LegDes takes precedence)
+            if xml_context is not None:
+                leg_des = self._get_text_value(xml_context, "LegDes")
+                if leg_des:
+                    logger.debug(f"Found LegDes '{leg_des}' in XML context for deputy {nome}")
+                    # Extract legislature from XML content first
+                    try:
+                        legislatura_sigla = self._extract_legislatura_from_xml_content(leg_des)
+                        if legislatura_sigla:
+                            legislatura = self._get_or_create_legislatura(legislatura_sigla)
+                            legislatura_id = legislatura.id
+                            logger.info(f"Using legislature from XML LegDes '{leg_des}' -> '{legislatura_sigla}' (ID: {legislatura_id}) for deputy {nome}")
+                    except Exception as e:
+                        logger.warning(f"Failed to extract legislature from XML LegDes '{leg_des}' for deputy {nome}: {e}")
+            
+            # Fallback to filename-based extraction if XML didn't provide legislature
+            if legislatura_id is None:
+                if hasattr(self, 'file_info'):
+                    legislatura_id = self._get_legislatura_id(self.file_info)
+                    logger.debug(f"Using legislature from filename for deputy {nome}: {legislatura_id}")
+                else:
+                    # Last resort fallback
+                    raise ValueError(f"Cannot determine legislature_id for deputy {nome} - no XML LegDes or file context available")
         
         # Create new deputy record with specific record_id as primary key
         deputado = Deputado(
