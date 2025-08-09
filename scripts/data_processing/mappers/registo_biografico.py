@@ -48,7 +48,7 @@ from .common_utilities import DataValidationUtils
 from .enhanced_base_mapper import EnhancedSchemaMapper, SchemaError
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-from database.models import Deputado
+from database.models import Deputado, DeputyIdentityMapping
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +94,100 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
         super().__init__(session)
         # Use the passed SQLAlchemy session
         self.session = session
+
+    def _find_deputy_robust(self, cad_id: int, nome_completo: str = None, nome_parlamentar: str = None) -> Deputado:
+        """
+        Robust deputy matching with cadastral ID change tracking.
+        
+        This method handles cases where deputy cadastral IDs change over time by implementing
+        a multi-level matching strategy and tracking identity mappings.
+        
+        Args:
+            cad_id: Current cadastral ID to look up
+            nome_completo: Full deputy name for fallback matching
+            nome_parlamentar: Parliamentary name for fallback matching
+            
+        Returns:
+            Deputado: The matched deputy record
+            
+        Raises:
+            ValueError: If no deputy can be matched using any strategy
+        """
+        # Step 1: Try direct cadastral ID lookup
+        deputy = self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
+        if deputy:
+            return deputy
+        
+        # Step 2: Check if this cadastral ID is mapped to another ID
+        identity_mapping = (
+            self.session.query(DeputyIdentityMapping)
+            .filter(DeputyIdentityMapping.old_cad_id == cad_id)
+            .first()
+        )
+        
+        if identity_mapping:
+            # Try to find deputy with the new cadastral ID
+            deputy = self.session.query(Deputado).filter(
+                Deputado.id_cadastro == identity_mapping.new_cad_id
+            ).first()
+            if deputy:
+                logger.info(f"Found deputy via identity mapping: old_cad_id={cad_id} -> new_cad_id={identity_mapping.new_cad_id}")
+                return deputy
+        
+        # Step 3: Fallback to name-based matching if names are provided
+        if nome_completo or nome_parlamentar:
+            query = self.session.query(Deputado)
+            
+            # Try full name match first
+            if nome_completo:
+                deputy = query.filter(Deputado.nome_completo.ilike(f'%{nome_completo}%')).first()
+                if deputy:
+                    # Record the identity mapping for future lookups
+                    self._record_identity_mapping(cad_id, deputy.id_cadastro, nome_completo or nome_parlamentar)
+                    logger.warning(f"Deputy found by full name match - recording identity mapping: old_cad_id={cad_id} -> new_cad_id={deputy.id_cadastro} ({nome_completo})")
+                    return deputy
+            
+            # Try parliamentary name match
+            if nome_parlamentar:
+                deputy = query.filter(Deputado.nome.ilike(f'%{nome_parlamentar}%')).first()
+                if deputy:
+                    # Record the identity mapping for future lookups
+                    self._record_identity_mapping(cad_id, deputy.id_cadastro, nome_parlamentar)
+                    logger.warning(f"Deputy found by parliamentary name match - recording identity mapping: old_cad_id={cad_id} -> new_cad_id={deputy.id_cadastro} ({nome_parlamentar})")
+                    return deputy
+        
+        # Step 4: No match found using any strategy
+        names = []
+        if nome_completo:
+            names.append(f"nome_completo='{nome_completo}'")
+        if nome_parlamentar:
+            names.append(f"nome_parlamentar='{nome_parlamentar}'")
+        name_info = " (" + ", ".join(names) + ")" if names else ""
+        
+        raise ValueError(f"Deputy with cadId {cad_id} not found in database using any matching strategy{name_info}")
+    
+    def _record_identity_mapping(self, old_cad_id: int, new_cad_id: int, deputy_name: str):
+        """Record an identity mapping between old and new cadastral IDs."""
+        # Check if mapping already exists
+        existing_mapping = (
+            self.session.query(DeputyIdentityMapping)
+            .filter(
+                DeputyIdentityMapping.old_cad_id == old_cad_id,
+                DeputyIdentityMapping.new_cad_id == new_cad_id
+            )
+            .first()
+        )
+        
+        if not existing_mapping:
+            mapping = DeputyIdentityMapping(
+                old_cad_id=old_cad_id,
+                new_cad_id=new_cad_id,
+                deputy_name=deputy_name,
+                confidence_score=90,  # Discovered via name matching
+                verified=False
+            )
+            self.session.add(mapping)
+            logger.info(f"Recorded new identity mapping: {old_cad_id} -> {new_cad_id} ({deputy_name})")
 
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -411,42 +505,30 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             # Extract basic biographical data
             cad_id = self._get_text_value(record, "cadId")
             if not cad_id:
-                return False
+                raise ValueError(f"Invalid cadId value: {cad_id} in record")
 
             cad_id = self._safe_int(cad_id)
             if cad_id is None:
-                logger.warning("Invalid cadId format, skipping record")
-                return False
+                raise ValueError(f"Invalid cadId value: {cad_id} in record")
 
-            # Get or create deputy
-            deputy = (
-                self.session.query(Deputado)
-                .filter(Deputado.id_cadastro == cad_id)
-                .first()
+            # Get or create deputycad using robust matching
+            nome_completo = self._get_text_value(record, "cadNomeCompleto")
+            deputy = self._find_deputy_robust(cad_id, nome_completo=nome_completo)
+            
+            # Update existing fields
+            deputy.nome_completo = nome_completo or deputy.nome_completo
+            deputy.sexo = self._get_text_value(record, "cadSexo") or deputy.sexo
+            deputy.profissao = (
+                self._get_text_value(record, "cadProfissao") or deputy.profissao
             )
-            if not deputy:
-                import pdb
-
-                pdb.set_trace()
-                raise ValueError(f"Deputy with cadId {cad_id} not found in database")
-            else:
-                # Update existing fields
-                deputy.nome_completo = (
-                    self._get_text_value(record, "cadNomeCompleto")
-                    or deputy.nome_completo
-                )
-                deputy.sexo = self._get_text_value(record, "cadSexo") or deputy.sexo
-                deputy.profissao = (
-                    self._get_text_value(record, "cadProfissao") or deputy.profissao
-                )
-                deputy.data_nascimento = (
-                    self._parse_date(self._get_text_value(record, "cadDtNascimento"))
-                    or deputy.data_nascimento
-                )
-                deputy.naturalidade = (
-                    self._get_text_value(record, "cadNaturalidade")
-                    or deputy.naturalidade
-                )
+            deputy.data_nascimento = (
+                self._parse_date(self._get_text_value(record, "cadDtNascimento"))
+                or deputy.data_nascimento
+            )
+            deputy.naturalidade = (
+                self._get_text_value(record, "cadNaturalidade")
+                or deputy.naturalidade
+            )
 
             # Process Academic Qualifications (cadHabilitacoes)
             habilitacoes = record.find("cadHabilitacoes")
@@ -785,35 +867,24 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 logger.warning("Invalid cadId format, skipping record")
                 return False
 
-            # Get or create deputy
-            deputy = (
-                self.session.query(Deputado)
-                .filter(Deputado.id_cadastro == cad_id)
-                .first()
+            # Get or create deputy using robust matching
+            nome_completo = self._get_text_value(record, "CadNomeCompleto")
+            deputy = self._find_deputy_robust(cad_id, nome_completo=nome_completo)
+            
+            # Update existing fields
+            deputy.nome_completo = nome_completo or deputy.nome_completo
+            deputy.sexo = self._get_text_value(record, "CadSexo") or deputy.sexo
+            deputy.profissao = (
+                self._get_text_value(record, "CadProfissao") or deputy.profissao
             )
-            if not deputy:
-                import pdb
-
-                pdb.set_trace()
-                raise ValueError(f"Deputy with cadId {cad_id} not found in database")
-            else:
-                # Update existing fields
-                deputy.nome_completo = (
-                    self._get_text_value(record, "CadNomeCompleto")
-                    or deputy.nome_completo
-                )
-                deputy.sexo = self._get_text_value(record, "CadSexo") or deputy.sexo
-                deputy.profissao = (
-                    self._get_text_value(record, "CadProfissao") or deputy.profissao
-                )
-                deputy.data_nascimento = (
-                    self._parse_date(self._get_text_value(record, "CadDtNascimento"))
-                    or deputy.data_nascimento
-                )
-                deputy.naturalidade = (
-                    self._get_text_value(record, "CadNaturalidade")
-                    or deputy.naturalidade
-                )
+            deputy.data_nascimento = (
+                self._parse_date(self._get_text_value(record, "CadDtNascimento"))
+                or deputy.data_nascimento
+            )
+            deputy.naturalidade = (
+                self._get_text_value(record, "CadNaturalidade")
+                or deputy.naturalidade
+            )
 
             # Process Academic Qualifications (CadHabilitacoes)
             habilitacoes = record.find("CadHabilitacoes")
@@ -1015,17 +1086,9 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 logger.warning("Invalid cadId format, skipping record")
                 return False
 
-            # Find or create the deputy
-            deputy = (
-                self.session.query(Deputado)
-                .filter(Deputado.id_cadastro == cad_id)
-                .first()
-            )
-            if not deputy:
-                import pdb
-
-                pdb.set_trace()
-                raise ValueError(f"Deputy with cadId {cad_id} not found in database")
+            # Find or create the deputy using robust matching
+            nome_completo = self._get_text_value(record, "cadNomeCompleto")
+            deputy = self._find_deputy_robust(cad_id, nome_completo=nome_completo)
 
             # Check if already exists
             existing = (

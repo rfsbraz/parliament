@@ -205,6 +205,48 @@ class Deputado(Base):
     )
 
 
+class DeputyIdentityMapping(Base):
+    """
+    Deputy Identity Mapping Table - Tracks cadastral ID changes over time
+    
+    This table maintains a history of cadastral ID changes for deputies,
+    allowing us to link the same person across different legislatures even
+    when their cadastral ID changes in parliamentary records.
+    
+    Key Use Cases:
+    - Track when deputy Beatriz Cal Brandão changes from cad_id 3346 to 4742
+    - Maintain data integrity when processing biographical records
+    - Enable robust deputy matching across time periods
+    
+    Processing Rules:
+    - Only registo_biografico mapper should update this table
+    - New entries created when cadastral ID changes are detected
+    - Used for fallback matching when direct cadastral lookup fails
+    """
+    __tablename__ = 'deputy_identity_mappings'
+    
+    id = Column(Integer, primary_key=True)
+    old_cad_id = Column(Integer, nullable=False, comment="Previous cadastral ID")
+    new_cad_id = Column(Integer, nullable=False, comment="New cadastral ID") 
+    deputy_name = Column(String(255), nullable=False, comment="Deputy name for verification")
+    deputy_full_name = Column(String(500), comment="Deputy full name for verification")
+    first_seen_legislature = Column(String(50), comment="Legislature where old ID was used")
+    change_detected_legislature = Column(String(50), comment="Legislature where change was detected")
+    change_reason = Column(String(255), comment="Reason for cadastral ID change if known")
+    confidence_score = Column(Integer, default=100, comment="Confidence in mapping accuracy (0-100)")
+    verified = Column(Boolean, default=False, comment="Whether mapping has been manually verified")
+    created_at = Column(DateTime, default=func.now(), comment="When mapping was first detected")
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Indexes for efficient lookups
+    __table_args__ = (
+        Index('idx_old_cad_id', 'old_cad_id'),
+        Index('idx_new_cad_id', 'new_cad_id'),
+        Index('idx_deputy_name', 'deputy_name'),
+        UniqueConstraint('old_cad_id', 'new_cad_id', name='uq_identity_mapping'),
+    )
+
+
 class DepCargo(Base):
     __tablename__ = 'dep_cargos'
     
