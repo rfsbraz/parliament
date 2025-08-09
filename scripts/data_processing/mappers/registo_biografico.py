@@ -211,6 +211,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             logger.debug(f"Identity mapping {old_cad_id} -> {new_cad_id} already exists, skipping")
             return
 
+        # Record the identity mapping
         mapping = DeputyIdentityMapping(
             old_cad_id=old_cad_id,
             new_cad_id=new_cad_id,
@@ -219,6 +220,24 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             verified=False,
         )
         self.session.add(mapping)
+        
+        # Update the deputy record to use the new cadastral ID
+        deputy_to_update = (
+            self.session.query(Deputado)
+            .filter(Deputado.id_cadastro == old_cad_id)
+            .first()
+        )
+        
+        if deputy_to_update:
+            deputy_to_update.id_cadastro = new_cad_id
+            logger.info(
+                f"Updated deputy {deputy_name} cadastral ID: {old_cad_id} -> {new_cad_id}"
+            )
+        else:
+            logger.warning(
+                f"Could not find deputy with old cadastral ID {old_cad_id} to update"
+            )
+        
         logger.info(
             f"Recorded new identity mapping: {old_cad_id} -> {new_cad_id} ({deputy_name})"
         )
