@@ -15,7 +15,7 @@ from .agenda_parlamentar import AgendaTranslator
 from .delegacao_eventual import DelegacaoEventualTranslator
 from .delegacoes_permanentes import DelegacoesPermanentesTranslator
 from .intervencoes import InterventionTranslator as IntervencoesTranslator
-from .orcamento_estado import OrcamentoEstadoTranslator
+# from .orcamento_estado import OrcamentoEstadoTranslator  # Removed - translation fields no longer used
 from .diplomas_aprovados import (DIPLOMA_TYPE_CODES, INITIATIVE_TYPE_CODES, PUBLICATION_TYPE_CODES,
                                 convert_field_value, get_diploma_type_description, 
                                 get_initiative_type_description, get_publication_type_description)
@@ -31,7 +31,7 @@ __all__ = [
     'DelegacaoEventualTranslator',
     'DelegacoesPermanentesTranslator',
     'IntervencoesTranslator',
-    'OrcamentoEstadoTranslator',
+    # 'OrcamentoEstadoTranslator',  # Removed - translation fields no longer used
     'TipoParticipante',
     # Diplomas Aprovados code translations
     'DIPLOMA_TYPE_CODES',
