@@ -194,7 +194,10 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
         self, old_cad_id: int, new_cad_id: int, deputy_name: str
     ):
         """Record an identity mapping between old and new cadastral IDs."""
-        # Check if mapping already exists in database
+        # Flush session to ensure any pending objects are written to DB for query
+        self.session.flush()
+        
+        # Check if mapping already exists (including any just flushed)
         existing_mapping = (
             self.session.query(DeputyIdentityMapping)
             .filter(
@@ -207,13 +210,6 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
         if existing_mapping:
             logger.debug(f"Identity mapping {old_cad_id} -> {new_cad_id} already exists, skipping")
             return
-
-        # Also check pending additions in the session to prevent duplicate adds
-        for obj in self.session.new:
-            if (isinstance(obj, DeputyIdentityMapping) and 
-                obj.old_cad_id == old_cad_id and obj.new_cad_id == new_cad_id):
-                logger.debug(f"Identity mapping {old_cad_id} -> {new_cad_id} already pending in session, skipping")
-                return
 
         mapping = DeputyIdentityMapping(
             old_cad_id=old_cad_id,
