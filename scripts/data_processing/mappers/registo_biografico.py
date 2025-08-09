@@ -155,7 +155,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     # Record the identity mapping for future lookups
                     # deputy.id_cadastro is the OLD ID (existing in DB), cad_id is the NEW ID (we're trying to find)
                     self._record_identity_mapping(
-                        deputy.id_cadastro, cad_id, nome_completo or nome_parlamentar
+                        deputy.id_cadastro, cad_id, nome_completo or nome_parlamentar, deputy
                     )
                     logger.warning(
                         f"Deputy found by full name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_completo})"
@@ -171,7 +171,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     # Record the identity mapping for future lookups
                     # deputy.id_cadastro is the OLD ID (existing in DB), cad_id is the NEW ID (we're trying to find)
                     self._record_identity_mapping(
-                        deputy.id_cadastro, cad_id, nome_parlamentar
+                        deputy.id_cadastro, cad_id, nome_parlamentar, deputy
                     )
                     logger.warning(
                         f"Deputy found by parliamentary name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_parlamentar})"
@@ -191,9 +191,9 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
         )
 
     def _record_identity_mapping(
-        self, old_cad_id: int, new_cad_id: int, deputy_name: str
+        self, old_cad_id: int, new_cad_id: int, deputy_name: str, deputy: Deputado
     ):
-        """Record an identity mapping between old and new cadastral IDs."""
+        """Record an identity mapping between old and new cadastral IDs and update the deputy record."""
         # Flush session to ensure any pending objects are written to DB for query
         self.session.flush()
         
@@ -222,21 +222,10 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
         self.session.add(mapping)
         
         # Update the deputy record to use the new cadastral ID
-        deputy_to_update = (
-            self.session.query(Deputado)
-            .filter(Deputado.id_cadastro == old_cad_id)
-            .first()
+        deputy.id_cadastro = new_cad_id
+        logger.info(
+            f"Updated deputy {deputy_name} cadastral ID: {old_cad_id} -> {new_cad_id}"
         )
-        
-        if deputy_to_update:
-            deputy_to_update.id_cadastro = new_cad_id
-            logger.info(
-                f"Updated deputy {deputy_name} cadastral ID: {old_cad_id} -> {new_cad_id}"
-            )
-        else:
-            logger.warning(
-                f"Could not find deputy with old cadastral ID {old_cad_id} to update"
-            )
         
         logger.info(
             f"Recorded new identity mapping: {old_cad_id} -> {new_cad_id} ({deputy_name})"
