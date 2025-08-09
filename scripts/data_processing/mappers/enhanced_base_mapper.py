@@ -203,6 +203,49 @@ class LegislatureHandlerMixin:
 
         raise SchemaError(f"Could not extract legislatura from file path: {file_path}")
 
+    def _extract_legislatura_from_xml_content(self, leg_des: str) -> str:
+        """
+        Extract and normalize legislature identifier from XML LegDes content.
+        
+        This method handles the specific format of legislature identifiers found in
+        XML LegDes fields and converts them to our standardized legislature format.
+        
+        Args:
+            leg_des: Legislature identifier from XML (e.g. 'XVII', '17', 'CONSTITUINTE')
+            
+        Returns:
+            Standardized legislature identifier
+            
+        Examples:
+            'XVII' -> 'XVII'
+            '17' -> 'XVII' 
+            'CONSTITUINTE' -> 'CONSTITUINTE'
+        """
+        if not leg_des:
+            return None
+            
+        leg_des = leg_des.strip().upper()
+        
+        # Direct match for known legislature formats
+        if leg_des in ['CONSTITUINTE', 'XVII', 'XVI', 'XV', 'XIV', 'XIII', 'XII', 
+                       'XI', 'X', 'IX', 'VIII', 'VII', 'VI', 'V', 'IV', 'III', 
+                       'II', 'I', 'IA', 'IB']:
+            return leg_des
+            
+        # Convert numeric to roman
+        if leg_des.isdigit():
+            leg_num = int(leg_des)
+            if leg_num in self.NUMBER_TO_ROMAN:
+                return self.NUMBER_TO_ROMAN[leg_num]
+                
+        # Handle special variations
+        if leg_des in ['CONS', 'CON', 'CONSTITUENT']:
+            return 'CONSTITUINTE'
+            
+        # Return as-is if we can't normalize it
+        logger.warning(f"Unknown legislature format in XML LegDes: '{leg_des}', returning as-is")
+        return leg_des
+
     def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
         """Get existing or create new legislatura record with case-insensitive and variation matching"""
         logger.debug(f"_get_or_create_legislatura called with sigla: '{legislatura_sigla}'")
