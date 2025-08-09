@@ -95,67 +95,89 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
         # Use the passed SQLAlchemy session
         self.session = session
 
-    def _find_deputy_robust(self, cad_id: int, nome_completo: str = None, nome_parlamentar: str = None) -> Deputado:
+    def _find_deputy_robust(
+        self, cad_id: int, nome_completo: str = None, nome_parlamentar: str = None
+    ) -> Deputado:
         """
         Robust deputy matching with cadastral ID change tracking.
-        
+
         This method handles cases where deputy cadastral IDs change over time by implementing
         a multi-level matching strategy and tracking identity mappings.
-        
+
         Args:
             cad_id: Current cadastral ID to look up
             nome_completo: Full deputy name for fallback matching
             nome_parlamentar: Parliamentary name for fallback matching
-            
+
         Returns:
             Deputado: The matched deputy record
-            
+
         Raises:
             ValueError: If no deputy can be matched using any strategy
         """
         # Step 1: Try direct cadastral ID lookup
-        deputy = self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
+        deputy = (
+            self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
+        )
         if deputy:
             return deputy
-        
+
         # Step 2: Check if this cadastral ID is mapped to another ID
         identity_mapping = (
             self.session.query(DeputyIdentityMapping)
             .filter(DeputyIdentityMapping.old_cad_id == cad_id)
             .first()
         )
-        
+
         if identity_mapping:
             # Try to find deputy with the new cadastral ID
-            deputy = self.session.query(Deputado).filter(
-                Deputado.id_cadastro == identity_mapping.new_cad_id
-            ).first()
+            deputy = (
+                self.session.query(Deputado)
+                .filter(Deputado.id_cadastro == identity_mapping.new_cad_id)
+                .first()
+            )
             if deputy:
-                logger.info(f"Found deputy via identity mapping: old_cad_id={cad_id} -> new_cad_id={identity_mapping.new_cad_id}")
+                logger.info(
+                    f"Found deputy via identity mapping: old_cad_id={cad_id} -> new_cad_id={identity_mapping.new_cad_id}"
+                )
                 return deputy
-        
+
         # Step 3: Fallback to name-based matching if names are provided
         if nome_completo or nome_parlamentar:
             query = self.session.query(Deputado)
-            
+
             # Try full name match first
             if nome_completo:
-                deputy = query.filter(Deputado.nome_completo.ilike(f'%{nome_completo}%')).first()
+                deputy = query.filter(
+                    Deputado.nome_completo.ilike(f"%{nome_completo}%")
+                ).first()
                 if deputy:
                     # Record the identity mapping for future lookups
-                    self._record_identity_mapping(cad_id, deputy.id_cadastro, nome_completo or nome_parlamentar)
-                    logger.warning(f"Deputy found by full name match - recording identity mapping: old_cad_id={cad_id} -> new_cad_id={deputy.id_cadastro} ({nome_completo})")
+                    # deputy.id_cadastro is the OLD ID (existing in DB), cad_id is the NEW ID (we're trying to find)
+                    self._record_identity_mapping(
+                        deputy.id_cadastro, cad_id, nome_completo or nome_parlamentar
+                    )
+                    logger.warning(
+                        f"Deputy found by full name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_completo})"
+                    )
                     return deputy
-            
+
             # Try parliamentary name match
             if nome_parlamentar:
-                deputy = query.filter(Deputado.nome.ilike(f'%{nome_parlamentar}%')).first()
+                deputy = query.filter(
+                    Deputado.nome.ilike(f"%{nome_parlamentar}%")
+                ).first()
                 if deputy:
                     # Record the identity mapping for future lookups
-                    self._record_identity_mapping(cad_id, deputy.id_cadastro, nome_parlamentar)
-                    logger.warning(f"Deputy found by parliamentary name match - recording identity mapping: old_cad_id={cad_id} -> new_cad_id={deputy.id_cadastro} ({nome_parlamentar})")
+                    # deputy.id_cadastro is the OLD ID (existing in DB), cad_id is the NEW ID (we're trying to find)
+                    self._record_identity_mapping(
+                        deputy.id_cadastro, cad_id, nome_parlamentar
+                    )
+                    logger.warning(
+                        f"Deputy found by parliamentary name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_parlamentar})"
+                    )
                     return deputy
-        
+
         # Step 4: No match found using any strategy
         names = []
         if nome_completo:
@@ -163,31 +185,47 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
         if nome_parlamentar:
             names.append(f"nome_parlamentar='{nome_parlamentar}'")
         name_info = " (" + ", ".join(names) + ")" if names else ""
-        
-        raise ValueError(f"Deputy with cadId {cad_id} not found in database using any matching strategy{name_info}")
-    
-    def _record_identity_mapping(self, old_cad_id: int, new_cad_id: int, deputy_name: str):
+
+        raise ValueError(
+            f"Deputy with cadId {cad_id} not found in database using any matching strategy{name_info}"
+        )
+
+    def _record_identity_mapping(
+        self, old_cad_id: int, new_cad_id: int, deputy_name: str
+    ):
         """Record an identity mapping between old and new cadastral IDs."""
-        # Check if mapping already exists
+        # Check if mapping already exists in database
         existing_mapping = (
             self.session.query(DeputyIdentityMapping)
             .filter(
                 DeputyIdentityMapping.old_cad_id == old_cad_id,
-                DeputyIdentityMapping.new_cad_id == new_cad_id
+                DeputyIdentityMapping.new_cad_id == new_cad_id,
             )
             .first()
         )
-        
-        if not existing_mapping:
-            mapping = DeputyIdentityMapping(
-                old_cad_id=old_cad_id,
-                new_cad_id=new_cad_id,
-                deputy_name=deputy_name,
-                confidence_score=90,  # Discovered via name matching
-                verified=False
-            )
-            self.session.add(mapping)
-            logger.info(f"Recorded new identity mapping: {old_cad_id} -> {new_cad_id} ({deputy_name})")
+
+        if existing_mapping:
+            logger.debug(f"Identity mapping {old_cad_id} -> {new_cad_id} already exists, skipping")
+            return
+
+        # Also check pending additions in the session to prevent duplicate adds
+        for obj in self.session.new:
+            if (isinstance(obj, DeputyIdentityMapping) and 
+                obj.old_cad_id == old_cad_id and obj.new_cad_id == new_cad_id):
+                logger.debug(f"Identity mapping {old_cad_id} -> {new_cad_id} already pending in session, skipping")
+                return
+
+        mapping = DeputyIdentityMapping(
+            old_cad_id=old_cad_id,
+            new_cad_id=new_cad_id,
+            deputy_name=deputy_name,
+            confidence_score=90,  # Discovered via name matching
+            verified=False,
+        )
+        self.session.add(mapping)
+        logger.info(
+            f"Recorded new identity mapping: {old_cad_id} -> {new_cad_id} ({deputy_name})"
+        )
 
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -513,22 +551,84 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
 
             # Get or create deputycad using robust matching
             nome_completo = self._get_text_value(record, "cadNomeCompleto")
-            deputy = self._find_deputy_robust(cad_id, nome_completo=nome_completo)
-            
-            # Update existing fields
-            deputy.nome_completo = nome_completo or deputy.nome_completo
-            deputy.sexo = self._get_text_value(record, "cadSexo") or deputy.sexo
-            deputy.profissao = (
-                self._get_text_value(record, "cadProfissao") or deputy.profissao
-            )
-            deputy.data_nascimento = (
-                self._parse_date(self._get_text_value(record, "cadDtNascimento"))
-                or deputy.data_nascimento
-            )
-            deputy.naturalidade = (
-                self._get_text_value(record, "cadNaturalidade")
-                or deputy.naturalidade
-            )
+
+            # TODO: associate data with cad_id instead of deputy.id
+            deputy = None
+
+            # Process Legislative Mandates (cadDeputadoLegis)
+            legislaturas = record.find("cadDeputadoLegis")
+            if legislaturas is not None:
+                for mandato in legislaturas.findall(
+                    "pt_ar_wsgode_objectos_DadosDeputadoLegis"
+                ):
+                    if mandato is None:
+                        continue
+
+                    leg_des = self._get_text_value(mandato, "legDes")
+                    ce_des = self._get_text_value(mandato, "ceDes")
+                    nome_parlamentar = self._get_text_value(
+                        mandato, "depNomeParlamentar"
+                    )
+                    deputy = self._find_deputy_robust(
+                        cad_id,
+                        nome_completo=nome_completo,
+                        nome_parlamentar=nome_parlamentar,
+                    )
+
+                    # Update existing fields
+                    deputy.nome_completo = nome_completo or deputy.nome_completo
+                    deputy.sexo = self._get_text_value(record, "cadSexo") or deputy.sexo
+                    deputy.profissao = (
+                        self._get_text_value(record, "cadProfissao") or deputy.profissao
+                    )
+                    deputy.data_nascimento = (
+                        self._parse_date(
+                            self._get_text_value(record, "cadDtNascimento")
+                        )
+                        or deputy.data_nascimento
+                    )
+                    deputy.naturalidade = (
+                        self._get_text_value(record, "cadNaturalidade")
+                        or deputy.naturalidade
+                    )
+
+                    if leg_des:
+                        # Check if already exists
+                        existing = (
+                            self.session.query(DeputadoMandatoLegislativo)
+                            .filter(
+                                DeputadoMandatoLegislativo.deputado_id == deputy.id,
+                                DeputadoMandatoLegislativo.leg_des == leg_des,
+                                DeputadoMandatoLegislativo.ce_des == ce_des,
+                            )
+                            .first()
+                        )
+
+                        if not existing:
+                            mandate = DeputadoMandatoLegislativo(
+                                deputado_id=deputy.id,
+                                dep_nome_parlamentar=nome_parlamentar,
+                                leg_des=leg_des,
+                                ce_des=ce_des,  # New I Legislature field
+                                par_sigla=self._get_text_value(mandato, "parSigla"),
+                                par_des=self._get_text_value(mandato, "parDes"),
+                                gp_sigla=self._get_text_value(
+                                    mandato, "gpSigla"
+                                ),  # New I Legislature field
+                                gp_des=self._get_text_value(
+                                    mandato, "gpDes"
+                                ),  # New I Legislature field
+                                ind_des=self._get_text_value(
+                                    mandato, "indDes"
+                                ),  # New I Legislature field
+                                url_video_biografia=self._get_text_value(
+                                    mandato, "urlVideoBiografia"
+                                ),  # New I Legislature field
+                                ind_data=self._parse_date(
+                                    self._get_text_value(mandato, "indData")
+                                ),  # New I Legislature field
+                            )
+                            self.session.add(mandate)
 
             # Process Academic Qualifications (cadHabilitacoes)
             habilitacoes = record.find("cadHabilitacoes")
@@ -762,57 +862,6 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         )
                         self.session.add(atividade)
 
-            # Process Legislative Mandates (cadDeputadoLegis)
-            legislaturas = record.find("cadDeputadoLegis")
-            if legislaturas is not None:
-                for mandato in legislaturas.findall(
-                    "pt_ar_wsgode_objectos_DadosDeputadoLegis"
-                ):
-                    if mandato is None:
-                        continue
-                    leg_des = self._get_text_value(mandato, "legDes")
-                    ce_des = self._get_text_value(mandato, "ceDes")
-
-                    if leg_des:
-                        # Check if already exists
-                        existing = (
-                            self.session.query(DeputadoMandatoLegislativo)
-                            .filter(
-                                DeputadoMandatoLegislativo.deputado_id == deputy.id,
-                                DeputadoMandatoLegislativo.leg_des == leg_des,
-                                DeputadoMandatoLegislativo.ce_des == ce_des,
-                            )
-                            .first()
-                        )
-
-                        if not existing:
-                            mandate = DeputadoMandatoLegislativo(
-                                deputado_id=deputy.id,
-                                dep_nome_parlamentar=self._get_text_value(
-                                    mandato, "depNomeParlamentar"
-                                ),
-                                leg_des=leg_des,
-                                ce_des=ce_des,  # New I Legislature field
-                                par_sigla=self._get_text_value(mandato, "parSigla"),
-                                par_des=self._get_text_value(mandato, "parDes"),
-                                gp_sigla=self._get_text_value(
-                                    mandato, "gpSigla"
-                                ),  # New I Legislature field
-                                gp_des=self._get_text_value(
-                                    mandato, "gpDes"
-                                ),  # New I Legislature field
-                                ind_des=self._get_text_value(
-                                    mandato, "indDes"
-                                ),  # New I Legislature field
-                                url_video_biografia=self._get_text_value(
-                                    mandato, "urlVideoBiografia"
-                                ),  # New I Legislature field
-                                ind_data=self._parse_date(
-                                    self._get_text_value(mandato, "indData")
-                                ),  # New I Legislature field
-                            )
-                            self.session.add(mandate)
-
             return True
 
         except Exception as e:
@@ -870,7 +919,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             # Get or create deputy using robust matching
             nome_completo = self._get_text_value(record, "CadNomeCompleto")
             deputy = self._find_deputy_robust(cad_id, nome_completo=nome_completo)
-            
+
             # Update existing fields
             deputy.nome_completo = nome_completo or deputy.nome_completo
             deputy.sexo = self._get_text_value(record, "CadSexo") or deputy.sexo
@@ -882,8 +931,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 or deputy.data_nascimento
             )
             deputy.naturalidade = (
-                self._get_text_value(record, "CadNaturalidade")
-                or deputy.naturalidade
+                self._get_text_value(record, "CadNaturalidade") or deputy.naturalidade
             )
 
             # Process Academic Qualifications (CadHabilitacoes)
