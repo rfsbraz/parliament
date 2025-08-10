@@ -92,19 +92,11 @@ class IntervencoesMapper(SchemaMapper):
             'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intNr',
             'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intDt',
             'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intTp',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intTpdesc',
             'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intQual',
             'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intSumario',
             'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intResumo',
             'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intFaseSL',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.debTp',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.debTpdesc',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.debId',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.debDes',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.debFase',
             'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.ativId',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.ativTp',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.ativTpdesc',
             
             # Legacy field mappings (for backward compatibility)
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Id',
@@ -116,7 +108,6 @@ class IntervencoesMapper(SchemaMapper):
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Sessao',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Qualidade',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.FaseSessao',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.FaseDebate',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.IdDebate',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Debate',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadeId',
@@ -371,13 +362,7 @@ class IntervencoesMapper(SchemaMapper):
                 sumario_elem = intervencao.find('Sumario')
                 resumo_elem = intervencao.find('Resumo')
                 atividade_id_elem = intervencao.find('ActividadeId')
-                atividade_tipo_elem = None
-                atividade_tipo_desc_elem = None
-                debate_tipo_elem = None
-                debate_tipo_desc_elem = None
                 id_debate_elem = intervencao.find('IdDebate')
-                debate_desc_elem = intervencao.find('Debate')
-                debate_fase_elem = intervencao.find('FaseDebate')
             
             if id_elem is None:
                 logger.warning("Intervention missing required ID field, skipping")
@@ -388,21 +373,7 @@ class IntervencoesMapper(SchemaMapper):
                 if intervencao_id is not None:
                     intervencao_id = int(intervencao_id)
                 
-                # Parse and translate coded values using our translators
-                tipo_intervencao_code = tipo_elem.text if tipo_elem is not None else None
-                tipo_intervencao_desc = tipo_desc_elem.text if tipo_desc_elem is not None else None
-                if not tipo_intervencao_desc and tipo_intervencao_code:
-                    tipo_intervencao_desc = self.translator.intervention_type(tipo_intervencao_code)
-                    
-                debate_tipo_code = debate_tipo_elem.text if debate_tipo_elem is not None else None
-                debate_tipo_desc = debate_tipo_desc_elem.text if debate_tipo_desc_elem is not None else None
-                if not debate_tipo_desc and debate_tipo_code:
-                    debate_tipo_desc = self.translator.debate_type(debate_tipo_code)
-                    
-                atividade_tipo_code = atividade_tipo_elem.text if atividade_tipo_elem is not None else None
-                atividade_tipo_desc = atividade_tipo_desc_elem.text if atividade_tipo_desc_elem is not None else None
-                if not atividade_tipo_desc and atividade_tipo_code:
-                    atividade_tipo_desc = self.translator.activity_type(atividade_tipo_code)
+                # No translation needed for legacy structure - TipoIntervencao contains the description directly
                 
                 # Parse date
                 data_reuniao = None
@@ -420,22 +391,15 @@ class IntervencoesMapper(SchemaMapper):
                     # Update existing intervention
                     existing.legislatura_numero = legislatura_elem.text if legislatura_elem is not None else None
                     existing.sessao_numero = sessao_elem.text if sessao_elem is not None else None
-                    existing.numero = DataValidationUtils.safe_float_convert(numero_elem.text) if numero_elem is not None else None
-                    existing.tipo_intervencao = tipo_intervencao_code
-                    existing.tipo_intervencao_desc = tipo_intervencao_desc
+                    # numero field does not exist in legacy XML structure
+                    existing.tipo_intervencao = tipo_elem.text if tipo_elem is not None else None
                     existing.data_reuniao_plenaria = data_reuniao
                     existing.qualidade = qualidade_elem.text if qualidade_elem is not None else None
                     existing.fase_sessao = fase_sessao_elem.text if fase_sessao_elem is not None else None
                     existing.sumario = sumario_elem.text if sumario_elem is not None else None
                     existing.resumo = resumo_elem.text if resumo_elem is not None else None
                     existing.atividade_id = DataValidationUtils.safe_float_convert(atividade_id_elem.text) if atividade_id_elem is not None else None
-                    existing.atividade_tipo = atividade_tipo_code
-                    existing.atividade_tipo_desc = atividade_tipo_desc
-                    existing.debate_tipo = debate_tipo_code
-                    existing.debate_tipo_desc = debate_tipo_desc
                     existing.id_debate = DataValidationUtils.safe_float_convert(id_debate_elem.text) if id_debate_elem is not None else None
-                    existing.debate_descricao = debate_desc_elem.text if debate_desc_elem is not None else None
-                    existing.debate_fase = debate_fase_elem.text if debate_fase_elem is not None else None
                     existing.legislatura_id = legislatura.id
                 else:
                     # Create new intervention record
@@ -443,22 +407,15 @@ class IntervencoesMapper(SchemaMapper):
                         intervencao_id=intervencao_id,
                         legislatura_numero=legislatura_elem.text if legislatura_elem is not None else None,
                         sessao_numero=sessao_elem.text if sessao_elem is not None else None,
-                        numero=DataValidationUtils.safe_float_convert(numero_elem.text) if numero_elem is not None else None,
-                        tipo_intervencao=tipo_intervencao_code,
-                        tipo_intervencao_desc=tipo_intervencao_desc,
+                        # numero field does not exist in legacy XML structure
+                        tipo_intervencao=tipo_elem.text if tipo_elem is not None else None,
                         data_reuniao_plenaria=data_reuniao,
                         qualidade=qualidade_elem.text if qualidade_elem is not None else None,
                         fase_sessao=fase_sessao_elem.text if fase_sessao_elem is not None else None,
                         sumario=sumario_elem.text if sumario_elem is not None else None,
                         resumo=resumo_elem.text if resumo_elem is not None else None,
                         atividade_id=DataValidationUtils.safe_float_convert(atividade_id_elem.text) if atividade_id_elem is not None else None,
-                        atividade_tipo=atividade_tipo_code,
-                        atividade_tipo_desc=atividade_tipo_desc,
-                        debate_tipo=debate_tipo_code,
-                        debate_tipo_desc=debate_tipo_desc,
                         id_debate=DataValidationUtils.safe_float_convert(id_debate_elem.text) if id_debate_elem is not None else None,
-                        debate_descricao=debate_desc_elem.text if debate_desc_elem is not None else None,
-                        debate_fase=debate_fase_elem.text if debate_fase_elem is not None else None,
                         legislatura_id=legislatura.id
                     )
                     self.session.add(intervention)

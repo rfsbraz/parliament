@@ -22,6 +22,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects import mysql
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -5889,17 +5890,17 @@ class IntervencaoParlamentar(Base):
     legislatura_numero = Column(String(50), comment="Legislature number (pubLg)")
     sessao_numero = Column(String(50), comment="Legislative session number (pubSl)")
     tipo_intervencao = Column(
-        String(200), comment="Intervention type (tinDs) - human readable description"
+        String(200), comment="Intervention type description (TipoIntervencao from XML)"
     )
-    data_reuniao_plenaria = Column(Date, comment="Plenary meeting date (pubDtreu)")
-    qualidade = Column(String(100), comment="Intervention quality/context")
+    data_reuniao_plenaria = Column(Date, comment="Plenary meeting date (DataReuniaoPlenaria)")
+    qualidade = Column(String(100), comment="Intervention quality/context (Qualidade)")
     fase_sessao = Column(
-        String(100), comment="Session phase when intervention occurred"
+        String(100), comment="Session phase when intervention occurred (FaseSessao)"
     )
-    sumario = Column(Text, comment="Intervention summary (intSu)")
-    resumo = Column(Text, comment="Intervention abstract/resume (intTe)")
-    atividade_id = Column(Integer, comment="Related activity identifier")
-    id_debate = Column(Integer, comment="Related debate identifier")
+    sumario = Column(Text, comment="Intervention summary (Sumario)")
+    resumo = Column(Text, comment="Intervention abstract/resume (Resumo)")
+    atividade_id = Column(Integer, comment="Related activity identifier (ActividadeId)")
+    id_debate = Column(Integer, comment="Related debate identifier (IdDebate)")
 
     # System tracking
     created_at = Column(
@@ -8454,10 +8455,10 @@ class OrcamentoEstadoArtigo(Base):
     # Article identification
     artigo_id = Column(Integer)  # XML: ID_Art (current format)
     id_pai = Column(Integer)  # XML: ID_Pai (current format)
-    numero = Column(String(50))  # XML: Artigo/Numero
-    tipo = Column(String(50))  # XML: Tipo (current format)
-    titulo = Column(Text)  # XML: Titulo
-    texto = Column(Text)  # XML: Texto
+    numero = Column(String(200))  # XML: Artigo/Numero (can be long titles like "LISTA I (BENS E SERVIÇOS...)")
+    tipo = Column(String(100))  # XML: Tipo (current format)
+    titulo = Column(Text().with_variant(mysql.LONGTEXT(), 'mysql'))  # XML: Titulo
+    texto = Column(Text().with_variant(mysql.LONGTEXT(), 'mysql'))  # XML: Texto
     estado = Column(String(100))  # XML: Estado
 
     # Metadata

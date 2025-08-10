@@ -802,8 +802,8 @@ class OrcamentoEstadoMapper(SchemaMapper):
                         descricao=descricoes,
                         sub_descricao=sub_descricao,
                         resultado=resultado,
-                        diplomas_terceiros=diplomas_terceiros,
-                        grupos_parlamentares=grupos_parlamentares,
+                        diplomas_terceiros_texto=diplomas_terceiros,
+                        grupos_parlamentares_texto=grupos_parlamentares,
                     )
                     self.session.add(votacao_obj)
                     self.processed_votes += 1
@@ -880,7 +880,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         try:
             # Process Artigos (Articles)
             artigos_elem = item.find("Artigos")
-            if artigos_elem is not None:
+            if artigos_elem is not None and len(artigos_elem) > 0:
                 for artigo_elem in artigos_elem.findall("Artigo"):
                     artigo_id = DataValidationUtils.safe_float_convert(
                         self._get_text_value(artigo_elem, "ID_Art")
@@ -909,7 +909,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
 
             # Process PropostasDeAlteracao (Amendment Proposals within items)
             propostas_elem = item.find("PropostasDeAlteracao")
-            if propostas_elem is not None:
+            if propostas_elem is not None and len(propostas_elem) > 0:
                 for proposta_elem in propostas_elem.findall("Proposta"):
                     proposta_id = DataValidationUtils.safe_float_convert(
                         self._get_text_value(proposta_elem, "ID_PA")
@@ -950,7 +950,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
 
             # Process DiplomasaModificar (Diplomas to Modify)
             diplomas_elem = item.find("DiplomasaModificar")
-            if diplomas_elem is not None:
+            if diplomas_elem is not None and len(diplomas_elem) > 0:
                 # Check both variants: DiplomaModificar and DiplomaaModificar
                 diploma_elements = diplomas_elem.findall(
                     "DiplomaModificar"
@@ -1091,7 +1091,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
 
             # Process IniciativasMapas (Initiative Maps)
             iniciativas_elem = item.find("IniciativasMapas")
-            if iniciativas_elem is not None:
+            if iniciativas_elem is not None and len(iniciativas_elem) > 0:
                 for iniciativa_elem in iniciativas_elem.findall("IniciativaMapa"):
                     numero = self._get_text_value(iniciativa_elem, "MapasNumero")
                     titulo = self._get_text_value(iniciativa_elem, "MapasTitulo")
@@ -1110,7 +1110,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
 
             # Process Votacoes (Voting Records)
             votacoes_elem = item.find("Votacoes")
-            if votacoes_elem is not None:
+            if votacoes_elem is not None and len(votacoes_elem) > 0:
                 for votacao_elem in votacoes_elem.findall("Votacao"):
                     data_str = self._get_text_value(votacao_elem, "Data")
                     descricoes = self._get_text_value(votacao_elem, "Descricoes")
@@ -1185,15 +1185,15 @@ class OrcamentoEstadoMapper(SchemaMapper):
                         descricao=descricoes,
                         sub_descricao=sub_descricao,
                         resultado=resultado,
-                        diplomas_terceiros=diplomas_terceiros,
-                        grupos_parlamentares=grupos_parlamentares,
+                        diplomas_terceiros_texto=diplomas_terceiros,
+                        grupos_parlamentares_texto=grupos_parlamentares,
                     )
                     self.session.add(votacao_obj)
                     self.processed_votes += 1
 
             # Process RequerimentosDeAvocacao (Avocation Requests)
             requerimentos_elem = item.find("RequerimentosDeAvocacao")
-            if requerimentos_elem is not None:
+            if requerimentos_elem is not None and len(requerimentos_elem) > 0:
                 for requerimento_elem in requerimentos_elem.findall(
                     "RequerimentoDeAvocacao"
                 ):
@@ -1216,7 +1216,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
                     requerimento_obj = OrcamentoEstadoRequerimentoAvocacao(
                         item_id=item_obj.id,
                         descricao=descricao,
-                        data_requerimento=data_requerimento,
+                        data_avocacao=data_requerimento,  # Model uses data_avocacao, not data_requerimento
                         titulo=titulo,
                         estado=estado,
                         ficheiro_url=ficheiro,
