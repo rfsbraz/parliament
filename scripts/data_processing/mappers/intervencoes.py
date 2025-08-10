@@ -73,32 +73,15 @@ class IntervencoesMapper(SchemaMapper):
     
     def get_expected_fields(self) -> Set[str]:
         """
-        Define expected XML fields based on official Parliament documentation (December 2017).
-        Maps complete Intervencoes_DadosPesquisaIntervencoesOut structure.
+        Define expected XML fields based on actual XML structure processed.
+        Only includes legacy structure fields that are actually present in XML files.
         """
         return {
-            # Root structure (official spec)
-            'Intervencoes_DadosPesquisaIntervencoesOut',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut',
-            
-            # Legacy structure (for backward compatibility)
+            # Root structure
             'ArrayOfDadosPesquisaIntervencoesOut',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut',
             
-            # Main intervention fields (IntervencoesOut structure)
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intId',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intLeg',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intSL',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intNr',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intDt',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intTp',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intQual',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intSumario',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intResumo',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.intFaseSL',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.ativId',
-            
-            # Legacy field mappings (for backward compatibility)
+            # Main intervention fields
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Id',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DataReuniaoPlenaria',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.TipoIntervencao',
@@ -110,60 +93,27 @@ class IntervencoesMapper(SchemaMapper):
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.FaseSessao',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.IdDebate',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Debate',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.FaseDebate',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadeId',
             
-            # Deputy fields (DeputadosOut structure)
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Deputados',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Deputados.DeputadosOut',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Deputados.DeputadosOut.depCadId',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Deputados.DeputadosOut.depNomeParlamentar',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Deputados.DeputadosOut.depNomeCompleto',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Deputados.DeputadosOut.depGP',
-            
-            # Legacy deputy fields
+            # Deputy fields
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados.idCadastro',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados.nome',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Deputados.GP',
             
-            # Government members (MembroGovernoOut structure)
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.MembrosGoverno',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.MembrosGoverno.MembroGovernoOut',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.MembrosGoverno.MembroGovernoOut.memGovNome',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.MembrosGoverno.MembroGovernoOut.memGovCargo',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.MembrosGoverno.MembroGovernoOut.memGovNumero',
-            
-            # Legacy government members
+            # Government members
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno.nome',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno.cargo',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.MembrosGoverno.governo',
             
-            # Guests (ConvidadoOut structure)
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Convidados',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Convidados.ConvidadoOut',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Convidados.ConvidadoOut.convNome',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Convidados.ConvidadoOut.convCargo',
-            
-            # Legacy guests
+            # Guests (usually empty)
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Convidados',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Convidados.nome',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Convidados.cargo',
             
-            # Publication fields (PublicacaoOut structure)
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Publicacao',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Publicacao.PublicacaoOut',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Publicacao.PublicacaoOut.pubDt',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Publicacao.PublicacaoOut.pubLeg',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Publicacao.PublicacaoOut.pubNr',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Publicacao.PublicacaoOut.pubSL',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Publicacao.PublicacaoOut.pubTp',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Publicacao.PublicacaoOut.pubTipo',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Publicacao.PublicacaoOut.pubIdInt',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Publicacao.PublicacaoOut.pubURL',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.Publicacao.PublicacaoOut.pubPag',
-            
-            # Legacy publication fields
+            # Publication fields
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt',
@@ -177,51 +127,27 @@ class IntervencoesMapper(SchemaMapper):
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string',
             
-            # Related activities (AtividadeRelacionadaOut structure)
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.AtividadesRelacionadas',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.AtividadesRelacionadas.AtividadeRelacionadaOut',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.AtividadesRelacionadas.AtividadeRelacionadaOut.ativRelId',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.AtividadesRelacionadas.AtividadeRelacionadaOut.ativRelTp',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.AtividadesRelacionadas.AtividadeRelacionadaOut.ativRelTpDesc',
-            
-            # Legacy related activities
+            # Related activities
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadesRelacionadas',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadesRelacionadas.id',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.ActividadesRelacionadas.tipo',
             
-            # Initiatives (IniciativasRelacionadasOut structure)
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.IniciativasRelacionadas',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.IniciativasRelacionadas.IniciativasRelacionadasOut',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.IniciativasRelacionadas.IniciativasRelacionadasOut.iniId',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.IniciativasRelacionadas.IniciativasRelacionadasOut.iniTp',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.IniciativasRelacionadas.IniciativasRelacionadasOut.iniTpDesc',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.IniciativasRelacionadas.IniciativasRelacionadasOut.iniFase',
-            
-            # Legacy initiatives
+            # Initiatives
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut.id',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut.tipo',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.Iniciativas.pt_gov_ar_objectos_intervencoes_IniciativasOut.fase',
             
-            # Audiovisual data (DadosAudiovisualOut structure)
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.DadosAudiovisual',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.DadosAudiovisual.DadosAudiovisualOut',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.DadosAudiovisual.DadosAudiovisualOut.audDuracao',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.DadosAudiovisual.DadosAudiovisualOut.audAssunto',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.DadosAudiovisual.DadosAudiovisualOut.audURL',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.DadosAudiovisual.DadosAudiovisualOut.audIntTp',
-            'Intervencoes_DadosPesquisaIntervencoesOut.IntervencoesOut.DadosAudiovisual.DadosAudiovisualOut.audIntTpDesc',
-            
-            # Legacy audiovisual data
+            # Audiovisual data
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.duracao',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.assunto',
-            'ArrayOfDadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.url',
+            'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.url',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.DadosAudiovisual.pt_gov_ar_objectos_intervencoes_DadosAudiovisualOut.tipoIntervencao',
             
-            # Legacy audiovisual structure (for backward compatibility)
+            # Legacy audiovisual structure
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.VideoAudio',
             'ArrayOfDadosPesquisaIntervencoesOut.DadosPesquisaIntervencoesOut.VideoAudio.VideoUrl'
         }
@@ -230,8 +156,7 @@ class IntervencoesMapper(SchemaMapper):
         """
         Map parliamentary interventions to database with comprehensive field processing
         
-        Supports both official structure (Intervencoes_DadosPesquisaIntervencoesOut)
-        and legacy structure (ArrayOfDadosPesquisaIntervencoesOut) for backward compatibility.
+        Processes legacy structure (ArrayOfDadosPesquisaIntervencoesOut) found in actual XML files.
         
         Args:
             xml_root: Root XML element 
@@ -262,18 +187,9 @@ class IntervencoesMapper(SchemaMapper):
             
             logger.info(f"Processing interventions from {filename} (Legislatura {legislatura_sigla})")
             
-            # Determine XML structure - check for official vs legacy format
-            intervention_elements = []
-            
-            # Try official structure first
-            if xml_root.tag == 'Intervencoes_DadosPesquisaIntervencoesOut':
-                intervention_elements = xml_root.findall('IntervencoesOut')
-                logger.info(f"Using official XML structure: found {len(intervention_elements)} IntervencoesOut elements")
-            
-            # Fall back to legacy structure
-            if not intervention_elements:
-                intervention_elements = xml_root.findall('.//DadosPesquisaIntervencoesOut')
-                logger.info(f"Using legacy XML structure: found {len(intervention_elements)} DadosPesquisaIntervencoesOut elements")
+            # Process legacy XML structure
+            intervention_elements = xml_root.findall('.//DadosPesquisaIntervencoesOut')
+            logger.info(f"Found {len(intervention_elements)} DadosPesquisaIntervencoesOut elements")
             
             # Process each intervention record
             for intervencao in intervention_elements:
@@ -319,50 +235,23 @@ class IntervencoesMapper(SchemaMapper):
         """
         Process individual intervention record with proper normalized storage
         
-        Handles both official IntervencoesOut structure and legacy DadosPesquisaIntervencoesOut
-        structure for backward compatibility.
+        Handles legacy DadosPesquisaIntervencoesOut structure.
         """
         try:
-            # Determine structure type based on element tag
-            is_official_structure = intervencao.tag == 'IntervencoesOut'
-            
-            # Extract basic fields - try official structure first, then legacy
-            if is_official_structure:
-                # Official structure field mapping
-                id_elem = intervencao.find('intId')
-                legislatura_elem = intervencao.find('intLeg')
-                sessao_elem = intervencao.find('intSL')
-                numero_elem = intervencao.find('intNr')
-                data_elem = intervencao.find('intDt')
-                tipo_elem = intervencao.find('intTp')
-                tipo_desc_elem = intervencao.find('intTpdesc')
-                qualidade_elem = intervencao.find('intQual')
-                fase_sessao_elem = intervencao.find('intFaseSL')
-                sumario_elem = intervencao.find('intSumario')
-                resumo_elem = intervencao.find('intResumo')
-                atividade_id_elem = intervencao.find('ativId')
-                atividade_tipo_elem = intervencao.find('ativTp')
-                atividade_tipo_desc_elem = intervencao.find('ativTpdesc')
-                debate_tipo_elem = intervencao.find('debTp')
-                debate_tipo_desc_elem = intervencao.find('debTpdesc')
-                id_debate_elem = intervencao.find('debId')
-                debate_desc_elem = intervencao.find('debDes')
-                debate_fase_elem = intervencao.find('debFase')
-            else:
-                # Legacy structure field mapping
-                id_elem = intervencao.find('Id')
-                legislatura_elem = intervencao.find('Legislatura')
-                sessao_elem = intervencao.find('Sessao')
-                numero_elem = None
-                data_elem = intervencao.find('DataReuniaoPlenaria')
-                tipo_elem = intervencao.find('TipoIntervencao')
-                tipo_desc_elem = None
-                qualidade_elem = intervencao.find('Qualidade')
-                fase_sessao_elem = intervencao.find('FaseSessao')
-                sumario_elem = intervencao.find('Sumario')
-                resumo_elem = intervencao.find('Resumo')
-                atividade_id_elem = intervencao.find('ActividadeId')
-                id_debate_elem = intervencao.find('IdDebate')
+            # Extract basic fields from legacy structure
+            id_elem = intervencao.find('Id')
+            legislatura_elem = intervencao.find('Legislatura')
+            sessao_elem = intervencao.find('Sessao')
+            data_elem = intervencao.find('DataReuniaoPlenaria')
+            tipo_elem = intervencao.find('TipoIntervencao')
+            qualidade_elem = intervencao.find('Qualidade')
+            fase_sessao_elem = intervencao.find('FaseSessao')
+            sumario_elem = intervencao.find('Sumario')
+            resumo_elem = intervencao.find('Resumo')
+            atividade_id_elem = intervencao.find('ActividadeId')
+            id_debate_elem = intervencao.find('IdDebate')
+            debate_elem = intervencao.find('Debate')
+            fase_debate_elem = intervencao.find('FaseDebate')
             
             if id_elem is None:
                 logger.warning("Intervention missing required ID field, skipping")
@@ -391,7 +280,6 @@ class IntervencoesMapper(SchemaMapper):
                     # Update existing intervention
                     existing.legislatura_numero = legislatura_elem.text if legislatura_elem is not None else None
                     existing.sessao_numero = sessao_elem.text if sessao_elem is not None else None
-                    # numero field does not exist in legacy XML structure
                     existing.tipo_intervencao = tipo_elem.text if tipo_elem is not None else None
                     existing.data_reuniao_plenaria = data_reuniao
                     existing.qualidade = qualidade_elem.text if qualidade_elem is not None else None
@@ -400,6 +288,8 @@ class IntervencoesMapper(SchemaMapper):
                     existing.resumo = resumo_elem.text if resumo_elem is not None else None
                     existing.atividade_id = DataValidationUtils.safe_float_convert(atividade_id_elem.text) if atividade_id_elem is not None else None
                     existing.id_debate = DataValidationUtils.safe_float_convert(id_debate_elem.text) if id_debate_elem is not None else None
+                    existing.debate = debate_elem.text if debate_elem is not None else None
+                    existing.fase_debate = fase_debate_elem.text if fase_debate_elem is not None else None
                     existing.legislatura_id = legislatura.id
                 else:
                     # Create new intervention record
@@ -407,7 +297,6 @@ class IntervencoesMapper(SchemaMapper):
                         intervencao_id=intervencao_id,
                         legislatura_numero=legislatura_elem.text if legislatura_elem is not None else None,
                         sessao_numero=sessao_elem.text if sessao_elem is not None else None,
-                        # numero field does not exist in legacy XML structure
                         tipo_intervencao=tipo_elem.text if tipo_elem is not None else None,
                         data_reuniao_plenaria=data_reuniao,
                         qualidade=qualidade_elem.text if qualidade_elem is not None else None,
@@ -416,21 +305,22 @@ class IntervencoesMapper(SchemaMapper):
                         resumo=resumo_elem.text if resumo_elem is not None else None,
                         atividade_id=DataValidationUtils.safe_float_convert(atividade_id_elem.text) if atividade_id_elem is not None else None,
                         id_debate=DataValidationUtils.safe_float_convert(id_debate_elem.text) if id_debate_elem is not None else None,
+                        debate=debate_elem.text if debate_elem is not None else None,
+                        fase_debate=fase_debate_elem.text if fase_debate_elem is not None else None,
                         legislatura_id=legislatura.id
                     )
                     self.session.add(intervention)
                     self.session.flush()  # Get the ID
                     existing = intervention
                 
-                # Process related data using structure-aware methods
-                structure_type = 'official' if is_official_structure else 'legacy'
-                self._process_publicacao(intervencao, existing, structure_type)
-                self._process_deputados(intervencao, existing, structure_type)
-                self._process_membros_governo(intervencao, existing, structure_type)
-                self._process_convidados(intervencao, existing, structure_type)
-                self._process_atividades_relacionadas(intervencao, existing, structure_type)
-                self._process_iniciativas(intervencao, existing, structure_type)
-                self._process_audiovisual(intervencao, existing, filename, skip_video_processing, structure_type)
+                # Process related data
+                self._process_publicacao(intervencao, existing)
+                self._process_deputados(intervencao, existing)
+                self._process_membros_governo(intervencao, existing)
+                self._process_convidados(intervencao, existing)
+                self._process_atividades_relacionadas(intervencao, existing)
+                self._process_iniciativas(intervencao, existing)
+                self._process_audiovisual(intervencao, existing, filename, skip_video_processing)
                 
                 return True
                 
@@ -442,56 +332,36 @@ class IntervencoesMapper(SchemaMapper):
             logger.error(f"Error processing intervention: {e}")
             return False
     
-    def _process_publicacao(self, intervencao: ET.Element, intervention: IntervencaoParlamentar, structure_type: str = 'legacy'):
+    def _process_publicacao(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
         """
-        Process publication data
+        Process publication data from legacy XML structure
         
         Args:
             intervencao: XML element containing intervention data
             intervention: IntervencaoParlamentar instance
-            structure_type: 'official' or 'legacy' to determine field mapping
         """
         publicacao_elem = intervencao.find('Publicacao')
         if publicacao_elem is not None:
-            pub_dados_elem = None
-            
-            if structure_type == 'official':
-                pub_dados_elem = publicacao_elem.find('PublicacaoOut')
-            else:
-                pub_dados_elem = publicacao_elem.find('pt_gov_ar_objectos_PublicacoesOut')
+            pub_dados_elem = publicacao_elem.find('pt_gov_ar_objectos_PublicacoesOut')
                 
             if pub_dados_elem is not None:
-                # Extract publication fields based on structure type
-                if structure_type == 'official':
-                    pub_numero = pub_dados_elem.find('pubNr')
-                    pub_tipo = pub_dados_elem.find('pubTipo')
-                    pub_tp = pub_dados_elem.find('pubTp')
-                    pub_leg = pub_dados_elem.find('pubLeg')
-                    pub_sl = pub_dados_elem.find('pubSL')
-                    pub_data = pub_dados_elem.find('pubDt')
-                    pag_elem = pub_dados_elem.find('pubPag')
-                    id_interno = pub_dados_elem.find('pubIdInt')
-                    url_diario = pub_dados_elem.find('pubURL')
-                else:
-                    pub_numero = pub_dados_elem.find('pubNr')
-                    pub_tipo = pub_dados_elem.find('pubTipo')
-                    pub_tp = pub_dados_elem.find('pubTp')
-                    pub_leg = pub_dados_elem.find('pubLeg')
-                    pub_sl = pub_dados_elem.find('pubSL')
-                    pub_data = pub_dados_elem.find('pubdt')
-                    pag_elem = pub_dados_elem.find('pag')
-                    id_interno = pub_dados_elem.find('idInt')
-                    url_diario = pub_dados_elem.find('URLDiario')
+                # Extract publication fields from legacy structure
+                pub_numero = pub_dados_elem.find('pubNr')
+                pub_tipo = pub_dados_elem.find('pubTipo')
+                pub_tp = pub_dados_elem.find('pubTp')
+                pub_leg = pub_dados_elem.find('pubLeg')
+                pub_sl = pub_dados_elem.find('pubSL')
+                pub_data = pub_dados_elem.find('pubdt')
+                pag_elem = pub_dados_elem.find('pag')
+                id_interno = pub_dados_elem.find('idInt')
+                url_diario = pub_dados_elem.find('URLDiario')
                 
                 # Handle page numbers (can be nested in legacy format)
                 paginas = None
                 if pag_elem is not None:
-                    if structure_type == 'legacy':
-                        string_elem = pag_elem.find('string')
-                        if string_elem is not None:
-                            paginas = string_elem.text
-                        else:
-                            paginas = pag_elem.text
+                    string_elem = pag_elem.find('string')
+                    if string_elem is not None:
+                        paginas = string_elem.text
                     else:
                         paginas = pag_elem.text
                 
@@ -516,122 +386,91 @@ class IntervencoesMapper(SchemaMapper):
                 self.session.add(publicacao)
                 self.processed_publications += 1
     
-    def _process_deputados(self, intervencao: ET.Element, intervention: IntervencaoParlamentar, structure_type: str = 'legacy'):
+    def _process_deputados(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
         """
-        Process deputy data
+        Process deputy data from legacy XML structure
         
         Args:
             intervencao: XML element containing intervention data
             intervention: IntervencaoParlamentar instance
-            structure_type: 'official' or 'legacy' to determine field mapping
         """
         deputados_elem = intervencao.find('Deputados')
         if deputados_elem is not None:
-            # Handle different structures
-            deputy_records = []
+            # Legacy structure - single deputy data directly under Deputados
+            id_cadastro_elem = deputados_elem.find('idCadastro')
+            nome_elem = deputados_elem.find('nome')
+            gp_elem = deputados_elem.find('GP')
             
-            if structure_type == 'official':
-                # Official structure may have multiple DeputadosOut elements
-                deputy_records = deputados_elem.findall('DeputadosOut')
-            else:
-                # Legacy structure - single deputy data directly under Deputados
-                deputy_records = [deputados_elem]
-            
-            for deputy_elem in deputy_records:
-                if structure_type == 'official':
-                    id_cadastro_elem = deputy_elem.find('depCadId')
-                    nome_elem = deputy_elem.find('depNomeParlamentar')
-                    nome_completo_elem = deputy_elem.find('depNomeCompleto')
-                    gp_elem = deputy_elem.find('depGP')
-                else:
-                    id_cadastro_elem = deputy_elem.find('idCadastro')
-                    nome_elem = deputy_elem.find('nome')
-                    nome_completo_elem = None
-                    gp_elem = deputy_elem.find('GP')
-                
-                # Only create record if there's actual deputy data
-                if (id_cadastro_elem is not None and id_cadastro_elem.text) or (nome_elem is not None and nome_elem.text):
-                    deputado = IntervencaoDeputado(
-                        intervencao_id=intervention.id,
-                        id_cadastro=DataValidationUtils.safe_float_convert(id_cadastro_elem.text) if id_cadastro_elem is not None else None,
-                        nome=nome_elem.text if nome_elem is not None else None,
-                        nome_completo=nome_completo_elem.text if nome_completo_elem is not None else None,
-                        gp=gp_elem.text if gp_elem is not None else None
-                    )
-                    self.session.add(deputado)
-                    self.processed_deputies += 1
+            # Only create record if there's actual deputy data
+            if (id_cadastro_elem is not None and id_cadastro_elem.text) or (nome_elem is not None and nome_elem.text):
+                deputado = IntervencaoDeputado(
+                    intervencao_id=intervention.id,
+                    id_cadastro=DataValidationUtils.safe_float_convert(id_cadastro_elem.text) if id_cadastro_elem is not None else None,
+                    nome=nome_elem.text if nome_elem is not None else None,
+                    gp=gp_elem.text if gp_elem is not None else None
+                )
+                self.session.add(deputado)
+                self.processed_deputies += 1
     
-    def _process_membros_governo(self, intervencao: ET.Element, intervention: IntervencaoParlamentar, structure_type: str = 'legacy'):
+    def _process_membros_governo(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
         """
-        Process government members data
+        Process government members data from legacy XML structure
         
         Args:
             intervencao: XML element containing intervention data
             intervention: IntervencaoParlamentar instance
-            structure_type: 'official' or 'legacy' to determine field mapping
         """
         membros_elem = intervencao.find('MembrosGoverno')
         if membros_elem is not None:
-            # Handle different structures
-            member_records = []
+            # Legacy structure - single member data directly under MembrosGoverno
+            nome_elem = membros_elem.find('nome')
+            cargo_elem = membros_elem.find('cargo')
+            governo_elem = membros_elem.find('governo')
             
-            if structure_type == 'official':
-                member_records = membros_elem.findall('MembroGovernoOut')
-            else:
-                member_records = [membros_elem]
-            
-            for member_elem in member_records:
-                if structure_type == 'official':
-                    nome_elem = member_elem.find('memGovNome')
-                    cargo_elem = member_elem.find('memGovCargo')
-                    governo_elem = member_elem.find('memGovNumero')
-                else:
-                    nome_elem = member_elem.find('nome')
-                    cargo_elem = member_elem.find('cargo')
-                    governo_elem = member_elem.find('governo')
-                
-                if (nome_elem is not None and nome_elem.text) or (cargo_elem is not None and cargo_elem.text):
-                    membro_governo = IntervencaoMembroGoverno(
-                        intervencao_id=intervention.id,
-                        nome=nome_elem.text if nome_elem is not None else None,
-                        cargo=cargo_elem.text if cargo_elem is not None else None,
-                        governo=governo_elem.text if governo_elem is not None else None
-                    )
-                    self.session.add(membro_governo)
-                    self.processed_government_members += 1
+            if (nome_elem is not None and nome_elem.text) or (cargo_elem is not None and cargo_elem.text):
+                membro_governo = IntervencaoMembroGoverno(
+                    intervencao_id=intervention.id,
+                    nome=nome_elem.text if nome_elem is not None else None,
+                    cargo=cargo_elem.text if cargo_elem is not None else None,
+                    governo=governo_elem.text if governo_elem is not None else None
+                )
+                self.session.add(membro_governo)
+                self.processed_government_members += 1
     
     def _process_convidados(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
-        """Process invited guests data"""
+        """Process invited guests data from legacy XML structure"""
         convidados_elem = intervencao.find('Convidados')
         if convidados_elem is not None:
             nome_elem = convidados_elem.find('nome')
             cargo_elem = convidados_elem.find('cargo')
             
-            if nome_elem is not None or cargo_elem is not None:
+            if (nome_elem is not None and nome_elem.text) or (cargo_elem is not None and cargo_elem.text):
                 convidado = IntervencaoConvidado(
                     intervencao_id=intervention.id,
                     nome=nome_elem.text if nome_elem is not None else None,
                     cargo=cargo_elem.text if cargo_elem is not None else None
                 )
                 self.session.add(convidado)
+                self.processed_guests += 1
     
     def _process_atividades_relacionadas(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
-        """Process related activities data"""
+        """Process related activities data from legacy XML structure"""
         atividades_elem = intervencao.find('ActividadesRelacionadas')
         if atividades_elem is not None:
             id_elem = atividades_elem.find('id')
             tipo_elem = atividades_elem.find('tipo')
             
-            if id_elem is not None or tipo_elem is not None:
+            if (id_elem is not None and id_elem.text) or (tipo_elem is not None and tipo_elem.text):
                 atividade = IntervencaoAtividadeRelacionada(
                     intervencao_id=intervention.id,
-                    atividade_id=self._safe_int(id_elem.text) if id_elem is not None else None,
+                    atividade_id=DataValidationUtils.safe_float_convert(id_elem.text) if id_elem is not None else None,
                     tipo=tipo_elem.text if tipo_elem is not None else None
                 )
                 self.session.add(atividade)
+                self.processed_activities += 1
     
     def _process_iniciativas(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
-        """Process initiatives data"""
+        """Process initiatives data from legacy XML structure"""
         iniciativas_elem = intervencao.find('Iniciativas')
         if iniciativas_elem is not None:
             init_dados_elem = iniciativas_elem.find('pt_gov_ar_objectos_intervencoes_IniciativasOut')
@@ -640,17 +479,18 @@ class IntervencoesMapper(SchemaMapper):
                 tipo_elem = init_dados_elem.find('tipo')
                 fase_elem = init_dados_elem.find('fase')
                 
-                if id_elem is not None or tipo_elem is not None:
+                if (id_elem is not None and id_elem.text) or (tipo_elem is not None and tipo_elem.text):
                     iniciativa = IntervencaoIniciativa(
                         intervencao_id=intervention.id,
-                        iniciativa_id=self._safe_int(id_elem.text) if id_elem is not None else None,
+                        iniciativa_id=DataValidationUtils.safe_float_convert(id_elem.text) if id_elem is not None else None,
                         tipo=tipo_elem.text if tipo_elem is not None else None,
                         fase=fase_elem.text if fase_elem is not None else None
                     )
                     self.session.add(iniciativa)
+                    self.processed_initiatives += 1
     
     def _process_audiovisual(self, intervencao: ET.Element, intervention: IntervencaoParlamentar, filename: str = None, skip_video_processing: bool = False):
-        """Process audiovisual data with thumbnail extraction"""
+        """Process audiovisual data with thumbnail extraction from legacy XML structure"""
         video_url = None
         thumbnail_url = None
         duracao = None
@@ -712,6 +552,7 @@ class IntervencoesMapper(SchemaMapper):
                 tipo_intervencao=tipo_intervencao
             )
             self.session.add(audiovisual)
+            self.processed_audiovisual += 1
     
     def _get_or_create_legislatura(self, sigla: str) -> Legislatura:
         """Get or create legislatura from sigla"""

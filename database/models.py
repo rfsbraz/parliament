@@ -374,23 +374,7 @@ class DadosCargoDeputado(Base):
 # =====================================================
 
 
-class DeputyActivity(Base):
-    __tablename__ = "deputy_activities"
-
-    id = Column(Integer, primary_key=True)
-    id_cadastro = Column(Integer, nullable=False)
-    legislatura_sigla = Column(String(20), nullable=False)
-    nome_deputado = Column(String(200))
-    partido_gp = Column(String(10))
-    xml_file_path = Column(String(500))
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-
-    # Relationships removed - these now link to AtividadeDeputado instead
-
-    __table_args__ = (
-        Index("idx_deputy_activities_cadastro_leg", "id_cadastro", "legislatura_sigla"),
-    )
+# DeputyActivity removed - unused legacy code
 
 
 # =====================================================
@@ -421,31 +405,8 @@ class DeputyInitiative(Base):
 
     # Relationships
     deputy_activity = relationship("AtividadeDeputado", back_populates="initiatives")
-    votes = relationship(
-        "DeputyInitiativeVote",
-        back_populates="initiative",
-        cascade="all, delete-orphan",
-    )
-    author_groups = relationship(
-        "DeputyInitiativeAuthorGroup",
-        back_populates="initiative",
-        cascade="all, delete-orphan",
-    )
-    author_elected = relationship(
-        "DeputyInitiativeAuthorElected",
-        back_populates="initiative",
-        cascade="all, delete-orphan",
-    )
-    guests = relationship(
-        "DeputyInitiativeGuest",
-        back_populates="initiative",
-        cascade="all, delete-orphan",
-    )
-    publications = relationship(
-        "DeputyInitiativePublication",
-        back_populates="initiative",
-        cascade="all, delete-orphan",
-    )
+    # Removed unused supporting model relationships:
+    # - votes, author_groups, author_elected, guests, publications
 
     __table_args__ = (
         Index("idx_deputy_initiatives_activity", "deputy_activity_id"),
@@ -453,82 +414,19 @@ class DeputyInitiative(Base):
     )
 
 
-class DeputyInitiativeVote(Base):
-    __tablename__ = "deputy_initiative_votes"
-
-    id = Column(Integer, primary_key=True)
-    initiative_id = Column(Integer, ForeignKey("deputy_initiatives.id"), nullable=False)
-    id_votacao = Column(String(50))
-    resultado = Column(String(50))
-    reuniao = Column(String(100))
-    unanime = Column(String(10))
-    data_votacao = Column(Date)
-    descricao = Column(Text)
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    initiative = relationship("DeputyInitiative", back_populates="votes")
+# DeputyInitiativeVote model removed - unused legacy code
 
 
-class DeputyInitiativeAuthorGroup(Base):
-    __tablename__ = "deputy_initiative_author_groups"
-
-    id = Column(Integer, primary_key=True)
-    initiative_id = Column(Integer, ForeignKey("deputy_initiatives.id"), nullable=False)
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    pais = Column(String(50))
-    honra = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    initiative = relationship("DeputyInitiative", back_populates="author_groups")
+# DeputyInitiativeAuthorGroup model removed - unused legacy code
 
 
-class DeputyInitiativeAuthorElected(Base):
-    __tablename__ = "deputy_initiative_author_elected"
-
-    id = Column(Integer, primary_key=True)
-    initiative_id = Column(Integer, ForeignKey("deputy_initiatives.id"), nullable=False)
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    pais = Column(String(50))
-    honra = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    initiative = relationship("DeputyInitiative", back_populates="author_elected")
+# DeputyInitiativeAuthorElected model removed - unused legacy code
 
 
-class DeputyInitiativeGuest(Base):
-    __tablename__ = "deputy_initiative_guests"
-
-    id = Column(Integer, primary_key=True)
-    initiative_id = Column(Integer, ForeignKey("deputy_initiatives.id"), nullable=False)
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    pais = Column(String(50))
-    honra = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    initiative = relationship("DeputyInitiative", back_populates="guests")
+# DeputyInitiativeGuest removed - unused legacy code
 
 
-class DeputyInitiativePublication(Base):
-    __tablename__ = "deputy_initiative_publications"
-
-    id = Column(Integer, primary_key=True)
-    initiative_id = Column(Integer, ForeignKey("deputy_initiatives.id"), nullable=False)
-    pub_nr = Column(String(50))
-    pub_tipo = Column(String(50))
-    pub_data = Column(Date)
-    url_diario = Column(String(500))
-    legislatura = Column(String(20))
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    initiative = relationship("DeputyInitiative", back_populates="publications")
+# DeputyInitiativePublication removed - unused legacy code
 
 
 # =====================================================
@@ -536,29 +434,7 @@ class DeputyInitiativePublication(Base):
 # =====================================================
 
 
-class DeputyIntervention(Base):
-    __tablename__ = "deputy_interventions"
-
-    id = Column(Integer, primary_key=True)
-    deputy_activity_id = Column(
-        Integer, ForeignKey("atividade_deputados.id"), nullable=False
-    )
-    id_intervencao = Column(Integer)
-    tipo = Column(String(50))
-    data_intervencao = Column(Date)
-    qualidade = Column(String(100))
-    sumario = Column(Text)
-    resumo = Column(Text)
-    fase_sessao = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    deputy_activity = relationship("AtividadeDeputado", back_populates="interventions")
-
-    __table_args__ = (
-        Index("idx_deputy_interventions_activity", "deputy_activity_id"),
-        Index("idx_deputy_interventions_data", "data_intervencao"),
-    )
+# DeputyIntervention model removed - unused legacy code
 
 
 # =====================================================
@@ -566,125 +442,23 @@ class DeputyIntervention(Base):
 # =====================================================
 
 
-class DeputyReport(Base):
-    __tablename__ = "deputy_reports"
-
-    id = Column(Integer, primary_key=True)
-    deputy_activity_id = Column(
-        Integer, ForeignKey("atividade_deputados.id"), nullable=False
-    )
-    id_relatorio = Column(Integer)
-    numero = Column(String(50))
-    tipo = Column(String(50))
-    desc_tipo = Column(String(200))
-    assunto = Column(Text)
-    legislatura = Column(String(20))
-    sessao = Column(String(20))
-    data_entrada = Column(Date)
-    data_agendamento_debate = Column(Date)
-    orgao_exterior = Column(String(200))
-    observacoes = Column(Text)
-    tipo_autor = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    deputy_activity = relationship("AtividadeDeputado", back_populates="reports")
-    votes = relationship(
-        "DeputyReportVote", back_populates="report", cascade="all, delete-orphan"
-    )
-    author_groups = relationship(
-        "DeputyReportAuthorGroup", back_populates="report", cascade="all, delete-orphan"
-    )
-    author_elected = relationship(
-        "DeputyReportAuthorElected",
-        back_populates="report",
-        cascade="all, delete-orphan",
-    )
-    guests = relationship(
-        "DeputyReportGuest", back_populates="report", cascade="all, delete-orphan"
-    )
-    publications = relationship(
-        "DeputyReportPublication", back_populates="report", cascade="all, delete-orphan"
-    )
-
-    __table_args__ = (
-        Index("idx_deputy_reports_activity", "deputy_activity_id"),
-        Index("idx_deputy_reports_data_entrada", "data_entrada"),
-    )
+# DeputyReport removed - unused legacy code
 
 
 # Report supporting tables (same pattern as initiatives)
-class DeputyReportVote(Base):
-    __tablename__ = "deputy_report_votes"
-
-    id = Column(Integer, primary_key=True)
-    report_id = Column(Integer, ForeignKey("deputy_reports.id"), nullable=False)
-    id_votacao = Column(String(50))
-    resultado = Column(String(50))
-    reuniao = Column(String(100))
-    unanime = Column(String(10))
-    data_votacao = Column(Date)
-    descricao = Column(Text)
-    created_at = Column(DateTime, default=func.now())
-
-    report = relationship("DeputyReport", back_populates="votes")
+# DeputyReportVote removed - unused legacy code
 
 
-class DeputyReportAuthorGroup(Base):
-    __tablename__ = "deputy_report_author_groups"
-
-    id = Column(Integer, primary_key=True)
-    report_id = Column(Integer, ForeignKey("deputy_reports.id"), nullable=False)
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    pais = Column(String(50))
-    honra = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    report = relationship("DeputyReport", back_populates="author_groups")
+# DeputyReportAuthorGroup removed - unused legacy code
 
 
-class DeputyReportAuthorElected(Base):
-    __tablename__ = "deputy_report_author_elected"
-
-    id = Column(Integer, primary_key=True)
-    report_id = Column(Integer, ForeignKey("deputy_reports.id"), nullable=False)
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    pais = Column(String(50))
-    honra = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    report = relationship("DeputyReport", back_populates="author_elected")
+# DeputyReportAuthorElected removed - unused legacy code
 
 
-class DeputyReportGuest(Base):
-    __tablename__ = "deputy_report_guests"
-
-    id = Column(Integer, primary_key=True)
-    report_id = Column(Integer, ForeignKey("deputy_reports.id"), nullable=False)
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    pais = Column(String(50))
-    honra = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    report = relationship("DeputyReport", back_populates="guests")
+# DeputyReportGuest removed - unused legacy code
 
 
-class DeputyReportPublication(Base):
-    __tablename__ = "deputy_report_publications"
-
-    id = Column(Integer, primary_key=True)
-    report_id = Column(Integer, ForeignKey("deputy_reports.id"), nullable=False)
-    pub_nr = Column(String(50))
-    pub_tipo = Column(String(50))
-    pub_data = Column(Date)
-    url_diario = Column(String(500))
-    legislatura = Column(String(20))
-    created_at = Column(DateTime, default=func.now())
-
-    report = relationship("DeputyReport", back_populates="publications")
+# DeputyReportPublication removed - unused legacy code
 
 
 # =====================================================
@@ -692,151 +466,23 @@ class DeputyReportPublication(Base):
 # =====================================================
 
 
-class DeputyParliamentaryActivity(Base):
-    __tablename__ = "deputy_parliamentary_activities"
-
-    id = Column(Integer, primary_key=True)
-    deputy_activity_id = Column(
-        Integer, ForeignKey("atividade_deputados.id"), nullable=False
-    )
-    id_atividade = Column(Integer)
-    numero = Column(String(50))
-    tipo = Column(String(50))
-    desc_tipo = Column(String(200))
-    assunto = Column(Text)
-    legislatura = Column(String(20))
-    sessao = Column(String(20))
-    data_entrada = Column(Date)
-    data_agendamento_debate = Column(Date)
-    orgao_exterior = Column(String(200))
-    observacoes = Column(Text)
-    tipo_autor = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    deputy_activity = relationship(
-        "AtividadeDeputado", back_populates="parliamentary_activities"
-    )
-    votes = relationship(
-        "DeputyParliamentaryActivityVote",
-        back_populates="activity",
-        cascade="all, delete-orphan",
-    )
-    author_groups = relationship(
-        "DeputyParliamentaryActivityAuthorGroup",
-        back_populates="activity",
-        cascade="all, delete-orphan",
-    )
-    author_elected = relationship(
-        "DeputyParliamentaryActivityAuthorElected",
-        back_populates="activity",
-        cascade="all, delete-orphan",
-    )
-    guests = relationship(
-        "DeputyParliamentaryActivityGuest",
-        back_populates="activity",
-        cascade="all, delete-orphan",
-    )
-    publications = relationship(
-        "DeputyParliamentaryActivityPublication",
-        back_populates="activity",
-        cascade="all, delete-orphan",
-    )
-
-    __table_args__ = (
-        Index("idx_deputy_parliamentary_activities_activity", "deputy_activity_id"),
-        Index("idx_deputy_parliamentary_activities_data_entrada", "data_entrada"),
-    )
+# DeputyParliamentaryActivity removed - unused legacy code
 
 
 # Parliamentary Activity supporting tables (same pattern)
-class DeputyParliamentaryActivityVote(Base):
-    __tablename__ = "deputy_parliamentary_activity_votes"
-
-    id = Column(Integer, primary_key=True)
-    activity_id = Column(
-        Integer, ForeignKey("deputy_parliamentary_activities.id"), nullable=False
-    )
-    id_votacao = Column(String(50))
-    resultado = Column(String(50))
-    reuniao = Column(String(100))
-    unanime = Column(String(10))
-    data_votacao = Column(Date)
-    descricao = Column(Text)
-    created_at = Column(DateTime, default=func.now())
-
-    activity = relationship("DeputyParliamentaryActivity", back_populates="votes")
+# DeputyParliamentaryActivityVote removed - unused legacy code
 
 
-class DeputyParliamentaryActivityAuthorGroup(Base):
-    __tablename__ = "deputy_parliamentary_activity_author_groups"
-
-    id = Column(Integer, primary_key=True)
-    activity_id = Column(
-        Integer, ForeignKey("deputy_parliamentary_activities.id"), nullable=False
-    )
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    pais = Column(String(50))
-    honra = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    activity = relationship(
-        "DeputyParliamentaryActivity", back_populates="author_groups"
-    )
+# DeputyParliamentaryActivityAuthorGroup removed - unused legacy code
 
 
-class DeputyParliamentaryActivityAuthorElected(Base):
-    __tablename__ = "deputy_parliamentary_activity_author_elected"
-
-    id = Column(Integer, primary_key=True)
-    activity_id = Column(
-        Integer, ForeignKey("deputy_parliamentary_activities.id"), nullable=False
-    )
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    pais = Column(String(50))
-    honra = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    activity = relationship(
-        "DeputyParliamentaryActivity", back_populates="author_elected"
-    )
+# DeputyParliamentaryActivityAuthorElected removed - unused legacy code
 
 
-class DeputyParliamentaryActivityGuest(Base):
-    __tablename__ = "deputy_parliamentary_activity_guests"
-
-    id = Column(Integer, primary_key=True)
-    activity_id = Column(
-        Integer, ForeignKey("deputy_parliamentary_activities.id"), nullable=False
-    )
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    pais = Column(String(50))
-    honra = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    activity = relationship("DeputyParliamentaryActivity", back_populates="guests")
+# DeputyParliamentaryActivityGuest removed - unused legacy code
 
 
-class DeputyParliamentaryActivityPublication(Base):
-    __tablename__ = "deputy_parliamentary_activity_publications"
-
-    id = Column(Integer, primary_key=True)
-    activity_id = Column(
-        Integer, ForeignKey("deputy_parliamentary_activities.id"), nullable=False
-    )
-    pub_nr = Column(String(50))
-    pub_tipo = Column(String(50))
-    pub_data = Column(Date)
-    url_diario = Column(String(500))
-    legislatura = Column(String(20))
-    created_at = Column(DateTime, default=func.now())
-
-    activity = relationship(
-        "DeputyParliamentaryActivity", back_populates="publications"
-    )
+# DeputyParliamentaryActivityPublication removed - unused legacy code
 
 
 # =====================================================
@@ -844,151 +490,23 @@ class DeputyParliamentaryActivityPublication(Base):
 # =====================================================
 
 
-class DeputyLegislativeData(Base):
-    __tablename__ = "deputy_legislative_data"
-
-    id = Column(Integer, primary_key=True)
-    deputy_activity_id = Column(
-        Integer, ForeignKey("atividade_deputados.id"), nullable=False
-    )
-    id_dados = Column(Integer)
-    numero = Column(String(50))
-    tipo = Column(String(50))
-    desc_tipo = Column(String(200))
-    assunto = Column(Text)
-    legislatura = Column(String(20))
-    sessao = Column(String(20))
-    data_entrada = Column(Date)
-    data_agendamento_debate = Column(Date)
-    orgao_exterior = Column(String(200))
-    observacoes = Column(Text)
-    tipo_autor = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    deputy_activity = relationship(
-        "AtividadeDeputado", back_populates="legislative_data"
-    )
-    votes = relationship(
-        "DeputyLegislativeDataVote",
-        back_populates="legislative_data",
-        cascade="all, delete-orphan",
-    )
-    author_groups = relationship(
-        "DeputyLegislativeDataAuthorGroup",
-        back_populates="legislative_data",
-        cascade="all, delete-orphan",
-    )
-    author_elected = relationship(
-        "DeputyLegislativeDataAuthorElected",
-        back_populates="legislative_data",
-        cascade="all, delete-orphan",
-    )
-    guests = relationship(
-        "DeputyLegislativeDataGuest",
-        back_populates="legislative_data",
-        cascade="all, delete-orphan",
-    )
-    publications = relationship(
-        "DeputyLegislativeDataPublication",
-        back_populates="legislative_data",
-        cascade="all, delete-orphan",
-    )
-
-    __table_args__ = (
-        Index("idx_deputy_legislative_data_activity", "deputy_activity_id"),
-        Index("idx_deputy_legislative_data_data_entrada", "data_entrada"),
-    )
+# DeputyLegislativeData removed - unused legacy code
 
 
 # Legislative Data supporting tables (same pattern)
-class DeputyLegislativeDataVote(Base):
-    __tablename__ = "deputy_legislative_data_votes"
-
-    id = Column(Integer, primary_key=True)
-    legislative_data_id = Column(
-        Integer, ForeignKey("deputy_legislative_data.id"), nullable=False
-    )
-    id_votacao = Column(String(50))
-    resultado = Column(String(50))
-    reuniao = Column(String(100))
-    unanime = Column(String(10))
-    data_votacao = Column(Date)
-    descricao = Column(Text)
-    created_at = Column(DateTime, default=func.now())
-
-    legislative_data = relationship("DeputyLegislativeData", back_populates="votes")
+# DeputyLegislativeDataVote removed - unused legacy code
 
 
-class DeputyLegislativeDataAuthorGroup(Base):
-    __tablename__ = "deputy_legislative_data_author_groups"
-
-    id = Column(Integer, primary_key=True)
-    legislative_data_id = Column(
-        Integer, ForeignKey("deputy_legislative_data.id"), nullable=False
-    )
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    pais = Column(String(50))
-    honra = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    legislative_data = relationship(
-        "DeputyLegislativeData", back_populates="author_groups"
-    )
+# DeputyLegislativeDataAuthorGroup removed - unused legacy code
 
 
-class DeputyLegislativeDataAuthorElected(Base):
-    __tablename__ = "deputy_legislative_data_author_elected"
-
-    id = Column(Integer, primary_key=True)
-    legislative_data_id = Column(
-        Integer, ForeignKey("deputy_legislative_data.id"), nullable=False
-    )
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    pais = Column(String(50))
-    honra = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    legislative_data = relationship(
-        "DeputyLegislativeData", back_populates="author_elected"
-    )
+# DeputyLegislativeDataAuthorElected removed - unused legacy code
 
 
-class DeputyLegislativeDataGuest(Base):
-    __tablename__ = "deputy_legislative_data_guests"
-
-    id = Column(Integer, primary_key=True)
-    legislative_data_id = Column(
-        Integer, ForeignKey("deputy_legislative_data.id"), nullable=False
-    )
-    nome = Column(String(200))
-    cargo = Column(String(100))
-    pais = Column(String(50))
-    honra = Column(String(100))
-    created_at = Column(DateTime, default=func.now())
-
-    legislative_data = relationship("DeputyLegislativeData", back_populates="guests")
+# DeputyLegislativeDataGuest removed - unused legacy code
 
 
-class DeputyLegislativeDataPublication(Base):
-    __tablename__ = "deputy_legislative_data_publications"
-
-    id = Column(Integer, primary_key=True)
-    legislative_data_id = Column(
-        Integer, ForeignKey("deputy_legislative_data.id"), nullable=False
-    )
-    pub_nr = Column(String(50))
-    pub_tipo = Column(String(50))
-    pub_data = Column(Date)
-    url_diario = Column(String(500))
-    legislatura = Column(String(20))
-    created_at = Column(DateTime, default=func.now())
-
-    legislative_data = relationship(
-        "DeputyLegislativeData", back_populates="publications"
-    )
+# DeputyLegislativeDataPublication removed - unused legacy code
 
 
 # =====================================================
@@ -2453,33 +1971,13 @@ class AtividadeDeputado(Base):
         doc="Initiatives presented by the deputy (IniciativasOut)",
     )
 
-    interventions = relationship(
-        "DeputyIntervention",
-        back_populates="deputy_activity",
-        cascade="all, delete-orphan",
-        doc="Parliamentary interventions (IntervencoesOut)",
-    )
+    # interventions relationship removed - DeputyIntervention model unused
 
-    reports = relationship(
-        "DeputyReport",
-        back_populates="deputy_activity",
-        cascade="all, delete-orphan",
-        doc="Reports where deputy acted as rapporteur (RelatoresOut)",
-    )
+    # reports relationship removed - DeputyReport model unused
 
-    parliamentary_activities = relationship(
-        "DeputyParliamentaryActivity",
-        back_populates="deputy_activity",
-        cascade="all, delete-orphan",
-        doc="Parliamentary activities (ActividadesParlamentaresOut)",
-    )
+    # parliamentary_activities relationship removed - DeputyParliamentaryActivity model unused
 
-    legislative_data = relationship(
-        "DeputyLegislativeData",
-        back_populates="deputy_activity",
-        cascade="all, delete-orphan",
-        doc="Legislative data related to deputy (DadosLegisDeputado)",
-    )
+    # legislative_data relationship removed - DeputyLegislativeData model unused
 
 
 class AtividadeDeputadoList(Base):
@@ -5167,7 +4665,7 @@ class IniciativaEventoComissaoVotacao(Base):
 
     id = Column(Integer, primary_key=True)
     comissao_id = Column(
-        Integer, ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
+        Integer, ForeignKey("iniciativas_eventos_comissoes.id"), nullable=True
     )
 
     # Committee voting fields from Comissao.Votacao.pt_gov_ar_objectos_VotacaoOut
@@ -5901,6 +5399,8 @@ class IntervencaoParlamentar(Base):
     resumo = Column(Text, comment="Intervention abstract/resume (Resumo)")
     atividade_id = Column(Integer, comment="Related activity identifier (ActividadeId)")
     id_debate = Column(Integer, comment="Related debate identifier (IdDebate)")
+    debate = Column(Text, comment="Debate description (Debate)")
+    fase_debate = Column(Text, comment="Debate phase (FaseDebate)")
 
     # System tracking
     created_at = Column(
