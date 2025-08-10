@@ -8276,9 +8276,9 @@ class OrcamentoEstadoItem(Base):
     # Core item identification
     item_id = Column(Integer, nullable=False, index=True)  # XML: ID
     id_pai = Column(Integer)  # XML: ID_Pai (parent item reference)
-    tipo = Column(String(10))  # XML: Tipo (1, 2, or 3)
+    tipo = Column(String(50))  # XML: Tipo (1, 2, or 3)
     tipo_desc = Column(String(200))  # Translated tipo value
-    numero = Column(String(50))  # XML: Numero
+    numero = Column(String(100))  # XML: Numero - Increased to accommodate long decree references
     titulo = Column(Text)  # XML: Titulo
     texto = Column(Text)  # XML: Texto
     estado = Column(String(100))  # XML: Estado

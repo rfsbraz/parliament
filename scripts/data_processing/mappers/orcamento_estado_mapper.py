@@ -128,11 +128,14 @@ class OrcamentoEstadoMapper(SchemaMapper):
             # Nested Numeros and Alineas structures within articles
             "PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros",
             "PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Numero",
-            "PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Titulo",
+            "PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Titulo", 
+            "PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Texto",
             "PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Estado",
             "PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Alineas",
             "PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Alineas.Alinea",
             "PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Alineas.Titulo",
+            "PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Alineas.Texto",
+            "PropostasDeAlteracao.PropostaDeAlteracao.Iniciativas_Artigos.Iniciativa_Artigo.Numeros.Alineas.Estado",
             "PropostasDeAlteracao.PropostaDeAlteracao.ProgramasMedidas",
             "PropostasDeAlteracao.PropostaDeAlteracao.ProgramasMedidas.Nome",
             "PropostasDeAlteracao.PropostaDeAlteracao.ProgramasMedidas.Descricao",
@@ -159,6 +162,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
             "PropostasDeAlteracao.PropostaDeAlteracao.Votacoes",
             "PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao",
             "PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.Descricoes",
+            "PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.Descricoes.Descricao",
             "PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.DiplomasTerceirosouPropostasDeLeiMapas",
             "PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.DiplomasTerceirosouPropostasDeLeiMapas.Diploma",
             "PropostasDeAlteracao.PropostaDeAlteracao.Votacoes.Votacao.SubDescricao",
@@ -764,7 +768,19 @@ class OrcamentoEstadoMapper(SchemaMapper):
             if votacoes_elem is not None:
                 for votacao_elem in votacoes_elem.findall("Votacao"):
                     data_str = self._get_text_value(votacao_elem, "Data")
-                    descricoes = self._get_text_value(votacao_elem, "Descricoes")
+                    
+                    # Process multiple Descricao elements within Descricoes
+                    descricoes_list = []
+                    descricoes_elem = votacao_elem.find("Descricoes")
+                    if descricoes_elem is not None:
+                        for desc_elem in descricoes_elem.findall("Descricao"):
+                            desc_text = desc_elem.text
+                            if desc_text and desc_text.strip():
+                                descricoes_list.append(desc_text.strip())
+                    
+                    # Join multiple descriptions with separator
+                    descricoes = "; ".join(descricoes_list) if descricoes_list else None
+                    
                     sub_descricao = self._get_text_value(votacao_elem, "SubDescricao")
                     resultado = self._get_text_value(votacao_elem, "ResultadoCompleto")
                     if not resultado:
@@ -809,7 +825,45 @@ class OrcamentoEstadoMapper(SchemaMapper):
                         estado=estado,
                     )
                     self.session.add(artigo_obj)
+                    self.session.flush()  # Ensure artigo_obj.id is available
                     self.processed_articles += 1
+
+                    # Process nested Numeros within the article
+                    numeros_elem = artigo_elem.find("Numeros")
+                    if numeros_elem is not None:
+                        for numero_elem in numeros_elem.findall("Numero"):
+                            numero_num = self._get_text_value(numero_elem, "Numero")
+                            numero_titulo = self._get_text_value(numero_elem, "Titulo")
+                            numero_texto = self._get_text_value(numero_elem, "Texto")
+                            numero_estado = self._get_text_value(numero_elem, "Estado")
+
+                            numero_obj = OrcamentoEstadoArtigoNumero(
+                                artigo_id=artigo_obj.id,
+                                numero=numero_num,
+                                titulo=numero_titulo,
+                                texto=numero_texto,
+                                estado=numero_estado,
+                            )
+                            self.session.add(numero_obj)
+                            self.session.flush()  # Ensure numero_obj.id is available
+
+                            # Process nested Alineas within the numero
+                            alineas_elem = numero_elem.find("Alineas")
+                            if alineas_elem is not None:
+                                for alinea_elem in alineas_elem.findall("Alinea"):
+                                    alinea_text = self._get_text_value(alinea_elem, "Alinea")
+                                    alinea_titulo = self._get_text_value(alinea_elem, "Titulo")
+                                    alinea_texto = self._get_text_value(alinea_elem, "Texto")
+                                    alinea_estado = self._get_text_value(alinea_elem, "Estado")
+
+                                    alinea_obj = OrcamentoEstadoArtigoAlinea(
+                                        numero_id=numero_obj.id,
+                                        alinea=alinea_text,
+                                        titulo=alinea_titulo,
+                                        texto=alinea_texto,
+                                        estado=alinea_estado,
+                                    )
+                                    self.session.add(alinea_obj)
 
             logger.debug(
                 f"Processed legacy nested data for proposal {proposal_obj.proposta_id}"
