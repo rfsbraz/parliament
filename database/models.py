@@ -5390,7 +5390,9 @@ class IntervencaoParlamentar(Base):
     tipo_intervencao = Column(
         String(200), comment="Intervention type description (TipoIntervencao from XML)"
     )
-    data_reuniao_plenaria = Column(Date, comment="Plenary meeting date (DataReuniaoPlenaria)")
+    data_reuniao_plenaria = Column(
+        Date, comment="Plenary meeting date (DataReuniaoPlenaria)"
+    )
     qualidade = Column(String(100), comment="Intervention quality/context (Qualidade)")
     fase_sessao = Column(
         String(100), comment="Session phase when intervention occurred (FaseSessao)"
@@ -6947,7 +6949,6 @@ class RegistoInteressesUnified(Base):
     legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
 
     # Core identification fields
-    record_id = Column(String(50))  # V3+ external record ID
     cad_id = Column(Integer)  # V1/V2 cadastral ID
     schema_version = Column(String(10), nullable=False)  # "V1", "V2", "V3", "V5"
 
@@ -7001,6 +7002,60 @@ class RegistoInteressesUnified(Base):
         "RegistoInteressesApoioUnified",
         back_populates="registo",
         cascade="all, delete-orphan",
+    )
+    facto_declaracao = relationship(
+        "RegistoInteressesFactoDeclaracao",
+        back_populates="registo",
+        cascade="all, delete-orphan",
+        uselist=False  # One-to-one relationship
+    )
+
+
+class RegistoInteressesFactoDeclaracao(Base):
+    """
+    Declaration Facts Model for Interest Registry V5 Schema
+    
+    Stores FactoDeclaracao data from V5 registo de interesses XML files.
+    Contains declaration metadata including function details and dates.
+    
+    XML Mapping (FactoDeclaracao from V5):
+    - Id: declaracao_id (Usually "0" for standard declarations)
+    - CargoFuncao: cargo_funcao (Deputy function title)
+    - ChkDeclaracao: chk_declaracao (Declaration check flag)
+    - TxtDeclaracao: txt_declaracao (Declaration text, optional)
+    - DataInicioFuncao: data_inicio_funcao (Function start date)
+    - DataAlteracaoFuncao: data_alteracao_funcao (Function change date, optional) 
+    - DataCessacaoFuncao: data_cessacao_funcao (Function end date, optional)
+    
+    Used in XIV and XV legislatures (V5 schema).
+    """
+    
+    __tablename__ = "registo_interesses_facto_declaracao"
+    
+    id = Column(Integer, primary_key=True)
+    registo_id = Column(
+        Integer,
+        ForeignKey("registo_interesses_unified.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True  # One-to-one relationship
+    )
+    
+    # FactoDeclaracao fields from V5 XML
+    declaracao_id = Column(String(50), comment="Declaration ID from XML (XML: Id)")
+    cargo_funcao = Column(String(200), comment="Function/position title (XML: CargoFuncao)") 
+    chk_declaracao = Column(String(10), comment="Declaration check flag (XML: ChkDeclaracao)")
+    txt_declaracao = Column(Text, comment="Declaration text content (XML: TxtDeclaracao)")
+    data_inicio_funcao = Column(Date, comment="Function start date (XML: DataInicioFuncao)")
+    data_alteracao_funcao = Column(Date, comment="Function change date (XML: DataAlteracaoFuncao)")
+    data_cessacao_funcao = Column(Date, comment="Function end date (XML: DataCessacaoFuncao)")
+    
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    registo = relationship(
+        "RegistoInteressesUnified", 
+        back_populates="facto_declaracao"
     )
 
 
@@ -7779,7 +7834,9 @@ class OrcamentoEstadoItem(Base):
     id_pai = Column(Integer)  # XML: ID_Pai (parent item reference)
     tipo = Column(String(50))  # XML: Tipo (1, 2, or 3)
     tipo_desc = Column(String(200))  # Translated tipo value
-    numero = Column(String(100))  # XML: Numero - Increased to accommodate long decree references
+    numero = Column(
+        String(100)
+    )  # XML: Numero - Increased to accommodate long decree references
     titulo = Column(Text)  # XML: Titulo
     texto = Column(Text)  # XML: Texto
     estado = Column(String(100))  # XML: Estado
@@ -7955,10 +8012,12 @@ class OrcamentoEstadoArtigo(Base):
     # Article identification
     artigo_id = Column(Integer)  # XML: ID_Art (current format)
     id_pai = Column(Integer)  # XML: ID_Pai (current format)
-    numero = Column(String(200))  # XML: Artigo/Numero (can be long titles like "LISTA I (BENS E SERVIÇOS...)")
+    numero = Column(
+        String(200)
+    )  # XML: Artigo/Numero (can be long titles like "LISTA I (BENS E SERVIÇOS...)")
     tipo = Column(String(100))  # XML: Tipo (current format)
-    titulo = Column(Text().with_variant(mysql.LONGTEXT(), 'mysql'))  # XML: Titulo
-    texto = Column(Text().with_variant(mysql.LONGTEXT(), 'mysql'))  # XML: Texto
+    titulo = Column(Text().with_variant(mysql.LONGTEXT(), "mysql"))  # XML: Titulo
+    texto = Column(Text().with_variant(mysql.LONGTEXT(), "mysql"))  # XML: Texto
     estado = Column(String(100))  # XML: Estado
 
     # Metadata

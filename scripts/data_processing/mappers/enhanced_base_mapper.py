@@ -22,7 +22,7 @@ from .common_utilities import DataValidationUtils
 from typing import Any, Dict, List, Optional, Set
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-from database.models import Legislatura, Deputado
+from database.models import Legislatura, Deputado, DeputyIdentityMapping
 
 logger = logging.getLogger(__name__)
 
@@ -562,32 +562,13 @@ class XMLProcessingMixin:
             self._collect_field_names(child, field_set, current_name)
 
     def _parse_date(self, date_str: str) -> Optional[datetime]:
-        """Parse date string with multiple format support"""
-        if not date_str or date_str.strip() == "":
-            return None
-
-        date_str = date_str.strip()
-
-        # Common date formats in Portuguese parliamentary data
-        formats = [
-            "%Y-%m-%d",  # 2025-01-15
-            "%d-%m-%Y",  # 15-01-2025
-            "%Y/%m/%d",  # 2025/01/15
-            "%d/%m/%Y",  # 15/01/2025
-            "%Y-%m-%dT%H:%M:%S",  # ISO format with time
-            "%Y-%m-%d %H:%M:%S",  # Standard datetime
-        ]
-
-        for fmt in formats:
-            try:
-                parsed_date = datetime.strptime(date_str, fmt)
-                return (
-                    parsed_date.date() if hasattr(parsed_date, "date") else parsed_date
-                )
-            except ValueError:
-                continue
-
-        logger.warning(f"Could not parse date: {date_str}")
+        """Parse date string using common flexible date parser"""
+        from .common_utilities import DataValidationUtils
+        
+        parsed = DataValidationUtils.parse_date_flexible(date_str)
+        if parsed:
+            # Return date object if it's a datetime, otherwise return as-is
+            return parsed.date() if hasattr(parsed, 'date') else parsed
         return None
 
     def _get_text(self, parent: ET.Element, tag: str) -> Optional[str]:
@@ -627,9 +608,8 @@ class XMLProcessingMixin:
     def _get_int_text(self, parent: ET.Element, tag: str) -> Optional[int]:
         """Get integer value from XML element text"""
         text = self._get_text(parent, tag)
-        if text and text.isdigit():
-            return int(text)
-        return None
+        # Use _safe_int to properly handle float strings like '8526.0'
+        return self._safe_int(text)
 
     def _get_text_value(self, parent: ET.Element, tag_name: str) -> Optional[str]:
         """Get text value from XML element - standardized method used across all mappers"""
@@ -818,6 +798,136 @@ class EnhancedSchemaMapper(
 
             sys.exit(1)
         self.close_session()
+
+    def _find_deputy_robust(
+        self, cad_id: int, nome_completo: str = None, nome_parlamentar: str = None
+    ) -> Deputado:
+        """
+        Robust deputy matching with cadastral ID change tracking.
+
+        This method handles cases where deputy cadastral IDs change over time by implementing
+        a multi-level matching strategy and tracking identity mappings.
+
+        Args:
+            cad_id: Current cadastral ID to look up
+            nome_completo: Full deputy name for fallback matching
+            nome_parlamentar: Parliamentary name for fallback matching
+
+        Returns:
+            Deputado: The matched deputy record
+
+        Raises:
+            ValueError: If no deputy can be matched using any strategy
+        """
+        # Step 1: Try direct cadastral ID lookup
+        deputy = (
+            self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
+        )
+        if deputy:
+            return deputy
+
+        # Step 2: Check if this cadastral ID is mapped to another ID
+        identity_mapping = (
+            self.session.query(DeputyIdentityMapping)
+            .filter(DeputyIdentityMapping.old_cad_id == cad_id)
+            .first()
+        )
+
+        if identity_mapping:
+            # Try to find deputy with the new cadastral ID
+            deputy = (
+                self.session.query(Deputado)
+                .filter(Deputado.id_cadastro == identity_mapping.new_cad_id)
+                .first()
+            )
+            if deputy:
+                logger.info(
+                    f"Found deputy via identity mapping: old_cad_id={cad_id} -> new_cad_id={identity_mapping.new_cad_id}"
+                )
+                return deputy
+
+        # Step 3: Fallback to name-based matching if names are provided
+        if nome_completo or nome_parlamentar:
+            query = self.session.query(Deputado)
+
+            # Try full name match first
+            if nome_completo:
+                deputy = query.filter(
+                    Deputado.nome_completo.ilike(f"%{nome_completo}%")
+                ).first()
+                if deputy:
+                    # Record the identity mapping for future lookups
+                    # deputy.id_cadastro is the OLD ID (existing in DB), cad_id is the NEW ID (we're trying to find)
+                    self._record_identity_mapping(
+                        deputy.id_cadastro, cad_id, nome_completo or nome_parlamentar, deputy
+                    )
+                    logger.warning(
+                        f"Deputy found by full name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_completo})"
+                    )
+                    return deputy
+
+            # Try parliamentary name match
+            if nome_parlamentar:
+                deputy = query.filter(
+                    Deputado.nome.ilike(f"%{nome_parlamentar}%")
+                ).first()
+                if deputy:
+                    # Record the identity mapping for future lookups
+                    # deputy.id_cadastro is the OLD ID (existing in DB), cad_id is the NEW ID (we're trying to find)
+                    self._record_identity_mapping(
+                        deputy.id_cadastro, cad_id, nome_parlamentar, deputy
+                    )
+                    logger.warning(
+                        f"Deputy found by parliamentary name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_parlamentar})"
+                    )
+                    return deputy
+
+        # Step 4: No match found using any strategy
+        names = []
+        if nome_completo:
+            names.append(f"nome_completo='{nome_completo}'")
+        if nome_parlamentar:
+            names.append(f"nome_parlamentar='{nome_parlamentar}'")
+        name_info = " (" + ", ".join(names) + ")" if names else ""
+
+        raise ValueError(
+            f"Deputy with cadId {cad_id} not found in database using any matching strategy{name_info}"
+        )
+
+    def _record_identity_mapping(
+        self, old_cad_id: int, new_cad_id: int, deputy_name: str, deputy: Deputado
+    ):
+        """Record an identity mapping between old and new cadastral IDs and update the deputy record."""
+        # Flush session to ensure any pending objects are written to DB for query
+        self.session.flush()
+        
+        # Check if mapping already exists (including any just flushed)
+        existing_mapping = (
+            self.session.query(DeputyIdentityMapping)
+            .filter(
+                DeputyIdentityMapping.old_cad_id == old_cad_id,
+                DeputyIdentityMapping.new_cad_id == new_cad_id,
+            )
+            .first()
+        )
+
+        if existing_mapping:
+            logger.debug(f"Identity mapping {old_cad_id} -> {new_cad_id} already exists, skipping")
+            return
+
+        # Record the identity mapping
+        mapping = DeputyIdentityMapping(
+            old_cad_id=old_cad_id,
+            new_cad_id=new_cad_id,
+            deputy_name=deputy_name,
+            confidence_score=90,  # Discovered via name matching
+            verified=False,
+        )
+        self.session.add(mapping)
+
+        # Update deputy's current cadastral ID to the new value
+        deputy.id_cadastro = new_cad_id
+        logger.info(f"Updated deputy cadastral ID: {old_cad_id} -> {new_cad_id} for {deputy_name}")
 
 
 # Backward compatibility alias
