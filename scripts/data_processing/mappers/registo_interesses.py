@@ -1178,7 +1178,6 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     position_record = RegistoInteressesSocialPositionUnified(
                         registo_id=registo.id,
                         position=rgc_entidade,
-                        start_date=rgc_data_inicio,
                     )
                     self.session.add(position_record)
 

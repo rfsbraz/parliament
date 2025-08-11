@@ -43,6 +43,8 @@ class ParliamentConstants:
         "%d/%m/%Y %H:%M:%S",  # 18/11/2004 00:00:00
         "%Y/%m/%d %H:%M:%S",  # 2004/11/18 00:00:00
         "%d/%m/%Y",     # Single digit support: 1/1/2023
+        "%Y-%m",        # 2014-08 (year-month)
+        "%Y",           # 2008 (year-only)
     ]
     
     # Common regex patterns
