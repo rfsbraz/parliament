@@ -371,8 +371,6 @@ class LegislatureHandlerMixin:
                     logger.debug(f"Found pending legislatura in session with match '{variation}': (ID: {pending_leg.id if hasattr(pending_leg, 'id') else 'PENDING'})")
                     return pending_leg
 
-        logger.warning(f"Legislatura {target_legislature} not found with any variations - this may create duplicates!")
-        logger.warning(f"Existing legislaturas were: {existing_numeros}")
         
         # LAST RESORT: For CONSTITUINTE, if nothing found, check if there's already a record with numero="0" or similar
         if target_legislature == "CONSTITUINTE":

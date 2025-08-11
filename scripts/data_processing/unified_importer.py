@@ -361,6 +361,7 @@ class UnifiedImporter:
             for file_type in file_types_to_process:
                 logger.info(f"Processing file type: {file_type}")
                 files_for_type = []
+                files_processed_for_type = 0
 
                 # Collect all files for this type
                 for data_root in self.data_roots:
@@ -402,6 +403,7 @@ class UnifiedImporter:
                         )
                         if success:
                             processed_files += 1
+                            files_processed_for_type += 1
                         elif strict_mode:
                             # Check if this was a corrupted file that we should skip
                             import_status = (
@@ -416,6 +418,7 @@ class UnifiedImporter:
                                 processed_files += (
                                     1  # Count as processed since we handled it
                                 )
+                                files_processed_for_type += 1
                             else:
                                 logger.error(
                                     f"STRICT MODE: Exiting due to processing error in {file_path}"
@@ -435,7 +438,7 @@ class UnifiedImporter:
                 # Commit after each file type to ensure data integrity
                 session.commit()
                 logger.info(
-                    f"Completed processing {file_type}: {len([f for f in files_for_type if self._should_process_file(session, f, force_reimport, strict_mode)])} files processed"
+                    f"Completed processing {file_type}: {files_processed_for_type} files processed"
                 )
 
             session.commit()
@@ -451,7 +454,7 @@ class UnifiedImporter:
 
         # Remove UTF-8 BOM if present (EF BB BF)
         if content.startswith(b"\xef\xbb\xbf"):
-            logger.info(f"Removing UTF-8 BOM from {file_path}")
+            logger.debug(f"Removing UTF-8 BOM from {file_path}")
             content = content[3:]
 
         # Remove UTF-16 BE BOM if present (FE FF)
