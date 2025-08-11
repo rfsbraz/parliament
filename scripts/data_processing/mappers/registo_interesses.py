@@ -408,17 +408,9 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     except Exception as e:
                         error_msg = f"Error processing V5 conflicts record: {str(e)}"
                         logger.error(error_msg)
-                        results["errors"].append(error_msg)
-                        results["records_processed"] += 1
-                        self.session.rollback()
-                        if strict_mode:
-                            logger.error(
-                                "STRICT MODE: Exiting due to V5 record processing error"
-                            )
-                            raise SchemaError(
-                                f"V5 conflicts record processing failed in strict mode: {e}"
-                            )
-                        continue
+                        # FAIL FAST: Let database schema errors bubble up immediately
+                        # No rollback recovery to mask underlying issues
+                        raise SchemaError(f"V5 conflicts record processing failed - stopping importer: {e}") from e
 
                 elif registo_v3 is not None:
                     # Handle V3 schema (newer format)
@@ -450,17 +442,9 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     except Exception as e:
                         error_msg = f"Error processing V3 conflicts record: {str(e)}"
                         logger.error(error_msg)
-                        results["errors"].append(error_msg)
-                        results["records_processed"] += 1
-                        self.session.rollback()
-                        if strict_mode:
-                            logger.error(
-                                "STRICT MODE: Exiting due to V3 record processing error"
-                            )
-                            raise SchemaError(
-                                f"V3 conflicts record processing failed in strict mode: {e}"
-                            )
-                        continue
+                        # FAIL FAST: Let database schema errors bubble up immediately
+                        # No rollback recovery to mask underlying issues
+                        raise SchemaError(f"V3 conflicts record processing failed - stopping importer: {e}") from e
 
                 elif registo_v2 is not None:
                     # Handle V2 schema (XII, XIII)
@@ -501,17 +485,9 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     except Exception as e:
                         error_msg = f"Error processing V2 conflicts record: {str(e)}"
                         logger.error(error_msg)
-                        results["errors"].append(error_msg)
-                        results["records_processed"] += 1
-                        self.session.rollback()
-                        if strict_mode:
-                            logger.error(
-                                "STRICT MODE: Exiting due to V2 record processing error"
-                            )
-                            raise SchemaError(
-                                f"V2 conflicts record processing failed in strict mode: {e}"
-                            )
-                        continue
+                        # FAIL FAST: Let database schema errors bubble up immediately
+                        # No rollback recovery to mask underlying issues
+                        raise SchemaError(f"V2 conflicts record processing failed - stopping importer: {e}") from e
 
                 elif registo_v1 is not None:
                     # Handle V1 schema (XI)
@@ -545,17 +521,9 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     except Exception as e:
                         error_msg = f"Error processing V1 conflicts record: {str(e)}"
                         logger.error(error_msg)
-                        results["errors"].append(error_msg)
-                        results["records_processed"] += 1
-                        self.session.rollback()
-                        if strict_mode:
-                            logger.error(
-                                "STRICT MODE: Exiting due to V1 record processing error"
-                            )
-                            raise SchemaError(
-                                f"V1 conflicts record processing failed in strict mode: {e}"
-                            )
-                        continue
+                        # FAIL FAST: Let database schema errors bubble up immediately
+                        # No rollback recovery to mask underlying issues
+                        raise SchemaError(f"V1 conflicts record processing failed - stopping importer: {e}") from e
 
             # Commit all changes
             self.session.commit()
@@ -566,9 +534,9 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         except Exception as e:
             error_msg = f"Critical error processing conflicts file {file_info['file_path']}: {str(e)}"
             logger.error(error_msg)
-            results["errors"].append(error_msg)
-            self.session.rollback()
-            raise SchemaError(f"Critical interest registry processing error: {e}")
+            # FAIL FAST: Let database schema errors bubble up immediately
+            # No rollback recovery to mask underlying issues
+            raise SchemaError(f"Critical interest registry processing error: {e}") from e
 
         return results
 
@@ -874,7 +842,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                 or society,  # Use entity if available, fallback to society
                 social_participation=social_participation,
                 activity_area=activity_area,
-                headquarters_location=head_office_location,
+                headquarters=head_office_location,
             )
             self.session.add(society_record)
 
@@ -1112,7 +1080,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     society_record = RegistoInteressesSociedadeUnified(
                         registo_id=registo.id,
                         entity=rgs_entidade,
-                        headquarters_location=rgs_local_sede,
+                        headquarters=rgs_local_sede,
                     )
                     self.session.add(society_record)
 
@@ -1922,7 +1890,6 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     activity_record = RegistoInteressesAtividadeUnified(
                         registo_id=registo.id,
                         description=cargo_funcao_atividade,
-                        headquarters_location=local_sede,
                         end_date=data_termo,
                     )
                     self.session.add(activity_record)
@@ -2067,7 +2034,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     society_record = RegistoInteressesSociedadeUnified(
                         registo_id=registo.id,
                         entity=natureza,  # Nature as entity
-                        headquarters_location=local_sede,
+                        headquarters=local_sede,
                     )
                     self.session.add(society_record)
 

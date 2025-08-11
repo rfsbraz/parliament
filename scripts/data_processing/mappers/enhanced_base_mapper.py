@@ -298,10 +298,17 @@ class LegislatureHandlerMixin:
         
         logger.debug(f"Searching for existing legislatura. Target: '{target_legislature}', Variations to check: {variations_to_check}")
         
-        # First, let's see what legislaturas actually exist in the database
+        # First, let's see what legislaturas actually exist in the database (including pending/flushed ones)
         all_legislaturas = self.session.query(Legislatura).all()
         existing_numeros = [leg.numero for leg in all_legislaturas]
-        logger.debug(f"Existing legislaturas in database: {existing_numeros}")
+        logger.debug(f"Existing legislaturas in database (including session-local): {existing_numeros}")
+        
+        # Also check pending objects in the current session (not yet committed)
+        pending_legislaturas = [obj for obj in self.session.new if isinstance(obj, Legislatura)]
+        pending_numeros = [leg.numero for leg in pending_legislaturas]
+        if pending_numeros:
+            logger.debug(f"Pending legislaturas in current session: {pending_numeros}")
+            existing_numeros.extend(pending_numeros)
         
         legislatura = None
         
@@ -357,6 +364,12 @@ class LegislatureHandlerMixin:
                 return legislatura
             else:
                 logger.debug(f"No case-insensitive match found for '{variation}'")
+            
+            # RACE CONDITION FIX: Check pending objects in current session
+            for pending_leg in pending_legislaturas:
+                if pending_leg.numero == variation or pending_leg.numero.lower() == variation.lower():
+                    logger.debug(f"Found pending legislatura in session with match '{variation}': (ID: {pending_leg.id if hasattr(pending_leg, 'id') else 'PENDING'})")
+                    return pending_leg
 
         logger.warning(f"Legislatura {target_legislature} not found with any variations - this may create duplicates!")
         logger.warning(f"Existing legislaturas were: {existing_numeros}")
@@ -862,7 +875,7 @@ class EnhancedSchemaMapper(
                         deputy.id_cadastro, cad_id, nome_completo or nome_parlamentar, deputy
                     )
                     logger.warning(
-                        f"Deputy found by full name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_completo})"
+                        f"Deputy found by full name match - potential import ordering issue: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_completo})"
                     )
                     return deputy
 
@@ -878,7 +891,7 @@ class EnhancedSchemaMapper(
                         deputy.id_cadastro, cad_id, nome_parlamentar, deputy
                     )
                     logger.warning(
-                        f"Deputy found by parliamentary name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_parlamentar})"
+                        f"Deputy found by parliamentary name match - potential import ordering issue: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_parlamentar})"
                     )
                     return deputy
 

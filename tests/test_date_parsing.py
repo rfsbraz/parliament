@@ -77,18 +77,34 @@ class TestDateParsing(unittest.TestCase):
             
             # ISO formats from parliament data
             ("2019-01-01", datetime(2019, 1, 1)),
+            ("2019-10-25", datetime(2019, 10, 25)),
             ("2020-12-31T23:59:59", datetime(2020, 12, 31, 23, 59, 59)),
             
             # European formats
             ("15-06-2021", datetime(2021, 6, 15)),
             ("01-01-2019 12:00:00", datetime(2019, 1, 1, 12, 0, 0)),
+            
+            # Mixed formats found in XIV_Legislatura XML
+            ("23-10-2015", datetime(2015, 10, 23)),
+            ("30-10-2017", datetime(2017, 10, 30)),
+            ("2017-10-30", datetime(2017, 10, 30)),
+            ("2013-10-23", datetime(2013, 10, 23)),
+            ("2015-10-23", datetime(2015, 10, 23)),
+            ("2019-10-24", datetime(2019, 10, 24)),
+            
+            # Partial date formats found in XML
+            ("2014-08", None),  # Partial dates should return None
+            ("2008", None),     # Year-only should return None
         ]
         
         for date_str, expected in real_world_cases:
             with self.subTest(date_string=date_str):
                 result = DataValidationUtils.parse_date_flexible(date_str)
-                self.assertIsNotNone(result, f"Failed to parse: {date_str}")
-                self.assertEqual(result, expected)
+                if expected is None:
+                    self.assertIsNone(result, f"Should have failed to parse: {date_str}")
+                else:
+                    self.assertIsNotNone(result, f"Failed to parse: {date_str}")
+                    self.assertEqual(result, expected)
 
     def test_parse_date_invalid_formats(self):
         """Test parse_date with invalid date formats"""
