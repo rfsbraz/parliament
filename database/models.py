@@ -6807,8 +6807,8 @@ class RegistoInteressesAtividade(Base):
     # Activity fields from pt_ar_wsgode_objectos_DadosRgiActividades
     rga_id = Column(Integer)  # rgaId - Activity ID
     rga_atividade = Column(Text)  # rgaActividade - Activity description
-    rga_data_inicio = Column(Date)  # rgaDataInicio - Start date
-    rga_data_fim = Column(Date)  # rgaDataFim - End date
+    rga_data_inicio = Column(String(50))  # rgaDataInicio - Start date
+    rga_data_fim = Column(String(50))  # rgaDataFim - End date
     rga_remunerada = Column(String(10))  # rgaRemunerada - Whether remunerated (Y/N)
     rga_entidade = Column(Text)  # rgaEntidade - Entity/organization
     rga_valor = Column(Text)  # rgaValor - Value/compensation (can be descriptive)
@@ -6859,8 +6859,8 @@ class RegistoInteressesCargo(Base):
     rgc_entidade = Column(Text)  # rgcEntidade - Entity/organization
     rgc_area_atividade = Column(Text)  # rgcAreaActividade - Activity area
     rgc_local_sede = Column(Text)  # rgcLocalSede - Headquarters location
-    rgc_data_inicio = Column(Date)  # rgcDataInicio - Start date
-    rgc_data_fim = Column(Date)  # rgcDataFim - End date
+    rgc_data_inicio = Column(String(50))  # rgcDataInicio - Start date
+    rgc_data_fim = Column(String(50))  # rgcDataFim - End date
     rgc_valor = Column(Text)  # rgcValor - Value/compensation (can be descriptive)
     rgc_observacoes = Column(Text)  # rgcObservacoes - Observations
 
@@ -6970,13 +6970,13 @@ class RegistoInteressesUnified(Base):
     gender = Column(String(1))  # V5 Sexo field (M/F)
 
     # V3+ Position dates (from RecordInterestResponse)
-    position_begin_date = Column(Date)  # PositionBeginDate
-    position_end_date = Column(Date)  # PositionEndDate
-    position_changed_date = Column(Date)  # PositionChangedDate
+    position_begin_date = Column(String(50))  # PositionBeginDate
+    position_end_date = Column(String(50))  # PositionEndDate
+    position_changed_date = Column(String(50))  # PositionChangedDate
     position_designation = Column(String(200))  # PositionDesignation
 
     # Metadata
-    version_date = Column(Date)
+    version_date = Column(String(50))
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
@@ -7086,8 +7086,8 @@ class RegistoInteressesAtividadeUnified(Base):
     description = Column(Text)
     entity = Column(String(500))
     nature_area = Column(String(500))
-    start_date = Column(Date)
-    end_date = Column(Date)
+    start_date = Column(String(50))
+    end_date = Column(String(50))
     remunerated = Column(String(10))  # Y/N
     value = Column(String(200))  # Can be descriptive text
     observations = Column(Text)
@@ -7196,8 +7196,8 @@ class RegistoInteressesApoioUnified(Base):
     description = Column(Text)
     service_location = Column(String(500))  # V5 GenServicoPrestado Local field
     value = Column(String(200))
-    start_date = Column(Date)
-    end_date = Column(Date)
+    start_date = Column(String(50))
+    end_date = Column(String(50))
 
     # Metadata
     created_at = Column(DateTime, default=func.now())
