@@ -14,6 +14,7 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
@@ -105,8 +106,25 @@ class Partido(Base):
     data_fundacao = Column(Date)
     ideologia = Column(String(100))
     lider_parlamentar = Column(String(200))
+    
+    # Coalition support - distinguish parties from coalitions
+    tipo_entidade = Column(
+        String(20),
+        default='partido',
+        nullable=False,
+        comment="Entity type: 'partido' (individual party) or 'coligacao' (coalition)"
+    )
+    coligacao_pai_id = Column(
+        Integer, 
+        ForeignKey("coligacoes.id"),
+        comment="Parent coalition ID if this party is part of a coalition"
+    )
+    
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    coligacao_pai = relationship("Coligacao", foreign_keys=[coligacao_pai_id])
 
     @property
     def is_active(self):
@@ -123,6 +141,171 @@ class Partido(Base):
             ).scalar()
         finally:
             session.close()
+
+
+class Coligacao(Base):
+    """
+    Political Coalition Model - Portuguese Parliamentary Coalitions
+    
+    Represents formal electoral alliances (coligações) between political parties.
+    Based on Portuguese political analysis and coalition patterns detected in data.
+    
+    Coalition Examples:
+    - "PPD/PSD.CDS-PP" = Aliança Democrática (PPD, PSD, CDS-PP)
+    - "CDU" = Coligação Democrática Unitária (PCP, PEV)
+    - "MDP/CDE" = Historical coalition
+    
+    Features:
+    - Formal coalition metadata and formation dates
+    - Electoral program and policy positions
+    - Coalition leadership structure
+    - Unified voting record tracking
+    """
+    
+    __tablename__ = "coligacoes"
+    
+    id = Column(Integer, primary_key=True)
+    sigla = Column(
+        String(50), 
+        unique=True, 
+        nullable=False,
+        comment="Coalition abbreviation/sigla (e.g., 'PPD/PSD.CDS-PP')"
+    )
+    nome = Column(
+        String(300), 
+        nullable=False,
+        comment="Full coalition name (e.g., 'Aliança Democrática')"
+    )
+    nome_eleitoral = Column(
+        String(300),
+        comment="Electoral designation used in campaigns"
+    )
+    data_formacao = Column(Date, comment="Coalition formation date")
+    data_dissolucao = Column(Date, comment="Coalition dissolution date (if applicable)")
+    programa_eleitoral = Column(Text, comment="Joint electoral program summary")
+    lideranca = Column(Text, comment="Coalition leadership structure")
+    acordo_coligacao = Column(Text, comment="Coalition agreement details")
+    
+    # Coalition classification
+    tipo_coligacao = Column(
+        String(50), 
+        default='eleitoral',
+        comment="Coalition type: eleitoral, parlamentar, governo"
+    )
+    espectro_politico = Column(
+        String(50),
+        comment="Political spectrum: esquerda, centro-esquerda, centro, centro-direita, direita"
+    )
+    
+    # Status tracking
+    confianca_detecao = Column(Float, comment="Confidence score for automatic detection (0.0-1.0)")
+    
+    # Metadata
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    partidos_componentes = relationship(
+        "ColigacaoPartido", 
+        back_populates="coligacao",
+        cascade="all, delete-orphan"
+    )
+    partidos_filhos = relationship(
+        "Partido",
+        foreign_keys="Partido.coligacao_pai_id",
+        back_populates="coligacao_pai"
+    )
+    
+    @property
+    def is_active(self):
+        """
+        Runtime calculation: Coalition is active if it has deputies in current legislature XVII
+        Uses coalition ID and party sigla matching for detection
+        """
+        from database.connection import get_session
+        from sqlalchemy import exists, or_, and_
+        session = get_session()
+        try:
+            # Check if coalition has deputies in current legislature using coalition ID or party sigla match
+            return session.query(
+                exists().where(
+                    and_(
+                        or_(
+                            # Coalition ID match (for mandates with coalition context)
+                            DeputadoMandatoLegislativo.coligacao_id == self.id,
+                            # Party sigla match (for direct coalition siglas like "CDU", "AD")
+                            DeputadoMandatoLegislativo.par_sigla == self.sigla
+                        ),
+                        DeputadoMandatoLegislativo.leg_des.like('%XVII%')
+                    )
+                )
+            ).scalar()
+        finally:
+            session.close()
+    
+    @property
+    def ativo(self):
+        """Alias for is_active to maintain API compatibility"""
+        return self.is_active
+    
+    @property
+    def num_partidos_componentes(self):
+        """Number of component parties in coalition"""
+        return len(self.partidos_componentes)
+    
+    def __repr__(self):
+        return f"<Coligacao(sigla='{self.sigla}', nome='{self.nome}')>"
+
+
+class ColigacaoPartido(Base):
+    """
+    Coalition-Party Relationship Model
+    
+    Junction table representing the many-to-many relationship between 
+    coalitions and their component political parties.
+    
+    Tracks historical changes in coalition composition over time.
+    """
+    
+    __tablename__ = "coligacao_partidos"
+    
+    id = Column(Integer, primary_key=True)
+    coligacao_id = Column(Integer, ForeignKey("coligacoes.id"), nullable=False)
+    partido_sigla = Column(String(50), nullable=False, comment="Component party sigla")
+    partido_nome = Column(String(200), comment="Component party name")
+    
+    # Temporal tracking
+    data_adesao = Column(Date, comment="Date party joined coalition")
+    data_saida = Column(Date, comment="Date party left coalition (if applicable)")
+    ativo = Column(Boolean, default=True, comment="Whether party is currently in coalition")
+    
+    # Coalition role
+    papel_coligacao = Column(
+        String(100),
+        comment="Party role in coalition: lider, principal, secundario, apoiante"
+    )
+    percentagem_acordada = Column(
+        Float,
+        comment="Agreed percentage for seat/resource distribution"
+    )
+    
+    # Metadata
+    confianca_detecao = Column(Float, comment="Detection confidence for this relationship")
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    coligacao = relationship("Coligacao", back_populates="partidos_componentes")
+    
+    # Indexes for efficient queries
+    __table_args__ = (
+        Index("idx_coligacao_partido", "coligacao_id", "partido_sigla"),
+        Index("idx_partido_sigla", "partido_sigla"),
+        Index("idx_ativo_coligacao", "ativo", "coligacao_id"),
+    )
+    
+    def __repr__(self):
+        return f"<ColigacaoPartido(coligacao_id={self.coligacao_id}, partido='{self.partido_sigla}')>"
 
 
 class CirculoEleitoral(Base):
@@ -6783,11 +6966,32 @@ class DeputadoMandatoLegislativo(Base):
         Date,
         comment="Indication/appointment date for special appointments (XML: indData)",
     )
+    
+    # Coalition context - enhanced political entity tracking
+    tipo_entidade_politica = Column(
+        String(20),
+        comment="Type of political entity: 'partido' (individual party) or 'coligacao' (coalition)"
+    )
+    coligacao_id = Column(
+        Integer,
+        ForeignKey("coligacoes.id"),
+        comment="Coalition ID if this mandate was under a coalition"
+    )
+    eh_coligacao = Column(
+        Boolean,
+        default=False,
+        comment="Whether the par_sigla represents a coalition (auto-detected)"
+    )
+    confianca_detecao_coligacao = Column(
+        Float,
+        comment="Confidence score for coalition detection (0.0-1.0)"
+    )
 
     created_at = Column(DateTime, default=func.now())
 
     # Relationships
     deputado = relationship("Deputado", back_populates="mandatos_legislativos")
+    coligacao = relationship("Coligacao", foreign_keys=[coligacao_id])
 
 
 class RegistoInteressesV2(Base):

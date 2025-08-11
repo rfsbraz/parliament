@@ -7,6 +7,7 @@ import DeputadosPage from './components/DeputadosPage'
 import DeputadoDetalhes from './components/DeputadoDetalhes'
 import PartidosPage from './components/PartidosPage'
 import PartidoDetalhes from './components/PartidoDetalhes'
+import ColigacaoDetalhes from './components/ColigacaoDetalhes'
 import AgendaPage from './components/AgendaPage'
 import Navigation from './components/Navigation'
 import './App.css'
@@ -57,6 +58,7 @@ const AppContent = () => {
             <Route path="/deputados/:deputadoId/:legislatura" element={<DeputadoDetalhes />} />
             <Route path="/partidos" element={<PartidosPage />} />
             <Route path="/partidos/:partidoId" element={<PartidoDetalhes />} />
+            <Route path="/coligacoes/:coligacaoId" element={<ColigacaoDetalhes />} />
             <Route path="/agenda" element={<AgendaPage />} />
           </Routes>
         </main>

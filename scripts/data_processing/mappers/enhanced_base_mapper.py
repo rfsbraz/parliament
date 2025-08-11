@@ -22,9 +22,118 @@ from .common_utilities import DataValidationUtils
 from typing import Any, Dict, List, Optional, Set
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-from database.models import Legislatura, Deputado, DeputyIdentityMapping
+from database.models import Legislatura, Deputado, DeputyIdentityMapping, Coligacao, ColigacaoPartido
+from .coalition_detector import CoalitionDetector
 
 logger = logging.getLogger(__name__)
+
+
+class CoalitionDetectionMixin:
+    """Mixin providing coalition detection capabilities to mappers"""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.coalition_detector = CoalitionDetector()
+        self._coalition_cache = {}  # Cache detection results
+    
+    def detect_and_process_coalition(self, par_sigla: str, par_des: str = None) -> Dict:
+        """
+        Detect if par_sigla is a coalition and process accordingly
+        
+        Returns:
+            Dict with coalition information and processing instructions
+        """
+        if not par_sigla:
+            return {"is_coalition": False, "entity_type": "unknown"}
+        
+        # Check cache first
+        if par_sigla in self._coalition_cache:
+            return self._coalition_cache[par_sigla]
+        
+        # Detect coalition
+        detection = self.coalition_detector.detect(par_sigla)
+        
+        result = {
+            "is_coalition": detection.is_coalition,
+            "entity_type": "coligacao" if detection.is_coalition else "partido", 
+            "confidence": detection.confidence,
+            "coalition_name": detection.coalition_name,
+            "component_parties": detection.component_parties,
+            "detection_method": detection.detection_method,
+            "political_spectrum": detection.political_spectrum,
+            "formation_date": detection.formation_date
+        }
+        
+        # Cache result
+        self._coalition_cache[par_sigla] = result
+        return result
+    
+    def get_or_create_coalition(self, coalition_info: Dict) -> Optional[Coligacao]:
+        """Create or retrieve coalition record"""
+        if not coalition_info["is_coalition"]:
+            return None
+        
+        sigla = coalition_info.get("coalition_sigla", "")
+        if not sigla:
+            return None
+        
+        # Try to find existing coalition
+        coalition = self.session.query(Coligacao).filter_by(sigla=sigla).first()
+        
+        if not coalition:
+            # Create new coalition
+            coalition = Coligacao(
+                sigla=sigla,
+                nome=coalition_info.get("coalition_name", f"Coligação {sigla}"),
+                nome_eleitoral=coalition_info.get("coalition_name"),
+                data_formacao=coalition_info.get("formation_date"),
+                tipo_coligacao="eleitoral",  # Default type
+                espectro_politico=coalition_info.get("political_spectrum"),
+                confianca_detecao=coalition_info.get("confidence", 0.0),
+                ativo=True
+            )
+            
+            try:
+                self.session.add(coalition)
+                self.session.flush()  # Get ID without committing
+                
+                # Create component party relationships
+                for component in coalition_info.get("component_parties", []):
+                    relationship = ColigacaoPartido(
+                        coligacao_id=coalition.id,
+                        partido_sigla=component["sigla"],
+                        partido_nome=component["nome"],
+                        ativo=True,
+                        papel_coligacao="componente",
+                        confianca_detecao=coalition_info.get("confidence", 0.0)
+                    )
+                    self.session.add(relationship)
+                
+                logger.info(f"Created coalition: {sigla} with {len(coalition_info.get('component_parties', []))} components")
+                
+            except Exception as e:
+                logger.error(f"Error creating coalition {sigla}: {e}")
+                self.session.rollback()
+                return None
+        
+        return coalition
+    
+    def update_mandate_coalition_context(self, mandate, par_sigla: str):
+        """Update mandate record with coalition context"""
+        coalition_info = self.detect_and_process_coalition(par_sigla)
+        
+        # Update mandate fields
+        mandate.tipo_entidade_politica = coalition_info["entity_type"]
+        mandate.eh_coligacao = coalition_info["is_coalition"]
+        mandate.confianca_detecao_coligacao = coalition_info["confidence"]
+        
+        # Link to coalition if detected
+        if coalition_info["is_coalition"]:
+            coalition = self.get_or_create_coalition(coalition_info)
+            if coalition:
+                mandate.coligacao_id = coalition.id
+        
+        return mandate
 
 
 class SchemaError(Exception):
@@ -709,12 +818,13 @@ class XMLProcessingMixin:
 
 
 class EnhancedSchemaMapper(
-    DatabaseSessionMixin, LegislatureHandlerMixin, XMLProcessingMixin, ABC
+    DatabaseSessionMixin, LegislatureHandlerMixin, XMLProcessingMixin, CoalitionDetectionMixin, ABC
 ):
     """Enhanced base class for all schema mappers with consolidated functionality"""
 
     def __init__(self, session):
         DatabaseSessionMixin.__init__(self, session)
+        CoalitionDetectionMixin.__init__(self)
 
     @abstractmethod
     def get_expected_fields(self) -> Set[str]:

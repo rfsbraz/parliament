@@ -376,23 +376,44 @@ class InformacaoBaseMapper(SchemaMapper):
                     )
                     continue
 
-                # Check if party already exists
-                existing_party = (
-                    self.session.query(Partido).filter_by(sigla=sigla).first()
-                )
-
-                if existing_party:
-                    logger.debug(
-                        f"Parliamentary group {sigla} already exists, updating name"
+                # Detect and process coalition vs individual party
+                entity_info = self.detect_and_process_coalition(sigla, nome)
+                
+                if entity_info["is_coalition"]:
+                    # Process as coalition
+                    coalition_result = self.get_or_create_coalition(
+                        sigla, nome, entity_info
                     )
-                    existing_party.nome = nome
+                    
+                    if coalition_result["created"]:
+                        logger.info(f"Created new coalition: {sigla} ({nome})")
+                    else:
+                        logger.debug(f"Coalition {sigla} already exists, updated")
+                        
                 else:
-                    # Create new party
-                    party = Partido(sigla=sigla, nome=nome)
-                    self.session.add(party)
-                    self.processed_parties += 1
+                    # Process as individual party
+                    existing_party = (
+                        self.session.query(Partido).filter_by(sigla=sigla).first()
+                    )
 
-                    logger.debug(f"Processed parliamentary group: {sigla} ({nome})")
+                    if existing_party:
+                        logger.debug(
+                            f"Parliamentary group {sigla} already exists, updating name"
+                        )
+                        existing_party.nome = nome
+                        # Ensure it's marked as individual party
+                        existing_party.tipo_entidade = "partido"
+                    else:
+                        # Create new individual party
+                        party = Partido(
+                            sigla=sigla, 
+                            nome=nome,
+                            tipo_entidade="partido"
+                        )
+                        self.session.add(party)
+                        self.processed_parties += 1
+
+                        logger.debug(f"Processed parliamentary group: {sigla} ({nome})")
 
         except Exception as e:
             logger.error(f"Error processing parliamentary groups: {e}")

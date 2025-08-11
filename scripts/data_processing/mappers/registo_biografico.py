@@ -609,13 +609,18 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         )
 
                         if not existing:
+                            # Extract party information
+                            par_sigla = self._get_text_value(mandato, "parSigla")
+                            par_des = self._get_text_value(mandato, "parDes")
+                            
+                            # Create base mandate record
                             mandate = DeputadoMandatoLegislativo(
                                 deputado_id=deputy.id,
                                 dep_nome_parlamentar=nome_parlamentar,
                                 leg_des=leg_des,
                                 ce_des=ce_des,  # New I Legislature field
-                                par_sigla=self._get_text_value(mandato, "parSigla"),
-                                par_des=self._get_text_value(mandato, "parDes"),
+                                par_sigla=par_sigla,
+                                par_des=par_des,
                                 gp_sigla=self._get_text_value(
                                     mandato, "gpSigla"
                                 ),  # New I Legislature field
@@ -632,6 +637,11 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                     self._get_text_value(mandato, "indData")
                                 ),  # New I Legislature field
                             )
+                            
+                            # Update mandate with coalition context
+                            if par_sigla:
+                                self.update_mandate_coalition_context(mandate, par_sigla, par_des)
+                            
                             self.session.add(mandate)
 
             # Process Academic Qualifications (cadHabilitacoes)
@@ -1089,6 +1099,11 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         )
 
                         if not existing:
+                            # Extract party information
+                            par_sigla = self._get_text_value(mandato, "ParSigla")
+                            par_des = self._get_text_value(mandato, "ParDes")
+                            
+                            # Create base mandate record
                             mandate = DeputadoMandatoLegislativo(
                                 deputado_id=deputy.id,
                                 dep_nome_parlamentar=self._get_text_value(
@@ -1096,8 +1111,8 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                 ),
                                 leg_des=leg_des,
                                 ce_des=ce_des,
-                                par_sigla=self._get_text_value(mandato, "ParSigla"),
-                                par_des=self._get_text_value(mandato, "ParDes"),
+                                par_sigla=par_sigla,
+                                par_des=par_des,
                                 gp_sigla=self._get_text_value(mandato, "GpSigla"),
                                 gp_des=self._get_text_value(mandato, "GpDes"),
                                 ind_des=self._get_text_value(
@@ -1107,6 +1122,11 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                     self._get_text_value(mandato, "IndData")
                                 ),  # VIII Legislature field
                             )
+                            
+                            # Update mandate with coalition context
+                            if par_sigla:
+                                self.update_mandate_coalition_context(mandate, par_sigla, par_des)
+                            
                             self.session.add(mandate)
 
             return True

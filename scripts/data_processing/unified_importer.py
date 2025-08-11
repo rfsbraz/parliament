@@ -441,6 +441,10 @@ class UnifiedImporter:
                     f"Completed processing {file_type}: {files_processed_for_type} files processed"
                 )
 
+            # Post-processing step: Run coalition detection after all parties are imported
+            logger.info("Starting post-processing: Coalition detection and entity classification...")
+            self._run_coalition_detection(session)
+            
             session.commit()
             logger.info(
                 f"Processing complete: {total_files} files found, {processed_files} processed"
@@ -854,6 +858,32 @@ class UnifiedImporter:
         except Exception as e:
             logger.error(f"Database cleanup failed: {e}")
             raise
+
+    def _run_coalition_detection(self, session):
+        """
+        Run coalition detection post-processing after all parties are imported.
+        This ensures all individual parties exist before detecting coalitions.
+        """
+        try:
+            from .migrate_coalition_data import CoalitionDataMigrator
+            
+            logger.info("Running coalition detection migration...")
+            migrator = CoalitionDataMigrator(session=session, dry_run=False)
+            results = migrator.run_migration()
+            
+            logger.info(f"Coalition detection completed:")
+            logger.info(f"  - Coalitions detected: {results['statistics']['coalitions_detected']}")
+            logger.info(f"  - Coalitions created: {results['statistics']['coalitions_created']}")
+            logger.info(f"  - Mandates updated: {results['statistics']['mandates_updated']}")
+            
+            if results['statistics']['errors'] > 0:
+                logger.warning(f"  - Errors encountered: {results['statistics']['errors']}")
+                
+        except ImportError as e:
+            logger.warning(f"Could not import coalition detection: {e}")
+        except Exception as e:
+            logger.error(f"Coalition detection failed: {e}")
+            # Don't raise - this is optional post-processing
 
 
 def main():
