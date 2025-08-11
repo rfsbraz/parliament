@@ -157,7 +157,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     self._record_identity_mapping(
                         deputy.id_cadastro, cad_id, nome_completo or nome_parlamentar, deputy
                     )
-                    logger.warning(
+                    logger.info(
                         f"Deputy found by full name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_completo})"
                     )
                     return deputy
@@ -173,7 +173,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     self._record_identity_mapping(
                         deputy.id_cadastro, cad_id, nome_parlamentar, deputy
                     )
-                    logger.warning(
+                    logger.info(
                         f"Deputy found by parliamentary name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_parlamentar})"
                     )
                     return deputy

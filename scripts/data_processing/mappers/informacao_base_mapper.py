@@ -567,6 +567,15 @@ class InformacaoBaseMapper(SchemaMapper):
     ) -> None:
         """Process I_Legislatura deputy format (DadosDeputadoSearch)"""
         try:
+            # Check if this is a nil element (xsi:nil="true") - common in I_Legislatura historical data
+            if self._is_nil_element(deputado_element):
+                # For InformacaoBaseI files, null elements are expected historical placeholders
+                if self.file_info and 'InformacaoBaseI' in self.file_info.get('file_path', ''):
+                    logger.info("I_Legislatura deputy element is nil (historical placeholder), skipping")
+                else:
+                    logger.debug("I_Legislatura deputy element is nil, skipping")
+                return
+            
             # Extract deputy information from I_Legislatura structure
             dep_id_str = self._get_text_value(deputado_element, "depId")
             dep_cad_id_str = self._get_text_value(deputado_element, "depCadId")
@@ -578,7 +587,11 @@ class InformacaoBaseMapper(SchemaMapper):
             )
 
             if not dep_id_str or not dep_cad_id_str or not dep_nome_parlamentar:
-                logger.warning("I_Legislatura deputy missing required fields, skipping")
+                # For InformacaoBaseI files, missing fields in empty elements are expected
+                if self.file_info and 'InformacaoBaseI' in self.file_info.get('file_path', ''):
+                    logger.info("I_Legislatura deputy missing required fields (historical limitation), skipping")
+                else:
+                    logger.warning("I_Legislatura deputy missing required fields, skipping")
                 return
 
             # Parse IDs (may have .0 suffix)
