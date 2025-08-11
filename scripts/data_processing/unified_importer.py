@@ -865,7 +865,7 @@ class UnifiedImporter:
         This ensures all individual parties exist before detecting coalitions.
         """
         try:
-            from .migrate_coalition_data import CoalitionDataMigrator
+            from migrate_coalition_data import CoalitionDataMigrator
             
             logger.info("Running coalition detection migration...")
             migrator = CoalitionDataMigrator(session=session, dry_run=False)
