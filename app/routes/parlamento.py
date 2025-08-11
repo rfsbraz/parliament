@@ -1343,55 +1343,139 @@ def get_deputado_voting_analytics(deputado_id):
             import re
             
             def parse_vote_details(detalhe):
-                """Parse the HTML-like vote details to extract party positions"""
+                """Parse the HTML-like vote details to extract both party positions and individual deputy votes"""
                 if not detalhe:
-                    return {}
+                    return {}, {}
+                
+                # Get valid party siglas from database
+                valid_party_siglas = set()
+                try:
+                    # Add known parties from Partido table
+                    parties = session.query(Partido.sigla).distinct().all()
+                    for party in parties:
+                        if party.sigla:
+                            valid_party_siglas.add(party.sigla.strip())
+                    
+                    # Add parties from mandate data (includes coalitions like PPD/PSD.CDS-PP)
+                    mandate_siglas = session.query(DeputadoMandatoLegislativo.par_sigla).distinct().all()
+                    for sigla in mandate_siglas:
+                        if sigla.par_sigla:
+                            valid_party_siglas.add(sigla.par_sigla.strip())
+                except Exception:
+                    # Fallback to known parties if database query fails
+                    valid_party_siglas = {
+                        'PSD', 'PS', 'CH', 'IL', 'L', 'PCP', 'CDS-PP', 'PAN', 'JPP', 'BE',
+                        'CDU', 'PAF', 'PPD', 'PPD/PSD', 'PPD/PSD.CDS-PP', 'PPD/PSD.CDS-PP.PPM'
+                    }
                 
                 # Clean up HTML tags
                 detalhe = detalhe.replace('<I>', '').replace('</I>', '').replace('<BR>', ';')
                 
-                vote_positions = {}
+                party_positions = {}
+                individual_votes = {}  # {deputy_name: {'vote': vote_type, 'party': party_sigla}}
+                
                 # Parse each voting position
                 for section in detalhe.split(';'):
+                    vote_type = None
                     if 'A Favor:' in section:
-                        parties = re.findall(r'([A-Z][\w\-/]+)', section.replace('A Favor:', ''))
-                        for party in parties:
-                            vote_positions[party.strip()] = 'favor'
+                        vote_type = 'favor'
+                        content = section.replace('A Favor:', '')
                     elif 'Contra:' in section:
-                        parties = re.findall(r'([A-Z][\w\-/]+)', section.replace('Contra:', ''))
-                        for party in parties:
-                            vote_positions[party.strip()] = 'contra'
+                        vote_type = 'contra'
+                        content = section.replace('Contra:', '')
                     elif 'Abstenção:' in section or 'Absten��o:' in section:
-                        parties = re.findall(r'([A-Z][\w\-/]+)', section.replace('Abstenção:', '').replace('Absten��o:', ''))
-                        for party in parties:
-                            vote_positions[party.strip()] = 'abstencao'
+                        vote_type = 'abstencao'
+                        content = section.replace('Abstenção:', '').replace('Absten��o:', '')
+                    else:
+                        continue
+                    
+                    if not vote_type:
+                        continue
+                        
+                    # Extract all items from this section
+                    items = [item.strip() for item in content.split(',') if item.strip()]
+                    
+                    for item in items:
+                        # Check if it's a valid party sigla
+                        if item in valid_party_siglas:
+                            party_positions[item] = vote_type
+                        # Check if it's an individual deputy vote (contains parentheses with party)
+                        elif '(' in item and ')' in item:
+                            # Extract deputy name and party: "Sandra Lopes (PS)" -> name="Sandra Lopes", party="PS"
+                            try:
+                                name_part = item.split('(')[0].strip()
+                                party_part = item.split('(')[1].split(')')[0].strip()
+                                
+                                if party_part in valid_party_siglas:
+                                    individual_votes[name_part] = {
+                                        'vote': vote_type,
+                                        'party': party_part
+                                    }
+                            except (IndexError, ValueError):
+                                continue
                 
-                return vote_positions
+                return party_positions, individual_votes
             
-            # Analyze party's voting record
+            # Analyze party's voting record and individual deputy discipline
             party_votes = {'favor': 0, 'contra': 0, 'abstencao': 0, 'ausente': 0}
             party_discipline_data = []
             cross_party_data = {}
             
+            # Track individual deputy's alignment with party for discipline calculation
+            deputy_alignment_votes = {'aligned': 0, 'total': 0}
+            
             if partido_sigla:
                 for vote in all_initiative_votes:
-                    vote_positions = parse_vote_details(vote.detalhe)
+                    party_positions, individual_votes = parse_vote_details(vote.detalhe)
                     
                     # Check if deputy's party voted
-                    if partido_sigla in vote_positions:
-                        party_position = vote_positions[partido_sigla]
+                    if partido_sigla in party_positions:
+                        party_position = party_positions[partido_sigla]
                         party_votes[party_position] += 1
                         
-                        # Track discipline (simplified - would need individual deputy votes)
+                        # Check if this specific deputy voted individually (breaking party discipline)
+                        deputy_individual_vote = None
+                        deputy_aligned = True  # Default: assume deputy follows party line
+                        
+                        # Look for individual votes from deputies of this party
+                        for deputy_name, vote_info in individual_votes.items():
+                            if vote_info['party'] == partido_sigla:
+                                # Check if voting record name matches deputy's parliamentary name
+                                deputy_found = False
+                                
+                                # First try exact match with parliamentary name (nome field)
+                                if deputado.nome and deputy_name == deputado.nome:
+                                    deputy_found = True
+                                # Fallback: check if voting record name matches parts of full name
+                                elif deputado.nome_completo and deputy_name:
+                                    deputy_name_parts = set(deputy_name.split())
+                                    full_name_parts = set(deputado.nome_completo.split())
+                                    # If at least 2 name parts match, consider it the same person
+                                    matching_parts = deputy_name_parts.intersection(full_name_parts)
+                                    if len(matching_parts) >= 2:
+                                        deputy_found = True
+                                
+                                if deputy_found:
+                                    deputy_individual_vote = vote_info['vote']
+                                    deputy_aligned = (deputy_individual_vote == party_position)
+                                    break
+                        
+                        # Update discipline tracking
                         if vote.data_votacao:
+                            deputy_alignment_votes['total'] += 1
+                            if deputy_aligned:
+                                deputy_alignment_votes['aligned'] += 1
+                            
                             party_discipline_data.append({
                                 'date': vote.data_votacao.isoformat(),
-                                'aligned': True,  # Assuming deputy follows party line
-                                'vote_type': party_position
+                                'aligned': deputy_aligned,
+                                'vote_type': deputy_individual_vote if deputy_individual_vote else party_position,
+                                'party_position': party_position,
+                                'individual_vote': deputy_individual_vote is not None
                             })
                         
                         # Track cross-party collaboration
-                        for other_party, other_position in vote_positions.items():
+                        for other_party, other_position in party_positions.items():
                             if other_party != partido_sigla:
                                 if other_party not in cross_party_data:
                                     cross_party_data[other_party] = {'aligned': 0, 'total': 0}
@@ -1414,18 +1498,27 @@ def get_deputado_voting_analytics(deputado_id):
             # 1. Vote Distribution - use actual party voting data
             vote_distribution = party_votes
             
-            # 2. Party Discipline - use real party voting timeline
+            # 2. Party Discipline - calculate real alignment based on individual vs party votes
             party_discipline = None
             if partido_sigla and party_discipline_data:
-                # Assuming deputy follows party line (85% discipline is typical)
-                discipline_score = 0.85  # Would need individual deputy votes to calculate exactly
+                # Calculate actual discipline score from individual voting data
+                if deputy_alignment_votes['total'] > 0:
+                    discipline_score = deputy_alignment_votes['aligned'] / deputy_alignment_votes['total']
+                else:
+                    # If no individual voting data, assume typical discipline
+                    discipline_score = 0.85
                 
                 # Use real voting timeline data
                 timeline = party_discipline_data[-30:]  # Last 30 votes
                 
                 party_discipline = {
-                    'overall_alignment': discipline_score,
-                    'timeline': timeline
+                    'overall_alignment': round(discipline_score, 3),
+                    'timeline': timeline,
+                    'alignment_stats': {
+                        'aligned_votes': deputy_alignment_votes['aligned'],
+                        'total_votes': deputy_alignment_votes['total'],
+                        'individual_dissent_votes': deputy_alignment_votes['total'] - deputy_alignment_votes['aligned']
+                    }
                 }
             
             # 3. Participation Timeline - use real voting dates
@@ -1457,13 +1550,13 @@ def get_deputado_voting_analytics(deputado_id):
             cross_party_collaboration = []
             if partido_sigla and cross_party_data:
                 # Get party names for display
-                for party_sigla, data in cross_party_data.items():
-                    party_obj = session.query(Partido).filter_by(sigla=party_sigla).first()
+                for other_party_sigla, data in cross_party_data.items():
+                    party_obj = session.query(Partido).filter_by(sigla=other_party_sigla).first()
                     alignment_rate = data['aligned'] / data['total'] if data['total'] > 0 else 0
                     
                     cross_party_collaboration.append({
-                        'party': party_sigla,
-                        'party_name': party_obj.nome if party_obj else party_sigla,
+                        'party': other_party_sigla,
+                        'party_name': party_obj.nome if party_obj else other_party_sigla,
                         'alignment_rate': round(alignment_rate, 3),
                         'aligned_votes': data['aligned'],
                         'total_votes': data['total']
@@ -1484,8 +1577,8 @@ def get_deputado_voting_analytics(deputado_id):
             important_votes = [v for v in all_initiative_votes if v.unanime != 'Sim'][-10:]
             
             for vote in important_votes:
-                vote_positions = parse_vote_details(vote.detalhe)
-                party_position = vote_positions.get(partido_sigla, 'ausente')
+                party_positions, individual_votes = parse_vote_details(vote.detalhe)
+                party_position = party_positions.get(partido_sigla, 'ausente')
                 
                 critical_votes.append({
                     'id': vote.id,
@@ -1494,7 +1587,7 @@ def get_deputado_voting_analytics(deputado_id):
                     'type': 'legislative',  # Initiative votes
                     'deputy_vote': party_position,
                     'result': 'approved' if vote.resultado == 'Aprovado' else 'rejected',
-                    'vote_breakdown': vote_positions
+                    'vote_breakdown': party_positions
                 })
             
             # Add budget votes as critical too
