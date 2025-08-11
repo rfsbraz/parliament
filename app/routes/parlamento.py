@@ -12,8 +12,9 @@ from database.models import (
     DeputadoObraPublicada, IntervencaoParlamentar, IntervencaoDeputado,
     IniciativaParlamentar, IniciativaAutorDeputado, 
     AtividadeParlamentarVotacao, OrcamentoEstadoVotacao, 
-    OrcamentoEstadoGrupoParlamentarVoto
+    OrcamentoEstadoGrupoParlamentarVoto, Coligacao, ColigacaoPartido
 )
+from scripts.data_processing.mappers.political_entity_queries import PoliticalEntityQueries
 
 parlamento_bp = Blueprint('parlamento', __name__)
 
@@ -548,22 +549,29 @@ def search():
 
 @parlamento_bp.route('/partidos', methods=['GET'])
 def get_partidos():
-    """Retorna lista de partidos com contagem de deputados para a legislatura especificada"""
+    """Retorna lista de partidos e coligações com contagem de deputados para a legislatura especificada"""
     try:
         legislatura = request.args.get('legislatura', 'XVII', type=str)
+        include_coalitions = request.args.get('include_coalitions', 'true').lower() == 'true'
         
         with DatabaseSession() as session:
-            # Get parties with deputy counts - simplified direct approach
+            political_queries = PoliticalEntityQueries(session)
+            
+            # Get parties/coalitions with deputy counts - enhanced approach
             partidos_result = session.query(
                 DeputadoMandatoLegislativo.par_sigla.label('sigla'),
                 DeputadoMandatoLegislativo.par_des.label('nome'),
+                DeputadoMandatoLegislativo.coligacao_id.label('coligacao_id'),
+                DeputadoMandatoLegislativo.tipo_entidade_politica.label('tipo_entidade'),
                 func.count(distinct(DeputadoMandatoLegislativo.deputado_id)).label('num_deputados')
             ).filter(
                 DeputadoMandatoLegislativo.leg_des == legislatura,
                 DeputadoMandatoLegislativo.par_sigla.isnot(None)
             ).group_by(
                 DeputadoMandatoLegislativo.par_sigla,
-                DeputadoMandatoLegislativo.par_des
+                DeputadoMandatoLegislativo.par_des,
+                DeputadoMandatoLegislativo.coligacao_id,
+                DeputadoMandatoLegislativo.tipo_entidade_politica
             ).order_by(func.count(distinct(DeputadoMandatoLegislativo.deputado_id)).desc()).all()
             
             # Get total deputies count for percentage calculation  
@@ -574,20 +582,60 @@ def get_partidos():
             ).scalar()
             
             result = []
+            processed_entities = set()
+            
             for p in partidos_result:
                 if p.num_deputados > 0:  # Only show parties with deputies in current legislature
-                    partido_dict = {
-                        'id': p.sigla,  # Frontend expects 'id' field for routing
-                        'sigla': p.sigla,
-                        'nome': p.nome or 'Partido não especificado',
-                        'num_deputados': p.num_deputados,
-                        'percentagem': round((p.num_deputados / total_deputados * 100), 1) if total_deputados > 0 else 0
-                    }
-                    result.append(partido_dict)
+                    
+                    # Determine the display entity (coalition or party)
+                    # For now, just use the party sigla as we don't have direct coalition sigla mapping
+                    display_sigla = p.sigla
+                    
+                    # Avoid duplicates when grouping by coalition
+                    if display_sigla in processed_entities:
+                        continue
+                    processed_entities.add(display_sigla)
+                    
+                    # Get detailed entity information
+                    entity_info = political_queries.get_entity_by_sigla(display_sigla, include_components=False)
+                    
+                    if entity_info:
+                        # Skip coalitions - only include individual parties
+                        if entity_info.get('tipo_entidade') == 'coligacao':
+                            continue
+                            
+                        partido_dict = {
+                            'id': display_sigla,  # Frontend expects 'id' field for routing
+                            'sigla': display_sigla,
+                            'nome': entity_info.get('nome', p.nome or 'Entidade não especificada'),
+                            'tipo_entidade': entity_info.get('tipo_entidade', 'partido'),
+                            'num_deputados': p.num_deputados,
+                            'percentagem': round((p.num_deputados / total_deputados * 100), 1) if total_deputados > 0 else 0
+                        }
+                        
+                        result.append(partido_dict)
+                    else:
+                        # Fallback for entities not found in detailed queries
+                        # Only include if it's likely a party (not a coalition)
+                        if p.tipo_entidade != 'coligacao':
+                            partido_dict = {
+                                'id': display_sigla,
+                                'sigla': display_sigla,
+                                'nome': p.nome or 'Entidade não especificada',
+                                'tipo_entidade': p.tipo_entidade or 'partido',
+                                'num_deputados': p.num_deputados,
+                                'percentagem': round((p.num_deputados / total_deputados * 100), 1) if total_deputados > 0 else 0
+                            }
+                            result.append(partido_dict)
+            
+            # Sort by number of deputies (descending)
+            result.sort(key=lambda x: x['num_deputados'], reverse=True)
             
             return jsonify({
                 'partidos': result,
-                'total_deputados': total_deputados
+                'total_deputados': total_deputados,
+                'include_coalitions': include_coalitions,
+                'total_entities': len(result)
             })
         
     except Exception as e:
@@ -1448,6 +1496,195 @@ def get_partido_voting_analytics(partido_sigla):
 
 
 # =============================================================================
+# COALITION API ENDPOINTS
+# =============================================================================
+
+@parlamento_bp.route('/coligacoes', methods=['GET'])
+def get_coligacoes():
+    """Retorna lista de coligações com informações detalhadas"""
+    try:
+        include_inactive = request.args.get('include_inactive', 'false').lower() == 'true'
+        include_components = request.args.get('include_components', 'false').lower() == 'true'
+        
+        with DatabaseSession() as session:
+            political_queries = PoliticalEntityQueries(session)
+            
+            # Get all coalitions
+            coalitions = session.query(Coligacao).order_by(Coligacao.sigla).all()
+            
+            # Filter by activity status using calculated property if needed
+            if not include_inactive:
+                coalitions = [c for c in coalitions if c.ativo]
+            
+            result = []
+            for coalition in coalitions:
+                coalition_info = political_queries._format_coalition_entity(coalition, include_components)
+                result.append(coalition_info)
+            
+            return jsonify({
+                'coligacoes': result,
+                'total': len(result),
+                'include_inactive': include_inactive,
+                'include_components': include_components
+            })
+        
+    except Exception as e:
+        return log_and_return_error(e, '/api/coligacoes')
+
+
+@parlamento_bp.route('/coligacoes/<path:coligacao_sigla>', methods=['GET'])
+def get_coligacao_details(coligacao_sigla):
+    """Retorna detalhes de uma coligação específica"""
+    try:
+        
+        include_components = request.args.get('include_components', 'true').lower() == 'true'
+        
+        with DatabaseSession() as session:
+            political_queries = PoliticalEntityQueries(session)
+            
+            coalition_info = political_queries.get_entity_by_sigla(
+                coligacao_sigla, 
+                include_components=include_components
+            )
+            
+            if not coalition_info or coalition_info.get('tipo_entidade') != 'coligacao':
+                return jsonify({
+                    'error': 'Coligação não encontrada',
+                    'sigla': coligacao_sigla
+                }), 404
+            
+            return jsonify(coalition_info)
+        
+    except Exception as e:
+        return log_and_return_error(e, f'/api/coligacoes/{coligacao_sigla}')
+
+
+@parlamento_bp.route('/coligacoes/<path:coligacao_sigla>/deputados', methods=['GET'])
+def get_coligacao_deputados(coligacao_sigla):
+    """Retorna deputados de uma coligação para uma legislatura específica"""
+    try:
+        legislatura = request.args.get('legislatura', 'XVII', type=str)
+        
+        with DatabaseSession() as session:
+            political_queries = PoliticalEntityQueries(session)
+            
+            # Verify coalition exists
+            coalition_info = political_queries.get_entity_by_sigla(coligacao_sigla, include_components=False)
+            if not coalition_info or coalition_info.get('tipo_entidade') != 'coligacao':
+                return jsonify({
+                    'error': 'Coligação não encontrada',
+                    'sigla': coligacao_sigla
+                }), 404
+            
+            # Get deputies from mandates with coalition context
+            deputados_query = session.query(Deputado).join(
+                DeputadoMandatoLegislativo, 
+                Deputado.id == DeputadoMandatoLegislativo.deputado_id
+            ).filter(
+                DeputadoMandatoLegislativo.leg_des == legislatura,
+                DeputadoMandatoLegislativo.coligacao_contexto_sigla == coligacao_sigla
+            ).distinct().order_by(Deputado.nome_completo)
+            
+            deputados = deputados_query.all()
+            
+            return jsonify({
+                'coligacao': {
+                    'sigla': coalition_info['sigla'],
+                    'nome': coalition_info['nome'],
+                    'tipo_coligacao': coalition_info.get('tipo_coligacao')
+                },
+                'deputados': [deputado_to_dict(d, session) for d in deputados],
+                'total_deputados': len(deputados),
+                'legislatura': legislatura
+            })
+        
+    except Exception as e:
+        return log_and_return_error(e, f'/api/coligacoes/{coligacao_sigla}/deputados')
+
+
+@parlamento_bp.route('/coligacoes/<path:coligacao_sigla>/partidos', methods=['GET'])
+def get_coligacao_partidos(coligacao_sigla):
+    """Retorna partidos componentes de uma coligação"""
+    try:
+        with DatabaseSession() as session:
+            political_queries = PoliticalEntityQueries(session)
+            
+            coalition_info = political_queries.get_entity_by_sigla(
+                coligacao_sigla, 
+                include_components=True
+            )
+            
+            if not coalition_info or coalition_info.get('tipo_entidade') != 'coligacao':
+                return jsonify({
+                    'error': 'Coligação não encontrada',
+                    'sigla': coligacao_sigla
+                }), 404
+            
+            return jsonify({
+                'coligacao': {
+                    'sigla': coalition_info['sigla'],
+                    'nome': coalition_info['nome'],
+                    'tipo_coligacao': coalition_info.get('tipo_coligacao'),
+                    'espectro_politico': coalition_info.get('espectro_politico')
+                },
+                'partidos_componentes': coalition_info.get('component_parties', []),
+                'total_partidos': len(coalition_info.get('component_parties', []))
+            })
+        
+    except Exception as e:
+        return log_and_return_error(e, f'/api/coligacoes/{coligacao_sigla}/partidos')
+
+
+@parlamento_bp.route('/entidades-politicas/search', methods=['GET'])
+def search_political_entities():
+    """Pesquisa unificada por coligações e partidos"""
+    try:
+        query_param = request.args.get('q', '', type=str)
+        entity_type = request.args.get('type', None, type=str)  # 'coligacao', 'partido', or None for both
+        limit = request.args.get('limit', 20, type=int)
+        
+        if not query_param:
+            return jsonify({'entidades': [], 'total': 0})
+        
+        with DatabaseSession() as session:
+            political_queries = PoliticalEntityQueries(session)
+            
+            entities = political_queries.search_entities(
+                query=query_param,
+                entity_type=entity_type,
+                limit=limit
+            )
+            
+            return jsonify({
+                'entidades': entities,
+                'total': len(entities),
+                'query': query_param,
+                'entity_type': entity_type
+            })
+        
+    except Exception as e:
+        return log_and_return_error(e, '/api/entidades-politicas/search')
+
+
+@parlamento_bp.route('/entidades-politicas/statistics', methods=['GET'])
+def get_political_entities_statistics():
+    """Estatísticas gerais sobre entidades políticas (coligações e partidos)"""
+    try:
+        with DatabaseSession() as session:
+            political_queries = PoliticalEntityQueries(session)
+            
+            stats = political_queries.get_entity_statistics()
+            
+            return jsonify({
+                'estatisticas': stats,
+                'timestamp': func.now()
+            })
+        
+    except Exception as e:
+        return log_and_return_error(e, '/api/entidades-politicas/statistics')
+
+
+# =============================================================================
 # ADDITIONAL UTILITY ENDPOINTS
 # =============================================================================
 
@@ -1459,6 +1696,7 @@ def get_deputados():
         per_page = min(request.args.get('per_page', 20, type=int), 100)
         search = request.args.get('search', '', type=str)
         legislatura = request.args.get('legislatura', None, type=str)  # Specific legislature filter
+        active_only = request.args.get('active_only', 'true').lower() == 'true'  # Show only active deputies by default
         
         with DatabaseSession() as session:
             if legislatura:
@@ -1468,8 +1706,15 @@ def get_deputados():
                 ).filter(
                     DeputadoMandatoLegislativo.leg_des == legislatura
                 )
+            elif active_only:
+                # Default behavior: Show only active deputies (current legislature XVII)
+                query = session.query(Deputado).join(
+                    DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
+                ).filter(
+                    DeputadoMandatoLegislativo.leg_des == 'XVII'  # Current active legislature
+                )
             else:
-                # Default: Return all unique deputies by id_cadastro (latest entry per person)
+                # Show all unique deputies by id_cadastro (latest entry per person)
                 subquery = session.query(
                     Deputado.id_cadastro,
                     func.max(Deputado.id).label('latest_id')
@@ -1497,6 +1742,10 @@ def get_deputados():
                 # When filtering by legislature, total mandates = total unique people in that legislature
                 total_mandatos = total
                 view_type = f'legislature_{legislatura}'
+            elif active_only:
+                # When showing active deputies, total = current legislature count
+                total_mandatos = total
+                view_type = 'active_only'
             else:
                 # When showing all unique deputies, also get total mandate count
                 total_mandatos = session.query(func.count(Deputado.id)).scalar()
@@ -1516,7 +1765,8 @@ def get_deputados():
                     'total_deputy_records': total_mandatos,
                     'view_type': view_type,
                     'legislatura': legislatura,
-                    'show_all_unique': not bool(legislatura)
+                    'active_only': active_only,
+                    'show_all_unique': not bool(legislatura) and not active_only
                 },
                 'legislatura': legislatura
             })
