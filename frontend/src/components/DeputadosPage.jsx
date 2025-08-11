@@ -75,7 +75,7 @@ const DeputadosPage = () => {
         <p className="text-gray-600">
           {filters ? (
             <>
-              {pagination?.total || 0} pessoas únicas • {filters.total_deputy_records} registos totais
+              {pagination?.total || 0} pessoas únicas • {filters.total_deputy_records} mandatos totais
               {activeOnly && <span className="text-blue-600 font-medium"> • Apenas Ativos</span>}
             </>
           ) : 'Carregando...'}

@@ -512,8 +512,7 @@ class LegislatureHandlerMixin:
             id_cadastro=id_cadastro,  # This tracks the same person across legislatures
             nome=nome,
             nome_completo=nome_completo,
-            legislatura_id=legislatura_id,
-            ativo=True
+            legislatura_id=legislatura_id
         )
         
         self.session.add(deputado)

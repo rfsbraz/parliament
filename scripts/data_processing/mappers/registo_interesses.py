@@ -594,7 +594,6 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                 nome=full_name,
                 nome_completo=full_name,
                 legislatura_id=legislatura.id,
-                ativo=True,
             )
             self.session.add(deputado)
             self.session.flush()  # Get the auto-generated primary key
