@@ -101,12 +101,28 @@ class Partido(Base):
     )
     designacao_completa = Column(Text)
     cor_hex = Column(String(7))
-    ativo = Column(Boolean, default=True)
+    # Removed unreliable 'ativo' field - calculated at runtime based on current mandates
     data_fundacao = Column(Date)
     ideologia = Column(String(100))
     lider_parlamentar = Column(String(200))
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    @property
+    def is_active(self):
+        """Runtime calculation: Party is active if it has deputies in current legislature XVII"""
+        from database.connection import get_session
+        from sqlalchemy import exists
+        session = get_session()
+        try:
+            return session.query(
+                exists().where(
+                    DeputadoMandatoLegislativo.par_sigla == self.sigla,
+                    DeputadoMandatoLegislativo.leg_des.like('%XVII%')
+                )
+            ).scalar()
+        finally:
+            session.close()
 
 
 class CirculoEleitoral(Base):
@@ -230,7 +246,7 @@ class Deputado(Base):
     email = Column(String(100))
     telefone = Column(String(20))
     gabinete = Column(String(50))
-    ativo = Column(Boolean, default=True)
+    # Removed unreliable 'ativo' field - calculated at runtime based on current mandates
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
@@ -275,6 +291,22 @@ class Deputado(Base):
     situations = relationship(
         "DeputySituation", back_populates="deputado", cascade="all, delete-orphan"
     )
+
+    @property
+    def is_active(self):
+        """Runtime calculation: Deputy is active if they have a mandate in current legislature XVII"""
+        from database.connection import get_session
+        from sqlalchemy import exists
+        session = get_session()
+        try:
+            return session.query(
+                exists().where(
+                    DeputadoMandatoLegislativo.deputado_id == self.id,
+                    DeputadoMandatoLegislativo.leg_des.like('%XVII%')
+                )
+            ).scalar()
+        finally:
+            session.close()
 
     # Indexes for query optimization
     __table_args__ = (
@@ -8661,3 +8693,22 @@ class ParticipanteReuniaoNacional(Base):
 
     def __repr__(self):
         return f"<ParticipanteReuniaoNacional(nome='{self.nome}', gp='{self.grupo_parlamentar}', tipo='{self.tipo}')>"
+
+
+# =============================================================================
+# FLASK-SQLALCHEMY COMPATIBILITY
+# =============================================================================
+
+# For Flask-SQLAlchemy compatibility, create a mock db object
+class MockDB:
+    """Mock Flask-SQLAlchemy db object for compatibility with Flask apps."""
+    
+    def __init__(self):
+        self.Model = Base
+        
+    def init_app(self, app):
+        """Initialize with Flask app - no-op since we use pure SQLAlchemy."""
+        pass
+
+# Create the db instance that Flask expects
+db = MockDB()
