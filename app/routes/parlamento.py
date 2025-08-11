@@ -3,7 +3,7 @@ Parliament API Routes - MySQL Implementation
 Clean implementation with proper MySQL/SQLAlchemy patterns
 """
 from flask import Blueprint, request, jsonify
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, distinct
 from database.connection import DatabaseSession
 from database.models import (
     Deputado, Partido, Legislatura, CirculoEleitoral, 
@@ -299,7 +299,7 @@ def get_partido_deputados(partido_sigla):
                     'nome': partido.nome,
                     'designacao_completa': partido.designacao_completa,
                     'cor_hex': partido.cor_hex,
-                    'ativo': partido.ativo
+                    'ativo': partido.is_active
                 },
                 'legislatura': legislatura
             })
@@ -384,71 +384,55 @@ def get_estatisticas():
         with DatabaseSession() as session:
             legislatura = request.args.get('legislatura', 'XVII', type=str)
             
-            # Count deputies in the specified legislature
-            total_deputados = session.query(func.count(Deputado.id)).join(
-                Legislatura, Deputado.legislatura_id == Legislatura.id
+            # Count unique deputies in the specified legislature - simplified direct approach
+            total_deputados = session.query(
+                func.count(distinct(DeputadoMandatoLegislativo.deputado_id))
             ).filter(
-                Legislatura.numero == legislatura
+                DeputadoMandatoLegislativo.leg_des == legislatura
             ).scalar()
             
-            # Count distinct political parties represented
+            # Count distinct political parties represented - simplified direct approach
             total_partidos = session.query(
-                func.count(func.distinct(DeputadoMandatoLegislativo.par_sigla))
-            ).join(
-                Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
-            ).join(
-                Legislatura, Deputado.legislatura_id == Legislatura.id
+                func.count(distinct(DeputadoMandatoLegislativo.par_sigla))
             ).filter(
-                Legislatura.numero == legislatura,
+                DeputadoMandatoLegislativo.leg_des == legislatura,
                 DeputadoMandatoLegislativo.par_sigla.isnot(None)
             ).scalar()
             
-            # Count distinct electoral circles
+            # Count distinct electoral circles - simplified direct approach
             total_circulos = session.query(
-                func.count(func.distinct(DeputadoMandatoLegislativo.ce_des))
-            ).join(
-                Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
-            ).join(
-                Legislatura, Deputado.legislatura_id == Legislatura.id
+                func.count(distinct(DeputadoMandatoLegislativo.ce_des))
             ).filter(
-                Legislatura.numero == legislatura,
+                DeputadoMandatoLegislativo.leg_des == legislatura,
                 DeputadoMandatoLegislativo.ce_des.isnot(None)
             ).scalar()
             
-            # For mandates count, use deputy count as proxy
+            # Total mandates = total deputies in this context
             total_mandatos = total_deputados
             
-            # Distribution by parties using new structure
+            # Distribution by parties - simplified direct approach
             distribuicao_partidos = session.query(
                 DeputadoMandatoLegislativo.par_sigla.label('sigla'),
                 DeputadoMandatoLegislativo.par_des.label('nome'),
-                func.count(Deputado.id).label('deputados')
-            ).join(
-                Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
-            ).join(
-                Legislatura, Deputado.legislatura_id == Legislatura.id
+                func.count(distinct(DeputadoMandatoLegislativo.deputado_id)).label('deputados')
             ).filter(
-                Legislatura.numero == legislatura,
+                DeputadoMandatoLegislativo.leg_des == legislatura,
                 DeputadoMandatoLegislativo.par_sigla.isnot(None)
             ).group_by(
                 DeputadoMandatoLegislativo.par_sigla,
                 DeputadoMandatoLegislativo.par_des
-            ).order_by(desc('deputados')).all()
+            ).order_by(func.count(distinct(DeputadoMandatoLegislativo.deputado_id)).desc()).all()
             
-            # Distribution by electoral circles using new structure
+            # Distribution by electoral circles - simplified direct approach
             distribuicao_circulos = session.query(
                 DeputadoMandatoLegislativo.ce_des.label('circulo'),
-                func.count(Deputado.id).label('deputados')
-            ).join(
-                Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
-            ).join(
-                Legislatura, Deputado.legislatura_id == Legislatura.id
+                func.count(distinct(DeputadoMandatoLegislativo.deputado_id)).label('deputados')
             ).filter(
-                Legislatura.numero == legislatura,
+                DeputadoMandatoLegislativo.leg_des == legislatura,
                 DeputadoMandatoLegislativo.ce_des.isnot(None)
             ).group_by(
                 DeputadoMandatoLegislativo.ce_des
-            ).order_by(desc('deputados')).limit(10).all()
+            ).order_by(func.count(distinct(DeputadoMandatoLegislativo.deputado_id)).desc()).limit(10).all()
             
             # Largest party
             maior_partido = distribuicao_partidos[0] if distribuicao_partidos else None
@@ -550,28 +534,24 @@ def get_partidos():
         legislatura = request.args.get('legislatura', 'XVII', type=str)
         
         with DatabaseSession() as session:
-            # Get parties with deputy counts using new schema
+            # Get parties with deputy counts - simplified direct approach
             partidos_result = session.query(
                 DeputadoMandatoLegislativo.par_sigla.label('sigla'),
                 DeputadoMandatoLegislativo.par_des.label('nome'),
-                func.count(Deputado.id).label('num_deputados')
-            ).join(
-                Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
-            ).join(
-                Legislatura, Deputado.legislatura_id == Legislatura.id
+                func.count(distinct(DeputadoMandatoLegislativo.deputado_id)).label('num_deputados')
             ).filter(
-                Legislatura.numero == legislatura,
+                DeputadoMandatoLegislativo.leg_des == legislatura,
                 DeputadoMandatoLegislativo.par_sigla.isnot(None)
             ).group_by(
                 DeputadoMandatoLegislativo.par_sigla,
                 DeputadoMandatoLegislativo.par_des
-            ).order_by(desc('num_deputados')).all()
+            ).order_by(func.count(distinct(DeputadoMandatoLegislativo.deputado_id)).desc()).all()
             
-            # Get total deputies count for percentage calculation
-            total_deputados = session.query(func.count(Deputado.id)).join(
-                Legislatura, Deputado.legislatura_id == Legislatura.id
+            # Get total deputies count for percentage calculation  
+            total_deputados = session.query(
+                func.count(distinct(DeputadoMandatoLegislativo.deputado_id))
             ).filter(
-                Legislatura.numero == legislatura
+                DeputadoMandatoLegislativo.leg_des == legislatura
             ).scalar()
             
             result = []
@@ -1451,19 +1431,18 @@ def get_deputados():
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 20, type=int), 100)
         search = request.args.get('search', '', type=str)
-        legislatura = request.args.get('legislatura', None, type=str)
+        legislatura = request.args.get('legislatura', None, type=str)  # Specific legislature filter
         
         with DatabaseSession() as session:
             if legislatura:
-                # Filter by specific legislature
+                # Filter by specific legislature when explicitly requested
                 query = session.query(Deputado).join(
-                    Legislatura, Deputado.legislatura_id == Legislatura.id
+                    DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
                 ).filter(
-                    Legislatura.numero == legislatura
+                    DeputadoMandatoLegislativo.leg_des == legislatura
                 )
             else:
-                # Return all unique deputies by id_cadastro (latest entry per person)
-                # Use a subquery to get the latest entry for each id_cadastro
+                # Default: Return all unique deputies by id_cadastro (latest entry per person)
                 subquery = session.query(
                     Deputado.id_cadastro,
                     func.max(Deputado.id).label('latest_id')
@@ -1487,12 +1466,14 @@ def get_deputados():
             deputados = query.offset(offset).limit(per_page).all()
             
             # Get additional statistics for filters
-            if not legislatura:
-                # When showing unique deputies, also get total mandate count
-                total_mandatos = session.query(func.count(Deputado.id)).scalar()
-            else:
-                # When filtering by legislature, total mandates = total unique people
+            if legislatura:
+                # When filtering by legislature, total mandates = total unique people in that legislature
                 total_mandatos = total
+                view_type = f'legislature_{legislatura}'
+            else:
+                # When showing all unique deputies, also get total mandate count
+                total_mandatos = session.query(func.count(Deputado.id)).scalar()
+                view_type = 'all_unique'
             
             return jsonify({
                 'deputados': [deputado_to_dict(d, session) for d in deputados],
@@ -1505,9 +1486,12 @@ def get_deputados():
                     'has_prev': page > 1
                 },
                 'filters': {
-                    'total_deputy_records': total_mandatos
+                    'total_deputy_records': total_mandatos,
+                    'view_type': view_type,
+                    'legislatura': legislatura,
+                    'show_all_unique': not bool(legislatura)
                 },
-                'legislatura': legislatura if legislatura else 'all_unique'
+                'legislatura': legislatura
             })
         
     except Exception as e:
