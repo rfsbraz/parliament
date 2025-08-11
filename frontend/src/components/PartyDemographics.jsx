@@ -18,7 +18,7 @@ const PartyDemographics = ({ partidoId, dadosDemograficos, partidoInfo }) => {
   const fetchDemographics = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/partidos/${partidoId}/deputados`);
+      const response = await fetch(`/api/partidos/${encodeURIComponent(partidoId)}/deputados`);
       if (!response.ok) throw new Error('Erro ao carregar dados demográficos');
       const data = await response.json();
       setDemographics(data.demografia);

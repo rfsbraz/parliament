@@ -165,7 +165,7 @@ const PartidosPage = () => {
 
               {/* Botão de detalhes */}
               <Link
-                to={`/partidos/${partido.id}`}
+                to={`/partidos/${encodeURIComponent(partido.id)}`}
                 className="w-full bg-gray-50 hover:bg-gray-100 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center group-hover:bg-blue-50 group-hover:text-blue-700"
               >
                 Ver Deputados

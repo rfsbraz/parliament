@@ -268,27 +268,46 @@ def get_partido(partido_id):
         return log_and_return_error(e, '/api/partidos/<id>')
 
 
-@parlamento_bp.route('/partidos/<string:partido_sigla>/deputados', methods=['GET'])
+@parlamento_bp.route('/partidos/<path:partido_sigla>/deputados', methods=['GET'])
 def get_partido_deputados(partido_sigla):
     """Retorna deputados de um partido usando nova estrutura de dados"""
     try:
+        # URL decode the party sigla to handle special characters like slashes
+        from urllib.parse import unquote
+        partido_sigla = unquote(partido_sigla)
+        
         legislatura = request.args.get('legislatura', 'XVII', type=str)
         
         with DatabaseSession() as session:
-            # First get the party information from the partidos table
+            # First try to get the party information from the partidos table
             partido = session.query(Partido).filter_by(sigla=partido_sigla).first()
             
+            # If not found in partidos table, check if it exists in mandate table
             if not partido:
-                return jsonify({'error': 'Party not found'}), 404
+                mandate_exists = session.query(DeputadoMandatoLegislativo).filter(
+                    DeputadoMandatoLegislativo.par_sigla == partido_sigla
+                ).first()
+                
+                if not mandate_exists:
+                    return jsonify({'error': 'Party not found'}), 404
+                
+                # Create a mock party object with data from mandate table
+                class MockParty:
+                    def __init__(self, sigla, nome):
+                        self.sigla = sigla
+                        self.nome = nome
+                        self.designacao_completa = nome
+                        self.cor_hex = None
+                        self.is_active = True
+                
+                partido = MockParty(partido_sigla, mandate_exists.par_des or partido_sigla)
             
-            # Get deputies from this party
+            # Get deputies from this party using the simplified direct approach
             deputados = session.query(Deputado).join(
                 DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
-            ).join(
-                Legislatura, Deputado.legislatura_id == Legislatura.id
             ).filter(
                 DeputadoMandatoLegislativo.par_sigla == partido_sigla,
-                Legislatura.numero == legislatura
+                DeputadoMandatoLegislativo.leg_des == legislatura
             ).all()
             
             return jsonify({
@@ -1008,10 +1027,14 @@ def get_deputado_votacoes(deputado_id):
         return log_and_return_error(e, f'/api/deputados/{deputado_id}/votacoes')
 
 
-@parlamento_bp.route('/partidos/<string:partido_sigla>/votacoes', methods=['GET'])
+@parlamento_bp.route('/partidos/<path:partido_sigla>/votacoes', methods=['GET'])
 def get_partido_votacoes_by_sigla(partido_sigla):
     """Retorna padrões de votação de um partido específico"""
     try:
+        # URL decode the party sigla to handle special characters like slashes
+        from urllib.parse import unquote
+        partido_sigla = unquote(partido_sigla)
+        
         legislatura = request.args.get('legislatura', 'XVII', type=str)
         limit = request.args.get('limit', 50, type=int)
         
@@ -1294,10 +1317,14 @@ def get_deputado_voting_analytics(deputado_id):
         return log_and_return_error(e, f'/api/deputados/{deputado_id}/voting-analytics')
 
 
-@parlamento_bp.route('/partidos/<string:partido_sigla>/voting-analytics', methods=['GET'])
+@parlamento_bp.route('/partidos/<path:partido_sigla>/voting-analytics', methods=['GET'])
 def get_partido_voting_analytics(partido_sigla):
     """Retorna análises avançadas de votação para um partido específico"""
     try:
+        # URL decode the party sigla to handle special characters like slashes
+        from urllib.parse import unquote
+        partido_sigla = unquote(partido_sigla)
+        
         with DatabaseSession() as session:
             # Get party information
             partido = session.query(Partido).filter_by(sigla=partido_sigla).first()

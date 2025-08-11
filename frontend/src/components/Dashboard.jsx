@@ -501,7 +501,7 @@ const Dashboard = ({ stats }) => {
                       transition={{ delay: index * 0.05 }}
                     >
                       <Link 
-                        to={`/partidos/${partido.id}`}
+                        to={`/partidos/${encodeURIComponent(partido.id)}`}
                         className="group relative overflow-hidden bg-white border border-gray-200 rounded-xl p-5 hover:shadow-lg hover:border-gray-300 transition-all duration-300 hover:-translate-y-1 block cursor-pointer"
                       >
                         {/* Political positioning indicator */}

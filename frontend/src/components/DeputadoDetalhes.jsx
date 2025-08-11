@@ -234,7 +234,7 @@ const DeputadoDetalhes = () => {
                 {/* Partido */}
                 {deputado.partido && (
                   <Link 
-                    to={`/partidos/${deputado.partido.id}`}
+                    to={`/partidos/${encodeURIComponent(deputado.partido.id)}`}
                     className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
                   >
                     {deputado.partido.sigla} - {deputado.partido.nome}
