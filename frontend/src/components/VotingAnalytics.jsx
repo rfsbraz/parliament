@@ -64,7 +64,18 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
 
   // Party Discipline Heatmap Component
   const PartyDisciplineChart = () => {
-    const { party_discipline } = analytics;
+    const { party_discipline } = analytics || {};
+    
+    // Check if party_discipline data exists
+    if (!party_discipline || !party_discipline.timeline) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <Shield className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <p>Dados de disciplina partidária não disponíveis</p>
+        </div>
+      );
+    }
+    
     const alignment = (party_discipline.overall_alignment * 100).toFixed(1);
     
     // Group timeline data by month for better visualization
@@ -146,7 +157,18 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
 
   // Voting Pattern Distribution Chart
   const VoteDistributionChart = () => {
-    const { vote_distribution } = analytics;
+    const { vote_distribution } = analytics || {};
+    
+    // Check if vote_distribution data exists
+    if (!vote_distribution) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <PieChart className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <p>Dados de distribuição de votos não disponíveis</p>
+        </div>
+      );
+    }
+    
     const total = Object.values(vote_distribution).reduce((sum, count) => sum + count, 0);
     
     const voteTypes = [
@@ -200,7 +222,17 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
 
   // Participation Timeline Chart
   const ParticipationTimelineChart = () => {
-    const { participation_timeline } = analytics;
+    const { participation_timeline } = analytics || {};
+    
+    // Check if participation_timeline data exists
+    if (!participation_timeline || participation_timeline.length === 0) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <p>Dados de linha do tempo não disponíveis</p>
+        </div>
+      );
+    }
     
     return (
       <div className="space-y-6">
@@ -252,9 +284,9 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
 
   // Cross-Party Collaboration Chart
   const CollaborationChart = () => {
-    const { cross_party_collaboration } = analytics;
+    const { cross_party_collaboration } = analytics || {};
     
-    if (!cross_party_collaboration.length) {
+    if (!cross_party_collaboration || !cross_party_collaboration.length) {
       return (
         <div className="text-center py-8">
           <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -385,7 +417,17 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
 
   // Critical Votes Analysis
   const CriticalVotesChart = () => {
-    const { critical_votes } = analytics;
+    const { critical_votes } = analytics || {};
+    
+    // Check if critical_votes data exists
+    if (!critical_votes || critical_votes.length === 0) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <Target className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <p>Dados de votações críticas não disponíveis</p>
+        </div>
+      );
+    }
     
     const voteTypeColors = {
       budget: 'bg-purple-100 text-purple-800 border-purple-200',

@@ -57,6 +57,7 @@ class CoalitionDetectionMixin:
             "is_coalition": detection.is_coalition,
             "entity_type": "coligacao" if detection.is_coalition else "partido", 
             "confidence": detection.confidence,
+            "coalition_sigla": par_sigla,  # Use the input sigla as coalition sigla
             "coalition_name": detection.coalition_name,
             "component_parties": detection.component_parties,
             "detection_method": detection.detection_method,
@@ -89,8 +90,8 @@ class CoalitionDetectionMixin:
                 data_formacao=coalition_info.get("formation_date"),
                 tipo_coligacao="eleitoral",  # Default type
                 espectro_politico=coalition_info.get("political_spectrum"),
-                confianca_detecao=coalition_info.get("confidence", 0.0),
-                ativo=True
+                confianca_detecao=coalition_info.get("confidence", 0.0)
+                # Note: ativo is now a calculated property based on current legislature XVII deputies
             )
             
             try:
@@ -356,167 +357,68 @@ class LegislatureHandlerMixin:
         return leg_des
 
     def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
-        """Get existing or create new legislatura record with case-insensitive and variation matching"""
+        """Get existing or create new legislatura record by Roman numeral"""
         logger.debug(f"_get_or_create_legislatura called with sigla: '{legislatura_sigla}'")
         
         if not hasattr(self, "session"):
             raise AttributeError(
                 "Session not available - ensure DatabaseSessionMixin is used"
             )
-
-        # Normalize the input sigla
+        
+        # Normalize input
         normalized_sigla = legislatura_sigla.upper().strip()
         
-        # Define variations to check for each legislature
-        legislature_variations = {
-            "CONSTITUINTE": ["CONSTITUINTE", "CONSTITUENTE", "CONS", "CONST"],
-            "I": ["I", "IA", "IB"],
-            "II": ["II"],
-            "III": ["III"],
-            "IV": ["IV"],
-            "V": ["V"],
-            "VI": ["VI"],
-            "VII": ["VII"],
-            "VIII": ["VIII"],
-            "IX": ["IX"],
-            "X": ["X"],
-            "XI": ["XI"],
-            "XII": ["XII"],
-            "XIII": ["XIII"],
-            "XIV": ["XIV"],
-            "XV": ["XV"],
-            "XVI": ["XVI"],
-            "XVII": ["XVII"],
+        # Map variations to standard forms
+        legislature_mappings = {
+            # CONSTITUINTE variations
+            "CONSTITUINTE": "CONSTITUINTE",
+            "CONSTITUENTE": "CONSTITUINTE", 
+            "CONS": "CONSTITUINTE",
+            "CONST": "CONSTITUINTE",
+            # First legislature variations
+            "I": "I",
+            "IA": "I", 
+            "IB": "I",
+            # All other Roman numerals (no variations)
+            "II": "II", "III": "III", "IV": "IV", "V": "V", "VI": "VI", 
+            "VII": "VII", "VIII": "VIII", "IX": "IX", "X": "X", "XI": "XI", 
+            "XII": "XII", "XIII": "XIII", "XIV": "XIV", "XV": "XV", 
+            "XVI": "XVI", "XVII": "XVII", "XVIII": "XVIII"
         }
-
-        # Find which standard legislature this sigla represents
-        target_legislature = None
-        for standard_leg, variations in legislature_variations.items():
-            if normalized_sigla in [v.upper() for v in variations]:
-                target_legislature = standard_leg
-                break
         
-        if not target_legislature:
-            target_legislature = normalized_sigla  # Fallback to original
-
-        logger.debug(f"Normalized '{legislatura_sigla}' to target legislature: '{target_legislature}'")
-
-        # Query for existing legislatura with comprehensive matching
-        # Try all possible variations that could exist in the database
-        variations_to_check = legislature_variations.get(target_legislature, [target_legislature])
+        # Get the canonical form
+        target_legislature = legislature_mappings.get(normalized_sigla, normalized_sigla)
+        logger.debug(f"Mapped '{legislatura_sigla}' to '{target_legislature}'")
         
-        logger.debug(f"Searching for existing legislatura. Target: '{target_legislature}', Variations to check: {variations_to_check}")
+        # Try to find existing legislatura by numero
+        legislatura = self.session.query(Legislatura).filter_by(numero=target_legislature).first()
         
-        # First, let's see what legislaturas actually exist in the database (including pending/flushed ones)
-        all_legislaturas = self.session.query(Legislatura).all()
-        existing_numeros = [leg.numero for leg in all_legislaturas]
-        logger.debug(f"Existing legislaturas in database (including session-local): {existing_numeros}")
+        if legislatura:
+            logger.debug(f"Found existing legislatura '{target_legislature}' (ID: {legislatura.id})")
+            return legislatura
         
-        # Also check pending objects in the current session (not yet committed)
-        pending_legislaturas = [obj for obj in self.session.new if isinstance(obj, Legislatura)]
-        pending_numeros = [leg.numero for leg in pending_legislaturas]
-        if pending_numeros:
-            logger.debug(f"Pending legislaturas in current session: {pending_numeros}")
-            existing_numeros.extend(pending_numeros)
+        # Create new legislatura
+        logger.debug(f"Creating new legislatura: '{target_legislature}'")
         
-        legislatura = None
-        
-        # SPECIAL HANDLING FOR CONSTITUINTE - be extra aggressive in finding existing record
-        if target_legislature == "CONSTITUINTE":
-            logger.debug("Special CONSTITUINTE handling - searching for any legislature with ID 1 or CONSTITUINTE-like name")
-            
-            # Try to find legislature with ID 1 (most likely the original CONSTITUINTE)
-            legislatura_id_1 = self.session.query(Legislatura).filter_by(id=1).first()
-            if legislatura_id_1:
-                logger.debug(f"Found legislature with ID 1: '{legislatura_id_1.numero}', using it as CONSTITUINTE")
-                return legislatura_id_1
-            
-            # Try broader search for any record containing "cons" (case-insensitive)
-            constituinte_like = self.session.query(Legislatura).filter(
-                Legislatura.numero.ilike('%cons%')
-            ).first()
-            if constituinte_like:
-                logger.debug(f"Found legislature containing 'cons': '{constituinte_like.numero}' (ID: {constituinte_like.id}), using it as CONSTITUINTE")
-                return constituinte_like
-            
-            # Try searching by designation containing "constituinte" or "assembleia"
-            constituinte_by_designation = self.session.query(Legislatura).filter(
-                Legislatura.designacao.ilike('%constituinte%') | 
-                Legislatura.designacao.ilike('%assembleia%')
-            ).first()
-            if constituinte_by_designation:
-                logger.debug(f"Found legislature by designation: '{constituinte_by_designation.designacao}' (ID: {constituinte_by_designation.id}), using it as CONSTITUINTE")
-                return constituinte_by_designation
-        
-        # Standard search for all variations
-        for variation in variations_to_check:
-            logger.debug(f"Trying variation: '{variation}'")
-            
-            # Try exact match first
-            legislatura = (
-                self.session.query(Legislatura).filter_by(numero=variation).first()
-            )
-            if legislatura:
-                logger.debug(f"Found existing legislatura with exact match '{variation}': (ID: {legislatura.id})")
-                return legislatura
-            else:
-                logger.debug(f"No exact match found for '{variation}'")
-                
-            # Try case-insensitive match
-            legislatura = (
-                self.session.query(Legislatura)
-                .filter(Legislatura.numero.ilike(variation))
-                .first()
-            )
-            if legislatura:
-                logger.debug(f"Found existing legislatura with case-insensitive match '{variation}': (ID: {legislatura.id})")
-                return legislatura
-            else:
-                logger.debug(f"No case-insensitive match found for '{variation}'")
-            
-            # RACE CONDITION FIX: Check pending objects in current session
-            for pending_leg in pending_legislaturas:
-                if pending_leg.numero == variation or pending_leg.numero.lower() == variation.lower():
-                    logger.debug(f"Found pending legislatura in session with match '{variation}': (ID: {pending_leg.id if hasattr(pending_leg, 'id') else 'PENDING'})")
-                    return pending_leg
-
-        
-        # LAST RESORT: For CONSTITUINTE, if nothing found, check if there's already a record with numero="0" or similar
-        if target_legislature == "CONSTITUINTE":
-            zero_legislature = self.session.query(Legislatura).filter_by(numero="0").first()
-            if zero_legislature:
-                logger.warning(f"Using legislature with numero='0' as fallback CONSTITUINTE (ID: {zero_legislature.id})")
-                return zero_legislature
-        
-        # Create new legislatura using the normalized target legislature
-        leg_number = self.ROMAN_TO_NUMBER.get(target_legislature, 17)  # Default to XVII
-        logger.debug(
-            f"Creating new legislatura: sigla='{target_legislature}', number={leg_number}"
-        )
-        
-        # Use appropriate designacao for CONSTITUINTE
         if target_legislature == "CONSTITUINTE":
             designacao = "Assembleia Constituinte"
         else:
-            designacao = f"{leg_number}.ª Legislatura"
+            # Get numeric value for designacao
+            leg_number = self.ROMAN_TO_NUMBER.get(target_legislature, 0)
+            designacao = f"{leg_number}.ª Legislatura" if leg_number > 0 else target_legislature
             
         legislatura = Legislatura(
-            numero=target_legislature,  # Use normalized target legislature
+            numero=target_legislature,
             designacao=designacao,
-            data_inicio=datetime.now().date(),  # Should be updated with real dates
+            data_inicio=None,  # Will be set from XML data
             data_fim=None,
             ativa=False,
         )
 
-        logger.debug(f"Adding legislatura {target_legislature} to session")
         self.session.add(legislatura)
-        
-        logger.debug(f"Flushing session to get ID for legislatura {target_legislature}")
-        self.session.flush()  # Flush to get the auto-generated ID
+        self.session.flush()  # Get the ID
         
         logger.info(f"Created new legislatura: {target_legislature} (ID: {legislatura.id})")
-        logger.debug(f"Session state after legislatura creation: {self.session.new}, {self.session.dirty}")
-        
         return legislatura
 
     def _get_legislatura_id(self, file_info: Dict) -> int:
@@ -920,7 +822,7 @@ class EnhancedSchemaMapper(
         self.close_session()
 
     def _find_deputy_robust(
-        self, cad_id: int, nome_completo: str = None, nome_parlamentar: str = None
+        self, cad_id: int, nome_completo: str = None, nome_parlamentar: str = None, legislatura_id: int = None
     ) -> Deputado:
         """
         Robust deputy matching with cadastral ID change tracking.
@@ -932,6 +834,7 @@ class EnhancedSchemaMapper(
             cad_id: Current cadastral ID to look up
             nome_completo: Full deputy name for fallback matching
             nome_parlamentar: Parliamentary name for fallback matching
+            legislatura_id: Legislature ID to scope the search (CRITICAL FIX)
 
         Returns:
             Deputado: The matched deputy record
@@ -939,10 +842,14 @@ class EnhancedSchemaMapper(
         Raises:
             ValueError: If no deputy can be matched using any strategy
         """
-        # Step 1: Try direct cadastral ID lookup
-        deputy = (
-            self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
-        )
+        # Step 1: Try direct cadastral ID lookup within the current legislature
+        query = self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id)
+        
+        # CRITICAL FIX: Scope to specific legislature if provided
+        if legislatura_id is not None:
+            query = query.filter(Deputado.legislatura_id == legislatura_id)
+        
+        deputy = query.first()
         if deputy:
             return deputy
 
@@ -954,12 +861,13 @@ class EnhancedSchemaMapper(
         )
 
         if identity_mapping:
-            # Try to find deputy with the new cadastral ID
-            deputy = (
-                self.session.query(Deputado)
-                .filter(Deputado.id_cadastro == identity_mapping.new_cad_id)
-                .first()
-            )
+            # Try to find deputy with the new cadastral ID within the current legislature
+            query = self.session.query(Deputado).filter(Deputado.id_cadastro == identity_mapping.new_cad_id)
+            
+            if legislatura_id is not None:
+                query = query.filter(Deputado.legislatura_id == legislatura_id)
+                
+            deputy = query.first()
             if deputy:
                 logger.info(
                     f"Found deputy via identity mapping: old_cad_id={cad_id} -> new_cad_id={identity_mapping.new_cad_id}"
@@ -969,6 +877,10 @@ class EnhancedSchemaMapper(
         # Step 3: Fallback to name-based matching if names are provided
         if nome_completo or nome_parlamentar:
             query = self.session.query(Deputado)
+            
+            # Scope to current legislature if provided
+            if legislatura_id is not None:
+                query = query.filter(Deputado.legislatura_id == legislatura_id)
 
             # Try full name match first
             if nome_completo:
@@ -981,8 +893,8 @@ class EnhancedSchemaMapper(
                     self._record_identity_mapping(
                         deputy.id_cadastro, cad_id, nome_completo or nome_parlamentar, deputy
                     )
-                    logger.warning(
-                        f"Deputy found by full name match - potential import ordering issue: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_completo})"
+                    logger.info(
+                        f"Deputy found by full name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_completo})"
                     )
                     return deputy
 
@@ -997,8 +909,8 @@ class EnhancedSchemaMapper(
                     self._record_identity_mapping(
                         deputy.id_cadastro, cad_id, nome_parlamentar, deputy
                     )
-                    logger.warning(
-                        f"Deputy found by parliamentary name match - potential import ordering issue: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_parlamentar})"
+                    logger.info(
+                        f"Deputy found by parliamentary name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_parlamentar})"
                     )
                     return deputy
 
@@ -1009,9 +921,11 @@ class EnhancedSchemaMapper(
         if nome_parlamentar:
             names.append(f"nome_parlamentar='{nome_parlamentar}'")
         name_info = " (" + ", ".join(names) + ")" if names else ""
+        
+        legislature_info = f" in legislature {legislatura_id}" if legislatura_id else ""
 
         raise ValueError(
-            f"Deputy with cadId {cad_id} not found in database using any matching strategy{name_info}"
+            f"Deputy with cadId {cad_id} not found in database using any matching strategy{name_info}{legislature_info}"
         )
 
     def _record_identity_mapping(

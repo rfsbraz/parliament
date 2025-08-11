@@ -95,141 +95,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
         # Use the passed SQLAlchemy session
         self.session = session
 
-    def _find_deputy_robust(
-        self, cad_id: int, nome_completo: str = None, nome_parlamentar: str = None
-    ) -> Deputado:
-        """
-        Robust deputy matching with cadastral ID change tracking.
 
-        This method handles cases where deputy cadastral IDs change over time by implementing
-        a multi-level matching strategy and tracking identity mappings.
-
-        Args:
-            cad_id: Current cadastral ID to look up
-            nome_completo: Full deputy name for fallback matching
-            nome_parlamentar: Parliamentary name for fallback matching
-
-        Returns:
-            Deputado: The matched deputy record
-
-        Raises:
-            ValueError: If no deputy can be matched using any strategy
-        """
-        # Step 1: Try direct cadastral ID lookup
-        deputy = (
-            self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id).first()
-        )
-        if deputy:
-            return deputy
-
-        # Step 2: Check if this cadastral ID is mapped to another ID
-        identity_mapping = (
-            self.session.query(DeputyIdentityMapping)
-            .filter(DeputyIdentityMapping.old_cad_id == cad_id)
-            .first()
-        )
-
-        if identity_mapping:
-            # Try to find deputy with the new cadastral ID
-            deputy = (
-                self.session.query(Deputado)
-                .filter(Deputado.id_cadastro == identity_mapping.new_cad_id)
-                .first()
-            )
-            if deputy:
-                logger.info(
-                    f"Found deputy via identity mapping: old_cad_id={cad_id} -> new_cad_id={identity_mapping.new_cad_id}"
-                )
-                return deputy
-
-        # Step 3: Fallback to name-based matching if names are provided
-        if nome_completo or nome_parlamentar:
-            query = self.session.query(Deputado)
-
-            # Try full name match first
-            if nome_completo:
-                deputy = query.filter(
-                    Deputado.nome_completo.ilike(f"%{nome_completo}%")
-                ).first()
-                if deputy:
-                    # Record the identity mapping for future lookups
-                    # deputy.id_cadastro is the OLD ID (existing in DB), cad_id is the NEW ID (we're trying to find)
-                    self._record_identity_mapping(
-                        deputy.id_cadastro, cad_id, nome_completo or nome_parlamentar, deputy
-                    )
-                    logger.info(
-                        f"Deputy found by full name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_completo})"
-                    )
-                    return deputy
-
-            # Try parliamentary name match
-            if nome_parlamentar:
-                deputy = query.filter(
-                    Deputado.nome.ilike(f"%{nome_parlamentar}%")
-                ).first()
-                if deputy:
-                    # Record the identity mapping for future lookups
-                    # deputy.id_cadastro is the OLD ID (existing in DB), cad_id is the NEW ID (we're trying to find)
-                    self._record_identity_mapping(
-                        deputy.id_cadastro, cad_id, nome_parlamentar, deputy
-                    )
-                    logger.info(
-                        f"Deputy found by parliamentary name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_parlamentar})"
-                    )
-                    return deputy
-
-        # Step 4: No match found using any strategy
-        names = []
-        if nome_completo:
-            names.append(f"nome_completo='{nome_completo}'")
-        if nome_parlamentar:
-            names.append(f"nome_parlamentar='{nome_parlamentar}'")
-        name_info = " (" + ", ".join(names) + ")" if names else ""
-
-        raise ValueError(
-            f"Deputy with cadId {cad_id} not found in database using any matching strategy{name_info}"
-        )
-
-    def _record_identity_mapping(
-        self, old_cad_id: int, new_cad_id: int, deputy_name: str, deputy: Deputado
-    ):
-        """Record an identity mapping between old and new cadastral IDs and update the deputy record."""
-        # Flush session to ensure any pending objects are written to DB for query
-        self.session.flush()
-        
-        # Check if mapping already exists (including any just flushed)
-        existing_mapping = (
-            self.session.query(DeputyIdentityMapping)
-            .filter(
-                DeputyIdentityMapping.old_cad_id == old_cad_id,
-                DeputyIdentityMapping.new_cad_id == new_cad_id,
-            )
-            .first()
-        )
-
-        if existing_mapping:
-            logger.debug(f"Identity mapping {old_cad_id} -> {new_cad_id} already exists, skipping")
-            return
-
-        # Record the identity mapping
-        mapping = DeputyIdentityMapping(
-            old_cad_id=old_cad_id,
-            new_cad_id=new_cad_id,
-            deputy_name=deputy_name,
-            confidence_score=90,  # Discovered via name matching
-            verified=False,
-        )
-        self.session.add(mapping)
-        
-        # Update the deputy record to use the new cadastral ID
-        deputy.id_cadastro = new_cad_id
-        logger.info(
-            f"Updated deputy {deputy_name} cadastral ID: {old_cad_id} -> {new_cad_id}"
-        )
-        
-        logger.info(
-            f"Recorded new identity mapping: {old_cad_id} -> {new_cad_id} ({deputy_name})"
-        )
 
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -422,10 +288,15 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             # Determine XML structure and process accordingly
             if xml_root.tag == "ArrayOfDadosRegistoBiografico":
                 # ArrayOfDadosRegistoBiografico structure (used by multiple legislatures)
-                # Extract legislature from file path for accurate logging
-                legislature_name = self._extract_legislature_from_path(
-                    file_info.get("file_path", "")
-                )
+                # Extract legislature from file path for accurate logging - use base mapper method
+                try:
+                    legislature_sigla = self._extract_legislatura(file_info.get("file_path", ""), None)
+                    legislature_name = legislature_sigla
+                except:
+                    # Fallback to local method if base method fails
+                    legislature_name = self._extract_legislature_from_path(
+                        file_info.get("file_path", "")
+                    )
                 logger.info(
                     f"Processing {legislature_name} biographical structure (ArrayOfDadosRegistoBiografico format)"
                 )
@@ -438,7 +309,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         if success:
                             results["records_imported"] += 1
                     except Exception as e:
-                        error_msg = f"Error processing VIII Legislature biographical record: {str(e)}"
+                        error_msg = f"Error processing {legislature_name} biographical record: {str(e)}"
                         results["errors"].append(error_msg)
                         logger.error(error_msg)
                         if strict_mode:
@@ -487,7 +358,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             if success:
                                 results["records_imported"] += 1
                         except Exception as e:
-                            error_msg = f"Error processing VIII Legislature biographical record: {str(e)}"
+                            error_msg = f"Error processing {legislature_name} biographical record: {str(e)}"
                             results["errors"].append(error_msg)
                             logger.error(error_msg)
                             if strict_mode:
@@ -573,10 +444,31 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     nome_parlamentar = self._get_text_value(
                         mandato, "depNomeParlamentar"
                     )
+                    
+                    # Check if this mandate has a LegDes that overrides the file-level legislature
+                    if leg_des:
+                        # Use mandate-specific legislature instead of file-level legislature
+                        try:
+                            mandate_legislatura_sigla = self._extract_legislatura_from_xml_content(leg_des)
+                            if mandate_legislatura_sigla:
+                                mandate_legislatura = self._get_or_create_legislatura(mandate_legislatura_sigla)
+                                legislatura_id = mandate_legislatura.id
+                                logger.debug(f"LegDes '{leg_des}' in mandate overrode file-level legislature for deputy {nome_completo} (CadId: {cad_id}) - using legislature ID {legislatura_id}")
+                            else:
+                                # Fallback to file-level legislature
+                                legislatura_id = self._get_legislatura_id(self.file_info)
+                        except Exception as e:
+                            logger.warning(f"Failed to extract legislature from mandate LegDes '{leg_des}' for deputy {nome_completo}: {e} - using file-level legislature")
+                            legislatura_id = self._get_legislatura_id(self.file_info)
+                    else:
+                        # No LegDes in mandate, use file-level legislature
+                        legislatura_id = self._get_legislatura_id(self.file_info)
+                    
                     deputy = self._find_deputy_robust(
                         cad_id,
                         nome_completo=nome_completo,
                         nome_parlamentar=nome_parlamentar,
+                        legislatura_id=legislatura_id,
                     )
 
                     # Update existing fields
@@ -640,7 +532,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             
                             # Update mandate with coalition context
                             if par_sigla:
-                                self.update_mandate_coalition_context(mandate, par_sigla, par_des)
+                                self.update_mandate_coalition_context(mandate, par_sigla)
                             
                             self.session.add(mandate)
 
@@ -932,7 +824,28 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
 
             # Get or create deputy using robust matching
             nome_completo = self._get_text_value(record, "CadNomeCompleto")
-            deputy = self._find_deputy_robust(cad_id, nome_completo=nome_completo)
+            
+            # Check if this record has a LegDes that overrides the file-level legislature
+            record_leg_des = self._get_text_value(record, "LegDes")
+            if record_leg_des:
+                # Use record-specific legislature instead of file-level legislature
+                try:
+                    record_legislatura_sigla = self._extract_legislatura_from_xml_content(record_leg_des)
+                    if record_legislatura_sigla:
+                        record_legislatura = self._get_or_create_legislatura(record_legislatura_sigla)
+                        legislatura_id = record_legislatura.id
+                        logger.debug(f"LegDes '{record_leg_des}' in record overrode file-level legislature for deputy {nome_completo} (CadId: {cad_id}) - using legislature ID {legislatura_id}")
+                    else:
+                        # Fallback to file-level legislature
+                        legislatura_id = self._get_legislatura_id(self.file_info)
+                except Exception as e:
+                    logger.warning(f"Failed to extract legislature from LegDes '{record_leg_des}' for deputy {nome_completo}: {e} - using file-level legislature")
+                    legislatura_id = self._get_legislatura_id(self.file_info)
+            else:
+                # No LegDes in record, use file-level legislature
+                legislatura_id = self._get_legislatura_id(self.file_info)
+                
+            deputy = self._find_deputy_robust(cad_id, nome_completo=nome_completo, legislatura_id=legislatura_id)
 
             # Update existing fields
             deputy.nome_completo = nome_completo or deputy.nome_completo
@@ -1125,14 +1038,20 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             
                             # Update mandate with coalition context
                             if par_sigla:
-                                self.update_mandate_coalition_context(mandate, par_sigla, par_des)
+                                self.update_mandate_coalition_context(mandate, par_sigla)
                             
                             self.session.add(mandate)
 
             return True
 
         except Exception as e:
-            logger.error(f"Error processing VIII Legislature biographical record: {e}")
+            # Extract legislature from file path to show correct legislature in error
+            try:
+                legislature_sigla = self._extract_legislatura(file_info.get("file_path", ""), None)
+                error_msg = f"Error processing {legislature_sigla} Legislature biographical record: {e}"
+            except:
+                error_msg = f"Error processing biographical record: {e}"
+            logger.error(error_msg)
             return False
 
     def _process_registo_interesses_v2(
@@ -1160,7 +1079,28 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
 
             # Find or create the deputy using robust matching
             nome_completo = self._get_text_value(record, "cadNomeCompleto")
-            deputy = self._find_deputy_robust(cad_id, nome_completo=nome_completo)
+            
+            # Check if this interest registry record has a LegDes that overrides the file-level legislature
+            record_leg_des = self._get_text_value(record, "LegDes")
+            if record_leg_des:
+                # Use record-specific legislature instead of file-level legislature
+                try:
+                    record_legislatura_sigla = self._extract_legislatura_from_xml_content(record_leg_des)
+                    if record_legislatura_sigla:
+                        record_legislatura = self._get_or_create_legislatura(record_legislatura_sigla)
+                        legislatura_id = record_legislatura.id
+                        logger.debug(f"LegDes '{record_leg_des}' in interest registry record overrode file-level legislature for deputy {nome_completo} (CadId: {cad_id}) - using legislature ID {legislatura_id}")
+                    else:
+                        # Fallback to file-level legislature
+                        legislatura_id = self._get_legislatura_id(self.file_info)
+                except Exception as e:
+                    logger.warning(f"Failed to extract legislature from interest registry LegDes '{record_leg_des}' for deputy {nome_completo}: {e} - using file-level legislature")
+                    legislatura_id = self._get_legislatura_id(self.file_info)
+            else:
+                # No LegDes in record, use file-level legislature
+                legislatura_id = self._get_legislatura_id(self.file_info)
+                
+            deputy = self._find_deputy_robust(cad_id, nome_completo=nome_completo, legislatura_id=legislatura_id)
 
             # Check if already exists
             existing = (
@@ -1203,34 +1143,9 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             logger.error(f"Error processing Interest Registry V2: {e}")
             return False
 
-    def _get_text_value(self, element: ET.Element, tag: str) -> Optional[str]:
-        """Get text value from XML element"""
-        if element is None:
-            logger.debug(f"_get_text_value called with None element for tag: {tag}")
-            return None
-        try:
-            child = element.find(tag)
-            return child.text.strip() if child is not None and child.text else None
-        except AttributeError as e:
-            if "'NoneType' object has no attribute 'find'" in str(e):
-                logger.error(
-                    f"_get_text_value: element is None but passed None check for tag '{tag}' - element type: {type(element)}"
-                )
-            else:
-                logger.error(f"AttributeError in _get_text_value for tag '{tag}': {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Error in _get_text_value for tag '{tag}': {e}")
-            return None
 
-    def _parse_date(self, date_str: str) -> Optional[datetime]:
-        """Parse date from string"""
-        if not date_str:
-            return None
-        try:
-            return datetime.strptime(date_str, "%Y-%m-%d").date()
-        except (ValueError, TypeError):
-            return None
+
+
 
     def _extract_legislature_from_path(self, file_path: str) -> str:
         """Extract legislature name from file path for accurate logging"""

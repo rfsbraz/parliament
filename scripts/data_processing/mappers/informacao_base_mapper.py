@@ -381,14 +381,12 @@ class InformacaoBaseMapper(SchemaMapper):
                 
                 if entity_info["is_coalition"]:
                     # Process as coalition
-                    coalition_result = self.get_or_create_coalition(
-                        sigla, nome, entity_info
-                    )
+                    coalition = self.get_or_create_coalition(entity_info)
                     
-                    if coalition_result["created"]:
-                        logger.info(f"Created new coalition: {sigla} ({nome})")
+                    if coalition:
+                        logger.debug(f"Processed coalition: {sigla} ({nome})")
                     else:
-                        logger.debug(f"Coalition {sigla} already exists, updated")
+                        logger.warning(f"Failed to process coalition: {sigla} ({nome})")
                         
                 else:
                     # Process as individual party
@@ -852,12 +850,6 @@ class InformacaoBaseMapper(SchemaMapper):
         """Check if element has xsi:nil='true' attribute"""
         return element.get("{http://www.w3.org/2001/XMLSchema-instance}nil") == "true"
     
-    def _get_text_value(self, element: ET.Element, tag: str) -> Optional[str]:
-        """Safely extract text value from XML element"""
-        child = element.find(tag)
-        if child is not None and child.text:
-            return child.text.strip()
-        return None
 
     def get_processing_stats(self) -> Dict[str, int]:
         """Return processing statistics"""
