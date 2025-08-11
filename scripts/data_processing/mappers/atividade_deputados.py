@@ -537,7 +537,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
         
         # Use same comprehensive list as enhanced_base_mapper.py - includes IA, IB sub-periods
         sorted_legislatures = [
-            "CONSTITUINTE", "XVII", "XVI", "XV", "XIV", "XIII", "XII", "XI", 
+            "CONSTITUINTE", "Cons", "XVII", "XVI", "XV", "XIV", "XIII", "XII", "XI", 
             "VIII", "VII", "VI", "IV", "III", "IB", "IA", "II", "IX", "X", "V", "I"
         ]
         
@@ -547,6 +547,10 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             if re.search(pattern, filename, re.IGNORECASE):
                 legislatura_sigla = legislature
                 break
+        
+        # Normalize "Cons" abbreviation to full "CONSTITUINTE" for database consistency
+        if legislatura_sigla == "Cons":
+            legislatura_sigla = "CONSTITUINTE"
                 
         if not legislatura_sigla:
             raise ValueError(

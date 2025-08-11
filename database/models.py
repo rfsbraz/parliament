@@ -7080,7 +7080,7 @@ class RegistoInteressesAtividadeUnified(Base):
     activity_type = Column(
         String(50)
     )  # 'professional', 'cargo_menos_3', 'cargo_mais_3'
-    type_classification = Column(Integer)  # V3 Type field (0, 1, 2)
+    type_classification = Column(String(50))  # V3 Type field - supports both integers and strings like "menos_tres_anos"
 
     # Common fields across all versions
     description = Column(Text)
@@ -7157,7 +7157,7 @@ class RegistoInteressesSocialPositionUnified(Base):
     entity = Column(String(500))  # Organization/company name
     activity_area = Column(String(500))  # Area of activity
     headquarters_location = Column(String(500))  # HeadOfficeLocation
-    type_classification = Column(Integer)  # V3 Type field (0, 1, 2)
+    type_classification = Column(String(50))  # V3 Type field - supports both integers and strings like "menos_tres_anos"
     social_participation = Column(Text)  # Participation details
     value = Column(String(200))  # Monetary value if any
     observations = Column(Text)

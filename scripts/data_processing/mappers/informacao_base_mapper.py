@@ -324,6 +324,11 @@ class InformacaoBaseMapper(SchemaMapper):
             for sessao_element in sessoes_element.findall(
                 "pt_gov_ar_objectos_SessaoLegislativaOut"
             ):
+                # Skip nil elements (xsi:nil="true") - these are empty placeholder elements
+                if self._is_nil_element(sessao_element):
+                    logger.debug("Skipping nil legislative session element")
+                    continue
+                
                 # Extract session information
                 num_sessao = self._get_text_value(sessao_element, "numSessao")
                 data_inicio_str = self._get_text_value(sessao_element, "dataInicio")
@@ -356,6 +361,11 @@ class InformacaoBaseMapper(SchemaMapper):
         """Process parliamentary groups (GruposParlamentares -> GPOut)"""
         try:
             for gp_element in grupos_element.findall("pt_gov_ar_objectos_GPOut"):
+                # Skip nil elements (xsi:nil="true") - these are empty placeholder elements
+                if self._is_nil_element(gp_element):
+                    logger.debug("Skipping nil parliamentary group element")
+                    continue
+                
                 # Extract group information
                 sigla = self._get_text_value(gp_element, "sigla")
                 nome = self._get_text_value(gp_element, "nome")
@@ -395,6 +405,11 @@ class InformacaoBaseMapper(SchemaMapper):
             for circulo_element in circulos_element.findall(
                 "pt_ar_wsgode_objectos_DadosCirculoEleitoralList"
             ):
+                # Skip nil elements (xsi:nil="true") - these are empty placeholder elements
+                if self._is_nil_element(circulo_element):
+                    logger.debug("Skipping nil electoral circle element")
+                    continue
+                
                 # Extract circle information
                 cp_id_str = self._get_text_value(circulo_element, "cpId")
                 cp_des = self._get_text_value(circulo_element, "cpDes")
@@ -799,6 +814,10 @@ class InformacaoBaseMapper(SchemaMapper):
         except Exception as e:
             logger.error(f"Error processing deputy videos: {e}")
 
+    def _is_nil_element(self, element: ET.Element) -> bool:
+        """Check if element has xsi:nil='true' attribute"""
+        return element.get("{http://www.w3.org/2001/XMLSchema-instance}nil") == "true"
+    
     def _get_text_value(self, element: ET.Element, tag: str) -> Optional[str]:
         """Safely extract text value from XML element"""
         child = element.find(tag)
