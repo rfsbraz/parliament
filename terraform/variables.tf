@@ -11,15 +11,28 @@ variable "environment" {
 }
 
 variable "domain_name" {
-  description = "Domain name for the application (optional)"
+  description = "Domain name for the application"
+  type        = string
+  default     = "fiscaliza.pt"
+}
+
+variable "certificate_arn" {
+  description = "ACM certificate ARN for HTTPS (optional - not needed with Cloudflare)"
   type        = string
   default     = ""
 }
 
-variable "certificate_arn" {
-  description = "ACM certificate ARN for HTTPS (optional)"
-  type        = string
-  default     = ""
+# Cloudflare configuration
+variable "create_api_subdomain" {
+  description = "Create api.fiscaliza.pt subdomain"
+  type        = bool
+  default     = false
+}
+
+variable "enable_cloudflare_waf" {
+  description = "Enable Cloudflare WAF rules"
+  type        = bool
+  default     = true
 }
 
 
@@ -27,7 +40,7 @@ variable "certificate_arn" {
 variable "backend_image" {
   description = "Docker image for the Lambda backend"
   type        = string
-  default     = "parliament-backend:latest"
+  default     = "fiscaliza-backend:latest"
 }
 
 variable "lambda_memory_size" {

@@ -58,7 +58,7 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   enabled             = true
   is_ipv6_enabled     = true
-  comment             = "Portuguese Parliament Frontend"
+  comment             = "Fiscaliza - Portuguese Parliament Transparency Platform"
   default_root_object = "index.html"
 
   # Aliases (if domain is provided)

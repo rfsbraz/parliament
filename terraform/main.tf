@@ -21,11 +21,12 @@ data "aws_availability_zones" "available" {
 
 # Local values
 locals {
-  name_prefix = "parliament-${var.environment}"
+  name_prefix = "fiscaliza-${var.environment}"
   
   tags = {
-    Project     = "Portuguese Parliament"
+    Project     = "Fiscaliza"
     Environment = var.environment
     ManagedBy   = "Terraform"
+    Website     = "fiscaliza.pt"
   }
 }

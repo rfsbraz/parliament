@@ -1,4 +1,4 @@
-# Terraform Outputs for Portuguese Parliament Infrastructure
+# Terraform Outputs for Fiscaliza Infrastructure
 
 # Common outputs
 output "environment" {
@@ -35,6 +35,17 @@ output "cloudfront_domain_name" {
 output "website_url" {
   description = "URL of the website"
   value       = var.domain_name != "" ? "https://${var.domain_name}" : "https://${var.deployment_type == "serverless" ? aws_cloudfront_distribution.frontend_serverless[0].domain_name : aws_cloudfront_distribution.frontend.domain_name}"
+}
+
+# Cloudflare outputs
+output "cloudflare_zone_id" {
+  description = "Cloudflare zone ID for fiscaliza.pt"
+  value       = var.domain_name == "fiscaliza.pt" ? data.cloudflare_zone.fiscaliza[0].id : null
+}
+
+output "fiscaliza_domain" {
+  description = "Main domain name"
+  value       = var.domain_name == "fiscaliza.pt" ? "fiscaliza.pt" : null
 }
 
 # Serverless outputs (Lambda + Aurora)
@@ -168,8 +179,8 @@ EOF
 === FARGATE DEPLOYMENT INSTRUCTIONS (${upper(var.environment)}) ===
 
 1. DOCKER BUILD & PUSH:
-   docker build -t parliament-backend .
-   docker tag parliament-backend:latest ${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${aws_ecr_repository.backend.name}:latest
+   docker build -t fiscaliza-backend .
+   docker tag fiscaliza-backend:latest ${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${aws_ecr_repository.backend.name}:latest
    aws ecr get-login-password --region ${data.aws_region.current.name} | docker login --username AWS --password-stdin ${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com
    docker push ${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${aws_ecr_repository.backend.name}:latest
 

@@ -1,11 +1,13 @@
-# Parliament Data Analysis
+# Fiscaliza
 
-A modern web application for analyzing Portuguese Parliament open data, built with Flask backend and React frontend.
+A modern web application for analyzing Portuguese Parliament open data and government transparency, built with Flask backend and React frontend.
+
+🌐 **Live at: https://fiscaliza.pt**
 
 ## Project Structure
 
 ```
-parliament-data-analysis/
+fiscaliza/
 ├── README.md                   # This file
 ├── requirements.txt            # Python dependencies
 ├── main.py                     # Main application entry point
