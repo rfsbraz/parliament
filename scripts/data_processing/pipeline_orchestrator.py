@@ -115,8 +115,9 @@ class PipelineStats:
 class DownloadManager:
     """Manages file downloads from URLs in the database"""
     
-    def __init__(self, rate_limit_delay: float = 0.3):
+    def __init__(self, rate_limit_delay: float = 0.3, allowed_file_types: List[str] = None):
         self.rate_limit_delay = rate_limit_delay
+        self.allowed_file_types = allowed_file_types or ['XML']  # Default to XML only
         # Use HTTP retry client for robust downloads
         self.http_client = HTTPRetryClient(
             max_retries=5,
@@ -139,10 +140,16 @@ class DownloadManager:
         with DatabaseSession() as db_session:
             while self.running:
                 try:
-                    # Get files that need downloading
-                    files_to_download = db_session.query(ImportStatus).filter(
+                    # Get files that need downloading (filtered by file type)
+                    query = db_session.query(ImportStatus).filter(
                         ImportStatus.status.in_(['discovered', 'download_pending'])
-                    ).limit(10).all()
+                    )
+                    
+                    # Apply file type filter
+                    if self.allowed_file_types:
+                        query = query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
+                    
+                    files_to_download = query.limit(10).all()
                     
                     if not files_to_download:
                         time.sleep(1)
@@ -213,11 +220,12 @@ class DownloadManager:
 class ImportProcessor:
     """Processes downloaded files for import"""
     
-    def __init__(self):
+    def __init__(self, allowed_file_types: List[str] = None):
         self.running = False
+        self.allowed_file_types = allowed_file_types or ['XML']  # Default to XML only
         # Use the database-driven importer instead
         from scripts.data_processing.database_driven_importer import DatabaseDrivenImporter
-        self.importer = DatabaseDrivenImporter()
+        self.importer = DatabaseDrivenImporter(allowed_file_types=self.allowed_file_types)
         
     def start(self, download_queue: Queue, stats: PipelineStats, console: Console):
         """Start import processing"""
@@ -234,10 +242,16 @@ class ImportProcessor:
                         record_id = download_queue.get(timeout=0.5)
                         from_queue = True
                     except Empty:
-                        # If no files in download queue, check for any pending files
-                        pending_files = db_session.query(ImportStatus).filter(
+                        # If no files in download queue, check for any pending files (filtered by file type)
+                        query = db_session.query(ImportStatus).filter(
                             ImportStatus.status == 'pending'
-                        ).limit(1).all()
+                        )
+                        
+                        # Apply file type filter
+                        if self.allowed_file_types:
+                            query = query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
+                        
+                        pending_files = query.limit(1).all()
                         
                         if pending_files:
                             record_id = pending_files[0].id
@@ -306,14 +320,17 @@ class ImportProcessor:
 class PipelineOrchestrator:
     """Main orchestrator for the parliament data pipeline"""
     
-    def __init__(self, discovery_rate_limit: float = 0.5, download_rate_limit: float = 0.3):
+    def __init__(self, discovery_rate_limit: float = 0.5, download_rate_limit: float = 0.3, 
+                 allowed_file_types: List[str] = None):
         self.console = Console()
         self.stats = PipelineStats()
+        self.allowed_file_types = allowed_file_types or ['XML']  # Default to XML only
         
-        # Initialize services
+        # Initialize services with file type filters
         self.discovery_service = DiscoveryService(rate_limit_delay=discovery_rate_limit)
-        self.download_manager = DownloadManager(rate_limit_delay=download_rate_limit)
-        self.import_processor = ImportProcessor()
+        self.download_manager = DownloadManager(rate_limit_delay=download_rate_limit, 
+                                              allowed_file_types=self.allowed_file_types)
+        self.import_processor = ImportProcessor(allowed_file_types=self.allowed_file_types)
         
         # Shared queues
         self.download_queue = Queue()
@@ -338,12 +355,18 @@ class PipelineOrchestrator:
         return f"{size_bytes:.1f} TB"
     
     def _get_pending_files(self, limit: int = 10) -> List:
-        """Get pending files from ImportStatus table"""
+        """Get pending files from ImportStatus table (filtered by file type)"""
         try:
             with DatabaseSession() as db_session:
-                pending_files = db_session.query(ImportStatus).filter(
+                query = db_session.query(ImportStatus).filter(
                     ImportStatus.status.in_(['discovered', 'download_pending', 'pending'])
-                ).order_by(ImportStatus.discovered_at.desc()).limit(limit).all()
+                )
+                
+                # Apply file type filter
+                if self.allowed_file_types:
+                    query = query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
+                
+                pending_files = query.order_by(ImportStatus.discovered_at.desc()).limit(limit).all()
                 
                 return pending_files
         except Exception as e:
@@ -381,10 +404,13 @@ class PipelineOrchestrator:
         
     def update_layout(self, layout: Layout):
         """Update the Rich layout with current data"""
-        # Header
+        # Header with file type filter information
+        file_types_info = ", ".join(self.allowed_file_types) if self.allowed_file_types else "ALL"
+        header_text = f"Parliament Data Pipeline Orchestrator - Runtime: {self.stats.elapsed_time} | File Types: {file_types_info}"
+        
         layout["header"].update(
             Panel(
-                f"Parliament Data Pipeline Orchestrator - Runtime: {self.stats.elapsed_time}",
+                header_text,
                 style="bold blue"
             )
         )
@@ -554,15 +580,21 @@ class PipelineOrchestrator:
                     self.update_layout(layout)
                     time.sleep(2.0)  # Reduced frequency to minimize flashing
                     
-                    # Update queue sizes
+                    # Update queue sizes (filtered by file type)
                     with DatabaseSession() as db_session:
-                        self.stats.download_queue_size = db_session.query(ImportStatus).filter(
+                        download_query = db_session.query(ImportStatus).filter(
                             ImportStatus.status.in_(['discovered', 'download_pending'])
-                        ).count()
+                        )
+                        if self.allowed_file_types:
+                            download_query = download_query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
+                        self.stats.download_queue_size = download_query.count()
                         
-                        self.stats.import_queue_size = db_session.query(ImportStatus).filter(
+                        import_query = db_session.query(ImportStatus).filter(
                             ImportStatus.status == 'pending'
-                        ).count()
+                        )
+                        if self.allowed_file_types:
+                            import_query = import_query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
+                        self.stats.import_queue_size = import_query.count()
                     
         except KeyboardInterrupt:
             self.console.print("\n🛑 Shutdown requested...")
@@ -592,13 +624,26 @@ def main():
                        help='Discovery rate limit delay (default: 0.5s)')
     parser.add_argument('--download-rate-limit', type=float, default=0.3,
                        help='Download rate limit delay (default: 0.3s)')
+    parser.add_argument('--file-types', nargs='*', 
+                       choices=['XML', 'JSON', 'PDF', 'Archive', 'XSD'], 
+                       default=['XML'],
+                       help='File types to process (default: XML only)')
+    parser.add_argument('--all-file-types', action='store_true',
+                       help='Process all file types (overrides --file-types)')
     
     args = parser.parse_args()
+    
+    # Determine file types to process
+    if args.all_file_types:
+        allowed_file_types = None  # Process all file types
+    else:
+        allowed_file_types = args.file_types
     
     # Create and start orchestrator
     orchestrator = PipelineOrchestrator(
         discovery_rate_limit=args.discovery_rate_limit,
-        download_rate_limit=args.download_rate_limit
+        download_rate_limit=args.download_rate_limit,
+        allowed_file_types=allowed_file_types
     )
     
     try:

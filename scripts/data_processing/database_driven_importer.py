@@ -168,9 +168,10 @@ class DatabaseDrivenImporter:
         "registo_interesses",
     ]
     
-    def __init__(self):
+    def __init__(self, allowed_file_types: List[str] = None):
         self.file_type_resolver = FileTypeResolver()
         self.change_detection = ChangeDetectionService()
+        self.allowed_file_types = allowed_file_types or ['XML']  # Default to XML only
         
         # Schema mappers registry (same as unified_importer)
         self.schema_mappers = {
@@ -209,8 +210,16 @@ class DatabaseDrivenImporter:
         }
         
         print(f"🔄 Starting database-driven import processing...")
+        
+        # Show active file type filter
+        if self.allowed_file_types:
+            file_types_str = ", ".join(self.allowed_file_types)
+            print(f"📂 Processing file types: {file_types_str}")
+        else:
+            print(f"📂 Processing all file types")
+        
         if file_type_filter:
-            print(f"📂 Filtering for file type: {file_type_filter}")
+            print(f"📂 Additional category filter: {file_type_filter}")
         if legislatura_filter:
             print(f"🏛️  Filtering for legislatura: {legislatura_filter}")
         
@@ -224,8 +233,12 @@ class DatabaseDrivenImporter:
                     ImportStatus.status.in_(['discovered', 'download_pending', 'pending'])
                 )
             
+            # Apply class-level file type filter
+            if self.allowed_file_types:
+                query = query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
+            
             if file_type_filter:
-                # Map file type filter to category patterns
+                # Legacy filter support - map file type filter to category patterns
                 category_pattern = self._get_category_pattern(file_type_filter)
                 if category_pattern:
                     query = query.filter(ImportStatus.category.like(f"%{category_pattern}%"))
@@ -546,7 +559,13 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="Database-Driven Parliament Data Importer")
-    parser.add_argument('--file-type', type=str, help='Import only specific file type')
+    parser.add_argument('--file-type', type=str, help='Import only specific file type (legacy)')
+    parser.add_argument('--file-types', nargs='*', 
+                       choices=['XML', 'JSON', 'PDF', 'Archive', 'XSD'], 
+                       default=['XML'],
+                       help='File types to process (default: XML only)')
+    parser.add_argument('--all-file-types', action='store_true',
+                       help='Process all file types (overrides --file-types)')
     parser.add_argument('--legislatura', type=str, help='Import only specific legislatura')
     parser.add_argument('--limit', type=int, help='Limit number of files to process')
     parser.add_argument('--force-reimport', action='store_true',
@@ -556,11 +575,19 @@ def main():
     
     args = parser.parse_args()
     
-    # Create and run importer
-    importer = DatabaseDrivenImporter()
+    # Determine file types to process
+    if args.all_file_types:
+        allowed_file_types = None  # Process all file types
+    elif args.file_type:  # Legacy support
+        allowed_file_types = [args.file_type.upper()]
+    else:
+        allowed_file_types = args.file_types
+    
+    # Create and run importer with file type filter
+    importer = DatabaseDrivenImporter(allowed_file_types=allowed_file_types)
     
     stats = importer.process_pending_imports(
-        file_type_filter=args.file_type,
+        file_type_filter=args.file_type if args.file_type else None,  # Legacy support only
         legislatura_filter=args.legislatura,
         limit=args.limit,
         force_reimport=args.force_reimport,
