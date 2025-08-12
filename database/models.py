@@ -2085,9 +2085,16 @@ class ImportStatus(Base):
     number = Column(String(50))  # For DAR files
     file_hash = Column(String(64))  # SHA1 hash of file content
     file_size = Column(Integer)
+    
+    # New fields for HTTP metadata and change detection
+    last_modified = Column(DateTime, comment="Server Last-Modified header timestamp")
+    content_length = Column(Integer, comment="Server Content-Length header value")
+    etag = Column(String(200), comment="Server ETag header for change detection")
+    discovered_at = Column(DateTime, comment="When this file URL was first discovered")
+    
     status = Column(
         String(50), nullable=False, default="pending"
-    )  # 'pending', 'processing', 'completed', 'failed', 'schema_mismatch'
+    )  # 'discovered', 'download_pending', 'downloading', 'pending', 'processing', 'completed', 'failed', 'schema_mismatch'
     schema_issues = Column(Text)  # JSON array of schema validation issues
     processing_started_at = Column(DateTime)
     processing_completed_at = Column(DateTime)
