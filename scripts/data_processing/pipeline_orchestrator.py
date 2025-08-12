@@ -25,6 +25,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from queue import Queue, Empty
 from typing import Dict, List, Optional
 
@@ -50,6 +51,14 @@ from scripts.data_processing.unified_importer import UnifiedImporter
 
 
 @dataclass
+class DownloadInfo:
+    """Information about a downloaded file"""
+    file_name: str
+    file_size: int
+    timestamp: str
+    status_id: int
+
+@dataclass
 class PipelineStats:
     """Pipeline statistics for UI display"""
     discovery_total: int = 0
@@ -62,13 +71,44 @@ class PipelineStats:
     import_failed: int = 0
     total_records_imported: int = 0
     start_time: Optional[datetime] = None
+    recent_messages: List[str] = None
+    downloaded_files: List[DownloadInfo] = None
+    
+    def __post_init__(self):
+        if self.recent_messages is None:
+            self.recent_messages = []
+        if self.downloaded_files is None:
+            self.downloaded_files = []
+    
+    def add_message(self, message: str):
+        """Add a message to recent messages (keep last 10)"""
+        self.recent_messages.append(f"{datetime.now().strftime('%H:%M:%S')} - {message}")
+        if len(self.recent_messages) > 10:
+            self.recent_messages.pop(0)
+    
+    def add_download(self, file_name: str, file_size: int, status_id: int):
+        """Add a downloaded file to the list (keep last 15)"""
+        download_info = DownloadInfo(
+            file_name=file_name,
+            file_size=file_size,
+            timestamp=datetime.now().strftime('%H:%M:%S'),
+            status_id=status_id
+        )
+        self.downloaded_files.append(download_info)
+        if len(self.downloaded_files) > 15:
+            self.downloaded_files.pop(0)
     
     @property
     def elapsed_time(self) -> str:
         if not self.start_time:
             return "00:00:00"
         elapsed = datetime.now() - self.start_time
-        return str(elapsed).split('.')[0]  # Remove microseconds
+        # Only update every 5 seconds to reduce flashing
+        total_seconds = int(elapsed.total_seconds())
+        rounded_seconds = (total_seconds // 5) * 5
+        hours, remainder = divmod(rounded_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 class DownloadManager:
@@ -81,6 +121,10 @@ class DownloadManager:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
         self.running = False
+        
+        # Create downloads directory
+        self.downloads_dir = Path("E:/dev/parliament/scripts/data_processing/data/downloads")
+        self.downloads_dir.mkdir(parents=True, exist_ok=True)
         
     def start(self, download_queue: Queue, stats: PipelineStats, console: Console):
         """Start download processing"""
@@ -115,15 +159,21 @@ class DownloadManager:
                             import hashlib
                             file_hash = hashlib.sha1(response.content).hexdigest()
                             
-                            # Store file content temporarily (in memory for now)
-                            # In a real implementation, you might save to temp directory
+                            # Save file to disk using ImportStatus ID as identifier
+                            file_extension = Path(import_record.file_name).suffix or '.xml'
+                            local_filename = f"{import_record.id}_{import_record.file_name}"
+                            local_file_path = self.downloads_dir / local_filename
+                            
+                            # Write file to disk
+                            with open(local_file_path, 'wb') as f:
+                                f.write(response.content)
+                            
+                            # Update import record
+                            import_record.file_path = str(local_file_path)
                             import_record.file_hash = file_hash
                             import_record.file_size = len(response.content)
                             import_record.status = 'pending'  # Ready for import
                             import_record.updated_at = datetime.now()
-                            
-                            # Store content in a temporary attribute for the importer
-                            import_record._temp_content = response.content
                             
                             db_session.commit()
                             stats.download_completed += 1
@@ -131,7 +181,9 @@ class DownloadManager:
                             # Add to import queue
                             download_queue.put(import_record.id)
                             
-                            console.print(f"✅ Downloaded: {import_record.file_name}")
+                            # Add to download tracking and message log
+                            stats.add_download(import_record.file_name, import_record.file_size, import_record.id)
+                            stats.add_message(f"Downloaded: {import_record.file_name} ({import_record.file_size:,} bytes)")
                             
                         except Exception as e:
                             import_record.status = 'failed'
@@ -139,13 +191,13 @@ class DownloadManager:
                             db_session.commit()
                             stats.download_failed += 1
                             
-                            console.print(f"❌ Download failed: {import_record.file_name} - {e}")
+                            stats.add_message(f"Download failed: {import_record.file_name} - {str(e)}")
                         
                         # Rate limiting
                         time.sleep(self.rate_limit_delay)
                         
                 except Exception as e:
-                    console.print(f"❌ Download manager error: {e}")
+                    stats.add_message(f"Download manager error: {str(e)}")
                     time.sleep(1)
     
     def stop(self):
@@ -197,7 +249,7 @@ class ImportProcessor:
                         stats.import_completed += 1
                         stats.total_records_imported += 1
                         
-                        console.print(f"✅ Imported: {import_record.file_name}")
+                        stats.add_message(f"Imported: {import_record.file_name}")
                         
                     except Exception as e:
                         import_record.status = 'failed'
@@ -206,13 +258,13 @@ class ImportProcessor:
                         db_session.commit()
                         stats.import_failed += 1
                         
-                        console.print(f"❌ Import failed: {import_record.file_name} - {e}")
+                        stats.add_message(f"Import failed: {import_record.file_name} - {str(e)}")
                         
                     finally:
                         download_queue.task_done()
                         
                 except Exception as e:
-                    console.print(f"❌ Import processor error: {e}")
+                    stats.add_message(f"Import processor error: {str(e)}")
                     time.sleep(1)
     
     def stop(self):
@@ -238,6 +290,21 @@ class PipelineOrchestrator:
         # Threading
         self.threads = []
         self.running = False
+    
+    def _format_file_size(self, size_bytes: int) -> str:
+        """Format file size in human readable format"""
+        if size_bytes == 0:
+            return "0 B"
+        
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size_bytes < 1024:
+                if unit == 'B':
+                    return f"{size_bytes} {unit}"
+                else:
+                    return f"{size_bytes:.1f} {unit}"
+            size_bytes /= 1024
+        
+        return f"{size_bytes:.1f} TB"
         
     def create_ui_layout(self) -> Layout:
         """Create Rich layout for the UI"""
@@ -250,8 +317,14 @@ class PipelineOrchestrator:
         )
         
         layout["body"].split_row(
+            Layout(name="left", ratio=1),
+            Layout(name="right", ratio=2)
+        )
+        
+        # Split left panel into stats (top) and downloads (bottom)
+        layout["left"].split_column(
             Layout(name="stats", ratio=1),
-            Layout(name="progress", ratio=2)
+            Layout(name="downloads", ratio=1)
         )
         
         return layout
@@ -261,38 +334,73 @@ class PipelineOrchestrator:
         # Header
         layout["header"].update(
             Panel(
-                f"🏛️  Parliament Data Pipeline Orchestrator - {self.stats.elapsed_time}",
+                f"Parliament Data Pipeline Orchestrator - Runtime: {self.stats.elapsed_time}",
                 style="bold blue"
             )
         )
         
         # Stats table
-        stats_table = Table(title="📊 Pipeline Statistics", show_header=True)
+        stats_table = Table(title="Pipeline Statistics", show_header=True)
         stats_table.add_column("Stage", style="cyan")
         stats_table.add_column("Status", justify="right")
         
         stats_table.add_row(
-            "🔍 Discovery",
+            "Discovery",
             f"{self.stats.discovery_completed} files cataloged"
         )
         stats_table.add_row(
-            "⬇️  Downloads",
-            f"✅ {self.stats.download_completed} | ❌ {self.stats.download_failed} | 📋 {self.download_queue.qsize()}"
+            "Downloads",
+            f"OK: {self.stats.download_completed} | ERR: {self.stats.download_failed} | QUEUE: {self.download_queue.qsize()}"
         )
         stats_table.add_row(
-            "📥 Imports",
-            f"✅ {self.stats.import_completed} | ❌ {self.stats.import_failed} | 📊 {self.stats.total_records_imported} records"
+            "Imports", 
+            f"OK: {self.stats.import_completed} | ERR: {self.stats.import_failed} | RECORDS: {self.stats.total_records_imported}"
         )
         
         layout["stats"].update(Panel(stats_table, border_style="green"))
         
-        # Progress bars
-        progress_panel = Panel(
-            "Progress bars will be implemented with actual progress tracking",
-            title="🔄 Live Progress",
+        # Downloaded files tracking
+        if self.stats.downloaded_files:
+            downloads_table = Table(show_header=True, header_style="bold magenta")
+            downloads_table.add_column("Time", style="dim", width=8)
+            downloads_table.add_column("File", style="cyan", width=25)
+            downloads_table.add_column("Size", justify="right", width=10)
+            downloads_table.add_column("ID", justify="right", width=6)
+            
+            # Show last 10 downloads
+            for download in self.stats.downloaded_files[-10:]:
+                file_display = download.file_name
+                if len(file_display) > 22:
+                    file_display = file_display[:19] + "..."
+                
+                # Format file size
+                size_str = self._format_file_size(download.file_size)
+                
+                downloads_table.add_row(
+                    download.timestamp,
+                    file_display,
+                    size_str,
+                    str(download.status_id)
+                )
+                
+            downloads_panel = Panel(downloads_table, title="Downloaded Files", border_style="blue")
+        else:
+            downloads_panel = Panel("No files downloaded yet", title="Downloaded Files", border_style="blue")
+        
+        layout["downloads"].update(downloads_panel)
+        
+        # Recent activity log  
+        if self.stats.recent_messages:
+            messages_text = "\n".join(self.stats.recent_messages[-8:])  # Show last 8 messages
+        else:
+            messages_text = "Waiting for activity..."
+            
+        activity_panel = Panel(
+            messages_text,
+            title="Recent Activity",
             border_style="yellow"
         )
-        layout["progress"].update(progress_panel)
+        layout["right"].update(activity_panel)
         
         # Footer
         layout["footer"].update(
@@ -354,7 +462,7 @@ class PipelineOrchestrator:
                 # Main UI update loop
                 while self.running:
                     self.update_layout(layout)
-                    time.sleep(0.5)
+                    time.sleep(2.0)  # Reduced frequency to minimize flashing
                     
                     # Update queue sizes
                     with DatabaseSession() as db_session:

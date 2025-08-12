@@ -411,17 +411,27 @@ class DatabaseDrivenImporter:
     
     def _has_file_content(self, import_record: ImportStatus) -> bool:
         """Check if file content is available"""
+        # Check if file exists on disk
+        if import_record.file_path and os.path.exists(import_record.file_path):
+            return True
+        # Check if content is in memory (for backward compatibility)
         return hasattr(import_record, '_temp_content') and import_record._temp_content
     
     def _get_file_content(self, import_record: ImportStatus) -> bytes:
         """Get file content for processing"""
+        # Try to read from disk first
+        if import_record.file_path and os.path.exists(import_record.file_path):
+            with open(import_record.file_path, 'rb') as f:
+                return f.read()
+        
+        # Fall back to memory content
         if hasattr(import_record, '_temp_content'):
             return import_record._temp_content
-        else:
-            # Re-download if content not available
-            response = requests.get(import_record.file_url, timeout=30)
-            response.raise_for_status()
-            return response.content
+        
+        # Last resort: re-download
+        response = requests.get(import_record.file_url, timeout=30)
+        response.raise_for_status()
+        return response.content
     
     def _parse_xml_with_bom_handling(self, content: bytes) -> ET.Element:
         """Parse XML content with BOM handling (same logic as unified_importer)"""
