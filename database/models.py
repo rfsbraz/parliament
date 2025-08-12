@@ -2092,6 +2092,11 @@ class ImportStatus(Base):
     etag = Column(String(200), comment="Server ETag header for change detection")
     discovered_at = Column(DateTime, comment="When this file URL was first discovered")
     
+    # Additional discovery metadata for debugging and URL refresh
+    source_page_url = Column(String(1000), comment="URL of the page where the link was found")
+    anchor_text = Column(String(500), comment="Text content of the link anchor element")
+    url_pattern = Column(String(200), comment="Heuristic pattern for URL token refresh (e.g., doc.xml?path=...&fich=...)")
+    
     status = Column(
         String(50), nullable=False, default="pending"
     )  # 'discovered', 'download_pending', 'downloading', 'pending', 'processing', 'completed', 'failed', 'schema_mismatch'
