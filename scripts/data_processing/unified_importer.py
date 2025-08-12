@@ -478,15 +478,30 @@ class UnifiedImporter:
         while content and content[0:1] != b"<" and content[0] > 127:
             content = content[1:]
 
-        # Parse the cleaned content
+        # Parse the cleaned content with proper encoding handling
         try:
-            return ET.fromstring(content.decode("utf-8"))
-        except UnicodeDecodeError:
+            # First try UTF-8 (most common)
+            decoded_content = content.decode("utf-8")
+            logger.debug(f"Successfully decoded file as UTF-8: {file_path}")
+            return ET.fromstring(decoded_content)
+        except UnicodeDecodeError as e:
+            logger.info(f"UTF-8 decode failed for {file_path}, trying other encodings: {e}")
             # Try with different encodings if UTF-8 fails
             try:
-                return ET.fromstring(content.decode("utf-16"))
+                decoded_content = content.decode("utf-16")
+                logger.info(f"Successfully decoded file as UTF-16: {file_path}")
+                return ET.fromstring(decoded_content)
             except UnicodeDecodeError:
-                return ET.fromstring(content.decode("latin-1"))
+                try:
+                    # Try Windows-1252 (common for Portuguese Windows systems)
+                    decoded_content = content.decode("windows-1252")
+                    logger.info(f"Successfully decoded file as Windows-1252: {file_path}")
+                    return ET.fromstring(decoded_content)
+                except UnicodeDecodeError:
+                    # Finally try latin-1 as fallback
+                    decoded_content = content.decode("latin-1")
+                    logger.warning(f"Fallback to latin-1 encoding for {file_path} - may cause character issues")
+                    return ET.fromstring(decoded_content)
 
     def _should_process_file(
         self,
