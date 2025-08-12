@@ -64,6 +64,8 @@ class PipelineStats:
     """Pipeline statistics for UI display"""
     discovery_total: int = 0
     discovery_completed: int = 0
+    discovery_running: bool = False
+    discovery_status: str = "Waiting"
     download_queue_size: int = 0
     download_completed: int = 0
     download_failed: int = 0
@@ -388,8 +390,9 @@ class PipelineOrchestrator:
             Layout(name="right", ratio=2)
         )
         
-        # Split left panel into stats (top) and downloads (bottom)
+        # Split left panel into discovery (top), stats (middle) and downloads (bottom)
         layout["left"].split_column(
+            Layout(name="discovery", ratio=1),
             Layout(name="stats", ratio=1),
             Layout(name="downloads", ratio=1)
         )
@@ -414,6 +417,32 @@ class PipelineOrchestrator:
                 style="bold blue"
             )
         )
+        
+        # Discovery Service Status Panel
+        discovery_text = f"""Discovery Service
+
+The discovery service is the first stage of the parliament data pipeline. It crawls the official Parliament website (parlamento.pt) to find and catalog all available data files.
+
+🔍 Current Operation:
+• Status: {self.stats.discovery_status}
+• Files Found: {self.stats.discovery_completed}
+• Running: {'Yes' if self.stats.discovery_running else 'No'}
+
+🌐 Process:
+• Navigates parliament sections systematically
+• Extracts file URLs, categories, and legislatures  
+• Uses tiered discovery with context preservation
+• Stores metadata for download and processing
+• HTTP retry logic handles connection issues
+
+The service respects rate limits and uses exponential backoff to avoid overwhelming parliament servers while ensuring comprehensive data discovery."""
+
+        discovery_panel = Panel(
+            discovery_text,
+            title="Discovery Service Status",
+            border_style="yellow"
+        )
+        layout["discovery"].update(discovery_panel)
         
         # Stats table
         stats_table = Table(title="Pipeline Statistics", show_header=True)
@@ -470,18 +499,18 @@ class PipelineOrchestrator:
         if pending_files:
             pending_table = Table(show_header=True, header_style="bold green")
             pending_table.add_column("Status", style="yellow", width=12)
-            pending_table.add_column("File", style="cyan", width=30)
-            pending_table.add_column("Category", style="magenta", width=20)
-            pending_table.add_column("Legislature", width=10)
+            pending_table.add_column("File", style="cyan", width=25)
+            pending_table.add_column("Category", style="magenta", width=30)
+            pending_table.add_column("Legislature", width=15)
             
             for file_record in pending_files:
                 file_display = file_record.file_name
-                if len(file_display) > 27:
-                    file_display = file_display[:24] + "..."
+                if len(file_display) > 22:
+                    file_display = file_display[:19] + "..."
                     
                 category_display = file_record.category or "Unknown"
-                if len(category_display) > 17:
-                    category_display = category_display[:14] + "..."
+                if len(category_display) > 27:
+                    category_display = category_display[:24] + "..."
                 
                 # Color code status
                 status_display = file_record.status
@@ -529,14 +558,21 @@ class PipelineOrchestrator:
     def run_discovery(self, legislature_filter: str = None, category_filter: str = None):
         """Run discovery in background thread"""
         try:
+            self.stats.discovery_running = True
+            self.stats.discovery_status = "Running discovery..."
+            
             discovered_count = self.discovery_service.discover_all_files(
                 legislature_filter=legislature_filter,
                 category_filter=category_filter
             )
             self.stats.discovery_completed = discovered_count
+            self.stats.discovery_status = "Completed"
             
         except Exception as e:
+            self.stats.discovery_status = f"Error: {str(e)}"
             self.console.print(f"❌ Discovery error: {e}")
+        finally:
+            self.stats.discovery_running = False
     
     def start_pipeline(self, legislature_filter: str = None, category_filter: str = None):
         """Start the complete pipeline"""
