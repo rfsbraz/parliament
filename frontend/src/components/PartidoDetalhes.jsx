@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Users, MapPin, User, BarChart3, TrendingUp, UserCheck } from 'lucide-react';
+import { ArrowLeft, Users, MapPin, User, BarChart3, TrendingUp, UserCheck, Handshake } from 'lucide-react';
 import PartyVotingAnalytics from './PartyVotingAnalytics';
 import PartyDemographics from './PartyDemographics';
 
@@ -132,6 +132,23 @@ const PartidoDetalhes = () => {
                   {dados.partido.sigla}
                 </h1>
                 <p className="text-xl text-gray-600">{dados.partido.nome}</p>
+                {dados.coligacao && (
+                  <div className="mt-3 flex items-center">
+                    <Handshake className="h-4 w-4 mr-2 text-purple-600" />
+                    <span className="text-sm text-gray-600">
+                      Parte da coligação{' '}
+                      <Link 
+                        to={`/coligacoes/${encodeURIComponent(dados.coligacao.sigla)}`}
+                        className="text-purple-600 hover:text-purple-800 font-medium underline"
+                      >
+                        {dados.coligacao.sigla}
+                      </Link>
+                      {dados.coligacao.nome && dados.coligacao.nome !== dados.coligacao.sigla && (
+                        <span className="text-gray-500"> ({dados.coligacao.nome})</span>
+                      )}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="text-right">
                 <div className="flex items-center text-gray-600 mb-2">

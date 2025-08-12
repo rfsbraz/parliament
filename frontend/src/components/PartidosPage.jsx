@@ -205,12 +205,87 @@ const PartidosPage = () => {
         )}
       </div>
 
-      {/* Coalitions Section */}
-      {(activeView === 'all' || activeView === 'coligacoes') && coligacoes.length > 0 && (
+      {/* Parties Section */}
+      {(activeView === 'all' || activeView === 'partidos') && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
+        >
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+            <Building className="h-6 w-6 mr-2 text-blue-600" />
+            Partidos Individuais
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {(partidos || []).map((partido, index) => (
+              <motion.div
+                key={partido.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 * index }}
+                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden group"
+              >
+                {/* Party color bar */}
+                <div 
+                  className="h-2 w-full"
+                  style={{ backgroundColor: partidoCores[partido.sigla] || '#6B7280' }}
+                ></div>
+                
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                        {partido.sigla}
+                      </h3>
+                      <p className="text-sm text-gray-600 line-clamp-2">
+                        {partido.nome}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold" style={{ color: partidoCores[partido.sigla] || '#6B7280' }}>
+                        {partido.num_deputados}
+                      </div>
+                      <div className="text-xs text-gray-500">deputados</div>
+                    </div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                      <span>Representação</span>
+                      <span>{((partido.num_deputados / 230) * 100).toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="h-2 rounded-full transition-all duration-500"
+                        style={{ 
+                          backgroundColor: partidoCores[partido.sigla] || '#6B7280',
+                          width: `${(partido.num_deputados / 230) * 100}%`
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <Link
+                    to={`/partidos/${partido.sigla}`}
+                    className="inline-flex items-center text-blue-600 hover:text-blue-700 text-sm font-medium group-hover:translate-x-1 transition-transform"
+                  >
+                    Ver detalhes
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Coalitions Section - Moved to bottom */}
+      {(activeView === 'all' || activeView === 'coligacoes') && coligacoes.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: activeView === 'all' ? 0.3 : 0.2 }}
         >
           <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
             <Handshake className="h-6 w-6 mr-2 text-purple-600" />
@@ -305,81 +380,6 @@ const PartidosPage = () => {
                   <Link
                     to={`/coligacoes/${encodeURIComponent(coligacao.sigla)}`}
                     className="inline-flex items-center text-purple-600 hover:text-purple-700 text-sm font-medium group-hover:translate-x-1 transition-transform"
-                  >
-                    Ver detalhes
-                    <ArrowRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Parties Section */}
-      {(activeView === 'all' || activeView === 'partidos') && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: activeView === 'all' ? 0.3 : 0.2 }}
-        >
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-            <Building className="h-6 w-6 mr-2 text-blue-600" />
-            Partidos Individuais
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(partidos || []).map((partido, index) => (
-              <motion.div
-                key={partido.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 * index }}
-                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden group"
-              >
-                {/* Party color bar */}
-                <div 
-                  className="h-2 w-full"
-                  style={{ backgroundColor: partidoCores[partido.sigla] || '#6B7280' }}
-                ></div>
-                
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-1">
-                        {partido.sigla}
-                      </h3>
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {partido.nome}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-3xl font-bold" style={{ color: partidoCores[partido.sigla] || '#6B7280' }}>
-                        {partido.num_deputados}
-                      </div>
-                      <div className="text-xs text-gray-500">deputados</div>
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mb-4">
-                    <div className="flex justify-between text-xs text-gray-600 mb-1">
-                      <span>Representação</span>
-                      <span>{((partido.num_deputados / 230) * 100).toFixed(1)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="h-2 rounded-full transition-all duration-500"
-                        style={{ 
-                          backgroundColor: partidoCores[partido.sigla] || '#6B7280',
-                          width: `${(partido.num_deputados / 230) * 100}%`
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  <Link
-                    to={`/partidos/${partido.sigla}`}
-                    className="inline-flex items-center text-blue-600 hover:text-blue-700 text-sm font-medium group-hover:translate-x-1 transition-transform"
                   >
                     Ver detalhes
                     <ArrowRight className="ml-1 h-4 w-4" />

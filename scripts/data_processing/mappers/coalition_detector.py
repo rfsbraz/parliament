@@ -280,8 +280,8 @@ class CoalitionDetector:
         """Detect from known coalitions database"""
         coalition_data = self.known_coalitions[sigla]
         
-        # Handle special case where it's marked as individual party
-        if coalition_data.get("type") == "partido":
+        # Handle special cases where it's marked as individual party
+        if coalition_data.get("type") in ["partido", "fusao", "transicao"]:
             return self._create_negative_detection(sigla, "known_individual_party")
         
         return CoalitionDetection(
