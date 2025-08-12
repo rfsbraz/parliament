@@ -54,8 +54,7 @@ const AppContent = () => {
           <Routes>
             <Route path="/" element={<Dashboard stats={stats} />} />
             <Route path="/deputados" element={<DeputadosPage />} />
-            <Route path="/deputados/:deputadoId" element={<DeputadoDetalhes />} />
-            <Route path="/deputados/:deputadoId/:legislatura" element={<DeputadoDetalhes />} />
+            <Route path="/deputados/:cadId" element={<DeputadoDetalhes />} />
             <Route path="/partidos" element={<PartidosPage />} />
             <Route path="/partidos/:partidoId" element={<PartidoDetalhes />} />
             <Route path="/coligacoes/:coligacaoId" element={<ColigacaoDetalhes />} />

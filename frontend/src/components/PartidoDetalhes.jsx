@@ -279,7 +279,7 @@ const PartidoDetalhes = () => {
                             </div>
                             <div className="flex-1 min-w-0">
                               <Link 
-                                to={`/deputados/${deputado.id}/${deputado.ultima_legislatura || '17'}`}
+                                to={`/deputados/${deputado.id_cadastro || deputado.id}`}
                                 className="text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
                               >
                                 {deputado.nome}
@@ -321,7 +321,7 @@ const PartidoDetalhes = () => {
                           </div>
                           
                           <Link 
-                            to={`/deputados/${deputado.id}/${deputado.ultima_legislatura || '17'}`}
+                            to={`/deputados/${deputado.id_cadastro || deputado.id}`}
                             className="text-blue-600 hover:text-blue-800 font-medium"
                           >
                             Ver Detalhes →

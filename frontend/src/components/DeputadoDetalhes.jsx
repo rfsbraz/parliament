@@ -9,25 +9,23 @@ import VotingAnalytics from './VotingAnalytics';
 // Future enhancement: Implement proper unique person identifiers or create person-linking table
 
 const DeputadoDetalhes = () => {
-  const { deputadoId, legislatura: urlLegislatura } = useParams();
+  const { cadId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   
   const [deputado, setDeputado] = useState(null);
   const [atividades, setAtividades] = useState(null);
   const [conflitosInteresse, setConflitosInteresse] = useState(null);
+  const [attendanceData, setAttendanceData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [interventionTypeFilter, setInterventionTypeFilter] = useState('');
   const [interventionSort, setInterventionSort] = useState('recent');
   const [expandedInitiatives, setExpandedInitiatives] = useState(new Set());
   
-  // Use URL parameter or default to current legislatura (17)
-  const currentLegislatura = urlLegislatura || '17';
-  
-  // Helper function to generate deputy URLs with legislatura
-  const getDeputadoUrl = (deputadoId, legislatura = currentLegislatura) => {
-    return `/deputados/${deputadoId}/${legislatura}`;
+  // Helper function to generate deputy URLs
+  const getDeputadoUrl = (cadId) => {
+    return `/deputados/${cadId}`;
   };
 
   // Toggle initiative details expansion
@@ -44,7 +42,7 @@ const DeputadoDetalhes = () => {
   // Get active tab from URL hash, default to 'biografia'
   const getActiveTabFromUrl = () => {
     const hash = location.hash.replace('#', '');
-    const validTabs = ['biografia', 'intervencoes', 'iniciativas', 'votacoes', 'mandatos-anteriores', 'conflitos-interesse'];
+    const validTabs = ['biografia', 'intervencoes', 'iniciativas', 'votacoes', 'attendance', 'mandatos-anteriores', 'conflitos-interesse'];
     return validTabs.includes(hash) ? hash : 'biografia';
   };
 
@@ -86,7 +84,7 @@ const DeputadoDetalhes = () => {
         setLoading(true);
         
         // Buscar detalhes do deputado
-        const deputadoResponse = await fetch(`/api/deputados/${deputadoId}/detalhes?legislatura=${currentLegislatura}`);
+        const deputadoResponse = await fetch(`/api/deputados/${cadId}/detalhes`);
         if (!deputadoResponse.ok) {
           throw new Error('Erro ao carregar dados do deputado');
         }
@@ -94,7 +92,7 @@ const DeputadoDetalhes = () => {
         setDeputado(deputadoData);
 
         // Buscar atividades do deputado
-        const atividadesResponse = await fetch(`/api/deputados/${deputadoId}/atividades?legislatura=${currentLegislatura}`);
+        const atividadesResponse = await fetch(`/api/deputados/${cadId}/atividades`);
         if (!atividadesResponse.ok) {
           throw new Error('Erro ao carregar atividades do deputado');
         }
@@ -103,7 +101,7 @@ const DeputadoDetalhes = () => {
 
         // Buscar conflitos de interesse do deputado
         try {
-          const conflitosResponse = await fetch(`/api/deputados/${deputadoId}/conflitos-interesse?legislatura=${currentLegislatura}`);
+          const conflitosResponse = await fetch(`/api/deputados/${cadId}/conflitos-interesse`);
           if (conflitosResponse.ok) {
             const conflitosData = await conflitosResponse.json();
             setConflitosInteresse(conflitosData);
@@ -111,6 +109,18 @@ const DeputadoDetalhes = () => {
         } catch (conflitosErr) {
           // Conflitos de interesse são opcionais, não interromper o carregamento
           console.warn('Dados de conflitos de interesse não disponíveis:', conflitosErr);
+        }
+
+        // Buscar dados de presenças do deputado
+        try {
+          const attendanceResponse = await fetch(`/api/deputados/${cadId}/attendance`);
+          if (attendanceResponse.ok) {
+            const attendanceDataResult = await attendanceResponse.json();
+            setAttendanceData(attendanceDataResult);
+          }
+        } catch (attendanceErr) {
+          // Dados de presença são opcionais, não interromper o carregamento
+          console.warn('Dados de presença não disponíveis:', attendanceErr);
         }
         
       } catch (err) {
@@ -120,10 +130,10 @@ const DeputadoDetalhes = () => {
       }
     };
 
-    if (deputadoId) {
+    if (cadId) {
       fetchDados();
     }
-  }, [deputadoId, currentLegislatura]);
+  }, [cadId]);
 
   if (loading) {
     return (
@@ -162,6 +172,7 @@ const DeputadoDetalhes = () => {
     { id: 'intervencoes', label: 'Intervenções', icon: MessageSquare },
     { id: 'iniciativas', label: 'Iniciativas', icon: FileText },
     { id: 'votacoes', label: 'Votações', icon: Vote },
+    { id: 'attendance', label: 'Presenças', icon: Activity },
     { id: 'mandatos-anteriores', label: 'Mandatos Anteriores', icon: Calendar },
     { id: 'conflitos-interesse', label: 'Conflitos de Interesse', icon: Shield }
   ];
@@ -311,12 +322,37 @@ const DeputadoDetalhes = () => {
           
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <div className="flex items-center">
-              <Activity className="h-8 w-8 text-purple-600" />
+              <Activity className={`h-8 w-8 ${
+                deputado.estatisticas.taxa_assiduidade >= 0.9 ? 'text-green-600' :
+                deputado.estatisticas.taxa_assiduidade >= 0.8 ? 'text-blue-600' :
+                deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'text-yellow-600' :
+                deputado.estatisticas.taxa_assiduidade >= 0.5 ? 'text-orange-600' :
+                'text-red-600'
+              }`} />
               <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Taxa Assiduidade</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className={`text-2xl font-bold ${
+                  deputado.estatisticas.taxa_assiduidade >= 0.9 ? 'text-green-700' :
+                  deputado.estatisticas.taxa_assiduidade >= 0.8 ? 'text-blue-700' :
+                  deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'text-yellow-700' :
+                  deputado.estatisticas.taxa_assiduidade >= 0.5 ? 'text-orange-700' :
+                  'text-red-700'
+                }`}>
                   {(deputado.estatisticas.taxa_assiduidade * 100).toFixed(1)}%
                 </p>
+                <div className={`text-xs font-medium mt-1 ${
+                  deputado.estatisticas.taxa_assiduidade >= 0.9 ? 'text-green-600' :
+                  deputado.estatisticas.taxa_assiduidade >= 0.8 ? 'text-blue-600' :
+                  deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'text-yellow-600' :
+                  deputado.estatisticas.taxa_assiduidade >= 0.5 ? 'text-orange-600' :
+                  'text-red-600'
+                }`}>
+                  {deputado.estatisticas.taxa_assiduidade >= 0.9 ? 'Excelente' :
+                   deputado.estatisticas.taxa_assiduidade >= 0.8 ? 'Muito Boa' :
+                   deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'Boa' :
+                   deputado.estatisticas.taxa_assiduidade >= 0.5 ? 'Razoável' :
+                   'Baixa'}
+                </div>
               </div>
             </div>
           </div>
@@ -1104,8 +1140,8 @@ const DeputadoDetalhes = () => {
 
             {activeTab === 'votacoes' && (
               <VotingAnalytics 
-                deputadoId={deputadoId} 
-                legislatura={currentLegislatura} 
+                deputadoId={cadId} 
+                legislatura={deputado?.legislatura?.numero || 'XVII'} 
               />
             )}
 
@@ -1239,7 +1275,7 @@ const DeputadoDetalhes = () => {
                                   {conflitosInteresse.spouse_deputy ? (
                                     <div className="space-y-2">
                                       <Link
-                                        to={getDeputadoUrl(conflitosInteresse.spouse_deputy.id)}
+                                        to={getDeputadoUrl(conflitosInteresse.spouse_deputy.cad_id || conflitosInteresse.spouse_deputy.id)}
                                         className="text-blue-600 hover:text-blue-800 font-medium transition-colors block"
                                       >
                                         {conflitosInteresse.spouse_name}
@@ -1289,6 +1325,169 @@ const DeputadoDetalhes = () => {
                     <p className="text-sm text-gray-400">
                       As informações sobre conflitos de interesse não foram encontradas para este deputado
                     </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'attendance' && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Registo de Presenças
+                  </h3>
+                </div>
+
+                {attendanceData ? (
+                  <div className="space-y-6">
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-white rounded-lg border p-4">
+                        <div className="flex items-center">
+                          <div className="p-2 bg-blue-100 rounded-lg">
+                            <Activity className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-600">Total Sessões</p>
+                            <p className="text-xl font-bold text-gray-900">{attendanceData.summary.total_sessions}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white rounded-lg border p-4">
+                        <div className="flex items-center">
+                          <div className="p-2 bg-green-100 rounded-lg">
+                            <Activity className="h-5 w-5 text-green-600" />
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-600">Presente</p>
+                            <p className="text-xl font-bold text-green-700">{attendanceData.summary.present}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white rounded-lg border p-4">
+                        <div className="flex items-center">
+                          <div className="p-2 bg-yellow-100 rounded-lg">
+                            <Activity className="h-5 w-5 text-yellow-600" />
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-600">Falta Justificada</p>
+                            <p className="text-xl font-bold text-yellow-700">{attendanceData.summary.justified_absence}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white rounded-lg border p-4">
+                        <div className="flex items-center">
+                          <div className="p-2 bg-red-100 rounded-lg">
+                            <Activity className="h-5 w-5 text-red-600" />
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-600">Falta Injustificada</p>
+                            <p className="text-xl font-bold text-red-700">{attendanceData.summary.unjustified_absence}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Timeline */}
+                    <div className="bg-white rounded-lg border">
+                      <div className="px-6 py-4 border-b border-gray-200">
+                        <h4 className="text-lg font-medium text-gray-900">Timeline de Presenças</h4>
+                      </div>
+                      <div className="p-6">
+                        <div className="space-y-4">
+                          {attendanceData.timeline.map((entry, index) => (
+                            <div 
+                              key={index} 
+                              className="flex items-start space-x-4 p-4 rounded-lg border border-gray-100 hover:bg-gray-50"
+                            >
+                              <div className={`flex-shrink-0 w-3 h-3 rounded-full mt-2 ${
+                                entry.status === 'success' ? 'bg-green-500' :
+                                entry.status === 'warning' ? 'bg-yellow-500' :
+                                entry.status === 'danger' ? 'bg-red-500' :
+                                entry.status === 'info' ? 'bg-blue-500' :
+                                'bg-gray-400'
+                              }`}></div>
+                              
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {new Date(entry.date).toLocaleDateString('pt-PT')}
+                                    </span>
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                      entry.status === 'success' ? 'bg-green-100 text-green-800' :
+                                      entry.status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                                      entry.status === 'danger' ? 'bg-red-100 text-red-800' :
+                                      entry.status === 'info' ? 'bg-blue-100 text-blue-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {entry.attendance_description}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-gray-500">
+                                    {entry.session_type}
+                                  </span>
+                                </div>
+                                
+                                {entry.reason && (
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    <span className="font-medium">Motivo:</span> {entry.reason}
+                                  </p>
+                                )}
+                                
+                                {entry.justification && (
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    <span className="font-medium">Justificação:</span> {entry.justification}
+                                  </p>
+                                )}
+                                
+                                {entry.observations && (
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    <span className="font-medium">Observações:</span> {entry.observations}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {attendanceData.timeline.length === 0 && (
+                          <div className="text-center py-8">
+                            <Activity className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                            <p className="text-gray-500">Nenhum registo de presença encontrado</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Legend */}
+                    <div className="bg-white rounded-lg border p-6">
+                      <h4 className="text-lg font-medium text-gray-900 mb-4">Legenda dos Códigos</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {Object.entries(attendanceData.codes_legend).map(([code, info]) => (
+                          <div key={code} className="flex items-center space-x-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                              info.status === 'success' ? 'bg-green-100 text-green-800' :
+                              info.status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                              info.status === 'danger' ? 'bg-red-100 text-red-800' :
+                              info.status === 'info' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {code}
+                            </span>
+                            <span className="text-sm text-gray-700">{info.description}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Activity className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">Dados de presença não disponíveis</p>
                   </div>
                 )}
               </div>
@@ -1348,32 +1547,14 @@ const DeputadoDetalhes = () => {
                             </div>
                           </div>
                           
-                          <div className="flex flex-col gap-2">
-                            {!mandato.is_current && (
-                              <Link
-                                to={`/deputados/${mandato.deputado_id}/${mandato.legislatura_numero}`}
-                                className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                              >
-                                <ExternalLink className="h-4 w-4 mr-2" />
-                                Ver Perfil
-                              </Link>
-                            )}
-                            
-                            <button
-                              onClick={() => {
-                                selectLegislatura({ numero: mandato.legislatura_numero, designacao: mandato.legislatura_nome });
-                                navigate(`/deputados/${mandato.deputado_id}/${mandato.legislatura_numero}`);
-                              }}
-                              className={`inline-flex items-center px-3 py-2 border shadow-sm text-sm font-medium rounded-md transition-colors ${
-                                mandato.is_current
-                                  ? 'border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100'
-                                  : 'border-orange-300 text-orange-700 bg-orange-50 hover:bg-orange-100'
-                              }`}
-                            >
-                              <Calendar className="h-4 w-4 mr-2" />
-                              {mandato.is_current ? 'Legislatura Atual' : 'Ir para Esta Legislatura'}
-                            </button>
-                          </div>
+                          {mandato.is_current && (
+                            <div className="flex flex-col gap-2">
+                              <span className="inline-flex items-center px-3 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-blue-50">
+                                <Calendar className="h-4 w-4 mr-2" />
+                                Legislatura Atual
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}

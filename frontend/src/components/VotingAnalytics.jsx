@@ -11,7 +11,7 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
     const fetchVotingAnalytics = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/deputados/${deputadoId}/voting-analytics?legislatura=${legislatura}`);
+        const response = await fetch(`/api/deputados/${deputadoId}/voting-analytics`);
         if (!response.ok) {
           throw new Error('Erro ao carregar análises de votação');
         }
@@ -339,6 +339,9 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
   const ThemeAnalysisChart = () => {
     const { theme_analysis } = analytics;
     
+    // Ensure theme_analysis is an array
+    const themes = Array.isArray(theme_analysis) ? theme_analysis : [];
+    
     return (
       <div className="space-y-6">
         <h4 className="text-lg font-semibold text-gray-900 flex items-center">
@@ -346,8 +349,9 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
           Análise por Temas Legislativos
         </h4>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {theme_analysis.map((theme, index) => (
+        {themes.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {themes.map((theme, index) => (
             <div key={theme.tema} className="bg-white border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-sm font-medium text-gray-900">{theme.tema}</div>
@@ -410,7 +414,13 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+            <p>Dados de análise temática não disponíveis</p>
+          </div>
+        )}
       </div>
     );
   };

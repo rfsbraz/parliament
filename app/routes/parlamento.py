@@ -10,7 +10,7 @@ from database.models import (
     DeputadoMandatoLegislativo, DeputadoHabilitacao, 
     DeputadoCargoFuncao, DeputadoTitulo, DeputadoCondecoracao,
     DeputadoObraPublicada, IntervencaoParlamentar, IntervencaoDeputado,
-    IniciativaParlamentar, IniciativaAutorDeputado, IniciativaEventoVotacao,
+    IniciativaParlamentar, IniciativaAutorDeputado, IniciativaEvento, IniciativaEventoVotacao,
     AtividadeParlamentarVotacao, OrcamentoEstadoVotacao, 
     OrcamentoEstadoGrupoParlamentarVoto, Coligacao, ColigacaoPartido
 )
@@ -143,12 +143,17 @@ def test_db():
         return log_and_return_error(e, '/api/test')
 
 
-@parlamento_bp.route('/deputados/<int:deputado_id>', methods=['GET'])
-def get_deputado(deputado_id):
+@parlamento_bp.route('/deputados/<int:cad_id>', methods=['GET'])
+def get_deputado(cad_id):
     """Retorna detalhes de um deputado específico"""
     try:
         with DatabaseSession() as session:
-            deputado = session.query(Deputado).filter_by(id=deputado_id).first()
+            # Find deputado by cad_id (unique across all legislatures)
+            # Get their most recent legislature entry
+            deputado = session.query(Deputado).filter(
+                Deputado.id_cadastro == cad_id
+            ).order_by(Deputado.legislatura_id.desc()).first()
+            
             if not deputado:
                 return jsonify({'error': 'Deputado not found'}), 404
             
@@ -158,18 +163,31 @@ def get_deputado(deputado_id):
         return log_and_return_error(e, '/api/deputados/<id>')
 
 
-@parlamento_bp.route('/deputados/<int:deputado_id>/detalhes', methods=['GET'])
-def get_deputado_detalhes(deputado_id):
+def get_latest_legislature_id(session):
+    """Get the ID of the latest/current legislature"""
+    latest_legislature = session.query(Legislatura).filter_by(ativa=True).first()
+    if not latest_legislature:
+        # If no active legislature, get the one with highest number
+        latest_legislature = session.query(Legislatura).order_by(Legislatura.numero.desc()).first()
+    return latest_legislature.id if latest_legislature else None
+
+@parlamento_bp.route('/deputados/<int:cad_id>/detalhes', methods=['GET'])
+def get_deputado_detalhes(cad_id):
     """Retorna detalhes completos de um deputado com informações do mandato"""
     try:
         with DatabaseSession() as session:
-            deputado = session.query(Deputado).filter_by(id=deputado_id).first()
+            # Find deputado by cad_id (unique across all legislatures)
+            # Get their most recent legislature entry
+            deputado = session.query(Deputado).filter(
+                Deputado.id_cadastro == cad_id
+            ).order_by(Deputado.legislatura_id.desc()).first()
+            
             if not deputado:
                 return jsonify({'error': 'Deputado not found'}), 404
             
             # Get mandate information from DeputadoMandatoLegislativo table
             mandato_info = session.query(DeputadoMandatoLegislativo).filter_by(
-                deputado_id=deputado_id
+                deputado_id=deputado.id
             ).first()
             
             # Get legislature information
@@ -255,15 +273,114 @@ def get_deputado_detalhes(deputado_id):
                 # Round to 1 decimal place
                 anos_servico = round(anos_servico, 1)
             
+            # Calculate real attendance rate based on actual session attendance records
+            taxa_assiduidade = 0.85  # Default value if no attendance data available
+            
+            if deputado.nome:
+                # Query the meeting_attendances table for this deputy's session attendance
+                from sqlalchemy import text
+                
+                attendance_query = text("""
+                    SELECT 
+                        sigla_falta,
+                        COUNT(*) as session_count
+                    FROM meeting_attendances 
+                    WHERE dep_nome_parlamentar = :deputy_name
+                    AND dt_reuniao IS NOT NULL
+                    GROUP BY sigla_falta
+                """)
+                
+                attendance_records = session.execute(attendance_query, {'deputy_name': deputado.nome}).fetchall()
+                
+                if attendance_records:
+                    # Count different types of attendance
+                    present_sessions = 0  # PR = Present
+                    justified_absences = 0  # FJ, ME, QVJ, MP = Justified absences
+                    unjustified_absences = 0  # FI = Unjustified absences  
+                    total_sessions = 0
+                    
+                    for record in attendance_records:
+                        sigla_falta, count = record
+                        total_sessions += count
+                        
+                        if sigla_falta == 'PR':  # Present
+                            present_sessions += count
+                        elif sigla_falta in ['FJ', 'ME', 'QVJ', 'MP']:  # Justified absences
+                            justified_absences += count
+                        elif sigla_falta in ['FI', 'FA']:  # Unjustified absences
+                            unjustified_absences += count
+                        else:
+                            # For unknown codes, treat as justified absence
+                            justified_absences += count
+                    
+                    if total_sessions > 0:
+                        # Calculate attendance rate:
+                        # Present sessions count as 100% attendance
+                        # Justified absences count as neutral (don't hurt attendance)
+                        # Unjustified absences hurt attendance
+                        
+                        # Method 1: Simple presence rate (only count actual presence)
+                        simple_attendance = present_sessions / total_sessions
+                        
+                        # Method 2: Adjusted rate (justify absences don't count against)
+                        # Only penalize for unjustified absences
+                        attendance_eligible_sessions = present_sessions + justified_absences
+                        adjusted_attendance = attendance_eligible_sessions / total_sessions
+                        
+                        # Use the adjusted method for fairer calculation
+                        taxa_assiduidade = round(adjusted_attendance, 3)
+                        
+                        # Cap at reasonable maximum (95%) to account for some expected absences
+                        if taxa_assiduidade > 0.95:
+                            taxa_assiduidade = 0.95
+            
             # Add statistics to response
             response['estatisticas'] = {
                 'total_intervencoes': total_intervencoes,
                 'total_iniciativas': total_iniciativas,
-                'taxa_assiduidade': 0.85,  # Placeholder - would need attendance data
+                'taxa_assiduidade': taxa_assiduidade,
                 'total_mandatos': total_mandatos,
                 'legislaturas_servidas': legislaturas_servidas,
                 'anos_servico': anos_servico
             }
+            
+            # Get all mandates for this person across all legislatures
+            mandatos_historico = []
+            if deputado.id_cadastro:
+                # Get unique deputy records for this person (one per legislature)
+                all_mandates = session.query(Deputado, Legislatura).join(
+                    Legislatura, Deputado.legislatura_id == Legislatura.id
+                ).filter(
+                    Deputado.id_cadastro == deputado.id_cadastro
+                ).order_by(desc(Legislatura.numero)).all()
+                
+                # Process each unique mandate
+                seen_legislatures = set()
+                for dep, leg in all_mandates:
+                    # Skip if we've already processed this legislature
+                    if leg.numero in seen_legislatures:
+                        continue
+                    seen_legislatures.add(leg.numero)
+                    
+                    # Get the mandate info for this deputy (just the first one if multiple exist)
+                    mand = session.query(DeputadoMandatoLegislativo).filter_by(
+                        deputado_id=dep.id
+                    ).first()
+                    
+                    mandato_data = {
+                        'deputado_id': dep.id,
+                        'legislatura_numero': leg.numero,
+                        'legislatura_nome': leg.designacao,
+                        'mandato_inicio': leg.data_inicio.isoformat() if leg.data_inicio else None,
+                        'mandato_fim': leg.data_fim.isoformat() if leg.data_fim else None,
+                        'circulo': mand.ce_des if mand else None,  # Electoral circle from mandate info
+                        'partido_sigla': mand.par_sigla if mand else None,
+                        'partido_nome': mand.par_des if mand else None,
+                        'is_current': dep.id == deputado.id  # Mark current mandate
+                    }
+                    mandatos_historico.append(mandato_data)
+            
+            response['mandatos_historico'] = mandatos_historico
             
             return jsonify(response)
             
@@ -727,20 +844,22 @@ def get_partido_votacoes(partido_id):
 # PHASE 3: COMPLEX FEATURES
 # =============================================================================
 
-@parlamento_bp.route('/deputados/<int:deputado_id>/atividades', methods=['GET'])
-def get_deputado_atividades(deputado_id):
+@parlamento_bp.route('/deputados/<int:cad_id>/atividades', methods=['GET'])
+def get_deputado_atividades(cad_id):
     """Retorna atividades parlamentares de um deputado"""
     try:
-        legislatura = request.args.get('legislatura', 'XVII', type=str)
-        
         with DatabaseSession() as session:
-            # Verify deputy exists using MySQL
-            deputado = session.query(Deputado).filter_by(id=deputado_id).first()
+            # Find deputado by cad_id (unique across all legislatures)
+            # Get their most recent legislature entry
+            deputado = session.query(Deputado).filter(
+                Deputado.id_cadastro == cad_id
+            ).order_by(Deputado.legislatura_id.desc()).first()
+            
             if not deputado:
                 return jsonify({'error': 'Deputado not found'}), 404
             
-            # Get legislature info for filtering
-            leg = session.query(Legislatura).filter_by(numero=legislatura).first()
+            # Use the deputy's actual legislature for filtering
+            leg = session.query(Legislatura).filter_by(id=deputado.legislatura_id).first()
             if not leg:
                 return jsonify({
                     'intervencoes': [],
@@ -851,13 +970,17 @@ def get_atividade_participantes(tipo, atividade_id):
         return log_and_return_error(e, '/api/deputados/<id>/biografia', 500)
 
 
-@parlamento_bp.route('/deputados/<int:deputado_id>/biografia', methods=['GET'])
-def get_deputado_biografia(deputado_id):
+@parlamento_bp.route('/deputados/<int:cad_id>/biografia', methods=['GET'])
+def get_deputado_biografia(cad_id):
     """Retorna dados biográficos de um deputado"""
     try:
         with DatabaseSession() as session:
-            # Get the deputado to find their cadastro_id
-            deputado = session.query(Deputado).filter_by(id=deputado_id).first()
+            # Find deputado by cad_id (unique across all legislatures)
+            # Get their most recent legislature entry
+            deputado = session.query(Deputado).filter(
+                Deputado.id_cadastro == cad_id
+            ).order_by(Deputado.legislatura_id.desc()).first()
+            
             if not deputado:
                 return jsonify({'error': 'Deputado not found'}), 404
             
@@ -974,13 +1097,13 @@ def get_deputado_by_name(nome_completo):
         return log_and_return_error(e, '/api/deputados/by-name/<nome>')
 
 
-@parlamento_bp.route('/deputados/<int:deputado_id>/conflitos-interesse', methods=['GET'])
-def get_deputado_conflitos_interesse(deputado_id):
+@parlamento_bp.route('/deputados/<int:cad_id>/conflitos-interesse', methods=['GET'])
+def get_deputado_conflitos_interesse(cad_id):
     """Retorna declarações de conflitos de interesse de um deputado"""
     try:
         # Return empty conflicts structure until data is migrated to MySQL
         return jsonify({
-            'deputado_id': deputado_id,
+            'deputado_id': cad_id,
             'conflitos': [],  # Frontend expects this array
             'declaracoes': []  # Frontend expects this array
         })
@@ -990,26 +1113,151 @@ def get_deputado_conflitos_interesse(deputado_id):
         return log_and_return_error(e, '/api/deputados/<id>/biografia', 500)
 
 
+@parlamento_bp.route('/deputados/<int:cad_id>/attendance', methods=['GET'])
+def get_deputado_attendance(cad_id):
+    """Retorna timeline de presenças/faltas de um deputado"""
+    try:
+        with DatabaseSession() as session:
+            # Find deputado by cad_id (unique across all legislatures)
+            # Get their most recent legislature entry
+            deputado = session.query(Deputado).filter(
+                Deputado.id_cadastro == cad_id
+            ).order_by(Deputado.legislatura_id.desc()).first()
+            
+            if not deputado:
+                return jsonify({'error': 'Deputado não encontrado'}), 404
+            
+            # Query attendance records from meeting_attendances table
+            from sqlalchemy import text
+            
+            attendance_query = text("""
+                SELECT 
+                    dt_reuniao,
+                    tipo_reuniao,
+                    sigla_falta,
+                    motivo_falta,
+                    pres_justificacao,
+                    observacoes,
+                    sigla_grupo
+                FROM meeting_attendances 
+                WHERE dep_nome_parlamentar = :deputy_name
+                AND dt_reuniao IS NOT NULL
+                ORDER BY dt_reuniao DESC
+                LIMIT 200
+            """)
+            
+            attendance_records = session.execute(attendance_query, {'deputy_name': deputado.nome}).fetchall()
+            
+            # Process attendance records
+            timeline = []
+            summary = {
+                'total_sessions': 0,
+                'present': 0,
+                'justified_absence': 0,
+                'unjustified_absence': 0,
+                'other': 0
+            }
+            
+            # Attendance code meanings (based on analysis)
+            attendance_codes = {
+                'PR': {'type': 'present', 'description': 'Presente', 'status': 'success'},
+                'FJ': {'type': 'justified', 'description': 'Falta Justificada', 'status': 'warning'},
+                'ME': {'type': 'justified', 'description': 'Missão Especial', 'status': 'info'},
+                'QVJ': {'type': 'justified', 'description': 'Questão de Voto Justificada', 'status': 'info'},
+                'MP': {'type': 'justified', 'description': 'Missão Parlamentar', 'status': 'info'},
+                'FI': {'type': 'unjustified', 'description': 'Falta Injustificada', 'status': 'danger'},
+                'FA': {'type': 'unjustified', 'description': 'Falta', 'status': 'danger'},
+                'PNO': {'type': 'other', 'description': 'Presente Não Oficial', 'status': 'secondary'},
+                'QV': {'type': 'other', 'description': 'Questão de Voto', 'status': 'secondary'},
+                'CO': {'type': 'other', 'description': 'Comissão', 'status': 'secondary'},
+                'FIJ': {'type': 'justified', 'description': 'Falta Injustificada (Justificada)', 'status': 'warning'}
+            }
+            
+            for record in attendance_records:
+                dt_reuniao, tipo_reuniao, sigla_falta, motivo_falta, pres_justificacao, observacoes, sigla_grupo = record
+                
+                # Get attendance info
+                attendance_info = attendance_codes.get(sigla_falta, {
+                    'type': 'other', 
+                    'description': f'Código: {sigla_falta}', 
+                    'status': 'secondary'
+                })
+                
+                # Build timeline entry
+                timeline_entry = {
+                    'date': dt_reuniao.isoformat() if dt_reuniao else None,
+                    'session_type': tipo_reuniao,
+                    'attendance_code': sigla_falta,
+                    'attendance_type': attendance_info['type'],
+                    'attendance_description': attendance_info['description'],
+                    'status': attendance_info['status'],
+                    'reason': motivo_falta,
+                    'justification': pres_justificacao,
+                    'observations': observacoes,
+                    'parliamentary_group': sigla_grupo
+                }
+                
+                timeline.append(timeline_entry)
+                
+                # Update summary
+                summary['total_sessions'] += 1
+                if attendance_info['type'] == 'present':
+                    summary['present'] += 1
+                elif attendance_info['type'] == 'justified':
+                    summary['justified_absence'] += 1
+                elif attendance_info['type'] == 'unjustified':
+                    summary['unjustified_absence'] += 1
+                else:
+                    summary['other'] += 1
+            
+            # Calculate attendance rate
+            attendance_rate = 0
+            if summary['total_sessions'] > 0:
+                # Present + justified absences count as good attendance
+                good_attendance = summary['present'] + summary['justified_absence']
+                attendance_rate = good_attendance / summary['total_sessions']
+            
+            return jsonify({
+                'deputado': {
+                    'id': deputado.id,
+                    'nome': deputado.nome,
+                    'nome_completo': deputado.nome_completo
+                },
+                'summary': {
+                    **summary,
+                    'attendance_rate': round(attendance_rate, 3)
+                },
+                'timeline': timeline,
+                'codes_legend': attendance_codes
+            })
+            
+    except Exception as e:
+        return log_and_return_error(e, f'/api/deputados/{cad_id}/attendance')
+
+
 # =============================================================================
 # VOTING RECORDS ENDPOINTS
 # =============================================================================
 
-@parlamento_bp.route('/deputados/<int:deputado_id>/votacoes', methods=['GET'])
-def get_deputado_votacoes(deputado_id):
+@parlamento_bp.route('/deputados/<int:cad_id>/votacoes', methods=['GET'])
+def get_deputado_votacoes(cad_id):
     """Retorna histórico de votações de um deputado específico"""
     try:
-        legislatura = request.args.get('legislatura', 'XVII', type=str)
         limit = request.args.get('limit', 50, type=int)
         offset = request.args.get('offset', 0, type=int)
         
         with DatabaseSession() as session:
-            # Get deputy
-            deputado = session.query(Deputado).filter_by(id=deputado_id).first()
+            # Find deputado by cad_id (unique across all legislatures)
+            # Get their most recent legislature entry
+            deputado = session.query(Deputado).filter(
+                Deputado.id_cadastro == cad_id
+            ).order_by(Deputado.legislatura_id.desc()).first()
+            
             if not deputado:
                 return jsonify({'error': 'Deputado não encontrado'}), 404
             
             # Get legislature
-            leg = session.query(Legislatura).filter_by(numero=legislatura).first()
+            leg = session.query(Legislatura).filter_by(id=deputado.legislatura_id).first()
             if not leg:
                 return jsonify({'error': 'Legislatura não encontrada'}), 404
             
@@ -1022,7 +1270,7 @@ def get_deputado_votacoes(deputado_id):
             
             # Get budget voting records for this deputy's party
             mandato = session.query(DeputadoMandatoLegislativo).filter_by(
-                id_cadastro=deputado.id_cadastro
+                deputado_id=deputado.id
             ).first()
             
             orcamento_votacoes = []
@@ -1085,11 +1333,11 @@ def get_deputado_votacoes(deputado_id):
                 'total_parlamentares': len(parlamentar_votos),
                 'total_orcamento': len(orcamento_votos),
                 'total': len(all_votes),
-                'legislatura': legislatura
+                'legislatura': leg.numero
             })
             
     except Exception as e:
-        return log_and_return_error(e, f'/api/deputados/{deputado_id}/votacoes')
+        return log_and_return_error(e, f'/api/deputados/{cad_id}/votacoes')
 
 
 @parlamento_bp.route('/partidos/<path:partido_sigla>/votacoes', methods=['GET'])
@@ -1292,16 +1540,20 @@ def get_votacao_detalhes(votacao_id):
 # ANALYTICS ENDPOINTS (Advanced features)
 # =============================================================================
 
-@parlamento_bp.route('/deputados/<int:deputado_id>/voting-analytics', methods=['GET'])
-def get_deputado_voting_analytics(deputado_id):
+@parlamento_bp.route('/deputados/<int:cad_id>/voting-analytics', methods=['GET'])
+def get_deputado_voting_analytics(cad_id):
     """Retorna análises avançadas de votação para um deputado específico"""
     try:
         from datetime import datetime, timedelta
         import random
         
         with DatabaseSession() as session:
-            # Get deputy information
-            deputado = session.query(Deputado).filter_by(id=deputado_id).first()
+            # Find deputado by cad_id (unique across all legislatures)
+            # Get their most recent legislature entry
+            deputado = session.query(Deputado).filter(
+                Deputado.id_cadastro == cad_id
+            ).order_by(Deputado.legislatura_id.desc()).first()
+            
             if not deputado:
                 return jsonify({'error': 'Deputado não encontrado'}), 404
             
@@ -1566,9 +1818,7 @@ def get_deputado_voting_analytics(deputado_id):
                 cross_party_collaboration.sort(key=lambda x: x['alignment_rate'], reverse=True)
             
             # 5. Theme Analysis - placeholder as we don't have theme categorization
-            theme_analysis = {
-                'themes': []  # Empty for now - would need vote categorization
-            }
+            theme_analysis = []  # Empty array for now - would need vote categorization
             
             # 6. Critical Votes - use actual voting records marked as important
             critical_votes = []
@@ -1621,7 +1871,7 @@ def get_deputado_voting_analytics(deputado_id):
             })
         
     except Exception as e:
-        return log_and_return_error(e, f'/api/deputados/{deputado_id}/voting-analytics')
+        return log_and_return_error(e, f'/api/deputados/{cad_id}/voting-analytics')
 
 
 @parlamento_bp.route('/partidos/<path:partido_sigla>/voting-analytics', methods=['GET'])

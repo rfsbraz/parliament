@@ -484,7 +484,7 @@ const ColigacaoDetalhes = () => {
                         transition={{ delay: index * 0.05 }}
                         className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow"
                       >
-                        <Link to={`/deputados/${deputado.id}`}>
+                        <Link to={`/deputados/${deputado.id_cadastro || deputado.id}`}>
                           <h4 className="font-semibold text-gray-900 hover:text-blue-600">
                             {deputado.nome}
                           </h4>
