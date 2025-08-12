@@ -90,8 +90,8 @@ class ParliamentURLExtractor:
         else:
             metadata['file_type'] = 'Unknown'
         
-        # Extract legislatura from URL path
-        metadata['legislatura'] = cls._extract_legislatura(file_url)
+        # Extract legislatura from URL path and filename
+        metadata['legislatura'] = cls._extract_legislatura(file_url, file_name)
         
         # Extract category from URL path
         metadata['category'] = cls._extract_category(file_url)
@@ -103,23 +103,51 @@ class ParliamentURLExtractor:
         return metadata
     
     @classmethod
-    def _extract_legislatura(cls, file_url: str) -> Optional[str]:
-        """Extract legislatura from URL path"""
+    def _extract_legislatura(cls, file_url: str, file_name: str = None) -> Optional[str]:
+        """Extract legislatura from URL path or filename"""
+        # Combine URL and filename for comprehensive pattern matching
+        search_text = file_url
+        if file_name:
+            search_text += " " + file_name
+        
         # Try different patterns for legislature identification
         patterns = [
+            # URL-based patterns
             r"([XVII]+)[_\s]*Legislatura",
             r"Legislatura[_\s]*([XVII]+)",
             r"/([XVII]+)_Legislatura/",
             r"/([XVII]+)/",
             r"(Constituinte)",
+            # Filename-based patterns (common in parliament files)
+            r"([XVII]+)\.xml$",  # AtividadesXVII.xml
+            r"([XVII]+)_json\.txt$",  # AtividadesXVII_json.txt
+            r"Base([XVII]+)\.xml$",  # InformacaoBaseXVII.xml
+            r"Deputado([XVII]+)\.xml$",  # AtividadeDeputadoXVII.xml
+            r"Composicao([XVII]+)\.xml$",  # OrgaoComposicaoXVII.xml
+            r"Eventual([XVII]+)\.xml$",  # DelegacaoEventualXVII.xml
+            r"Permanente([XVII]+)\.xml$",  # DelegacaoPermanenteXVII.xml
+            r"Iniciativas([XVII]+)\.xml$",  # IniciativasXVII.xml
+            r"Intervencoes([XVII]+)\.xml$",  # IntervencoesXVII.xml
+            r"Peticoes([XVII]+)\.xml$",  # PeticoesXVII.xml
+            r"Requerimentos([XVII]+)\.xml$",  # RequerimentosXVII.xml
+            r"Biografico([XVII]+)\.xml$",  # RegistoBiograficoXVII.xml
+            r"Interesses([XVII]+)\.xml$",  # RegistoInteressesXVII.xml
+            r"Diplomas([XVII]+)\.xml$",  # DiplomasXVII.xml
+            r"Cooperacao([XVII]+)\.xml$",  # CooperacaoXVII.xml
+            r"Visitas([XVII]+)\.xml$",  # ReunioesVisitasXVII.xml
+            r"Amizade([XVII]+)\.xml$",  # GrupoDeAmizadeXVII.xml
+            # Special cases
+            r"(Cons)\.xml$",  # Constituinte files end with "Cons"
         ]
         
         for pattern in patterns:
-            match = re.search(pattern, file_url, re.IGNORECASE)
+            match = re.search(pattern, search_text, re.IGNORECASE)
             if match:
                 leg = match.group(1).upper()
-                # Convert roman numerals to standardized format
+                # Convert special cases to standardized format
                 if leg == "CONSTITUINTE":
+                    return "Constituinte"
+                elif leg == "CONS":
                     return "Constituinte"
                 return leg
         
@@ -215,8 +243,7 @@ class DiscoveryService:
                 # Rate limiting
                 time.sleep(self.rate_limit_delay)
             
-            # Commit all discoveries
-            db_session.commit()
+            # No bulk commit needed - each file commits immediately
             
         print(f"\nDiscovery complete: {discovered_count} total files cataloged")
         return discovered_count
@@ -262,8 +289,11 @@ class DiscoveryService:
     
     def _discover_section_files(self, db_session, section_url: str, section_name: str, 
                                legislature_filter: str = None) -> int:
-        """Discover files within a section"""
+        """Discover files within a section using tiered approach"""
         discovered_count = 0
+        
+        # Extract category from section name for context
+        section_category = self._normalize_section_category(section_name)
         
         try:
             response = self.session.get(section_url, timeout=30)
@@ -286,14 +316,24 @@ class DiscoveryService:
                 item_url = urljoin(section_url, link['href'])
                 item_name = link.get_text(strip=True)
                 
+                # Extract legislature from navigation hierarchy (level-2)
+                item_legislature = self._extract_legislature_from_navigation(item_name)
+                
                 # Apply legislature filter at level-2
                 if legislature_filter and not self._matches_legislature(item_name, legislature_filter):
                     continue
                     
-                print(f"    SEARCH: Exploring: {item_name}")
+                print(f"    SEARCH: Exploring: {item_name} (Legislature: {item_legislature or 'Unknown'})")
                 
-                count = self._discover_recursive(
-                    db_session, item_url, item_name, max_depth=6
+                # Create navigation context to pass down
+                navigation_context = {
+                    'section_category': section_category,
+                    'legislature': item_legislature,
+                    'path': [section_name, item_name]
+                }
+                
+                count = self._discover_tiered(
+                    db_session, item_url, item_name, navigation_context, max_depth=6
                 )
                 discovered_count += count
                 
@@ -305,9 +345,9 @@ class DiscoveryService:
             
         return discovered_count
     
-    def _discover_recursive(self, db_session, url: str, name: str, current_depth: int = 1, 
-                           max_depth: int = 6) -> int:
-        """Recursively discover files at various archive levels"""
+    def _discover_tiered(self, db_session, url: str, name: str, navigation_context: Dict, 
+                        current_depth: int = 1, max_depth: int = 6) -> int:
+        """Recursively discover files using tiered approach with navigation context"""
         if current_depth > max_depth:
             return 0
             
@@ -315,7 +355,7 @@ class DiscoveryService:
         
         # Check if this is a direct file
         if self._is_file_url(url, name):
-            return self._catalog_file(db_session, url, name)
+            return self._catalog_file_with_context(db_session, url, name, navigation_context)
             
         # Otherwise, explore deeper
         try:
@@ -336,8 +376,24 @@ class DiscoveryService:
                     next_url = urljoin(url, link['href'])
                     next_name = link.get_text(strip=True)
                     
-                    count = self._discover_recursive(
-                        db_session, next_url, next_name, current_depth + 1, max_depth
+                    # Update navigation context with current level
+                    updated_context = navigation_context.copy()
+                    updated_context['path'] = navigation_context['path'] + [next_name]
+                    
+                    # Try to extract more specific context from deeper levels (like original)
+                    if current_depth == 2:  # Often subcategories are at level 3
+                        sub_legislature = self._extract_legislature_from_navigation(next_name)
+                        if sub_legislature and not navigation_context.get('legislature'):
+                            updated_context['legislature'] = sub_legislature
+                        
+                        # Also try to detect subcategories from level 3+ names
+                        if current_depth >= 2:
+                            subcategory = self._extract_subcategory_from_navigation(next_name, navigation_context.get('section_category'))
+                            if subcategory and subcategory != navigation_context.get('section_category'):
+                                updated_context['subcategory'] = subcategory
+                    
+                    count = self._discover_tiered(
+                        db_session, next_url, next_name, updated_context, current_depth + 1, max_depth
                     )
                     discovered_count += count
                     
@@ -366,11 +422,21 @@ class DiscoveryService:
             
         return False
     
-    def _catalog_file(self, db_session, file_url: str, file_name: str) -> int:
-        """Catalog a single file in the database"""
+    def _catalog_file_with_context(self, db_session, file_url: str, file_name: str, 
+                                  navigation_context: Dict) -> int:
+        """Catalog a single file in the database with navigation context"""
         try:
-            # Extract metadata from URL and name
-            metadata = ParliamentURLExtractor.extract_metadata(file_url, file_name)
+            # Extract metadata from URL and name (fallback method)
+            fallback_metadata = ParliamentURLExtractor.extract_metadata(file_url, file_name)
+            
+            # Use navigation context as primary source, fallback to extracted metadata
+            category = navigation_context['section_category'] or fallback_metadata['category']
+            legislatura = navigation_context['legislature'] or fallback_metadata['legislatura']
+            
+            # Enhance category with subcategory if available (like original folder structure)
+            subcategory = navigation_context.get('subcategory')
+            if subcategory and subcategory != category:
+                category = f"{category} > {subcategory}"
             
             # Get HTTP metadata with HEAD request
             http_metadata = self._get_http_metadata(file_url)
@@ -391,24 +457,43 @@ class DiscoveryService:
                     existing.etag = http_metadata.get('etag')
                     updated = True
                     
+                # Also update category and legislature if we have better context
+                if category and category != existing.category:
+                    existing.category = category
+                    updated = True
+                if legislatura and legislatura != existing.legislatura:
+                    existing.legislatura = legislatura  
+                    updated = True
+                    
                 if updated:
                     existing.updated_at = datetime.now()
                     existing.status = 'download_pending'  # Mark for re-download
-                    print(f"        UPDATE: Updated: {file_name}")
+                    # Flush and commit immediately for updates
+                    db_session.flush()
+                    db_session.commit()
+                    print(f"        UPDATE: Updated: {file_name} (Cat: {category}, Leg: {legislatura})")
                 else:
                     print(f"        SKIP:  Unchanged: {file_name}")
+                    # Still commit to ensure any session state is flushed
+                    db_session.commit()
                     
             else:
-                # Create new record
+                # Create new record with navigation context
+                # Build navigation path for context preservation (like original folder structure)
+                navigation_path = " > ".join(navigation_context['path'])
+                
                 import_status = ImportStatus(
                     file_url=file_url,
                     file_name=file_name,
-                    file_type=metadata['file_type'],
-                    category=metadata['category'],
-                    legislatura=metadata['legislatura'],
-                    sub_series=metadata['sub_series'],
-                    session=metadata['session'],
-                    number=metadata['number'],
+                    file_type=fallback_metadata['file_type'],
+                    category=category,
+                    legislatura=legislatura,
+                    sub_series=fallback_metadata['sub_series'],
+                    session=fallback_metadata['session'],
+                    number=fallback_metadata['number'],
+                    # Store navigation path in existing field for context preservation
+                    # (equivalent to folder structure in original downloader)
+                    error_message=f"Navigation: {navigation_path}" if len(navigation_context['path']) > 2 else None,
                     last_modified=http_metadata.get('last_modified'),
                     content_length=http_metadata.get('content_length'),
                     etag=http_metadata.get('etag'),
@@ -418,11 +503,20 @@ class DiscoveryService:
                     updated_at=datetime.now()
                 )
                 db_session.add(import_status)
-                print(f"        SUCCESS: Cataloged: {file_name}")
+                # Flush immediately to persist the discovery
+                db_session.flush()
+                print(f"        SUCCESS: Cataloged: {file_name} (Cat: {category}, Leg: {legislatura})")
                 
+            # Commit the transaction immediately after each file discovery
+            db_session.commit()
             return 1
             
         except Exception as e:
+            # Rollback the transaction on error to maintain consistency
+            try:
+                db_session.rollback()
+            except:
+                pass  # Ignore rollback errors
             print(f"        ERROR: Error cataloging {file_name}: {e}")
             return 0
     
@@ -505,6 +599,103 @@ class DiscoveryService:
                 return True
                 
         return False
+
+    def _normalize_section_category(self, section_name: str) -> str:
+        """Extract normalized category from section name"""
+        # Map section names to standardized categories
+        section_lower = section_name.lower()
+        
+        category_map = {
+            'boletim informativo': 'Agenda Parlamentar',
+            'atividade deputado': 'Atividade Deputado',
+            'atividades': 'Atividades',
+            'composição órgãos': 'Composição Órgãos',
+            'cooperação parlamentar': 'Cooperação Parlamentar',
+            'delegações eventuais': 'Delegações Eventuais', 
+            'delegações permanentes': 'Delegações Permanentes',
+            'informação base': 'Informação Base',
+            'registo biográfico': 'Registo Biográfico',
+            'iniciativas': 'Iniciativas',
+            'intervenções': 'Intervenções',
+            'petições': 'Petições',
+            'perguntas requerimentos': 'Perguntas Requerimentos',
+            'diplomas aprovados': 'Diplomas Aprovados',
+            'orçamento estado': 'Orçamento Estado',
+            'reuniões visitas': 'Reuniões Visitas',
+            'grupos amizade': 'Grupos Amizade',
+            'diário assembleia': 'Diário Assembleia',
+        }
+        
+        for key, category in category_map.items():
+            if key in section_lower:
+                return category
+                
+        return section_name  # Return original if no match
+    
+    def _extract_legislature_from_navigation(self, navigation_item: str) -> Optional[str]:
+        """Extract legislature from navigation hierarchy item"""
+        # This is more reliable than filename parsing because it uses the site's own navigation
+        patterns = [
+            r'([XVII]+)\s*Legislatura',
+            r'Legislatura\s*([XVII]+)',
+            r'([XVII]+)ª?\s*Leg(?:islatura)?',
+            r'^([XVII]+)$',  # Just roman numerals
+            r'(Constituinte)',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, navigation_item, re.IGNORECASE)
+            if match:
+                leg = match.group(1).upper()
+                if leg == 'CONSTITUINTE':
+                    return 'Constituinte'
+                return leg
+                
+        return None
+    
+    def _extract_subcategory_from_navigation(self, navigation_item: str, parent_category: str) -> Optional[str]:
+        """Extract subcategory from deeper navigation levels (like original folder structure)"""
+        # Common subcategories found in parliament data
+        subcategory_patterns = {
+            # DAR (Diário Assembleia) subcategories
+            'Serie I': 'Serie I',
+            'Serie II': 'Serie II', 
+            'Serie II-A': 'Serie II-A',
+            'Serie II-B': 'Serie II-B',
+            'Serie II-C': 'Serie II-C',
+            
+            # Session patterns
+            'Sessao': 'Sessão',
+            'Session': 'Sessão',
+            
+            # Common navigation subcategories
+            'Decretos': 'Decretos',
+            'Resoluções': 'Resoluções', 
+            'Projetos': 'Projetos',
+            'Propostas': 'Propostas',
+            'Petições': 'Petições',
+            'Requerimentos': 'Requerimentos',
+            'Perguntas': 'Perguntas',
+            'Grupo': 'Grupos',
+            'Comissão': 'Comissões',
+            'Delegação': 'Delegações',
+        }
+        
+        item_lower = navigation_item.lower()
+        
+        for pattern, subcategory in subcategory_patterns.items():
+            if pattern.lower() in item_lower:
+                # Don't return subcategory if it's the same as parent category
+                if parent_category and subcategory.lower() in parent_category.lower():
+                    continue
+                return subcategory
+        
+        # If item looks like a meaningful subcategory (not just files), return it
+        if (not any(ext in item_lower for ext in ['.xml', '.json', '.pdf', '.zip', '.xsd']) and
+            len(navigation_item) > 2 and len(navigation_item) < 50):
+            return navigation_item
+            
+        return None
 
 
 def main():
