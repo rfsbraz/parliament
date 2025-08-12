@@ -465,9 +465,6 @@ class Deputado(Base):
         back_populates="deputado",
         cascade="all, delete-orphan",
     )
-    registo_interesses_v2 = relationship(
-        "RegistoInteressesV2", back_populates="deputado", cascade="all, delete-orphan"
-    )
     gp_situations = relationship(
         "DeputyGPSituation", back_populates="deputado", cascade="all, delete-orphan"
     )
@@ -2577,39 +2574,6 @@ class DadosSituacaoDeputado(Base):
         "DeputadoSituacao", back_populates="dados_situacao"
     )
 
-
-class RegistoInteresses(Base):
-    __tablename__ = "registo_interesses"
-
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
-
-    # V3 Schema fields (newer format)
-    record_id = Column(String(50))
-    full_name = Column(String(200))
-    marital_status = Column(String(50))
-    spouse_name = Column(String(200))
-    matrimonial_regime = Column(String(100))
-    exclusivity = Column(String(10))  # "Yes"/"No"
-    dgf_number = Column(String(50))
-
-    # V2/V1 Schema fields (older formats)
-    cad_id = Column(Integer)
-    cad_nome_completo = Column(String(200))
-    cad_actividade_profissional = Column(Text)
-    cad_estado_civil_cod = Column(String(10))
-    cad_estado_civil_des = Column(String(50))
-    cad_fam_id = Column(Integer)
-    cad_nome_conjuge = Column(String(200))
-    cad_rgi = Column(String(100))
-
-    schema_version = Column(String(10))  # "V1", "V2", or "V3"
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-
-    deputado = relationship("Deputado", backref="registos_interesses")
-    legislatura = relationship("Legislatura", backref="registos_interesses")
 
 
 class DiplomaAprovado(Base):
@@ -6994,116 +6958,12 @@ class DeputadoMandatoLegislativo(Base):
     coligacao = relationship("Coligacao", foreign_keys=[coligacao_id])
 
 
-class RegistoInteressesV2(Base):
-    """Interest Registry V2 (RegistoInteressesV2List)"""
-
-    __tablename__ = "registo_interesses_v2"
-
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
-
-    # All V2 fields based on the unmapped field structure
-    cad_id = Column(Integer)  # cadId - deputy cadastral ID
-    cad_estado_civil_cod = Column(String(10))  # cadEstadoCivilCod - marital status code
-    cad_nome_completo = Column(String(200))  # cadNomeCompleto - full name
-    cad_actividade_profissional = Column(
-        Text
-    )  # cadActividadeProfissional - professional activity
-    cad_estado_civil_des = Column(
-        String(50)
-    )  # cadEstadoCivilDes - marital status description
-
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    deputado = relationship("Deputado", back_populates="registo_interesses_v2")
-    atividades = relationship(
-        "RegistoInteressesAtividade",
-        back_populates="registo",
-        cascade="all, delete-orphan",
-    )
-    sociedades = relationship(
-        "RegistoInteressesSociedade",
-        back_populates="registo",
-        cascade="all, delete-orphan",
-    )
-    cargos_sociais = relationship(
-        "RegistoInteressesCargo", back_populates="registo", cascade="all, delete-orphan"
-    )
 
 
-class RegistoInteressesAtividade(Base):
-    """Activities declared in interest registry (V2 detailed structure)"""
-
-    __tablename__ = "registo_interesses_atividades"
-
-    id = Column(Integer, primary_key=True)
-    registo_id = Column(Integer, ForeignKey("registo_interesses_v2.id"), nullable=False)
-
-    # Activity fields from pt_ar_wsgode_objectos_DadosRgiActividades
-    rga_id = Column(Integer)  # rgaId - Activity ID
-    rga_atividade = Column(Text)  # rgaActividade - Activity description
-    rga_data_inicio = Column(String(50))  # rgaDataInicio - Start date
-    rga_data_fim = Column(String(50))  # rgaDataFim - End date
-    rga_remunerada = Column(String(10))  # rgaRemunerada - Whether remunerated (Y/N)
-    rga_entidade = Column(Text)  # rgaEntidade - Entity/organization
-    rga_valor = Column(Text)  # rgaValor - Value/compensation (can be descriptive)
-    rga_observacoes = Column(Text)  # rgaObservacoes - Observations
-
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    registo = relationship("RegistoInteressesV2", back_populates="atividades")
 
 
-class RegistoInteressesSociedade(Base):
-    """Societies/companies declared in interest registry (V2 detailed structure)"""
-
-    __tablename__ = "registo_interesses_sociedades"
-
-    id = Column(Integer, primary_key=True)
-    registo_id = Column(Integer, ForeignKey("registo_interesses_v2.id"), nullable=False)
-
-    # Society fields from pt_ar_wsgode_objectos_DadosRgiSociedades
-    rgs_id = Column(Integer)  # rgsId - Society ID
-    rgs_entidade = Column(Text)  # rgsEntidade - Entity/company name
-    rgs_area_atividade = Column(Text)  # rgsAreaActividade - Activity area
-    rgs_local_sede = Column(Text)  # rgsLocalSede - Headquarters location
-    rgs_parti_social = Column(
-        Text
-    )  # rgsPartiSocial - Social participation/shareholding
-    rgs_valor = Column(Text)  # rgsValor - Value (can be descriptive)
-    rgs_observacoes = Column(Text)  # rgsObservacoes - Observations
-
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    registo = relationship("RegistoInteressesV2", back_populates="sociedades")
 
 
-class RegistoInteressesCargo(Base):
-    """Social positions declared in interest registry (V2 detailed structure)"""
-
-    __tablename__ = "registo_interesses_cargos"
-
-    id = Column(Integer, primary_key=True)
-    registo_id = Column(Integer, ForeignKey("registo_interesses_v2.id"), nullable=False)
-
-    # Social position fields from pt_ar_wsgode_objectos_DadosRgiCargosSociaisV2
-    rgc_id = Column(Integer)  # rgcId - Position ID
-    rgc_cargo = Column(Text)  # rgcCargo - Position/role
-    rgc_entidade = Column(Text)  # rgcEntidade - Entity/organization
-    rgc_area_atividade = Column(Text)  # rgcAreaActividade - Activity area
-    rgc_local_sede = Column(Text)  # rgcLocalSede - Headquarters location
-    rgc_data_inicio = Column(String(50))  # rgcDataInicio - Start date
-    rgc_data_fim = Column(String(50))  # rgcDataFim - End date
-    rgc_valor = Column(Text)  # rgcValor - Value/compensation (can be descriptive)
-    rgc_observacoes = Column(Text)  # rgcObservacoes - Observations
-
-    created_at = Column(DateTime, default=func.now())
-
-    # Relationships
-    registo = relationship("RegistoInteressesV2", back_populates="cargos_sociais")
 
 
 class IniciativaOrigem(Base):

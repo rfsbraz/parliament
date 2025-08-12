@@ -12,7 +12,8 @@ from database.models import (
     DeputadoObraPublicada, IntervencaoParlamentar, IntervencaoDeputado,
     IniciativaParlamentar, IniciativaAutorDeputado, IniciativaEvento, IniciativaEventoVotacao,
     AtividadeParlamentarVotacao, OrcamentoEstadoVotacao, 
-    OrcamentoEstadoGrupoParlamentarVoto, Coligacao, ColigacaoPartido
+    OrcamentoEstadoGrupoParlamentarVoto, Coligacao, ColigacaoPartido,
+    RegistoInteressesUnified
 )
 from scripts.data_processing.mappers.political_entity_queries import PoliticalEntityQueries
 
@@ -1101,16 +1102,91 @@ def get_deputado_by_name(nome_completo):
 def get_deputado_conflitos_interesse(cad_id):
     """Retorna declarações de conflitos de interesse de um deputado"""
     try:
-        # Return empty conflicts structure until data is migrated to MySQL
-        return jsonify({
-            'deputado_id': cad_id,
-            'conflitos': [],  # Frontend expects this array
-            'declaracoes': []  # Frontend expects this array
-        })
+        with DatabaseSession() as session:
+            # Find deputado by cad_id (unique across all legislatures)
+            deputado = session.query(Deputado).filter(
+                Deputado.id_cadastro == cad_id
+            ).order_by(Deputado.legislatura_id.desc()).first()
+            
+            if not deputado:
+                return jsonify({'error': 'Deputado não encontrado'}), 404
+            
+            # Get all deputado records with this cad_id (may be multiple across legislatures)
+            all_deputados = session.query(Deputado).filter(
+                Deputado.id_cadastro == cad_id
+            ).all()
+            
+            deputado_ids = [d.id for d in all_deputados]
+            
+            # Get interest declarations for any of these deputy records
+            interesse_records = session.query(RegistoInteressesUnified).filter(
+                RegistoInteressesUnified.deputado_id.in_(deputado_ids)
+            ).all()
+            
+            # Process the records to match frontend expectations
+            conflitos_interesse = None
+            if interesse_records:
+                # Take the most recent record (or first one if only one exists)
+                record = interesse_records[0]
+                
+                # Check if deputy's spouse is also a deputy
+                spouse_deputy = None
+                if record.spouse_name:
+                    # Search for spouse by name in deputados table
+                    spouse_dep = session.query(Deputado).filter(
+                        func.lower(Deputado.nome_completo).contains(func.lower(record.spouse_name.strip()))
+                    ).first()
+                    
+                    if spouse_dep:
+                        # Get spouse's party info
+                        spouse_mandato = session.query(DeputadoMandatoLegislativo).filter_by(
+                            deputado_id=spouse_dep.id
+                        ).order_by(DeputadoMandatoLegislativo.id.desc()).first()
+                        
+                        spouse_deputy = {
+                            'cad_id': spouse_dep.id_cadastro,
+                            'id': spouse_dep.id,
+                            'partido_sigla': spouse_mandato.par_sigla if spouse_mandato else None
+                        }
+                
+                # Determine if there's conflict potential
+                has_conflict_potential = bool(
+                    record.spouse_name or  # Has spouse
+                    (record.exclusivity and record.exclusivity.lower() == 'n') or  # Not exclusive
+                    record.professional_activity  # Has other professional activities
+                )
+                
+                conflitos_interesse = {
+                    'has_conflict_potential': has_conflict_potential,
+                    'exclusivity_description': 'Exclusivo' if record.exclusivity == 'S' else 'Não exclusivo' if record.exclusivity == 'N' else None,
+                    'full_name': record.full_name,
+                    'dgf_number': record.dgf_number,
+                    'marital_status': record.marital_status_desc,
+                    'matrimonial_regime': record.matrimonial_regime,
+                    'spouse_name': record.spouse_name,
+                    'spouse_deputy': spouse_deputy,
+                    'professional_activity': record.professional_activity
+                }
+            
+            # Return the data in the format the frontend expects
+            if conflitos_interesse:
+                # Return the conflict data directly with some metadata
+                result = conflitos_interesse.copy()
+                result['deputado_id'] = cad_id
+                result['total_declaracoes'] = len(interesse_records)
+                return jsonify(result)
+            else:
+                # No conflict data found
+                return jsonify({
+                    'deputado_id': cad_id,
+                    'has_conflict_potential': False,
+                    'total_declaracoes': 0,
+                    'message': 'Nenhuma declaração de interesses encontrada'
+                })
         
     except Exception as e:
         import traceback
-        return log_and_return_error(e, '/api/deputados/<id>/biografia', 500)
+        return log_and_return_error(e, '/api/deputados/<id>/conflitos-interesse', 500)
 
 
 @parlamento_bp.route('/deputados/<int:cad_id>/attendance', methods=['GET'])

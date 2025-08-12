@@ -22,17 +22,12 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from database.models import (
     Deputado,
     Legislatura,
-    RegistoInteresses,
     RegistoInteressesApoioUnified,
-    RegistoInteressesAtividade,
     RegistoInteressesAtividadeUnified,
-    RegistoInteressesCargo,
     RegistoInteressesFactoDeclaracao,
     RegistoInteressesSocialPositionUnified,
-    RegistoInteressesSociedade,
     RegistoInteressesSociedadeUnified,
     RegistoInteressesUnified,
-    RegistoInteressesV2,
 )
 
 logger = logging.getLogger(__name__)
@@ -885,7 +880,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         legislatura: Legislatura,
         registo_v2_elem: ET.Element,
     ) -> bool:
-        """Process V2 schema record with detailed nested structures"""
+        """Process V2 schema record using unified table architecture"""
         try:
             if not record_id or not full_name:
                 logger.debug(
@@ -908,43 +903,54 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             )
             cad_estado_civil_cod = self._get_text(registo_v2_elem, "cadEstadoCivilCod")
 
-            # Check if V2 record already exists for this deputy
-            existing_v2 = (
-                self.session.query(RegistoInteressesV2)
+            # Check if unified record already exists for this deputy with V2 schema
+            existing_unified = (
+                self.session.query(RegistoInteressesUnified)
                 .filter_by(
-                    deputado_id=deputado.id  # Use deputy's primary key for foreign key reference
+                    deputado_id=deputado.id,
+                    schema_version='V2'
                 )
                 .first()
             )
 
-            if existing_v2:
-                # Update existing V2 record
-                existing_v2.cad_nome_completo = full_name
-                existing_v2.cad_estado_civil_des = marital_status_desc
-                existing_v2.cad_actividade_profissional = cad_actividade_profissional
-                existing_v2.cad_estado_civil_cod = cad_estado_civil_cod
-                registo_v2 = existing_v2
+            if existing_unified:
+                # Update existing unified record
+                existing_unified.full_name = full_name
+                existing_unified.marital_status_desc = marital_status_desc
+                existing_unified.professional_activity = cad_actividade_profissional
+                existing_unified.marital_status_code = cad_estado_civil_cod
+                existing_unified.spouse_name = spouse_name
+                existing_unified.matrimonial_regime = matrimonial_regime
+                existing_unified.exclusivity = exclusivity
+                existing_unified.dgf_number = dgf_number
+                registo = existing_unified
             else:
-                # Create new V2 record
-                registo_v2 = RegistoInteressesV2(
-                    deputado_id=deputado.id,  # Use deputy's primary key for foreign key reference
-                    cad_id=deputado.id_cadastro,  # Store cadastral ID in cad_id field
-                    cad_nome_completo=full_name,
-                    cad_estado_civil_des=marital_status_desc,
-                    cad_actividade_profissional=cad_actividade_profissional,
-                    cad_estado_civil_cod=cad_estado_civil_cod,
+                # Create new unified record with V2 schema
+                registo = RegistoInteressesUnified(
+                    deputado_id=deputado.id,
+                    legislatura_id=legislatura.id,
+                    cad_id=deputado.id_cadastro,
+                    schema_version='V2',
+                    full_name=full_name,
+                    marital_status_desc=marital_status_desc,
+                    marital_status_code=cad_estado_civil_cod,
+                    spouse_name=spouse_name,
+                    matrimonial_regime=matrimonial_regime,
+                    professional_activity=cad_actividade_profissional,
+                    exclusivity=exclusivity,
+                    dgf_number=dgf_number,
                 )
-                self.session.add(registo_v2)
+                self.session.add(registo)
                 self.session.flush()  # Get the ID for nested records
 
-            # Process detailed nested data from cadRgi
+            # Process detailed nested data from cadRgi using unified extension tables
             rgi_elem = registo_v2_elem.find(
                 "cadRgi/pt_ar_wsgode_objectos_DadosRegistoInteressesWebV2"
             )
             if rgi_elem is not None:
-                self._process_v2_activities(rgi_elem, registo_v2)
-                self._process_v2_societies(rgi_elem, registo_v2)
-                self._process_v2_social_positions(rgi_elem, registo_v2)
+                self._process_v2_activities_unified(rgi_elem, registo)
+                self._process_v2_societies_unified(rgi_elem, registo)
+                self._process_v2_social_positions_unified(rgi_elem, registo)
 
             return True
 
@@ -1183,16 +1189,15 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         except Exception as e:
             logger.error(f"Error processing V1 social positions: {e}")
 
-    def _process_v2_activities(
-        self, rgi_elem: ET.Element, registo_v2: RegistoInteressesV2
+    def _process_v2_activities_unified(
+        self, rgi_elem: ET.Element, registo: RegistoInteressesUnified
     ):
-        """Process activities from V2 detailed structure"""
+        """Process activities from V2 detailed structure using unified extension table"""
         atividades_elem = rgi_elem.find("rgiActividades")
         if atividades_elem is not None:
             for atividade in atividades_elem.findall(
                 "pt_ar_wsgode_objectos_DadosRgiActividades"
             ):
-                rga_id = self._get_int_text(atividade, "rgaId")
                 rga_atividade = self._get_text(atividade, "rgaActividade")
                 rga_data_inicio = self._parse_date(
                     self._get_text(atividade, "rgaDataInicio")
@@ -1204,29 +1209,28 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                 rga_observacoes = self._get_text(atividade, "rgaObservacoes")
 
                 if any([rga_atividade, rga_entidade, rga_data_inicio, rga_data_fim]):
-                    atividade_record = RegistoInteressesAtividade(
-                        registo_id=registo_v2.id,
-                        rga_id=rga_id,
-                        rga_atividade=rga_atividade,
-                        rga_data_inicio=rga_data_inicio,
-                        rga_data_fim=rga_data_fim,
-                        rga_remunerada=rga_remunerada,
-                        rga_entidade=rga_entidade,
-                        rga_valor=rga_valor,
-                        rga_observacoes=rga_observacoes,
+                    # Create activity record in unified model
+                    activity_record = RegistoInteressesAtividadeUnified(
+                        registo_id=registo.id,
+                        description=rga_atividade,
+                        entity=rga_entidade,
+                        start_date=rga_data_inicio,
+                        end_date=rga_data_fim,
+                        remunerated=rga_remunerada,
+                        value=rga_valor,
+                        observations=rga_observacoes,
                     )
-                    self.session.add(atividade_record)
+                    self.session.add(activity_record)
 
-    def _process_v2_societies(
-        self, rgi_elem: ET.Element, registo_v2: RegistoInteressesV2
+    def _process_v2_societies_unified(
+        self, rgi_elem: ET.Element, registo: RegistoInteressesUnified
     ):
-        """Process societies from V2 detailed structure"""
+        """Process societies from V2 detailed structure using unified extension table"""
         sociedades_elem = rgi_elem.find("rgiSociedades")
         if sociedades_elem is not None:
             for sociedade in sociedades_elem.findall(
                 "pt_ar_wsgode_objectos_DadosRgiSociedades"
             ):
-                rgs_id = self._get_int_text(sociedade, "rgsId")
                 rgs_entidade = self._get_text(sociedade, "rgsEntidade")
                 rgs_area_atividade = self._get_text(sociedade, "rgsAreaActividade")
                 rgs_local_sede = self._get_text(sociedade, "rgsLocalSede")
@@ -1235,53 +1239,46 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                 rgs_observacoes = self._get_text(sociedade, "rgsObservacoes")
 
                 if any([rgs_entidade, rgs_area_atividade, rgs_local_sede]):
-                    sociedade_record = RegistoInteressesSociedade(
-                        registo_id=registo_v2.id,
-                        rgs_id=rgs_id,
-                        rgs_entidade=rgs_entidade,
-                        rgs_area_atividade=rgs_area_atividade,
-                        rgs_local_sede=rgs_local_sede,
-                        rgs_parti_social=rgs_parti_social,
-                        rgs_valor=rgs_valor,
-                        rgs_observacoes=rgs_observacoes,
+                    # Create society record in unified model
+                    society_record = RegistoInteressesSociedadeUnified(
+                        registo_id=registo.id,
+                        entity=rgs_entidade,
+                        activity_area=rgs_area_atividade,
+                        headquarters=rgs_local_sede,
+                        social_participation=rgs_parti_social,
+                        value=rgs_valor,
+                        observations=rgs_observacoes,
                     )
-                    self.session.add(sociedade_record)
+                    self.session.add(society_record)
 
-    def _process_v2_social_positions(
-        self, rgi_elem: ET.Element, registo_v2: RegistoInteressesV2
+    def _process_v2_social_positions_unified(
+        self, rgi_elem: ET.Element, registo: RegistoInteressesUnified
     ):
-        """Process social positions from V2 detailed structure"""
+        """Process social positions from V2 detailed structure using unified extension table"""
         cargos_elem = rgi_elem.find("rgiCargosSociais")
         if cargos_elem is not None:
             for cargo in cargos_elem.findall(
                 "pt_ar_wsgode_objectos_DadosRgiCargosSociaisV2"
             ):
-                rgc_id = self._get_int_text(cargo, "rgcId")
                 rgc_cargo = self._get_text(cargo, "rgcCargo")
                 rgc_entidade = self._get_text(cargo, "rgcEntidade")
                 rgc_area_atividade = self._get_text(cargo, "rgcAreaActividade")
                 rgc_local_sede = self._get_text(cargo, "rgcLocalSede")
-                rgc_data_inicio = self._parse_date(
-                    self._get_text(cargo, "rgcDataInicio")
-                )
-                rgc_data_fim = self._parse_date(self._get_text(cargo, "rgcDataFim"))
                 rgc_valor = self._get_text(cargo, "rgcValor")
                 rgc_observacoes = self._get_text(cargo, "rgcObservacoes")
 
                 if any([rgc_cargo, rgc_entidade, rgc_area_atividade]):
-                    cargo_record = RegistoInteressesCargo(
-                        registo_id=registo_v2.id,
-                        rgc_id=rgc_id,
-                        rgc_cargo=rgc_cargo,
-                        rgc_entidade=rgc_entidade,
-                        rgc_area_atividade=rgc_area_atividade,
-                        rgc_local_sede=rgc_local_sede,
-                        rgc_data_inicio=rgc_data_inicio,
-                        rgc_data_fim=rgc_data_fim,
-                        rgc_valor=rgc_valor,
-                        rgc_observacoes=rgc_observacoes,
+                    # Create social position record in unified model
+                    position_record = RegistoInteressesSocialPositionUnified(
+                        registo_id=registo.id,
+                        position=rgc_cargo,
+                        entity=rgc_entidade,
+                        activity_area=rgc_area_atividade,
+                        headquarters_location=rgc_local_sede,
+                        value=rgc_valor,
+                        observations=rgc_observacoes,
                     )
-                    self.session.add(cargo_record)
+                    self.session.add(position_record)
 
     def _get_int_text(self, parent: ET.Element, tag: str) -> Optional[int]:
         """Get integer value from text content, return None if not found or invalid"""
