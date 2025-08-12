@@ -445,6 +445,12 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         mandato, "depNomeParlamentar"
                     )
                     
+                    # Log extracted legislature from XML
+                    logger.info(f"[LEG_DES_EXTRACT] Extracted leg_des='{leg_des}' from XML mandate record")
+                    logger.info(f"[LEG_DES_EXTRACT]   - nome_parlamentar: {nome_parlamentar}")
+                    logger.info(f"[LEG_DES_EXTRACT]   - ce_des: {ce_des}")
+                    logger.info(f"[LEG_DES_EXTRACT]   - file_path: {self.file_info.get('file_path', 'unknown')}")
+                    
                     # Check if this mandate has a LegDes that overrides the file-level legislature
                     if leg_des:
                         # Use mandate-specific legislature instead of file-level legislature
@@ -504,6 +510,12 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             # Extract party information
                             par_sigla = self._get_text_value(mandato, "parSigla")
                             par_des = self._get_text_value(mandato, "parDes")
+                            
+                            # Log mandate creation details
+                            logger.info(f"[MANDATE_CREATE] Creating mandate for deputy {deputy.id} ({deputy.nome_completo})")
+                            logger.info(f"[MANDATE_CREATE]   - leg_des: '{leg_des}'")
+                            logger.info(f"[MANDATE_CREATE]   - deputy.legislatura_id: {deputy.legislatura_id}")
+                            logger.info(f"[MANDATE_CREATE]   - file_path: {self.file_info.get('file_path', 'unknown')}")
                             
                             # Create base mandate record
                             mandate = DeputadoMandatoLegislativo(
@@ -1015,6 +1027,12 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             # Extract party information
                             par_sigla = self._get_text_value(mandato, "ParSigla")
                             par_des = self._get_text_value(mandato, "ParDes")
+                            
+                            # Log mandate creation details
+                            logger.info(f"[MANDATE_CREATE] Creating mandate for deputy {deputy.id} ({deputy.nome_completo})")
+                            logger.info(f"[MANDATE_CREATE]   - leg_des: '{leg_des}'")
+                            logger.info(f"[MANDATE_CREATE]   - deputy.legislatura_id: {deputy.legislatura_id}")
+                            logger.info(f"[MANDATE_CREATE]   - file_path: {self.file_info.get('file_path', 'unknown')}")
                             
                             # Create base mandate record
                             mandate = DeputadoMandatoLegislativo(

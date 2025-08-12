@@ -431,7 +431,7 @@ class LegislatureHandlerMixin:
         Returns:
             Legislature ID for use in deputado records
         """
-        logger.debug(f"_get_legislatura_id called with file_info: {file_info}")
+        logger.info(f"[LEGISLATURE_ID] Getting legislature ID from file_info: {file_info}")
         
         if not hasattr(self, "session"):
             raise AttributeError(
@@ -440,14 +440,14 @@ class LegislatureHandlerMixin:
 
         # Extract legislatura sigla from file path
         file_path = file_info.get("file_path", "")
-        logger.debug(f"Extracting legislatura from file path: {file_path}")
+        logger.info(f"[LEGISLATURE_ID] Extracting from file path: {file_path}")
         legislatura_sigla = self._extract_legislatura(file_path, None)
-        logger.debug(f"Extracted legislatura sigla: {legislatura_sigla}")
+        logger.info(f"[LEGISLATURE_ID] Extracted legislature sigla: '{legislatura_sigla}'")
 
         # Get or create the legislatura record
-        logger.debug(f"Getting or creating legislatura for sigla: {legislatura_sigla}")
+        logger.info(f"[LEGISLATURE_ID] Getting or creating legislature record for sigla: '{legislatura_sigla}'")
         legislatura = self._get_or_create_legislatura(legislatura_sigla)
-        logger.debug(f"Got legislatura ID: {legislatura.id}")
+        logger.info(f"[LEGISLATURE_ID] Got legislature with ID={legislatura.id}, numero='{legislatura.numero}'")
 
         return legislatura.id
 

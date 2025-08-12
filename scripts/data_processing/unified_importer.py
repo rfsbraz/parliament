@@ -202,6 +202,8 @@ class FileTypeResolver:
     @classmethod
     def extract_legislatura(cls, file_path: str) -> Optional[str]:
         """Extract legislatura from file path"""
+        logger.debug(f"[LEGISLATURE] Extracting legislature from path: {file_path}")
+        
         # Try different patterns
         patterns = [
             r"Legislatura_([A-Z]+|\\d+)",
@@ -214,6 +216,8 @@ class FileTypeResolver:
             match = re.search(pattern, file_path, re.IGNORECASE)
             if match:
                 leg = match.group(1).upper()
+                logger.debug(f"[LEGISLATURE] Pattern '{pattern}' matched: {leg}")
+                
                 # Convert roman numerals to numbers if needed
                 roman_map = {
                     "XVII": "17",
@@ -235,8 +239,11 @@ class FileTypeResolver:
                     "I": "1",
                     "CONSTITUINTE": "0",
                 }
-                return roman_map.get(leg, leg)
+                result = roman_map.get(leg, leg)
+                logger.info(f"[LEGISLATURE] Extracted legislature '{result}' from path: {file_path}")
+                return result
 
+        logger.warning(f"[LEGISLATURE] No legislature found in path: {file_path}")
         return None
 
 
