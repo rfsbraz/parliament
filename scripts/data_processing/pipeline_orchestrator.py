@@ -210,7 +210,9 @@ class ImportProcessor:
     
     def __init__(self):
         self.running = False
-        self.importer = UnifiedImporter()
+        # Use the database-driven importer instead
+        from scripts.data_processing.database_driven_importer import DatabaseDrivenImporter
+        self.importer = DatabaseDrivenImporter()
         
     def start(self, download_queue: Queue, stats: PipelineStats, console: Console):
         """Start import processing"""
@@ -219,49 +221,73 @@ class ImportProcessor:
         with DatabaseSession() as db_session:
             while self.running:
                 try:
-                    # Get import record ID from queue
+                    # First, check download queue for priority files
+                    record_id = None
+                    from_queue = False
+                    
                     try:
-                        record_id = download_queue.get(timeout=1)
+                        record_id = download_queue.get(timeout=0.5)
+                        from_queue = True
                     except Empty:
-                        continue
+                        # If no files in download queue, check for any pending files
+                        pending_files = db_session.query(ImportStatus).filter(
+                            ImportStatus.status == 'pending'
+                        ).limit(1).all()
+                        
+                        if pending_files:
+                            record_id = pending_files[0].id
+                            from_queue = False
+                        else:
+                            # No pending files, wait a bit
+                            time.sleep(1)
+                            continue
                         
                     # Get the import record
                     import_record = db_session.query(ImportStatus).get(record_id)
-                    if not import_record or import_record.status != 'pending':
+                    if not import_record or import_record.status not in ['pending', 'discovered', 'download_pending']:
                         continue
                     
                     try:
-                        # Update status to processing
-                        import_record.status = 'processing'
-                        import_record.processing_started_at = datetime.now()
-                        db_session.commit()
+                        stats.add_message(f"Processing: {import_record.file_name}")
                         
-                        # Process the file (simplified - in reality you'd use the actual importer)
-                        # For now, just simulate processing
-                        time.sleep(0.1)  # Simulate processing time
+                        # Use the actual database-driven importer
+                        success = self.importer._process_single_import(db_session, import_record, strict_mode=False)
                         
-                        # Update status to completed
-                        import_record.status = 'completed'
-                        import_record.processing_completed_at = datetime.now()
-                        import_record.records_imported = 1  # Placeholder
-                        db_session.commit()
-                        
-                        stats.import_completed += 1
-                        stats.total_records_imported += 1
-                        
-                        stats.add_message(f"Imported: {import_record.file_name}")
+                        if success:
+                            stats.import_completed += 1
+                            stats.total_records_imported += import_record.records_imported or 0
+                            stats.add_message(f"SUCCESS: {import_record.file_name} ({import_record.records_imported or 0} records)")
+                        else:
+                            stats.import_failed += 1
+                            error_msg = import_record.error_message or "Unknown error"
+                            if len(error_msg) > 50:
+                                error_msg = error_msg[:47] + "..."
+                            stats.add_message(f"FAILED: {import_record.file_name} - {error_msg}")
                         
                     except Exception as e:
-                        import_record.status = 'failed'
-                        import_record.error_message = f"Import error: {str(e)}"
-                        import_record.processing_completed_at = datetime.now()
-                        db_session.commit()
                         stats.import_failed += 1
+                        error_msg = str(e)
+                        if len(error_msg) > 50:
+                            error_msg = error_msg[:47] + "..."
+                        stats.add_message(f"ERROR: {import_record.file_name} - {error_msg}")
                         
-                        stats.add_message(f"Import failed: {import_record.file_name} - {str(e)}")
+                        # Update record status if not already updated
+                        if import_record.status not in ['completed', 'failed']:
+                            import_record.status = 'failed'
+                            import_record.error_message = str(e)
+                            import_record.processing_completed_at = datetime.now()
+                            try:
+                                db_session.commit()
+                            except:
+                                db_session.rollback()
                         
                     finally:
-                        download_queue.task_done()
+                        # Only mark task done if it came from download queue
+                        if from_queue:
+                            try:
+                                download_queue.task_done()
+                            except:
+                                pass  # Ignore if task wasn't from queue
                         
                 except Exception as e:
                     stats.add_message(f"Import processor error: {str(e)}")
@@ -305,6 +331,19 @@ class PipelineOrchestrator:
             size_bytes /= 1024
         
         return f"{size_bytes:.1f} TB"
+    
+    def _get_pending_files(self, limit: int = 10) -> List:
+        """Get pending files from ImportStatus table"""
+        try:
+            with DatabaseSession() as db_session:
+                pending_files = db_session.query(ImportStatus).filter(
+                    ImportStatus.status.in_(['discovered', 'download_pending', 'pending'])
+                ).order_by(ImportStatus.discovered_at.desc()).limit(limit).all()
+                
+                return pending_files
+        except Exception as e:
+            self.stats.add_message(f"Error getting pending files: {str(e)}")
+            return []
         
     def create_ui_layout(self) -> Layout:
         """Create Rich layout for the UI"""
@@ -325,6 +364,12 @@ class PipelineOrchestrator:
         layout["left"].split_column(
             Layout(name="stats", ratio=1),
             Layout(name="downloads", ratio=1)
+        )
+        
+        # Split right panel into pending files (top) and activity log (bottom)
+        layout["right"].split_column(
+            Layout(name="pending", ratio=1),
+            Layout(name="activity", ratio=1)
         )
         
         return layout
@@ -389,18 +434,58 @@ class PipelineOrchestrator:
         
         layout["downloads"].update(downloads_panel)
         
+        # Pending files for processing
+        pending_files = self._get_pending_files(12)
+        if pending_files:
+            pending_table = Table(show_header=True, header_style="bold green")
+            pending_table.add_column("Status", style="yellow", width=12)
+            pending_table.add_column("File", style="cyan", width=30)
+            pending_table.add_column("Category", style="magenta", width=20)
+            pending_table.add_column("Legislature", width=10)
+            
+            for file_record in pending_files:
+                file_display = file_record.file_name
+                if len(file_display) > 27:
+                    file_display = file_display[:24] + "..."
+                    
+                category_display = file_record.category or "Unknown"
+                if len(category_display) > 17:
+                    category_display = category_display[:14] + "..."
+                
+                # Color code status
+                status_display = file_record.status
+                if file_record.status == 'discovered':
+                    status_display = "[blue]discovered[/blue]"
+                elif file_record.status == 'download_pending':
+                    status_display = "[yellow]dl_pending[/yellow]"
+                elif file_record.status == 'pending':
+                    status_display = "[green]ready[/green]"
+                
+                pending_table.add_row(
+                    status_display,
+                    file_display,
+                    category_display,
+                    file_record.legislatura or "N/A"
+                )
+                
+            pending_panel = Panel(pending_table, title=f"Files Ready for Processing ({len(pending_files)})", border_style="green")
+        else:
+            pending_panel = Panel("No pending files found", title="Files Ready for Processing", border_style="green")
+            
+        layout["pending"].update(pending_panel)
+        
         # Recent activity log  
         if self.stats.recent_messages:
-            messages_text = "\n".join(self.stats.recent_messages[-8:])  # Show last 8 messages
+            messages_text = "\n".join(self.stats.recent_messages[-10:])  # Show last 10 messages
         else:
             messages_text = "Waiting for activity..."
             
         activity_panel = Panel(
             messages_text,
-            title="Recent Activity",
+            title="Processing Activity Log",
             border_style="yellow"
         )
-        layout["right"].update(activity_panel)
+        layout["activity"].update(activity_panel)
         
         # Footer
         layout["footer"].update(
