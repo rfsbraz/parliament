@@ -568,6 +568,9 @@ def get_estatisticas():
         with DatabaseSession() as session:
             legislatura = request.args.get('legislatura', 'XVII', type=str)
             
+            # Get legislature information
+            legislature_info = session.query(Legislatura).filter_by(numero=legislatura).first()
+            
             # Count unique deputies in the specified legislature - simplified direct approach
             total_deputados = session.query(
                 func.count(distinct(DeputadoMandatoLegislativo.deputado_id))
@@ -707,6 +710,13 @@ def get_estatisticas():
                 'maior_circulo': {
                     'designacao': maior_circulo.circulo if maior_circulo else None,
                     'deputados': maior_circulo.deputados if maior_circulo else 0
+                },
+                'legislatura': {
+                    'numero': legislature_info.numero if legislature_info else legislatura,
+                    'designacao': legislature_info.designacao if legislature_info else f'{legislatura} Legislatura',
+                    'data_inicio': legislature_info.data_inicio.isoformat() if legislature_info and legislature_info.data_inicio else None,
+                    'data_fim': legislature_info.data_fim.isoformat() if legislature_info and legislature_info.data_fim else None,
+                    'ativa': legislature_info.ativa if legislature_info else True
                 }
             })
         

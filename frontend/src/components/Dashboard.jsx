@@ -16,7 +16,24 @@ const Dashboard = ({ stats }) => {
     )
   }
 
-  const { totais = {}, distribuicao_partidos = [], distribuicao_circulos = [] } = stats
+  const { totais = {}, distribuicao_partidos = [], distribuicao_circulos = [], legislatura = {} } = stats
+  
+  // Generate legislature display text
+  const getLegislatureDisplayText = () => {
+    if (!legislatura.numero) return 'XVII Legislatura (2024-presente)'
+    
+    const numero = legislatura.numero
+    const dataInicio = legislatura.data_inicio ? new Date(legislatura.data_inicio).getFullYear() : null
+    const dataFim = legislatura.data_fim ? new Date(legislatura.data_fim).getFullYear() : null
+    
+    if (dataInicio && dataFim) {
+      return `${numero} Legislatura (${dataInicio}-${dataFim})`
+    } else if (dataInicio) {
+      return `${numero} Legislatura (${dataInicio}-presente)`
+    } else {
+      return `${numero} Legislatura`
+    }
+  }
 
   // Cores para os partidos baseadas nas cores oficiais
   const partidoCores = {
@@ -117,7 +134,7 @@ const Dashboard = ({ stats }) => {
             <div className="flex items-center space-x-2">
               <Sparkles className="w-5 h-5 text-blue-500" />
               <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                XVII Legislatura (2022-2026)
+                {getLegislatureDisplayText()}
               </span>
             </div>
             <div className="flex items-center space-x-2">
