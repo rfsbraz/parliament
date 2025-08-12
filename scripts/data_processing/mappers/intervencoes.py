@@ -25,6 +25,11 @@ import os
 import re
 import requests
 import sys
+import os
+# Add parent directory to Python path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from http_retry_utils import safe_request_get
+import sys
 import time
 from typing import Dict, Optional, Set
 import logging
@@ -614,7 +619,7 @@ class IntervencoesMapper(SchemaMapper):
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
                 }
                 
-                response = requests.get(url, headers=headers, timeout=10)
+                response = safe_request_get(url, headers=headers, timeout=10)
                 response.raise_for_status()
                 
                 # Search for the thumbnail URL pattern in HTML

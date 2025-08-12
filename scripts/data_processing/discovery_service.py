@@ -37,6 +37,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from database.connection import DatabaseSession
 from database.models import ImportStatus
+from http_retry_utils import HTTPRetryClient, get_http_metadata
 
 
 class ParliamentURLExtractor:
@@ -199,11 +200,14 @@ class DiscoveryService:
     def __init__(self, rate_limit_delay: float = 0.5):
         self.rate_limit_delay = rate_limit_delay
         self.base_url = "https://www.parlamento.pt/Cidadania/paginas/dadosabertos.aspx"
-        self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            }
+        # Use HTTP retry client instead of regular requests session
+        self.http_client = HTTPRetryClient(
+            max_retries=5,
+            initial_backoff=1.0,
+            max_backoff=120.0,
+            backoff_multiplier=2.0,
+            timeout=30,
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         )
 
     def discover_all_files(
@@ -262,8 +266,7 @@ class DiscoveryService:
     def _extract_recursos_links(self) -> List[Dict[str, str]]:
         """Extract main recursos section links"""
         try:
-            response = self.session.get(self.base_url, timeout=30)
-            response.raise_for_status()
+            response = self.http_client.get(self.base_url)
 
             soup = BeautifulSoup(response.text, "html.parser")
             recursos_links = []
@@ -314,8 +317,7 @@ class DiscoveryService:
         section_category = self._normalize_section_category(section_name)
 
         try:
-            response = self.session.get(section_url, timeout=30)
-            response.raise_for_status()
+            response = self.http_client.get(section_url)
 
             soup = BeautifulSoup(response.text, "html.parser")
             archive_items = soup.find_all("div", class_="archive-item")
@@ -395,8 +397,7 @@ class DiscoveryService:
 
         # Otherwise, explore deeper
         try:
-            response = self.session.get(url, timeout=30)
-            response.raise_for_status()
+            response = self.http_client.get(url)
 
             soup = BeautifulSoup(response.text, "html.parser")
             archive_items = soup.find_all("div", class_="archive-item")
@@ -616,38 +617,31 @@ class DiscoveryService:
 
     def _get_http_metadata(self, url: str) -> Dict:
         """Get HTTP metadata using HEAD request"""
-        try:
-            response = self.session.head(url, timeout=10)
-
-            metadata = {}
-
-            # Parse Last-Modified header
-            if "Last-Modified" in response.headers:
-                from email.utils import parsedate_to_datetime
-
-                try:
-                    metadata["last_modified"] = parsedate_to_datetime(
-                        response.headers["Last-Modified"]
-                    )
-                except:
-                    pass
-
-            # Parse Content-Length header
-            if "Content-Length" in response.headers:
-                try:
-                    metadata["content_length"] = int(response.headers["Content-Length"])
-                except:
-                    pass
-
-            # Parse ETag header
-            if "ETag" in response.headers:
-                metadata["etag"] = response.headers["ETag"]
-
-            return metadata
-
-        except Exception as e:
-            print(f"          WARN:  HTTP metadata error: {e}")
-            return {}
+        metadata_raw = self.http_client.get_metadata(url, indent="          ")
+        
+        # Convert to the format expected by the rest of the code
+        metadata = {}
+        
+        # Parse Last-Modified header  
+        if metadata_raw.get("last_modified"):
+            from email.utils import parsedate_to_datetime
+            try:
+                metadata["last_modified"] = parsedate_to_datetime(metadata_raw["last_modified"])
+            except:
+                pass
+        
+        # Parse Content-Length header
+        if metadata_raw.get("content_length"):
+            try:
+                metadata["content_length"] = int(metadata_raw["content_length"])
+            except:
+                pass
+        
+        # Parse ETag header
+        if metadata_raw.get("etag"):
+            metadata["etag"] = metadata_raw["etag"]
+        
+        return metadata
 
     def _matches_legislature(self, name: str, target_legislature: str) -> bool:
         """Check if item name matches target legislature"""
@@ -901,7 +895,7 @@ class DiscoveryService:
             
             # Step 2: Fetch the source page
             try:
-                response = self.session.get(import_record.source_page_url, timeout=30)
+                response = self.http_client.get(import_record.source_page_url)
                 response.raise_for_status()
             except Exception as e:
                 print(f"    ERROR: Failed to fetch source page: {e}")
@@ -939,7 +933,7 @@ class DiscoveryService:
             
             # Step 5: Test the new URL with a HEAD request
             try:
-                test_response = self.session.head(new_url, timeout=10)
+                test_response = self.http_client.head(new_url)
                 if test_response.status_code not in [200, 302, 303, 307, 308]:
                     print(f"    ERROR: New URL returns status {test_response.status_code}")
                     return False

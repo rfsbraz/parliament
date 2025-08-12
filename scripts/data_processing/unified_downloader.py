@@ -12,6 +12,9 @@ import signal
 import random
 from requests.exceptions import ConnectTimeout, ReadTimeout, ConnectionError, Timeout
 
+# Import the shared HTTP retry utilities
+from http_retry_utils import safe_request_get
+
 # Global flag for graceful shutdown
 shutdown_requested = False
 

@@ -23,6 +23,7 @@ from io import BytesIO
 from typing import Dict, List, Optional
 
 import requests
+from http_retry_utils import safe_request_get
 from requests.exceptions import ConnectTimeout, ReadTimeout, ConnectionError, Timeout
 
 # Add project root to path
@@ -385,7 +386,7 @@ class DatabaseDrivenImporter:
         try:
             print(f"    📡 Downloading from: {import_record.file_url}")
             
-            response = requests.get(import_record.file_url, timeout=30)
+            response = safe_request_get(import_record.file_url)
             response.raise_for_status()
             
             # Calculate file hash
@@ -429,7 +430,7 @@ class DatabaseDrivenImporter:
             return import_record._temp_content
         
         # Last resort: re-download
-        response = requests.get(import_record.file_url, timeout=30)
+        response = safe_request_get(import_record.file_url)
         response.raise_for_status()
         return response.content
     

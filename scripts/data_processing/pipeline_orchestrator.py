@@ -31,6 +31,7 @@ from typing import Dict, List, Optional
 
 import requests
 from rich.console import Console
+from http_retry_utils import HTTPRetryClient
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
@@ -116,10 +117,15 @@ class DownloadManager:
     
     def __init__(self, rate_limit_delay: float = 0.3):
         self.rate_limit_delay = rate_limit_delay
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        })
+        # Use HTTP retry client for robust downloads
+        self.http_client = HTTPRetryClient(
+            max_retries=5,
+            initial_backoff=1.0,
+            max_backoff=120.0,
+            backoff_multiplier=2.0,
+            timeout=30,
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        )
         self.running = False
         
         # Create downloads directory
@@ -151,9 +157,8 @@ class DownloadManager:
                             import_record.status = 'downloading'
                             db_session.commit()
                             
-                            # Download file content
-                            response = self.session.get(import_record.file_url, timeout=30)
-                            response.raise_for_status()
+                            # Download file content with retry logic
+                            response = self.http_client.get(import_record.file_url)
                             
                             # Calculate file hash
                             import hashlib
