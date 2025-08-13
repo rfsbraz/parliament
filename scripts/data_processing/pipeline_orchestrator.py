@@ -18,6 +18,7 @@ Features:
 
 import argparse
 import asyncio
+import contextlib
 import os
 import sys
 import threading
@@ -48,7 +49,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from database.connection import DatabaseSession
 from database.models import ImportStatus
 from scripts.data_processing.discovery_service import DiscoveryService
-from scripts.data_processing.unified_importer import UnifiedImporter
 
 
 @dataclass
@@ -83,11 +83,93 @@ class PipelineStats:
         if self.downloaded_files is None:
             self.downloaded_files = []
     
-    def add_message(self, message: str):
-        """Add a message to recent messages (keep last 10)"""
-        self.recent_messages.append(f"{datetime.now().strftime('%H:%M:%S')} - {message}")
-        if len(self.recent_messages) > 10:
-            self.recent_messages.pop(0)
+    def add_message(self, message: str, priority: str = 'normal'):
+        """Add a message to recent messages with priority-based filtering"""
+        import threading
+        
+        # Initialize attributes if needed
+        if not hasattr(self, '_message_lock'):
+            self._message_lock = threading.Lock()
+        if not hasattr(self, '_message_buffer'):
+            self._message_buffer = {}
+        if not hasattr(self, '_last_summary_time'):
+            self._last_summary_time = datetime.now()
+        
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        formatted_message = f"{timestamp} - {message}"
+        
+        with self._message_lock:
+            # Handle high priority messages immediately
+            if priority in ['high', 'error', 'success']:
+                self.recent_messages.append(formatted_message)
+                if len(self.recent_messages) > 10:
+                    self.recent_messages.pop(0)
+                return
+            
+            # For normal/verbose messages, use buffering to reduce flashing
+            current_time = datetime.now()
+            
+            # Group similar messages
+            message_key = self._get_message_key(message)
+            if message_key not in self._message_buffer:
+                self._message_buffer[message_key] = {
+                    'count': 0,
+                    'first_time': current_time,
+                    'last_message': message
+                }
+            
+            self._message_buffer[message_key]['count'] += 1
+            self._message_buffer[message_key]['last_message'] = message
+            
+            # Flush buffer every 3 seconds or when it gets full
+            time_since_summary = (current_time - self._last_summary_time).total_seconds()
+            if time_since_summary >= 3.0 or len(self._message_buffer) >= 5:
+                self._flush_message_buffer()
+                self._last_summary_time = current_time
+    
+    def _get_message_key(self, message: str) -> str:
+        """Extract key from message for grouping similar messages"""
+        if 'Downloaded:' in message:
+            return 'downloads'
+        elif 'Processing:' in message:
+            return 'processing'
+        elif 'SUCCESS:' in message:
+            return 'successes'
+        elif 'FAILED:' in message or 'ERROR:' in message:
+            return 'failures'
+        else:
+            return 'other'
+    
+    def _flush_message_buffer(self):
+        """Flush buffered messages as summary"""
+        if not self._message_buffer:
+            return
+            
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        
+        for key, info in self._message_buffer.items():
+            if info['count'] == 1:
+                # Single message, show as-is
+                formatted_message = f"{timestamp} - {info['last_message']}"
+            else:
+                # Multiple messages, show summary
+                if key == 'downloads':
+                    formatted_message = f"{timestamp} - Downloaded {info['count']} files"
+                elif key == 'processing':
+                    formatted_message = f"{timestamp} - Processed {info['count']} files"
+                elif key == 'successes':
+                    formatted_message = f"{timestamp} - {info['count']} files imported successfully"
+                elif key == 'failures':
+                    formatted_message = f"{timestamp} - {info['count']} files failed processing"
+                else:
+                    formatted_message = f"{timestamp} - {info['count']} operations completed"
+            
+            self.recent_messages.append(formatted_message)
+            if len(self.recent_messages) > 10:
+                self.recent_messages.pop(0)
+        
+        # Clear buffer
+        self._message_buffer.clear()
     
     def add_download(self, file_name: str, file_size: int, status_id: int):
         """Add a downloaded file to the list (keep last 15)"""
@@ -106,10 +188,8 @@ class PipelineStats:
         if not self.start_time:
             return "00:00:00"
         elapsed = datetime.now() - self.start_time
-        # Only update every 5 seconds to reduce flashing
         total_seconds = int(elapsed.total_seconds())
-        rounded_seconds = (total_seconds // 5) * 5
-        hours, remainder = divmod(rounded_seconds, 3600)
+        hours, remainder = divmod(total_seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
         return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
@@ -134,14 +214,51 @@ class DownloadManager:
         # Create downloads directory
         self.downloads_dir = Path("E:/dev/parliament/scripts/data_processing/data/downloads")
         self.downloads_dir.mkdir(parents=True, exist_ok=True)
+    
+    @contextlib.contextmanager
+    def _capture_console(self, stats: PipelineStats):
+        """Context manager to capture console output from HTTP retry utils"""
+        import sys
+        import io
+        import contextlib
+        
+        # Capture stdout
+        old_stdout = sys.stdout
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            yield
+        finally:
+            # Restore stdout
+            sys.stdout = old_stdout
+            
+            # Process captured output
+            output = captured_output.getvalue()
+            if output.strip():
+                # Split into lines and send important ones to stats
+                lines = output.strip().split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line:
+                        # Skip verbose HTTP retry messages, only keep important ones
+                        if any(marker in line for marker in ['ERROR:', 'Max retries', 'Last error:']):
+                            stats.add_message(f"Download error: {line.split('ERROR:')[-1].strip()}", priority='error')
+                        elif 'SUCCESS: Resetting exponential backoff' in line:
+                            # Don't spam this, it's too verbose
+                            pass
+                        elif 'Retrying in' in line:
+                            # Suppress retry spam, just note retries are happening
+                            pass
         
     def start(self, download_queue: Queue, stats: PipelineStats, console: Console):
         """Start download processing"""
         self.running = True
         
-        with DatabaseSession() as db_session:
-            while self.running:
-                try:
+        while self.running:
+            try:
+                # Use a fresh database session for each iteration to avoid stale data
+                with DatabaseSession() as db_session:
                     # Get files that need downloading (filtered by file type)
                     query = db_session.query(ImportStatus).filter(
                         ImportStatus.status.in_(['discovered', 'download_pending'])
@@ -154,8 +271,15 @@ class DownloadManager:
                     files_to_download = query.limit(10).all()
                     
                     if not files_to_download:
+                        # Add debug message occasionally to show download manager is active
+                        import random
+                        if random.random() < 0.01:  # 1% chance to show debug message
+                            stats.add_message("Download manager: waiting for files...", priority='low')
                         time.sleep(1)
                         continue
+                    
+                    # Log when we start processing downloads
+                    stats.add_message(f"Download manager: found {len(files_to_download)} files to download", priority='normal')
                     
                     for import_record in files_to_download:
                         if not self.running:
@@ -190,29 +314,42 @@ class DownloadManager:
                             import_record.updated_at = datetime.now()
                             
                             db_session.commit()
-                            stats.download_completed += 1
                             
                             # Add to import queue
                             download_queue.put(import_record.id)
                             
                             # Add to download tracking and message log
                             stats.add_download(import_record.file_name, import_record.file_size, import_record.id)
-                            stats.add_message(f"Downloaded: {import_record.file_name} ({import_record.file_size:,} bytes)")
+                            stats.add_message(f"Downloaded: {import_record.file_name} ({import_record.file_size:,} bytes)", priority='normal')
                             
                         except Exception as e:
-                            import_record.status = 'failed'
-                            import_record.error_message = f"Download error: {str(e)}"
-                            db_session.commit()
-                            stats.download_failed += 1
+                            # Check if this is a 404/not found error that should trigger recrawl
+                            error_str = str(e).lower()
+                            is_not_found_error = (
+                                '404' in error_str or 
+                                'not found' in error_str or 
+                                'file not found' in error_str or
+                                'no such file' in error_str or
+                                hasattr(e, 'response') and getattr(e.response, 'status_code', None) == 404
+                            )
                             
-                            stats.add_message(f"Download failed: {import_record.file_name} - {str(e)}")
+                            if is_not_found_error:
+                                import_record.status = 'recrawl'
+                                import_record.error_message = f"File not found, marked for recrawl: {str(e)}"
+                                stats.add_message(f"File not found, marking for recrawl: {import_record.file_name}", priority='high')
+                            else:
+                                import_record.status = 'failed'
+                                import_record.error_message = f"Download error: {str(e)}"
+                                stats.add_message(f"Download failed: {import_record.file_name} - {str(e)}", priority='error')
+                            
+                            db_session.commit()
                         
                         # Rate limiting
                         time.sleep(self.rate_limit_delay)
                         
-                except Exception as e:
-                    stats.add_message(f"Download manager error: {str(e)}")
-                    time.sleep(1)
+            except Exception as e:
+                stats.add_message(f"Download manager error: {str(e)}", priority='error')
+                time.sleep(1)
     
     def stop(self):
         """Stop download processing"""
@@ -227,15 +364,54 @@ class ImportProcessor:
         self.allowed_file_types = allowed_file_types or ['XML']  # Default to XML only
         # Use the database-driven importer instead
         from scripts.data_processing.database_driven_importer import DatabaseDrivenImporter
-        self.importer = DatabaseDrivenImporter(allowed_file_types=self.allowed_file_types)
+        self.importer = DatabaseDrivenImporter(allowed_file_types=self.allowed_file_types, quiet=True, orchestrator_mode=True)
+    
+    def run(self, stats: PipelineStats):
+        """Context manager to capture console output and redirect to stats"""
+        import sys
+        import io
+        
+        # Capture stdout
+        old_stdout = sys.stdout
+        captured_output = io.StringIO()
+        sys.stdout = captured_output
+        
+        try:
+            yield
+        finally:
+            # Restore stdout
+            sys.stdout = old_stdout
+            
+            # Process captured output
+            output = captured_output.getvalue()
+            if output.strip():
+                # Split into lines and send important ones to stats
+                lines = output.strip().split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line and not line.startswith('  '):  # Skip indented debug lines
+                        # Determine priority based on content (support both emoji and ASCII formats)
+                        priority = 'normal'
+                        if any(marker in line for marker in ['ERROR', 'Failed', '❌', '🛑', '>>', 'error', 'Error']):
+                            priority = 'error'
+                        elif any(marker in line for marker in ['SUCCESS', '✅', 'completed', 'Success', 'success']):
+                            priority = 'success'
+                        elif any(marker in line for marker in ['🔄', '⬇️', '📡', 'Processing', 'Downloading', 'Starting']):
+                            priority = 'high'
+                        
+                        # Clean up the line (remove emoji, ASCII markers and extra formatting for stats)
+                        clean_line = line.replace('🔄', '').replace('⬇️', '').replace('📡', '').replace('✅', '').replace('❌', '').replace('>>', '').strip()
+                        if clean_line:
+                            stats.add_message(clean_line, priority=priority)
         
     def start(self, download_queue: Queue, stats: PipelineStats, console: Console):
         """Start import processing"""
         self.running = True
         
-        with DatabaseSession() as db_session:
-            while self.running:
-                try:
+        while self.running:
+            try:
+                # Use a fresh database session for each iteration
+                with DatabaseSession() as db_session:
                     # First, check download queue for priority files
                     record_id = None
                     from_queue = False
@@ -259,7 +435,10 @@ class ImportProcessor:
                             record_id = pending_files[0].id
                             from_queue = False
                         else:
-                            # No pending files, wait a bit
+                            # Add debug message occasionally to show import processor is active
+                            import random
+                            if random.random() < 0.01:  # 1% chance to show debug message
+                                stats.add_message("Import processor: waiting for files...", priority='low')
                             time.sleep(1)
                             continue
                         
@@ -269,33 +448,34 @@ class ImportProcessor:
                         continue
                     
                     try:
-                        stats.add_message(f"Processing: {import_record.file_name}")
+                        stats.add_message(f"Processing: {import_record.file_name}", priority='normal')
                         
-                        # Use the actual database-driven importer
+                        # Use the actual database-driven importer (now in quiet mode)
                         success = self.importer._process_single_import(db_session, import_record, strict_mode=False)
                         
                         if success:
-                            stats.import_completed += 1
-                            stats.total_records_imported += import_record.records_imported or 0
-                            stats.add_message(f"SUCCESS: {import_record.file_name} ({import_record.records_imported or 0} records)")
+                            stats.add_message(f"SUCCESS: {import_record.file_name} ({import_record.records_imported or 0} records)", priority='success')
+                            # Commit successful import to database
+                            db_session.commit()
                         else:
-                            stats.import_failed += 1
                             error_msg = import_record.error_message or "Unknown error"
                             if len(error_msg) > 50:
                                 error_msg = error_msg[:47] + "..."
-                            stats.add_message(f"FAILED: {import_record.file_name} - {error_msg}")
+                            stats.add_message(f"FAILED: {import_record.file_name} - {error_msg}", priority='error')
+                            # Commit failed import status to database
+                            db_session.commit()
                         
                     except Exception as e:
-                        stats.import_failed += 1
                         error_msg = str(e)
                         if len(error_msg) > 50:
                             error_msg = error_msg[:47] + "..."
-                        stats.add_message(f"ERROR: {import_record.file_name} - {error_msg}")
+                        stats.add_message(f"ERROR: {import_record.file_name} - {error_msg}", priority='error')
                         
                         # Update record status if not already updated
-                        if import_record.status not in ['completed', 'failed']:
-                            import_record.status = 'failed'
+                        if import_record.status not in ['completed', 'import_error']:
+                            import_record.status = 'import_error'
                             import_record.error_message = str(e)
+                            import_record.error_count = (import_record.error_count or 0) + 1
                             import_record.processing_completed_at = datetime.now()
                             try:
                                 db_session.commit()
@@ -310,13 +490,16 @@ class ImportProcessor:
                             except:
                                 pass  # Ignore if task wasn't from queue
                         
-                except Exception as e:
-                    stats.add_message(f"Import processor error: {str(e)}")
-                    time.sleep(1)
+            except Exception as e:
+                stats.add_message(f"Import processor error: {str(e)}", priority='error')
+                time.sleep(1)
     
     def stop(self):
         """Stop import processing"""
         self.running = False
+        # Also signal the database importer to stop
+        if hasattr(self, 'importer'):
+            self.importer.set_shutdown_requested(True)
 
 
 class PipelineOrchestrator:
@@ -329,7 +512,7 @@ class PipelineOrchestrator:
         self.allowed_file_types = allowed_file_types or ['XML']  # Default to XML only
         
         # Initialize services with file type filters
-        self.discovery_service = DiscoveryService(rate_limit_delay=discovery_rate_limit)
+        self.discovery_service = DiscoveryService(rate_limit_delay=discovery_rate_limit, quiet=True)
         self.download_manager = DownloadManager(rate_limit_delay=download_rate_limit, 
                                               allowed_file_types=self.allowed_file_types)
         self.import_processor = ImportProcessor(allowed_file_types=self.allowed_file_types)
@@ -361,7 +544,7 @@ class PipelineOrchestrator:
         try:
             with DatabaseSession() as db_session:
                 query = db_session.query(ImportStatus).filter(
-                    ImportStatus.status.in_(['discovered', 'download_pending', 'pending'])
+                    ImportStatus.status.in_(['discovered', 'download_pending', 'pending', 'recrawl', 'import_error'])
                 )
                 
                 # Apply file type filter
@@ -372,7 +555,7 @@ class PipelineOrchestrator:
                 
                 return pending_files
         except Exception as e:
-            self.stats.add_message(f"Error getting pending files: {str(e)}")
+            self.stats.add_message(f"Error getting pending files: {str(e)}", priority='error')
             return []
         
     def create_ui_layout(self) -> Layout:
@@ -394,7 +577,7 @@ class PipelineOrchestrator:
         layout["left"].split_column(
             Layout(name="discovery", ratio=1),
             Layout(name="stats", ratio=1),
-            Layout(name="downloads", ratio=1)
+            Layout(name="downloads", minimum_size=8, ratio=1)  # Fixed minimum height
         )
         
         # Split right panel into pending files (top) and activity log (bottom)
@@ -464,8 +647,11 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
         
         layout["stats"].update(Panel(stats_table, border_style="green"))
         
-        # Downloaded files tracking
-        if self.stats.downloaded_files:
+        # Downloaded files tracking with stable panel updates
+        downloads_count = len(self.stats.downloaded_files) if self.stats.downloaded_files else 0
+        
+        # Only update downloads panel if there are actual downloads to show
+        if downloads_count > 0:
             downloads_table = Table(show_header=True, header_style="bold magenta")
             downloads_table.add_column("Time", style="dim", width=8)
             downloads_table.add_column("File", style="cyan", width=25)
@@ -487,12 +673,30 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
                     size_str,
                     str(download.status_id)
                 )
-                
-            downloads_panel = Panel(downloads_table, title="Downloaded Files", border_style="blue")
+            
+            downloads_panel = Panel(downloads_table, title=f"Downloaded Files ({downloads_count})", border_style="blue")
+            layout["downloads"].update(downloads_panel)
+            self._downloads_panel_set = 'files'
         else:
-            downloads_panel = Panel("No files downloaded yet", title="Downloaded Files", border_style="blue")
-        
-        layout["downloads"].update(downloads_panel)
+            # Only update the panel when it hasn't been set yet or when transitioning from files to no files
+            if not hasattr(self, '_downloads_panel_set') or self._downloads_panel_set != 'empty':
+                # Create a stable empty table to maintain consistent height
+                empty_table = Table(show_header=True, header_style="bold magenta")
+                empty_table.add_column("Time", style="dim", width=8)
+                empty_table.add_column("File", style="cyan", width=25)
+                empty_table.add_column("Size", justify="right", width=10)
+                empty_table.add_column("ID", justify="right", width=6)
+                
+                # Add a single row with waiting message
+                empty_table.add_row("--:--:--", "Waiting for downloads...", "--", "--")
+                
+                downloads_panel = Panel(
+                    empty_table, 
+                    title="Downloaded Files", 
+                    border_style="blue"
+                )
+                layout["downloads"].update(downloads_panel)
+                self._downloads_panel_set = 'empty'
         
         # Pending files for processing
         pending_files = self._get_pending_files(12)
@@ -520,6 +724,10 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
                     status_display = "[yellow]dl_pending[/yellow]"
                 elif file_record.status == 'pending':
                     status_display = "[green]ready[/green]"
+                elif file_record.status == 'recrawl':
+                    status_display = "[orange]recrawl[/orange]"
+                elif file_record.status == 'import_error':
+                    status_display = "[red]error[/red]"
                 
                 pending_table.add_row(
                     status_display,
@@ -559,18 +767,36 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
         """Run discovery in background thread"""
         try:
             self.stats.discovery_running = True
-            self.stats.discovery_status = "Running discovery..."
+            self.stats.discovery_status = "Starting up..."
+            self.stats.add_message("Discovery service starting up...", priority='high')
             
+            # Add intermediate status updates
+            self.stats.discovery_status = "Connecting to parliament website..."
+            self.stats.add_message("Connecting to parliament data portal...", priority='high')
+            
+            # Discovery service now runs in quiet mode to prevent UI interference
             discovered_count = self.discovery_service.discover_all_files(
                 legislature_filter=legislature_filter,
                 category_filter=category_filter
             )
+            
             self.stats.discovery_completed = discovered_count
             self.stats.discovery_status = "Completed"
+            self.stats.add_message(f"Discovery completed - {discovered_count} files cataloged", priority='high')
+            
+            # Trigger download manager check if files were discovered
+            if discovered_count > 0:
+                self.stats.add_message("Files ready for download - download manager will start processing...", priority='high')
+            else:
+                self.stats.add_message("No new files discovered - download manager waiting...", priority='normal')
             
         except Exception as e:
             self.stats.discovery_status = f"Error: {str(e)}"
-            self.console.print(f"❌ Discovery error: {e}")
+            self.stats.add_message(f"Discovery error: {str(e)}", priority='error')
+            # Print the full error for debugging
+            import traceback
+            error_details = traceback.format_exc()
+            self.stats.add_message(f"Full error details: {error_details}", priority='error')
         finally:
             self.stats.discovery_running = False
     
@@ -579,11 +805,28 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
         self.stats.start_time = datetime.now()
         self.running = True
         
+        # Add initial startup messages
+        file_types_str = ", ".join(self.allowed_file_types) if self.allowed_file_types else "ALL"
+        self.stats.add_message(f"🚀 Pipeline started - Processing: {file_types_str}", priority='high')
+        if legislature_filter:
+            self.stats.add_message(f"📋 Legislature filter: {legislature_filter}", priority='high')
+        if category_filter:
+            self.stats.add_message(f"📂 Category filter: {category_filter}", priority='high')
+        
+        # Add service startup messages before UI starts
+        self.stats.add_message("🔍 Starting discovery service...", priority='high')
+        self.stats.add_message("⬇️ Starting download manager...", priority='high')
+        self.stats.add_message("⚙️ Starting import processor...", priority='high')
+        
         # Create UI layout
         layout = self.create_ui_layout()
         
+        # Initialize layout with current data immediately to prevent flashing
+        self.update_layout(layout)
+        
         try:
-            with Live(layout, refresh_per_second=2, screen=True):
+            with Live(layout, refresh_per_second=1, screen=True):
+                
                 # Start discovery in background thread
                 discovery_thread = threading.Thread(
                     target=self.run_discovery,
@@ -613,24 +856,67 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
                 
                 # Main UI update loop
                 while self.running:
-                    self.update_layout(layout)
-                    time.sleep(2.0)  # Reduced frequency to minimize flashing
+                    # Force flush buffered messages periodically
+                    if hasattr(self.stats, '_message_buffer') and self.stats._message_buffer:
+                        self.stats._flush_message_buffer()
                     
-                    # Update queue sizes (filtered by file type)
+                    self.update_layout(layout)
+                    time.sleep(1.0)  # Slower updates to reduce flashing
+                    
+                    # Update all statistics from database (filtered by file type)
                     with DatabaseSession() as db_session:
-                        download_query = db_session.query(ImportStatus).filter(
-                            ImportStatus.status.in_(['discovered', 'download_pending'])
-                        )
+                        # Base query with file type filter
+                        base_query = db_session.query(ImportStatus)
                         if self.allowed_file_types:
-                            download_query = download_query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
-                        self.stats.download_queue_size = download_query.count()
+                            base_query = base_query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
                         
-                        import_query = db_session.query(ImportStatus).filter(
+                        # Update queue sizes
+                        self.stats.download_queue_size = base_query.filter(
+                            ImportStatus.status.in_(['discovered', 'download_pending'])
+                        ).count()
+                        
+                        self.stats.import_queue_size = base_query.filter(
                             ImportStatus.status == 'pending'
+                        ).count()
+                        
+                        # Update completion statistics
+                        # Download completed: files that have been successfully downloaded and are ready for import or imported
+                        self.stats.download_completed = base_query.filter(
+                            ImportStatus.status.in_(['pending', 'processing', 'completed'])
+                        ).count()
+                        
+                        # Download failed: files that failed download or need recrawling
+                        self.stats.download_failed = base_query.filter(
+                            ImportStatus.status.in_(['failed', 'recrawl'])
+                        ).count()
+                        
+                        # Import completed: files that have been successfully imported
+                        self.stats.import_completed = base_query.filter(
+                            ImportStatus.status == 'completed'
+                        ).count()
+                        
+                        # Import failed: files that failed during import processing
+                        self.stats.import_failed = base_query.filter(
+                            ImportStatus.status.in_(['import_error', 'schema_mismatch'])
+                        ).count()
+                        
+                        # Update total records imported
+                        completed_records = base_query.filter(
+                            ImportStatus.status == 'completed',
+                            ImportStatus.records_imported.isnot(None)
+                        ).all()
+                        self.stats.total_records_imported = sum(
+                            record.records_imported or 0 for record in completed_records
                         )
-                        if self.allowed_file_types:
-                            import_query = import_query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
-                        self.stats.import_queue_size = import_query.count()
+                        
+                        # Update discovery count
+                        self.stats.discovery_completed = base_query.filter(
+                            ImportStatus.status.in_([
+                                'discovered', 'download_pending', 'downloading', 
+                                'pending', 'processing', 'completed', 'failed', 
+                                'import_error', 'schema_mismatch', 'recrawl'
+                            ])
+                        ).count()
                     
         except KeyboardInterrupt:
             self.console.print("\n🛑 Shutdown requested...")

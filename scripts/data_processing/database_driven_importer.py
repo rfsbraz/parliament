@@ -15,10 +15,12 @@ Features:
 """
 
 import hashlib
+import logging
 import os
+import signal
 import sys
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from typing import Dict, List, Optional
 
@@ -50,7 +52,13 @@ from scripts.data_processing.mappers import (
     RegistoInteressesMapper,
     ReunioesNacionaisMapper,
 )
-from scripts.data_processing.unified_importer import FileTypeResolver
+from scripts.data_processing.file_type_resolver import FileTypeResolver
+
+# Configure logging with Unicode-safe console handler
+from utils.unicode_safe_logging import UnicodeSafeHandler
+
+# Initialize logger (will be configured in main() for CLI usage)
+logger = logging.getLogger(__name__)
 
 
 class ChangeDetectionService:
@@ -96,7 +104,7 @@ class ChangeDetectionService:
             return False
             
         except Exception as e:
-            print(f"⚠️  Change detection error for {import_record.file_name}: {e}")
+            self._print(f"   Change detection error for {import_record.file_name}: {e}")
             return False  # Assume no change on error
     
     def update_metadata(self, import_record: ImportStatus) -> bool:
@@ -141,7 +149,7 @@ class ChangeDetectionService:
             return updated
             
         except Exception as e:
-            print(f"⚠️  Metadata update error for {import_record.file_name}: {e}")
+            self._print(f"   Metadata update error for {import_record.file_name}: {e}")
             return False
 
 
@@ -168,10 +176,22 @@ class DatabaseDrivenImporter:
         "registo_interesses",
     ]
     
-    def __init__(self, allowed_file_types: List[str] = None):
+    def __init__(self, allowed_file_types: List[str] = None, quiet: bool = False, orchestrator_mode: bool = False):
         self.file_type_resolver = FileTypeResolver()
         self.change_detection = ChangeDetectionService()
         self.allowed_file_types = allowed_file_types or ['XML']  # Default to XML only
+        self.shutdown_requested = False
+        self.quiet = quiet  # Suppress console output when True
+        self.orchestrator_mode = orchestrator_mode  # Modify behavior for orchestrator integration
+        
+        # Configure logging for standalone mode
+        if not self.orchestrator_mode and not self.quiet:
+            self._setup_console_logging()
+        
+        # Retry configuration for exponential backoff
+        self.min_retry_delay = 300  # 5 minutes minimum
+        self.max_retry_delay = 86400  # 24 hours maximum
+        self.retry_backoff_factor = 2.0  # Double delay each time
         
         # Schema mappers registry (same as unified_importer)
         self.schema_mappers = {
@@ -194,6 +214,90 @@ class DatabaseDrivenImporter:
             "reunioes_visitas": ReunioesNacionaisMapper,
         }
     
+    def _setup_console_logging(self):
+        """Setup console logging for standalone mode"""
+        # Only configure if not already configured
+        if not logger.handlers:
+            logging.basicConfig(
+                level=logging.INFO,
+                format="%(asctime)s - %(levelname)s - %(message)s",
+                handlers=[
+                    logging.FileHandler("database_driven_importer.log", encoding="utf-8"),
+                    UnicodeSafeHandler(),  # Console handler with Unicode safety
+                ],
+            )
+            logger.info("Database-driven importer logging configured for standalone mode")
+    
+    def _print(self, *args, **kwargs):
+        """Print only if not in quiet mode"""
+        if not self.quiet:
+            print(*args, **kwargs)
+    
+    def set_shutdown_requested(self, value: bool):
+        """Set shutdown request flag (for orchestrator integration)"""
+        self.shutdown_requested = value
+    
+    def is_running(self) -> bool:
+        """Check if importer should continue running"""
+        return not self.shutdown_requested
+    
+    def get_import_statistics(self) -> Dict[str, int]:
+        """Get import statistics for orchestrator integration"""
+        with DatabaseSession() as db_session:
+            from sqlalchemy import func
+            
+            # Query import statistics based on allowed file types
+            query = db_session.query(ImportStatus)
+            if self.allowed_file_types:
+                query = query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
+            
+            # Count by status
+            completed = query.filter(ImportStatus.status == 'completed').count()
+            failed = query.filter(ImportStatus.status.in_(['import_error', 'failed'])).count()
+            pending = query.filter(ImportStatus.status.in_(['pending', 'discovered', 'download_pending'])).count()
+            
+            # Sum total records imported
+            total_records = (
+                query.filter(ImportStatus.status == 'completed')
+                .with_entities(func.coalesce(func.sum(ImportStatus.records_imported), 0))
+                .scalar() or 0
+            )
+            
+            return {
+                'completed': completed,
+                'failed': failed,
+                'pending': pending,
+                'total_records': total_records
+            }
+    
+    def _calculate_retry_time(self, error_count: int) -> datetime:
+        """Calculate next retry time using exponential backoff"""
+        # Calculate delay: min_delay * (backoff_factor ^ (error_count - 1))
+        delay_seconds = self.min_retry_delay * (self.retry_backoff_factor ** (error_count - 1))
+        
+        # Cap at maximum delay
+        delay_seconds = min(delay_seconds, self.max_retry_delay)
+        
+        # Add some jitter (±10%) to avoid thundering herd
+        import random
+        jitter = random.uniform(-0.1, 0.1)
+        delay_seconds = delay_seconds * (1 + jitter)
+        
+        return datetime.now() + timedelta(seconds=int(delay_seconds))
+    
+    def _setup_signal_handlers(self):
+        """Setup signal handlers for graceful shutdown"""
+        def signal_handler(signum, frame):
+            self._print(f"\n>> Received shutdown signal ({signal.Signals(signum).name})")
+            self._print("   Finishing current file processing and shutting down gracefully...")
+            self._print("   Press Ctrl+C again to force shutdown (not recommended)")
+            self.shutdown_requested = True
+        
+        # Handle both SIGINT (Ctrl+C) and SIGTERM
+        signal.signal(signal.SIGINT, signal_handler)
+        if hasattr(signal, 'SIGTERM'):
+            signal.signal(signal.SIGTERM, signal_handler)
+    
     def process_pending_imports(self, 
                                file_type_filter: str = None,
                                legislatura_filter: str = None,
@@ -209,28 +313,38 @@ class DatabaseDrivenImporter:
             'total_records': 0
         }
         
-        print(f"🔄 Starting database-driven import processing...")
+        self._print(f">> Starting database-driven import processing...")
+        logger.info("Starting database-driven import processing")
+        if not self.orchestrator_mode:
+            self._print("   Press Ctrl+C to shutdown gracefully after current file completes")
+        
+        # Setup signal handlers for graceful shutdown (only in standalone mode)
+        if not self.orchestrator_mode:
+            self._setup_signal_handlers()
         
         # Show active file type filter
         if self.allowed_file_types:
             file_types_str = ", ".join(self.allowed_file_types)
-            print(f"📂 Processing file types: {file_types_str}")
+            self._print(f"   Processing file types: {file_types_str}")
         else:
-            print(f"📂 Processing all file types")
+            self._print(f"   Processing all file types")
         
         if file_type_filter:
-            print(f"📂 Additional category filter: {file_type_filter}")
+            self._print(f"   Additional category filter: {file_type_filter}")
         if legislatura_filter:
-            print(f"🏛️  Filtering for legislatura: {legislatura_filter}")
+            self._print(f"   Filtering for legislatura: {legislatura_filter}")
         
         with DatabaseSession() as db_session:
             # Build query for files to process
             query = db_session.query(ImportStatus)
             
             if not force_reimport:
-                # Only process files that haven't been completed
+                # Only process files that haven't been completed or are ready for retry
+                current_time = datetime.now()
                 query = query.filter(
-                    ImportStatus.status.in_(['discovered', 'download_pending', 'pending'])
+                    (ImportStatus.status.in_(['discovered', 'download_pending', 'pending'])) |
+                    (ImportStatus.status == 'import_error') & 
+                    ((ImportStatus.retry_at.is_(None)) | (ImportStatus.retry_at <= current_time))
                 )
             
             # Apply class-level file type filter
@@ -257,15 +371,23 @@ class DatabaseDrivenImporter:
                 files_to_process = files_to_process[:limit]
             
             total_files = len(files_to_process)
-            print(f"📋 Found {total_files} files to process")
+            self._print(f"   Found {total_files} files to process")
+            logger.info(f"Found {total_files} files to process")
             
             if not files_to_process:
-                print("ℹ️  No files found matching criteria")
+                self._print("   No files found matching criteria")
+                logger.info("No files found matching criteria")
                 return stats
             
             # Process each file
             for i, import_record in enumerate(files_to_process, 1):
-                print(f"\n[{i}/{total_files}] Processing: {import_record.file_name}")
+                # Check for graceful shutdown request
+                if self.shutdown_requested:
+                    self._print(f"\n>> Shutdown requested. Stopping after processing {i-1}/{total_files} files.")
+                    break
+                
+                self._print(f"\n[{i}/{total_files}] Processing: {import_record.file_name}")
+                logger.info(f"Processing file {i}/{total_files}: {import_record.file_name}")
                 
                 try:
                     success = self._process_single_import(db_session, import_record, strict_mode)
@@ -273,10 +395,12 @@ class DatabaseDrivenImporter:
                     if success:
                         stats['succeeded'] += 1
                         stats['total_records'] += import_record.records_imported or 0
-                        print(f"✅ Success: {import_record.records_imported or 0} records imported")
+                        self._print(f"   Success: {import_record.records_imported or 0} records imported")
+                        logger.info(f"Successfully processed {import_record.file_name}: {import_record.records_imported or 0} records imported")
                     else:
                         stats['failed'] += 1
-                        print(f"❌ Failed: {import_record.error_message or 'Unknown error'}")
+                        self._print(f"   Failed: {import_record.error_message or 'Unknown error'}")
+                        logger.error(f"Failed to process {import_record.file_name}: {import_record.error_message or 'Unknown error'}")
                     
                     stats['processed'] += 1
                     
@@ -285,43 +409,69 @@ class DatabaseDrivenImporter:
                     
                 except Exception as e:
                     stats['failed'] += 1
-                    print(f"❌ Unexpected error: {e}")
+                    self._print(f"   Unexpected error: {e}")
+                    logger.error(f"Unexpected error processing {import_record.file_name}: {e}")
                     db_session.rollback()
                     
                     if strict_mode:
-                        print("🛑 Strict mode: Stopping on error")
+                        self._print("   Strict mode: Stopping on error")
+                        logger.warning("Strict mode: Stopping on error")
                         break
         
-        print(f"\n📊 Processing complete:")
-        print(f"   ✅ Succeeded: {stats['succeeded']}")
-        print(f"   ❌ Failed: {stats['failed']}")
-        print(f"   📊 Total records imported: {stats['total_records']}")
+        self._print(f"\n>> Processing complete:")
+        self._print(f"   Succeeded: {stats['succeeded']}")
+        self._print(f"   Failed: {stats['failed']}")
+        self._print(f"   Total records imported: {stats['total_records']}")
+        
+        logger.info(f"Processing complete: {stats['succeeded']} succeeded, {stats['failed']} failed, {stats['total_records']} total records imported")
         
         return stats
     
     def _process_single_import(self, db_session, import_record: ImportStatus, strict_mode: bool = False) -> bool:
         """Process a single import record"""
         try:
+            # Check for shutdown request before starting
+            if self.shutdown_requested:
+                self._print(f"     Shutdown requested, skipping file")
+                return False
+            
+            # Reset status from import_error to pending if retrying
+            if import_record.status == 'import_error':
+                self._print(f"     Retrying after error (attempt {import_record.error_count + 1})")
+                import_record.status = 'pending'
+                import_record.retry_at = None  # Clear retry timestamp
+                
             # Check if we need to download the file
             if not self._has_file_content(import_record):
-                print(f"  ⬇️  Downloading file...")
+                self._print(f"     Downloading file...")
+                logger.info(f"Downloading file: {import_record.file_name}")
                 success = self._download_file(import_record)
                 if not success:
+                    logger.error(f"Failed to download file: {import_record.file_name}")
                     return False
             
             # Check for changes if not forced
             if import_record.status == 'completed':
                 if not self.change_detection.check_for_changes(import_record):
-                    print(f"  ⏭️  No changes detected, skipping")
+                    self._print(f"     No changes detected, skipping")
                     return True
                 else:
-                    print(f"  🔄 Changes detected, reprocessing")
+                    self._print(f"     Changes detected, reprocessing")
             
             # Update status to processing
             import_record.status = 'processing'
             import_record.processing_started_at = datetime.now()
             import_record.updated_at = datetime.now()
             db_session.commit()
+            
+            # Check for shutdown request after committing processing status
+            if self.shutdown_requested:
+                self._print(f"     Shutdown requested during processing, reverting to pending status")
+                import_record.status = 'pending'
+                import_record.processing_started_at = None
+                import_record.updated_at = datetime.now()
+                db_session.commit()
+                return False
             
             # Resolve file type if not set
             if not import_record.category or import_record.category == 'Unknown':
@@ -333,9 +483,16 @@ class DatabaseDrivenImporter:
             mapper_key = self._get_mapper_key(import_record.category)
             if not mapper_key or mapper_key not in self.schema_mappers:
                 error_msg = f"No mapper available for category: {import_record.category}"
-                import_record.status = 'failed'
+                logger.error(f"No mapper available for category '{import_record.category}' in file: {import_record.file_name}")
+                import_record.status = 'import_error'
                 import_record.error_message = error_msg
+                import_record.error_count = (import_record.error_count or 0) + 1
+                import_record.retry_at = self._calculate_retry_time(import_record.error_count)
                 import_record.processing_completed_at = datetime.now()
+                import_record.updated_at = datetime.now()
+                
+                # Explicitly flush the error record updates to the database
+                db_session.flush()
                 return False
             
             # Parse XML content
@@ -352,8 +509,11 @@ class DatabaseDrivenImporter:
                 
             except Exception as e:
                 error_msg = f"XML parsing error: {str(e)}"
-                import_record.status = 'failed'
+                logger.error(f"XML parsing error for {import_record.file_name}: {error_msg}")
+                import_record.status = 'import_error'
                 import_record.error_message = error_msg
+                import_record.error_count = (import_record.error_count or 0) + 1
+                import_record.retry_at = self._calculate_retry_time(import_record.error_count)
                 import_record.processing_completed_at = datetime.now()
                 return False
             
@@ -378,26 +538,42 @@ class DatabaseDrivenImporter:
                         if results.get('errors')
                         else None
                     )
+                    import_record.updated_at = datetime.now()
+                    
+                    # Explicitly flush the import record updates to the database
+                    db_session.flush()
                     
                     return True
                     
             except Exception as e:
                 error_msg = f"Processing error: {str(e)}"
-                import_record.status = 'failed'
+                import_record.status = 'import_error'
                 import_record.error_message = error_msg
+                import_record.error_count = (import_record.error_count or 0) + 1
+                import_record.retry_at = self._calculate_retry_time(import_record.error_count)
                 import_record.processing_completed_at = datetime.now()
+                import_record.updated_at = datetime.now()
+                
+                # Explicitly flush the error record updates to the database
+                db_session.flush()
                 return False
                 
         except Exception as e:
-            import_record.status = 'failed'
+            import_record.status = 'import_error'
             import_record.error_message = f"Unexpected error: {str(e)}"
+            import_record.error_count = (import_record.error_count or 0) + 1
+            import_record.retry_at = self._calculate_retry_time(import_record.error_count)
             import_record.processing_completed_at = datetime.now()
+            import_record.updated_at = datetime.now()
+            
+            # Explicitly flush the error record updates to the database
+            db_session.flush()
             return False
     
     def _download_file(self, import_record: ImportStatus) -> bool:
         """Download file content and update record"""
         try:
-            print(f"    📡 Downloading from: {import_record.file_url}")
+            self._print(f"        Downloading from: {import_record.file_url}")
             
             response = safe_request_get(import_record.file_url)
             response.raise_for_status()
@@ -413,14 +589,15 @@ class DatabaseDrivenImporter:
             # Store content temporarily (in a real implementation, you might use Redis or file system)
             import_record._temp_content = response.content
             
-            print(f"    ✅ Downloaded {len(response.content):,} bytes")
+            self._print(f"        Downloaded {len(response.content):,} bytes")
             return True
             
         except Exception as e:
             error_msg = f"Download error: {str(e)}"
-            import_record.status = 'failed'
+            import_record.status = 'import_error'
             import_record.error_message = error_msg
-            print(f"    ❌ Download failed: {error_msg}")
+            import_record.error_count = (import_record.error_count or 0) + 1
+            self._print(f"        Download failed: {error_msg}")
             return False
     
     def _has_file_content(self, import_record: ImportStatus) -> bool:
@@ -520,25 +697,25 @@ class DatabaseDrivenImporter:
             return 'agenda_parlamentar'
         elif 'atividades' in category_lower:
             return 'atividades'
-        elif 'composição' in category_lower:
+        elif 'composição' in category_lower or 'composicao' in category_lower:
             return 'composicao_orgaos'
-        elif 'cooperação' in category_lower:
+        elif 'cooperação' in category_lower or 'cooperacao' in category_lower:
             return 'cooperacao'
-        elif 'delegação' in category_lower and 'eventual' in category_lower:
+        elif ('delegação' in category_lower or 'delegacao' in category_lower or 'delegacoes' in category_lower) and ('eventual' in category_lower or 'eventuais' in category_lower):
             return 'delegacao_eventual'
-        elif 'delegação' in category_lower and 'permanente' in category_lower:
+        elif ('delegação' in category_lower or 'delegacao' in category_lower or 'delegacoes' in category_lower) and ('permanente' in category_lower or 'permanentes' in category_lower):
             return 'delegacao_permanente'
-        elif 'informação' in category_lower:
+        elif 'informação' in category_lower or 'informacao' in category_lower:
             return 'informacao_base'
-        elif 'petições' in category_lower:
+        elif 'petições' in category_lower or 'peticoes' in category_lower:
             return 'peticoes'
         elif 'perguntas' in category_lower:
             return 'perguntas_requerimentos'
         elif 'diplomas' in category_lower:
             return 'diplomas_aprovados'
-        elif 'orçamento' in category_lower:
+        elif 'orçamento' in category_lower or 'orcamento' in category_lower:
             return 'orcamento_estado'
-        elif 'reuniões' in category_lower:
+        elif 'reuniões' in category_lower or 'reunioes' in category_lower:
             return 'reunioes_visitas'
         
         return None
@@ -572,6 +749,14 @@ def main():
                        help='Force reimport of completed files')
     parser.add_argument('--strict-mode', action='store_true',
                        help='Exit on first error')
+    parser.add_argument('--watch', action='store_true',
+                       help='Continuous mode: wait for new files instead of exiting')
+    parser.add_argument('--watch-interval', type=int, default=10,
+                       help='Seconds between checks for new files in watch mode (default: 10)')
+    parser.add_argument('--log-level', type=str,
+                       choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                       default='INFO',
+                       help='Set logging level (default: INFO)')
     
     args = parser.parse_args()
     
@@ -583,18 +768,83 @@ def main():
     else:
         allowed_file_types = args.file_types
     
+    # Configure logging level for CLI usage
+    log_level = getattr(logging, args.log_level.upper())
+    logging.getLogger().setLevel(log_level)
+    
+    # Also update any existing handlers
+    for handler in logging.getLogger().handlers:
+        handler.setLevel(log_level)
+    
     # Create and run importer with file type filter
     importer = DatabaseDrivenImporter(allowed_file_types=allowed_file_types)
     
-    stats = importer.process_pending_imports(
-        file_type_filter=args.file_type if args.file_type else None,  # Legacy support only
-        legislatura_filter=args.legislatura,
-        limit=args.limit,
-        force_reimport=args.force_reimport,
-        strict_mode=args.strict_mode
-    )
-    
-    print(f"\n🏁 Import completed with {stats['succeeded']} successes, {stats['failed']} failures")
+    if args.watch:
+        # Continuous mode - watch for new files
+        print(f">> Starting continuous import mode...")
+        print(f"   File types: {', '.join(allowed_file_types) if allowed_file_types else 'ALL'}")
+        if args.legislatura:
+            print(f"   Legislature filter: {args.legislatura}")
+        print(f"   Check interval: {args.watch_interval} seconds")
+        print(f"   Press Ctrl+C to stop")
+        
+        import time
+        import signal
+        
+        # Handle graceful shutdown
+        def signal_handler(signum, frame):
+            print(f"\n>> Received shutdown signal. Finishing current processing...")
+            importer.set_shutdown_requested(True)
+        
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+        
+        total_stats = {'succeeded': 0, 'failed': 0, 'total_records': 0, 'processed': 0}
+        
+        try:
+            while importer.is_running():
+                # Process pending files
+                stats = importer.process_pending_imports(
+                    file_type_filter=args.file_type if args.file_type else None,
+                    legislatura_filter=args.legislatura,
+                    limit=args.limit,
+                    force_reimport=args.force_reimport,
+                    strict_mode=args.strict_mode
+                )
+                
+                # Accumulate stats
+                if stats['processed'] > 0:
+                    total_stats['succeeded'] += stats['succeeded']
+                    total_stats['failed'] += stats['failed'] 
+                    total_stats['total_records'] += stats['total_records']
+                    total_stats['processed'] += stats['processed']
+                    
+                    print(f">> Batch complete: {stats['succeeded']} successes, {stats['failed']} failures, {stats['total_records']} records")
+                    print(f">> Session totals: {total_stats['succeeded']} successes, {total_stats['failed']} failures, {total_stats['total_records']} records")
+                else:
+                    print(f">> No pending files found, waiting {args.watch_interval} seconds...")
+                
+                # Wait before next check
+                time.sleep(args.watch_interval)
+                
+        except KeyboardInterrupt:
+            print(f"\n>> Keyboard interrupt received")
+        finally:
+            print(f"\n>> Watch mode completed:")
+            print(f"   >> Total successes: {total_stats['succeeded']}")
+            print(f"   >> Total failures: {total_stats['failed']}")
+            print(f"   >> Total records imported: {total_stats['total_records']}")
+    else:
+        # Single run mode (original behavior)
+        stats = importer.process_pending_imports(
+            file_type_filter=args.file_type if args.file_type else None,  # Legacy support only
+            legislatura_filter=args.legislatura,
+            limit=args.limit,
+            force_reimport=args.force_reimport,
+            strict_mode=args.strict_mode
+        )
+        
+        print(f"\n>> Import completed with {stats['succeeded']} successes, {stats['failed']} failures")
 
 
 if __name__ == "__main__":
