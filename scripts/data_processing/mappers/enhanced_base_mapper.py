@@ -644,63 +644,12 @@ class XMLProcessingMixin:
             element = parent.find(tag_name)
             if element is not None and element.text:
                 text = element.text.strip()
-                # Fix common Portuguese character encoding issues
-                return self._fix_portuguese_characters(text)
+                return text
             return None
         except AttributeError:
             logger.warning(f"Error accessing element with tag '{tag_name}' from parent")
             return None
 
-    def _fix_portuguese_characters(self, text: str) -> str:
-        """Fix common Portuguese character encoding issues"""
-        if not text:
-            return text
-        
-        # Specific name corrections for known cases from the error logs
-        known_name_fixes = {
-            'V?nia Andrea de Castro Jesus': 'Vânia Andrea de Castro Jesus',
-            'S?nia Margarida da Silva Fernandes': 'Sónia Margarida da Silva Fernandes', 
-            'Sofia Alexandra Correia Pereira': 'Sofia Alexandra Correia Pereira',  # This one seems correct
-            'Rui Jorge Cordeiro Gon?alves dos Santos': 'Rui Jorge Cordeiro Gonçalves dos Santos'
-        }
-        
-        # Check for exact match fixes first
-        if text in known_name_fixes:
-            corrected = known_name_fixes[text]
-            logger.info(f"Applied known name correction: '{text}' -> '{corrected}'")
-            return corrected
-        
-        # Log encoding issues for further investigation
-        # Only flag encoding issues, not legitimate question marks
-        if self._has_encoding_corruption(text):
-            logger.warning(f"Potential Portuguese character encoding issue detected: {text}")
-        
-        return text
-
-    def _has_encoding_corruption(self, text: str) -> bool:
-        """
-        Detect character encoding corruption patterns.
-        Returns True if corruption patterns are found, False otherwise.
-        """
-        if not text or '?' not in text:
-            return False
-        
-        import re
-        
-        # Patterns that indicate encoding corruption:
-        corruption_patterns = [
-            r'[a-zA-ZÀ-ÿ]\?[a-zA-ZÀ-ÿ]',     # Question mark between letters (Gon?alves)
-            r'[aeiouAEIOU]\?\s',               # Question mark after vowel followed by space (S?nia )
-            r'[a-zA-ZÀ-ÿ]\?\s+[a-zA-ZÀ-ÿ]',  # Question mark in middle of sentence (Jos? Silva)
-            r'^\?[a-zA-ZÀ-ÿ]',                # Question mark at start of word (?ndrea)
-            r'\?{2,}',                         # Multiple question marks (not normal punctuation)
-        ]
-        
-        for pattern in corruption_patterns:
-            if re.search(pattern, text):
-                return True
-        
-        return False
 
     def _get_int_value(self, parent: ET.Element, tag_name: str) -> Optional[int]:
         """Get integer value from XML element - standardized method used across all mappers"""

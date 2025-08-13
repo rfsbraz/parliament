@@ -212,6 +212,7 @@ class DatabaseDrivenImporter:
             "diplomas_aprovados": DiplomasAprovadosMapper,
             "orcamento_estado": OrcamentoEstadoMapper,
             "reunioes_visitas": ReunioesNacionaisMapper,
+            # Note: DAR (Diário da Assembleia da República) intentionally excluded for now
         }
     
     def _setup_console_logging(self):
@@ -360,7 +361,7 @@ class DatabaseDrivenImporter:
             if legislatura_filter:
                 query = query.filter(ImportStatus.legislatura == legislatura_filter)
             
-            # Order by import dependency order
+            # Order by import dependency order - get IDs only to avoid session issues
             files_to_process = query.all()
             
             # Sort by import order
@@ -370,37 +371,51 @@ class DatabaseDrivenImporter:
             if limit:
                 files_to_process = files_to_process[:limit]
             
-            total_files = len(files_to_process)
+            # Extract just the IDs and file names for processing
+            file_ids_and_names = [(record.id, record.file_name) for record in files_to_process]
+            
+            total_files = len(file_ids_and_names)
             self._print(f"   Found {total_files} files to process")
             logger.info(f"Found {total_files} files to process")
             
-            if not files_to_process:
+            if not file_ids_and_names:
                 self._print("   No files found matching criteria")
                 logger.info("No files found matching criteria")
                 return stats
             
-            # Process each file
-            for i, import_record in enumerate(files_to_process, 1):
+            # Process each file by re-querying from database
+            for i, (record_id, file_name) in enumerate(file_ids_and_names, 1):
+                # Re-query the record to get a fresh, attached instance
+                import_record = db_session.query(ImportStatus).filter(ImportStatus.id == record_id).first()
+                if not import_record:
+                    logger.warning(f"Import record with ID {record_id} not found, skipping")
+                    continue
+                
                 # Check for graceful shutdown request
                 if self.shutdown_requested:
                     self._print(f"\n>> Shutdown requested. Stopping after processing {i-1}/{total_files} files.")
                     break
                 
-                self._print(f"\n[{i}/{total_files}] Processing: {import_record.file_name}")
-                logger.info(f"Processing file {i}/{total_files}: {import_record.file_name}")
+                self._print(f"\n[{i}/{total_files}] Processing: {file_name}")
+                logger.info(f"Processing file {i}/{total_files}: {file_name}")
                 
                 try:
+                    
                     success = self._process_single_import(db_session, import_record, strict_mode)
+                    
+                    # Store attributes before commit to avoid detached instance issues
+                    records_imported = import_record.records_imported or 0
+                    error_message = import_record.error_message or 'Unknown error'
                     
                     if success:
                         stats['succeeded'] += 1
-                        stats['total_records'] += import_record.records_imported or 0
-                        self._print(f"   Success: {import_record.records_imported or 0} records imported")
-                        logger.info(f"Successfully processed {import_record.file_name}: {import_record.records_imported or 0} records imported")
+                        stats['total_records'] += records_imported
+                        self._print(f"   Success: {records_imported} records imported")
+                        logger.info(f"Successfully processed {file_name}: {records_imported} records imported")
                     else:
                         stats['failed'] += 1
-                        self._print(f"   Failed: {import_record.error_message or 'Unknown error'}")
-                        logger.error(f"Failed to process {import_record.file_name}: {import_record.error_message or 'Unknown error'}")
+                        self._print(f"   Failed: {error_message}")
+                        logger.error(f"Failed to process {file_name}: {error_message}")
                     
                     stats['processed'] += 1
                     
@@ -410,7 +425,7 @@ class DatabaseDrivenImporter:
                 except Exception as e:
                     stats['failed'] += 1
                     self._print(f"   Unexpected error: {e}")
-                    logger.error(f"Unexpected error processing {import_record.file_name}: {e}")
+                    logger.error(f"Unexpected error processing {file_name}: {e}")
                     db_session.rollback()
                     
                     if strict_mode:
@@ -434,6 +449,17 @@ class DatabaseDrivenImporter:
             if self.shutdown_requested:
                 self._print(f"     Shutdown requested, skipping file")
                 return False
+            
+            # Skip DAR files for now (too complex)
+            if import_record.category and "diário" in import_record.category.lower():
+                self._print(f"     Skipping DAR file (not implemented yet): {import_record.file_name}")
+                import_record.status = 'skipped_dar'
+                import_record.error_message = "DAR files temporarily skipped - not implemented yet"
+                import_record.updated_at = datetime.now()
+                db_session.commit()
+                # Refresh object after commit to keep it attached to session
+                db_session.refresh(import_record)
+                return True  # Return success to continue processing other files
             
             # Reset status from import_error to pending if retrying
             if import_record.status == 'import_error':
@@ -463,6 +489,8 @@ class DatabaseDrivenImporter:
             import_record.processing_started_at = datetime.now()
             import_record.updated_at = datetime.now()
             db_session.commit()
+            # Refresh object after commit to keep it attached to session
+            db_session.refresh(import_record)
             
             # Check for shutdown request after committing processing status
             if self.shutdown_requested:
@@ -471,6 +499,8 @@ class DatabaseDrivenImporter:
                 import_record.processing_started_at = None
                 import_record.updated_at = datetime.now()
                 db_session.commit()
+                # Refresh object after commit to keep it attached to session
+                db_session.refresh(import_record)
                 return False
             
             # Resolve file type if not set
@@ -536,6 +566,8 @@ class DatabaseDrivenImporter:
                 
                 # Commit the entire transaction (mapper data + import status) together
                 db_session.commit()
+                # Refresh object after commit to keep it attached to session
+                db_session.refresh(import_record)
                 
                 return True
                     
@@ -625,8 +657,11 @@ class DatabaseDrivenImporter:
         return response.content
     
     def _parse_xml_with_bom_handling(self, content: bytes) -> ET.Element:
-        """Parse XML content with BOM handling (same logic as unified_importer)"""
-        # Remove UTF-8 BOM if present
+        """Parse XML content with intelligent Portuguese-aware encoding detection"""
+        import re
+        
+        # Remove BOM if present
+        original_content = content
         if content.startswith(b'\xef\xbb\xbf'):
             content = content[3:]
         elif content.startswith(b'\xfe\xff'):
@@ -638,21 +673,122 @@ class DatabaseDrivenImporter:
         while content and content[0:1] != b'<' and content[0] > 127:
             content = content[1:]
         
-        # Try different encodings
-        try:
-            decoded_content = content.decode('utf-8')
-            return ET.fromstring(decoded_content)
-        except UnicodeDecodeError:
+        # Portuguese character patterns for validation
+        portuguese_chars = ['ã', 'ç', 'é', 'í', 'ó', 'ú', 'à', 'è', 'ò', 'â', 'ê', 'ô', 'õ', 'ñ']
+        portuguese_names = ['joão', 'josé', 'maria', 'antónio', 'gonçalves', 'fernandes', 'rodrigues', 'pereira']
+        
+        def _validate_portuguese_text(text: str) -> float:
+            """Score text quality based on Portuguese patterns (0.0-1.0)"""
+            if not text:
+                return 0.0
+                
+            text_lower = text.lower()
+            score = 0.0
+            
+            # Check for proper Portuguese characters (positive score)
+            portuguese_count = sum(1 for char in portuguese_chars if char in text_lower)
+            score += min(portuguese_count * 0.1, 0.5)
+            
+            # Check for common Portuguese names/words (positive score) 
+            name_count = sum(1 for name in portuguese_names if name in text_lower)
+            score += min(name_count * 0.1, 0.3)
+            
+            # Penalize corruption patterns (negative score)
+            corruption_patterns = [
+                r'[a-zA-Z]��[a-zA-Z]',  # Double-encoding corruption like Jo��o
+                r'\?\?+',                # Multiple question marks
+                r'[a-zA-Z]\?[a-zA-Z]',  # Single corruption like Jo?o  
+            ]
+            
+            for pattern in corruption_patterns:
+                corruption_count = len(re.findall(pattern, text))
+                score -= corruption_count * 0.2
+            
+            return max(0.0, min(1.0, score))
+        
+        def _detect_double_encoding(content_bytes: bytes) -> bytes:
+            """Detect and fix common double-encoding issues"""
+            # Try to detect UTF-8 bytes incorrectly decoded as Windows-1252 then re-encoded
             try:
-                decoded_content = content.decode('utf-16')
-                return ET.fromstring(decoded_content)
+                # Decode as UTF-8 first
+                utf8_text = content_bytes.decode('utf-8')
+                
+                # Check if this looks like double-encoded UTF-8
+                # Common pattern: UTF-8 → Windows-1252 → UTF-8
+                if '��' in utf8_text:  # Common double-encoding signature
+                    # Try reverse: UTF-8 → Latin-1 → UTF-8 (fix double encoding)
+                    try:
+                        # Get the original UTF-8 bytes
+                        latin1_bytes = utf8_text.encode('latin-1') 
+                        fixed_text = latin1_bytes.decode('utf-8')
+                        
+                        # Validate this looks more like Portuguese
+                        if _validate_portuguese_text(fixed_text) > _validate_portuguese_text(utf8_text):
+                            logger.info("Detected and corrected double-encoding corruption")
+                            return latin1_bytes
+                    except (UnicodeDecodeError, UnicodeEncodeError):
+                        pass
+                        
+                return content_bytes
             except UnicodeDecodeError:
-                try:
-                    decoded_content = content.decode('windows-1252')
-                    return ET.fromstring(decoded_content)
-                except UnicodeDecodeError:
-                    decoded_content = content.decode('latin-1')
-                    return ET.fromstring(decoded_content)
+                return content_bytes
+        
+        # Fix double-encoding if detected
+        content = _detect_double_encoding(content)
+        
+        # Encoding strategies with Portuguese validation
+        encoding_strategies = [
+            ('utf-8', 'UTF-8 with Portuguese validation'),
+            ('windows-1252', 'Windows-1252 (Portuguese legacy)'),
+            ('iso-8859-1', 'ISO-8859-1 (Latin-1)'),
+            ('iso-8859-15', 'ISO-8859-15 (Latin-9)'),
+            ('utf-16', 'UTF-16'),
+        ]
+        
+        best_result = None
+        best_score = -1.0
+        
+        for encoding, description in encoding_strategies:
+            try:
+                decoded_content = content.decode(encoding)
+                
+                # Parse XML to ensure it's valid
+                xml_root = ET.fromstring(decoded_content)
+                
+                # Get a sample of text for Portuguese validation
+                sample_text = decoded_content[:2000]  # First 2KB for quick validation
+                portuguese_score = _validate_portuguese_text(sample_text)
+                
+                logger.debug(f"Encoding {encoding}: Portuguese score = {portuguese_score:.2f}")
+                
+                if portuguese_score > best_score:
+                    best_result = xml_root
+                    best_score = portuguese_score
+                    best_encoding = encoding
+                    
+                # If we get a very high score, use it immediately
+                if portuguese_score > 0.8:
+                    logger.info(f"High-confidence encoding detected: {encoding} (score: {portuguese_score:.2f})")
+                    return xml_root
+                    
+            except (UnicodeDecodeError, ET.ParseError) as e:
+                logger.debug(f"Encoding {encoding} failed: {e}")
+                continue
+        
+        # Use the best result found
+        if best_result is not None:
+            logger.info(f"Selected encoding: {best_encoding} (Portuguese score: {best_score:.2f})")
+            return best_result
+        
+        # Fallback - force decode with errors='replace' if nothing worked
+        logger.warning("All encoding strategies failed, using UTF-8 with error replacement")
+        try:
+            decoded_content = content.decode('utf-8', errors='replace')
+            return ET.fromstring(decoded_content)
+        except ET.ParseError:
+            # Last resort - try latin-1 which can decode any byte sequence
+            decoded_content = content.decode('latin-1')
+            return ET.fromstring(decoded_content)
     
     def _get_category_pattern(self, file_type_filter: str) -> Optional[str]:
         """Map file type filter to category pattern"""
@@ -827,10 +963,8 @@ class DatabaseDrivenImporter:
 
                 logger.info(f"Found {len(tables)} tables to drop")
 
-                # Drop all tables except alembic_version
-                tables_to_drop = [table for table in tables if table != 'alembic_version']
-                
-                for table_name in tables_to_drop:
+                # Drop ALL tables including alembic_version
+                for table_name in tables:
                     connection.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
                     logger.info(f"Dropped table: {table_name}")
 
@@ -839,7 +973,7 @@ class DatabaseDrivenImporter:
 
                 connection.commit()
                 logger.info(
-                    f"FULL database cleanup completed successfully. Dropped {len(tables_to_drop)} tables"
+                    f"FULL database cleanup completed successfully. Dropped {len(tables)} tables"
                 )
 
             finally:

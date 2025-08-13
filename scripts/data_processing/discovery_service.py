@@ -321,19 +321,18 @@ class DiscoveryService:
                         }
                     )
 
-            # Reorder so DAR sections come last
-            dar_sections = []
-            other_sections = []
+            # Filter out DAR sections for now (skip DAR processing)
+            filtered_sections = []
             
             for link in recursos_links:
                 section_name = link["section_name"].lower()
                 if "dar" in section_name or "diário" in section_name or "diario" in section_name:
-                    dar_sections.append(link)
+                    # Skip DAR sections - too complex for now
+                    continue
                 else:
-                    other_sections.append(link)
+                    filtered_sections.append(link)
             
-            # Return other sections first, then DAR sections
-            return other_sections + dar_sections
+            return filtered_sections
 
         except Exception as e:
             self._print(f"ERROR: Error extracting recursos links: {e}")
