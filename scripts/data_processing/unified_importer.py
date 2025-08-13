@@ -685,9 +685,85 @@ class UnifiedImporter:
         pass
 
     def cleanup_database(self):
-        """Drop all tables and recreate schema from models"""
+        """Drop all tables except ImportStatus and reset ImportStatus to 'discovered'"""
         try:
             logger.info("Starting database cleanup...")
+
+            from sqlalchemy import text
+
+            from database.connection import get_engine
+
+            # Use centralized database connection
+            engine = get_engine()
+            connection = engine.connect()
+
+            try:
+                # Disable foreign key checks for MySQL
+                connection.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+
+                # Get all table names
+                result = connection.execute(text("SHOW TABLES"))
+                tables = [row[0] for row in result.fetchall()]
+
+                logger.info(f"Found {len(tables)} tables")
+
+                # Reset ImportStatus instead of dropping it
+                if 'import_status' in tables:
+                    logger.info("Resetting ImportStatus records to 'discovered' status...")
+                    
+                    # Count records before reset
+                    count_result = connection.execute(text("SELECT COUNT(*) FROM import_status"))
+                    total_records = count_result.fetchone()[0]
+                    
+                    # Reset all ImportStatus records to discovered state
+                    reset_query = text("""
+                        UPDATE import_status 
+                        SET 
+                            status = 'discovered',
+                            processing_started_at = NULL,
+                            processing_completed_at = NULL,
+                            error_message = NULL,
+                            records_imported = 0,
+                            error_count = 0,
+                            retry_at = NULL,
+                            updated_at = NOW()
+                        WHERE status != 'discovered'
+                    """)
+                    
+                    reset_result = connection.execute(reset_query)
+                    reset_count = reset_result.rowcount
+                    
+                    logger.info(f"Reset {reset_count} ImportStatus records out of {total_records} total records to 'discovered' status")
+
+                # Drop all other tables except ImportStatus and alembic_version
+                tables_to_preserve = {'import_status', 'alembic_version'}
+                tables_to_drop = [table for table in tables if table not in tables_to_preserve]
+                
+                logger.info(f"Dropping {len(tables_to_drop)} tables (preserving ImportStatus and alembic_version)")
+
+                for table_name in tables_to_drop:
+                    connection.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
+                    logger.info(f"Dropped table: {table_name}")
+
+                # Re-enable foreign key checks
+                connection.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+
+                connection.commit()
+                logger.info(
+                    f"Database cleanup completed successfully. Dropped {len(tables_to_drop)} tables, preserved and reset ImportStatus"
+                )
+
+            finally:
+                connection.close()
+
+        except Exception as e:
+            logger.error(f"Database cleanup failed: {e}")
+            raise
+
+    def full_cleanup_database(self):
+        """Drop ALL tables including ImportStatus (original cleanup behavior)"""
+        try:
+            logger.info("Starting FULL database cleanup (including ImportStatus)...")
 
             from sqlalchemy import text
 
@@ -708,7 +784,9 @@ class UnifiedImporter:
                 logger.info(f"Found {len(tables)} tables to drop")
 
                 # Drop all tables except alembic_version
-                for table_name in tables:
+                tables_to_drop = [table for table in tables if table != 'alembic_version']
+                
+                for table_name in tables_to_drop:
                     connection.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
                     logger.info(f"Dropped table: {table_name}")
 
@@ -717,14 +795,14 @@ class UnifiedImporter:
 
                 connection.commit()
                 logger.info(
-                    f"Database cleanup completed successfully. Dropped {len(tables)} tables"
+                    f"FULL database cleanup completed successfully. Dropped {len(tables_to_drop)} tables"
                 )
 
             finally:
                 connection.close()
 
         except Exception as e:
-            logger.error(f"Database cleanup failed: {e}")
+            logger.error(f"FULL database cleanup failed: {e}")
             raise
 
     def _run_coalition_detection(self, session):
@@ -793,7 +871,12 @@ def main():
     parser.add_argument(
         "--cleanup",
         action="store_true",
-        help="Create timestamped backup and truncate all database tables",
+        help="Drop all data tables (preserves ImportStatus and resets to 'discovered')",
+    )
+    parser.add_argument(
+        "--full-cleanup",
+        action="store_true",
+        help="Drop ALL tables including ImportStatus (original cleanup behavior)",
     )
     parser.add_argument(
         "--skip-video-processing",
@@ -825,14 +908,25 @@ def main():
     elif args.validate_schema:
         importer.validate_schema_coverage(args.file_type)
     elif args.cleanup:
-        # Confirm cleanup action
-        print("WARNING: This will create a backup and truncate ALL database tables!")
+        # Confirm cleanup action (preserves ImportStatus)
+        print("WARNING: This will drop all data tables but preserve ImportStatus records!")
+        print("All ImportStatus records will be reset to 'discovered' status for reprocessing.")
         print(f"Database: {importer.db_path}")
         confirmation = input("Are you sure you want to continue? (yes/no): ")
         if confirmation.lower() == "yes":
             importer.cleanup_database()
         else:
             print("Cleanup cancelled.")
+    elif args.full_cleanup:
+        # Confirm full cleanup action (drops everything)
+        print("WARNING: This will drop ALL database tables including ImportStatus!")
+        print("You will need to run discovery again to find files.")
+        print(f"Database: {importer.db_path}")
+        confirmation = input("Are you sure you want to continue? (yes/no): ")
+        if confirmation.lower() == "yes":
+            importer.full_cleanup_database()
+        else:
+            print("Full cleanup cancelled.")
     else:
         # Default behavior: process files from source directories
         importer.process_files(
