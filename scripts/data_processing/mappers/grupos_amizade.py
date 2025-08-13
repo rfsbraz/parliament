@@ -28,8 +28,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Optional, Set, List, Tuple
 
-from .enhanced_base_mapper import SchemaMapper, SchemaError
-from .common_utilities import DataValidationUtils
+from .enhanced_base_mapper import EnhancedSchemaMapper, SchemaError
 
 # Import our models
 import sys
@@ -44,7 +43,7 @@ from database.models import (
 logger = logging.getLogger(__name__)
 
 
-class GruposAmizadeStandaloneMapper(SchemaMapper):
+class GruposAmizadeMapper(EnhancedSchemaMapper):
     """
     Schema mapper for standalone parliamentary friendship groups files
     
@@ -68,9 +67,9 @@ class GruposAmizadeStandaloneMapper(SchemaMapper):
         self.processed_participants = 0
         
     def get_expected_fields(self) -> Set[str]:
-        """Define expected XML fields for validation"""
+        """Define expected XML fields for validation - Updated with Reunioes support"""
         return {
-            # Root structure
+            # Root structure  
             'ArrayOfGrupoDeAmizadeOut',
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut',
             
@@ -90,9 +89,20 @@ class GruposAmizadeStandaloneMapper(SchemaMapper):
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Composicao.DelegacaoPermanenteMembroOut.DataInicio',
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Composicao.DelegacaoPermanenteMembroOut.DataFim',
             
-            # Meetings and visits
+            # Meetings and visits - dual structure support (Reunioes and Visitas)
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes',
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Visitas',
+            
+            # Meetings under Reunioes structure
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao',
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.Id',
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.Nome',
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.Tipo',
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.Local',
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.DataInicio',
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.DataFim',
+            
+            # Meetings under Visitas structure (legacy support)
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Visitas.GrupoDeAmizadeReuniao',
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Visitas.GrupoDeAmizadeReuniao.Id',
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Visitas.GrupoDeAmizadeReuniao.Nome',
@@ -101,7 +111,16 @@ class GruposAmizadeStandaloneMapper(SchemaMapper):
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Visitas.GrupoDeAmizadeReuniao.DataInicio',
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Visitas.GrupoDeAmizadeReuniao.DataFim',
             
-            # Meeting participants
+            # Participants under Reunioes structure
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.Participantes',
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.Participantes.RelacoesExternasParticipantes',
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.Participantes.RelacoesExternasParticipantes.Id',
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.Participantes.RelacoesExternasParticipantes.Nome',
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.Participantes.RelacoesExternasParticipantes.Tipo',
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.Participantes.RelacoesExternasParticipantes.Gp',
+            'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Reunioes.GrupoDeAmizadeReuniao.Participantes.RelacoesExternasParticipantes.Leg',
+            
+            # Participants under Visitas structure (legacy support)
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Visitas.GrupoDeAmizadeReuniao.Participantes',
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Visitas.GrupoDeAmizadeReuniao.Participantes.RelacoesExternasParticipantes',
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Visitas.GrupoDeAmizadeReuniao.Participantes.RelacoesExternasParticipantes.Id',
@@ -111,48 +130,48 @@ class GruposAmizadeStandaloneMapper(SchemaMapper):
             'ArrayOfGrupoDeAmizadeOut.GrupoDeAmizadeOut.Visitas.GrupoDeAmizadeReuniao.Participantes.RelacoesExternasParticipantes.Leg'
         }
     
-    def process_file(self, file_path: str) -> bool:
-        """
-        Process a standalone parliamentary friendship groups XML file
+    def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
+        """Map parliamentary friendship groups to database"""
+        results = {"records_processed": 0, "records_imported": 0, "errors": []}
         
-        Args:
-            file_path: Path to GrupoDeAmizadeXX.xml file
-            
-        Returns:
-            True if processing succeeded, False otherwise
-        """
         try:
-            logger.info(f"Processing GPA standalone file: {file_path}")
-            
-            # Parse XML file
-            tree = ET.parse(file_path)
-            root = tree.getroot()
+            # Validate schema coverage according to strict mode
+            self.validate_schema_coverage(xml_root, file_info, strict_mode)
             
             # Validate root structure
-            if root.tag != 'ArrayOfGrupoDeAmizadeOut':
-                raise SchemaError(f"Unexpected root element: {root.tag}, expected: ArrayOfGrupoDeAmizadeOut")
+            if xml_root.tag != 'ArrayOfGrupoDeAmizadeOut':
+                raise SchemaError(f"Unexpected root element: {xml_root.tag}, expected: ArrayOfGrupoDeAmizadeOut")
             
             # Process each friendship group
-            grupo_elements = root.findall('GrupoDeAmizadeOut')
+            grupo_elements = xml_root.findall('GrupoDeAmizadeOut')
             if not grupo_elements:
-                logger.warning(f"No friendship groups found in file: {file_path}")
-                return True
+                logger.warning(f"No friendship groups found in file")
+                return results
                 
             for grupo_element in grupo_elements:
-                self._process_grupo_amizade(grupo_element)
+                try:
+                    success = self._process_grupo_amizade(grupo_element)
+                    results["records_processed"] += 1
+                    if success:
+                        results["records_imported"] += 1
+                except Exception as e:
+                    error_msg = f"Group processing error: {str(e)}"
+                    logger.error(error_msg)
+                    results["errors"].append(error_msg)
+                    results["records_processed"] += 1
+                    raise RuntimeError(f"Data integrity issue: {error_msg}")
                 
-            logger.info(f"Successfully processed {len(grupo_elements)} friendship groups from {file_path}")
+            logger.info(f"Successfully processed {len(grupo_elements)} friendship groups")
             logger.info(f"Total processed: {self.processed_groups} groups, {self.processed_members} members, "
                        f"{self.processed_meetings} meetings, {self.processed_participants} participants")
             
-            return True
+            return results
             
-        except ET.ParseError as e:
-            logger.error(f"XML parsing error in file {file_path}: {e}")
-            return False
         except Exception as e:
-            logger.error(f"Error processing file {file_path}: {e}")
-            return False
+            error_msg = f"Critical error processing friendship groups: {str(e)}"
+            logger.error(error_msg)
+            results["errors"].append(error_msg)
+            raise RuntimeError(f"Data integrity issue: {error_msg}")
     
     def _process_grupo_amizade(self, grupo_element: ET.Element) -> Optional[GrupoAmizadeStandalone]:
         """Process a single friendship group element"""
@@ -175,10 +194,8 @@ class GruposAmizadeStandaloneMapper(SchemaMapper):
                 logger.warning(f"Friendship group {group_id} missing required Legislatura field, skipping")
                 return None
             
-            # Parse data criacao using common utilities
-            data_criacao = None
-            if data_criacao_str:
-                data_criacao = DataValidationUtils.parse_date_flexible(data_criacao_str)
+            # Parse data criacao using standard base mapper method
+            data_criacao = self._parse_date(data_criacao_str) if data_criacao_str else None
             
             # Check if group already exists (avoid duplicates)
             existing_group = self.session.query(GrupoAmizadeStandalone).filter_by(
@@ -215,15 +232,24 @@ class GruposAmizadeStandaloneMapper(SchemaMapper):
                 for membro_element in composicao.findall('DelegacaoPermanenteMembroOut'):
                     self._process_membro(membro_element, grupo.id)
             
-            # Process meetings/visits
+            # Process meetings/visits - handle both Reunioes and Visitas structures
+            reunioes = grupo_element.find('Reunioes')
             visitas = grupo_element.find('Visitas')
-            if visitas is not None:
+            
+            if reunioes is not None or visitas is not None:
                 # Clear existing meetings for updates
                 if existing_group:
                     self.session.query(GrupoAmizadeReuniao).filter_by(grupo_amizade_id=grupo.id).delete()
                 
-                for reuniao_element in visitas.findall('GrupoDeAmizadeReuniao'):
-                    self._process_reuniao(reuniao_element, grupo.id)
+                # Process meetings from Reunioes structure (primary)
+                if reunioes is not None:
+                    for reuniao_element in reunioes.findall('GrupoDeAmizadeReuniao'):
+                        self._process_reuniao(reuniao_element, grupo.id, event_source="Reunioes")
+                
+                # Process meetings from Visitas structure (fallback/legacy)
+                if visitas is not None:
+                    for reuniao_element in visitas.findall('GrupoDeAmizadeReuniao'):
+                        self._process_reuniao(reuniao_element, grupo.id, event_source="Visitas")
             
             self.processed_groups += 1
             logger.debug(f"Processed friendship group: {group_id} ({nome}) - Legislature {legislatura}")
@@ -248,13 +274,9 @@ class GruposAmizadeStandaloneMapper(SchemaMapper):
                 logger.warning("Group member missing required Nome field, skipping")
                 return None
             
-            # Parse dates using common utilities  
-            data_inicio = None
-            data_fim = None
-            if data_inicio_str:
-                data_inicio = DataValidationUtils.parse_date_flexible(data_inicio_str)
-            if data_fim_str:
-                data_fim = DataValidationUtils.parse_date_flexible(data_fim_str)
+            # Parse dates using standard base mapper method
+            data_inicio = self._parse_date(data_inicio_str) if data_inicio_str else None
+            data_fim = self._parse_date(data_fim_str) if data_fim_str else None
             
             # Create member record
             membro = GrupoAmizadeMembro(
@@ -277,7 +299,7 @@ class GruposAmizadeStandaloneMapper(SchemaMapper):
             logger.error(f"Error processing group member: {e}")
             return None
     
-    def _process_reuniao(self, reuniao_element: ET.Element, grupo_id: int) -> Optional[GrupoAmizadeReuniao]:
+    def _process_reuniao(self, reuniao_element: ET.Element, grupo_id: int, event_source: str = "Visitas") -> Optional[GrupoAmizadeReuniao]:
         """Process a single meeting/visit element"""
         try:
             # Extract meeting information
@@ -299,11 +321,9 @@ class GruposAmizadeStandaloneMapper(SchemaMapper):
                 logger.warning(f"Meeting {meeting_id} missing required DataInicio field, skipping")
                 return None
             
-            # Parse dates using common utilities
-            data_inicio = DataValidationUtils.parse_date_flexible(data_inicio_str)
-            data_fim = None
-            if data_fim_str:
-                data_fim = DataValidationUtils.parse_date_flexible(data_fim_str)
+            # Parse dates using standard base mapper method
+            data_inicio = self._parse_date(data_inicio_str) if data_inicio_str else None
+            data_fim = self._parse_date(data_fim_str) if data_fim_str else None
             
             if not data_inicio:
                 logger.warning(f"Meeting {meeting_id} failed to parse DataInicio: {data_inicio_str}")
@@ -317,7 +337,8 @@ class GruposAmizadeStandaloneMapper(SchemaMapper):
                 tipo=tipo,
                 local=local,
                 data_inicio=data_inicio,
-                data_fim=data_fim
+                data_fim=data_fim,
+                event_source=event_source
             )
             
             self.session.add(reuniao)
@@ -391,7 +412,7 @@ class GruposAmizadeStandaloneMapper(SchemaMapper):
         """Safely extract integer value from XML element"""
         text_value = self._get_text_value(element, tag)
         if text_value:
-            return DataValidationUtils.safe_int_convert(text_value)
+            return self._safe_int(text_value)
         return None
     
     def get_processing_stats(self) -> Dict[str, int]:

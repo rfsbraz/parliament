@@ -51,7 +51,7 @@ from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
 
-from .enhanced_base_mapper import SchemaMapper, SchemaError
+from .enhanced_base_mapper import EnhancedSchemaMapper, SchemaError
 
 # Import our models
 import sys
@@ -64,7 +64,7 @@ from database.translators.reunioes_visitas import meeting_visit_translator
 logger = logging.getLogger(__name__)
 
 
-class ReunioesNacionaisMapper(SchemaMapper):
+class ReunioesNacionaisMapper(EnhancedSchemaMapper):
     """
     Schema mapper for national meetings and visits files (ReunioesNacionais.xml)
     
@@ -82,11 +82,15 @@ class ReunioesNacionaisMapper(SchemaMapper):
     
     def get_expected_fields(self) -> Set[str]:
         return {
-            # Root elements
+            # Root elements - Original format
             'ArrayOfReuniao',
             'ArrayOfReuniao.Reuniao',
             
-            # Main meeting fields (XML uses lowercase)
+            # Root elements - ReuniaoNacionalOut format
+            'ArrayOfReuniaoNacionalOut',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut',
+            
+            # Main meeting fields (XML uses lowercase) - Original format
             'ArrayOfReuniao.Reuniao.id',
             'ArrayOfReuniao.Reuniao.nome',
             'ArrayOfReuniao.Reuniao.tipo',
@@ -99,7 +103,18 @@ class ReunioesNacionaisMapper(SchemaMapper):
             'ArrayOfReuniao.Reuniao.legislatura',
             'ArrayOfReuniao.Reuniao.sessao',
             
-            # Participants (XML uses lowercase)
+            # Main meeting fields - ReuniaoNacionalOut format (CamelCase)
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Id',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Nome',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Tipo',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.DataInicio',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.DataFim',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Local',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Promotor',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Legislatura',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Sessao',
+            
+            # Participants (XML uses lowercase) - Original format
             'ArrayOfReuniao.Reuniao.participantes',
             'ArrayOfReuniao.Reuniao.participantes.Participante',
             'ArrayOfReuniao.Reuniao.participantes.Participante.tipo',
@@ -107,7 +122,16 @@ class ReunioesNacionaisMapper(SchemaMapper):
             'ArrayOfReuniao.Reuniao.participantes.Participante.gp',
             'ArrayOfReuniao.Reuniao.participantes.Participante.id',
             'ArrayOfReuniao.Reuniao.participantes.Participante.leg',
-            'ArrayOfReuniao.Reuniao.participantes.Participante.pais'
+            'ArrayOfReuniao.Reuniao.participantes.Participante.pais',
+            
+            # Participants - ReuniaoNacionalOut format (CamelCase)
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Participantes',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Participantes.RelacoesExternasParticipantes',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Participantes.RelacoesExternasParticipantes.Id',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Participantes.RelacoesExternasParticipantes.Nome',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Participantes.RelacoesExternasParticipantes.Tipo',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Participantes.RelacoesExternasParticipantes.Gp',
+            'ArrayOfReuniaoNacionalOut.ReuniaoNacionalOut.Participantes.RelacoesExternasParticipantes.Leg'
         }
     
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
@@ -121,12 +145,27 @@ class ReunioesNacionaisMapper(SchemaMapper):
             # Validate schema coverage according to strict mode
             self.validate_schema_coverage(xml_root, file_info, strict_mode)
             
-            # Extract legislatura from filename or XML
-            legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+            # Get legislatura from file_info (from ImportStatus) or fallback to filename extraction
+            logger.debug(f"ReunioesNacionais: file_info contents: {file_info}")
+            
+            if 'legislatura' in file_info and file_info['legislatura']:
+                legislatura_sigla = file_info['legislatura']
+                logger.info(f"Using legislatura from file_info: {legislatura_sigla}")
+            else:
+                logger.warning(f"No legislatura in file_info, attempting filename extraction from: {file_info.get('file_path', 'NO_PATH')}")
+                try:
+                    # Fallback to filename extraction
+                    legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+                    logger.info(f"Extracted legislatura from filename: {legislatura_sigla}")
+                except Exception as e:
+                    logger.error(f"Failed to extract legislatura from filename: {e}")
+                    raise SchemaError(f"Could not determine legislatura from file_info or filename: {e}")
+            
             legislatura = self._get_or_create_legislatura(legislatura_sigla)
             
-            # Process national meetings
-            for reuniao in xml_root.findall('.//Reuniao'):
+            # Process national meetings - handle both XML formats
+            meetings = xml_root.findall('.//Reuniao') or xml_root.findall('.//ReuniaoNacionalOut')
+            for reuniao in meetings:
                 try:
                     success = self._process_meeting(reuniao, legislatura)
                     results['records_processed'] += 1
@@ -137,11 +176,7 @@ class ReunioesNacionaisMapper(SchemaMapper):
                     logger.error(error_msg)
                     results['errors'].append(error_msg)
                     results['records_processed'] += 1
-                    self.session.rollback()
-                    if strict_mode:
-                        logger.error("STRICT MODE: Exiting due to meeting processing error")
-                        raise SchemaError(f"Meeting processing failed in strict mode: {e}")
-                    continue
+                    raise RuntimeError(f"Data integrity issue: {error_msg}")
             
             # Commit all changes
             return results
@@ -157,15 +192,15 @@ class ReunioesNacionaisMapper(SchemaMapper):
     def _process_meeting(self, reuniao: ET.Element, legislatura: Legislatura) -> bool:
         """Process individual national meeting record"""
         try:
-            # Extract basic fields (XML uses lowercase tags)
-            reuniao_id = self._get_int_value(reuniao, 'id')
-            nome = self._get_text_value(reuniao, 'nome')
-            tipo = self._get_text_value(reuniao, 'tipo')
+            # Extract basic fields - try both lowercase (original) and CamelCase (ReuniaoNacionalOut) formats
+            reuniao_id = self._get_int_value(reuniao, 'id') or self._get_int_value(reuniao, 'Id')
+            nome = self._get_text_value(reuniao, 'nome') or self._get_text_value(reuniao, 'Nome')
+            tipo = self._get_text_value(reuniao, 'tipo') or self._get_text_value(reuniao, 'Tipo')
             tipo_designacao = self._get_text_value(reuniao, 'tipoDesignacao')
-            data_inicio_str = self._get_text_value(reuniao, 'dataInicio')
-            data_fim_str = self._get_text_value(reuniao, 'dataFim')
-            local = self._get_text_value(reuniao, 'local')
-            promotor = self._get_text_value(reuniao, 'promotor')
+            data_inicio_str = self._get_text_value(reuniao, 'dataInicio') or self._get_text_value(reuniao, 'DataInicio')
+            data_fim_str = self._get_text_value(reuniao, 'dataFim') or self._get_text_value(reuniao, 'DataFim')
+            local = self._get_text_value(reuniao, 'local') or self._get_text_value(reuniao, 'Local')
+            promotor = self._get_text_value(reuniao, 'promotor') or self._get_text_value(reuniao, 'Promotor')
             observacoes = self._get_text_value(reuniao, 'observacoes')
             
             if not reuniao_id:
@@ -241,30 +276,29 @@ class ReunioesNacionaisMapper(SchemaMapper):
             reuniao_id=meeting_record.id
         ).delete()
         
-        # Process participants (XML uses lowercase 'participantes')
-        participantes_element = reuniao.find('participantes')
+        # Process participants - handle both XML formats
+        participantes_element = reuniao.find('participantes') or reuniao.find('Participantes')
         if participantes_element is not None:
-            for participante in participantes_element.findall('Participante'):
+            # Handle both 'Participante' and 'RelacoesExternasParticipantes' structures
+            participants = participantes_element.findall('Participante') or \
+                          participantes_element.findall('RelacoesExternasParticipantes')
+            for participante in participants:
                 self._process_participant(participante, meeting_record)
     
     def _process_participant(self, participante: ET.Element, meeting_record: ReuniaoNacional) -> None:
         """Process individual meeting participant"""
         try:
-            # Extract participant fields (XML uses lowercase tags)
-            tipo = self._get_text_value(participante, 'tipo')
-            nome = self._get_text_value(participante, 'nome')
-            gp = self._get_text_value(participante, 'gp')  # Parliamentary group
-            deputy_id = self._get_int_value(participante, 'id')
+            # Extract participant fields - handle both lowercase and CamelCase formats
+            tipo = self._get_text_value(participante, 'tipo') or self._get_text_value(participante, 'Tipo')
+            nome = self._get_text_value(participante, 'nome') or self._get_text_value(participante, 'Nome')
+            gp = self._get_text_value(participante, 'gp') or self._get_text_value(participante, 'Gp')
+            deputy_id = self._get_int_value(participante, 'id') or self._get_int_value(participante, 'Id')
             
             if not nome:
                 logger.warning("Participant missing name - skipping")
                 return
                 
-            # Validate participant type using translator
-            if tipo:
-                translation = meeting_visit_translator.get_participant_type(tipo)
-                if not translation or not translation.is_valid:
-                    logger.warning(f"Unknown participant type '{tipo}' for participant {nome}")
+            # Store participant type as-is from source data (translator available for runtime interpretation)
             
             # Try to find or create deputy record if we have deputy_id
             deputado = None

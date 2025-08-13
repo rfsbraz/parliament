@@ -42,6 +42,7 @@ from scripts.data_processing.mappers import (
     DelegacaoEventualMapper,
     DelegacaoPermanenteMapper,
     DiplomasAprovadosMapper,
+    GruposAmizadeMapper,
     InformacaoBaseMapper,
     InitiativasMapper,
     IntervencoesMapper,
@@ -52,6 +53,7 @@ from scripts.data_processing.mappers import (
     RegistoInteressesMapper,
     ReunioesNacionaisMapper,
 )
+from scripts.data_processing.mappers.enhanced_base_mapper import SchemaError
 from scripts.data_processing.file_type_resolver import FileTypeResolver
 
 # Configure logging with Unicode-safe console handler
@@ -174,6 +176,8 @@ class DatabaseDrivenImporter:
         "delegacao_eventual",
         "delegacao_permanente",
         "registo_interesses",
+        "grupos_amizade",
+        "reunioes_visitas",
     ]
     
     def __init__(self, allowed_file_types: List[str] = None, quiet: bool = False, orchestrator_mode: bool = False):
@@ -206,6 +210,7 @@ class DatabaseDrivenImporter:
             "cooperacao": CooperacaoMapper,
             "delegacao_eventual": DelegacaoEventualMapper,
             "delegacao_permanente": DelegacaoPermanenteMapper,
+            "grupos_amizade": GruposAmizadeMapper,
             "informacao_base": InformacaoBaseMapper,
             "peticoes": PeticoesMapper,
             "perguntas_requerimentos": PerguntasRequerimentosMapper,
@@ -557,11 +562,16 @@ class DatabaseDrivenImporter:
                 import_record.status = 'completed'
                 import_record.processing_completed_at = datetime.now()
                 import_record.records_imported = results.get('records_imported', 0)
-                import_record.error_message = (
-                    "; ".join(results.get('errors', []))
-                    if results.get('errors')
-                    else None
-                )
+                
+                # Clear all error-related fields on successful completion
+                import_record.error_message = None
+                import_record.error_count = 0
+                import_record.retry_at = None
+                
+                # Store any validation warnings (not errors) if present
+                if results.get('errors'):
+                    import_record.error_message = "; ".join(results.get('errors', []))
+                
                 import_record.updated_at = datetime.now()
                 
                 # Commit the entire transaction (mapper data + import status) together
@@ -571,6 +581,23 @@ class DatabaseDrivenImporter:
                 
                 return True
                     
+            except SchemaError as e:
+                # Rollback the failed transaction (both mapper data and import status changes)
+                db_session.rollback()
+                
+                error_msg = f"Schema coverage violation - unmapped fields detected: {str(e)}"
+                logger.error(f"Schema error for {import_record.file_name}: {error_msg}")
+                import_record.status = 'import_error'
+                import_record.error_message = error_msg
+                import_record.error_count = (import_record.error_count or 0) + 1
+                import_record.retry_at = self._calculate_retry_time(import_record.error_count)
+                import_record.processing_completed_at = datetime.now()
+                import_record.updated_at = datetime.now()
+                
+                # Commit only the error record (not the failed mapper data)
+                db_session.commit()
+                return False
+                
             except Exception as e:
                 # Rollback the failed transaction (both mapper data and import status changes)
                 db_session.rollback()
@@ -603,7 +630,7 @@ class DatabaseDrivenImporter:
             return False
     
     def _download_file(self, import_record: ImportStatus) -> bool:
-        """Download file content and update record"""
+        """Download file content and save to file system"""
         try:
             self._print(f"        Downloading from: {import_record.file_url}")
             
@@ -613,15 +640,36 @@ class DatabaseDrivenImporter:
             # Calculate file hash
             file_hash = hashlib.sha1(response.content).hexdigest()
             
+            # Create downloads directory structure
+            downloads_dir = os.path.join(os.path.dirname(__file__), "data", "downloads")
+            os.makedirs(downloads_dir, exist_ok=True)
+            
+            # Create category-specific subdirectory
+            if import_record.category:
+                category_dir = os.path.join(downloads_dir, import_record.category.replace(' ', '_').replace('/', '_'))
+                os.makedirs(category_dir, exist_ok=True)
+            else:
+                category_dir = downloads_dir
+            
+            # Generate unique filename with hash to avoid collisions
+            base_name = os.path.splitext(import_record.file_name)[0]
+            extension = os.path.splitext(import_record.file_name)[1] or '.xml'
+            file_name = f"{base_name}_{file_hash[:8]}{extension}"
+            file_path = os.path.join(category_dir, file_name)
+            
+            # Save file to disk
+            with open(file_path, 'wb') as f:
+                f.write(response.content)
+            
             # Store file metadata
             import_record.file_hash = file_hash
             import_record.file_size = len(response.content)
+            import_record.file_path = file_path
             import_record.status = 'pending'
             
-            # Store content temporarily (in a real implementation, you might use Redis or file system)
-            import_record._temp_content = response.content
-            
             self._print(f"        Downloaded {len(response.content):,} bytes")
+            self._print(f"        Saved to: {file_path}")
+            logger.info(f"Saved downloaded file to: {file_path}")
             return True
             
         except Exception as e:
@@ -630,6 +678,7 @@ class DatabaseDrivenImporter:
             import_record.error_message = error_msg
             import_record.error_count = (import_record.error_count or 0) + 1
             self._print(f"        Download failed: {error_msg}")
+            logger.error(f"Download failed for {import_record.file_name}: {error_msg}")
             return False
     
     def _has_file_content(self, import_record: ImportStatus) -> bool:
@@ -647,11 +696,11 @@ class DatabaseDrivenImporter:
             with open(import_record.file_path, 'rb') as f:
                 return f.read()
         
-        # Fall back to memory content
+        # Fall back to memory content (for backward compatibility)
         if hasattr(import_record, '_temp_content'):
             return import_record._temp_content
         
-        # Last resort: re-download
+        # Last resort: re-download (this shouldn't happen in normal operation)
         response = safe_request_get(import_record.file_url)
         response.raise_for_status()
         return response.content
@@ -819,11 +868,16 @@ class DatabaseDrivenImporter:
             
         category_lower = category.lower()
         
-        if 'registo' in category_lower and 'biográfico' in category_lower:
+        # Debug: log unknown categories to help identify mapping issues
+        # (This will be useful for troubleshooting other missing mappings)
+        
+        # Handle various forms of "Registo Biográfico"
+        if ('registo' in category_lower and ('biográfico' in category_lower or 'biografico' in category_lower)) or \
+           'registo biografico' in category_lower or 'registo biográfico' in category_lower:
             return 'registo_biografico'
         elif 'iniciativas' in category_lower:
             return 'iniciativas'
-        elif 'intervenções' in category_lower:
+        elif 'intervenções' in category_lower or 'intervencoes' in category_lower:
             return 'intervencoes'
         elif 'registo' in category_lower and 'interesse' in category_lower:
             return 'registo_interesses'
@@ -851,9 +905,17 @@ class DatabaseDrivenImporter:
             return 'diplomas_aprovados'
         elif 'orçamento' in category_lower or 'orcamento' in category_lower:
             return 'orcamento_estado'
+        elif category_lower in ['o e', 'oe', 'o_e', 'orçamento do estado', 'orcamento do estado']:
+            return 'orcamento_estado'
         elif 'reuniões' in category_lower or 'reunioes' in category_lower:
             return 'reunioes_visitas'
+        elif 'grupos' in category_lower and 'amizade' in category_lower:
+            return 'grupos_amizade'
+        elif category_lower in ['g p a', 'gpa']:
+            return 'grupos_amizade'
         
+        # Log unmapped categories for debugging
+        logger.warning(f"No mapper key found for category: '{category}' (normalized: '{category_lower}')")
         return None
     
     def _sort_by_import_order(self, import_records: List[ImportStatus]) -> List[ImportStatus]:

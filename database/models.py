@@ -2906,7 +2906,11 @@ class PerguntaRequerimentoResposta(Base):
     Based on Requerimentos_RespostasOut structure from official documentation.
     Contains response information for parliamentary questions and requests.
 
-    XML Structure Mapping (Requerimentos_RespostasOut):
+    XML Structure Mapping (supports two response types):
+    1. Regular responses (under Destinatarios/respostas) - with destinatario_id
+    2. Direct responses (under RespostasSPerguntas) - with NULL destinatario_id
+    
+    Fields:
     - dataResposta: Data da resposta (XML: dataResposta)
     - docRemetida: Documentação remetida com a resposta (XML: docRemetida)
     - Entidade: Entidade que elaborou a resposta (XML: Entidade)
@@ -2918,7 +2922,8 @@ class PerguntaRequerimentoResposta(Base):
 
     id = Column(Integer, primary_key=True)
     destinatario_id = Column(
-        Integer, ForeignKey("pergunta_requerimento_destinatarios.id"), nullable=False
+        Integer, ForeignKey("pergunta_requerimento_destinatarios.id"), nullable=True,
+        comment="Recipient ID (NULL for direct responses like RespostasSPerguntas)"
     )
 
     # Response fields from XML mapping
@@ -2930,6 +2935,10 @@ class PerguntaRequerimentoResposta(Base):
     doc_remetida = Column(
         String(200), comment="Documentação remetida com a resposta (XML: docRemetida)"
     )
+    
+    # File attachment fields from ficheiroComTipo structure
+    ficheiro_url = Column(Text, comment="File attachment URL (XML: ficheiroComTipo.url)")
+    ficheiro_tipo = Column(String(50), comment="File attachment type (XML: ficheiroComTipo.tipo)")
 
     created_at = Column(DateTime, default=func.now())
 
@@ -7710,8 +7719,13 @@ class GrupoAmizadeReuniao(Base):
     Represents meetings, visits, and other events organized by parliamentary
     friendship groups, including participant information.
 
-    XML Structure: GrupoDeAmizadeOut/Visitas/GrupoDeAmizadeReuniao
-    Note: Despite being under "Visitas", these include both meetings and visits
+    XML Structure: 
+    - GrupoDeAmizadeOut/Reunioes/GrupoDeAmizadeReuniao (meetings)
+    - GrupoDeAmizadeOut/Visitas/GrupoDeAmizadeReuniao (visits)
+    
+    The event_source field distinguishes between the two types:
+    - 'Reunioes': Formal meetings held by the friendship group
+    - 'Visitas': Visits and informal events
     """
 
     __tablename__ = "grupos_amizade_reunioes"
@@ -7728,6 +7742,13 @@ class GrupoAmizadeReuniao(Base):
     local = Column(String(500))  # XML: Local
     data_inicio = Column(DateTime, nullable=False)  # XML: DataInicio
     data_fim = Column(DateTime)  # XML: DataFim (rarely used)
+    
+    # Event classification based on XML structure source
+    event_source = Column(
+        String(20), 
+        nullable=False, 
+        comment="Source XML structure: 'Reunioes' for meetings, 'Visitas' for visits"
+    )
 
     # Metadata
     created_at = Column(DateTime, default=func.now())
@@ -8698,6 +8719,8 @@ class ReuniaoNacional(Base):
     data_inicio = Column(Date, comment="Meeting start date (XML: DataInicio)")
     data_fim = Column(Date, comment="Meeting end date (XML: DataFim)")
     promotor = Column(Text, comment="Meeting organizer/promoter (XML: Promotor)")
+    observacoes = Column(Text, comment="Meeting observations/notes (XML: observacoes)")
+    tipo_designacao = Column(String(100), comment="Meeting type designation (XML: tipoDesignacao)")
 
     # Metadata
     created_at = Column(DateTime, default=func.now())

@@ -667,8 +667,8 @@ class XMLProcessingMixin:
         Get boolean value from XML element - standardized method used across all mappers
         
         Handles common boolean representations:
-        - True: 'true', '1', 'yes', 'sim', 'True', 'TRUE'
-        - False: 'false', '0', 'no', 'não', 'False', 'FALSE'
+        - True: 'true', '1', 'yes', 'sim', 's', 'True', 'TRUE'
+        - False: 'false', '0', 'no', 'não', 'nao', 'n', 'False', 'FALSE'
         - None: empty, None, or unrecognized values
         
         Args:
@@ -685,10 +685,10 @@ class XMLProcessingMixin:
         value_lower = text_value.lower().strip()
         
         # True values (English and Portuguese)
-        if value_lower in ('true', '1', 'yes', 'sim'):
+        if value_lower in ('true', '1', 'yes', 'sim', 's'):
             return True
         # False values (English and Portuguese) 
-        elif value_lower in ('false', '0', 'no', 'não', 'nao'):
+        elif value_lower in ('false', '0', 'no', 'não', 'nao', 'n'):
             return False
         
         # Log warning for unrecognized values
@@ -759,27 +759,22 @@ class EnhancedSchemaMapper(
     def validate_schema_coverage(
         self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False
     ):
-        """Validate schema coverage and handle unmapped fields according to strict mode"""
+        """Validate schema coverage and raise SchemaError if unmapped fields are found"""
         unmapped_fields = self.check_schema_coverage(xml_root)
         if unmapped_fields:
             unmapped_summary = ", ".join(list(unmapped_fields)[:10])
-            if strict_mode:
-                # In strict mode, exit immediately on unmapped fields
-                import sys
-
+            
+            logger.error(
+                f"Schema coverage violation: Unmapped fields detected in {file_info.get('file_path', 'unknown file')}"
+            )
+            logger.error(f"Unmapped fields: {unmapped_summary}")
+            if len(unmapped_fields) > 10:
                 logger.error(
-                    f"STRICT MODE: Unmapped fields detected in {file_info.get('file_path', 'unknown file')}"
+                    f"... and {len(unmapped_fields) - 10} more unmapped fields"
                 )
-                logger.error(f"Unmapped fields: {unmapped_summary}")
-                if len(unmapped_fields) > 10:
-                    logger.error(
-                        f"... and {len(unmapped_fields) - 10} more unmapped fields"
-                    )
-                logger.error("STRICT MODE: Raising exception due to schema coverage violation")
-                raise RuntimeError(f"STRICT MODE - Schema coverage violation: {unmapped_summary}")
-            else:
-                # Normal mode, just log warning
-                logger.warning(f"Some unmapped fields found: {unmapped_summary}")
+            
+            # Always raise SchemaError when unmapped fields are found - this is a serious data integrity issue
+            raise SchemaError(f"Schema coverage violation: {unmapped_summary}")
         return unmapped_fields
 
     def process_with_error_handling(

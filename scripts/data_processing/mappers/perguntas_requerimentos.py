@@ -105,12 +105,42 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
             "ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas.pt_gov_ar_objectos_requerimentos_RespostasOut.dataResposta",
             "ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas.pt_gov_ar_objectos_requerimentos_RespostasOut.ficheiro",
             "ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas.pt_gov_ar_objectos_requerimentos_RespostasOut.docRemetida",
+            # File attachment fields (ficheiroComTipo structure)
+            "ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas.pt_gov_ar_objectos_requerimentos_RespostasOut.ficheiroComTipo",
+            "ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas.pt_gov_ar_objectos_requerimentos_RespostasOut.ficheiroComTipo.pt_gov_ar_objectos_Requirimento_Ficheiro_de_Resposta",
+            "ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas.pt_gov_ar_objectos_requerimentos_RespostasOut.ficheiroComTipo.pt_gov_ar_objectos_Requirimento_Ficheiro_de_Resposta.url",
+            "ArrayOfRequerimentoOut.RequerimentoOut.Destinatarios.pt_gov_ar_objectos_requerimentos_DestinatariosOut.respostas.pt_gov_ar_objectos_requerimentos_RespostasOut.ficheiroComTipo.pt_gov_ar_objectos_Requirimento_Ficheiro_de_Resposta.tipo",
             # Authors section
             "ArrayOfRequerimentoOut.RequerimentoOut.Autores",
             "ArrayOfRequerimentoOut.RequerimentoOut.Autores.pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut",
             "ArrayOfRequerimentoOut.RequerimentoOut.Autores.pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut.idCadastro",
             "ArrayOfRequerimentoOut.RequerimentoOut.Autores.pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut.nome",
             "ArrayOfRequerimentoOut.RequerimentoOut.Autores.pt_gov_ar_objectos_iniciativas_AutoresDeputadosOut.GP",
+            
+            # RespostasSPerguntas section (alternative response structure for questions)
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.entidade",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.dataResposta",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.ficheiro",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.docRemetida",
+            
+            # RespostasSPerguntas publication section
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubNr",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTipo",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubTp",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubLeg",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubSL",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pubdt",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.idPag",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.URLDiario",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pag.string",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.supl",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.obs",
+            "ArrayOfRequerimentoOut.RequerimentoOut.RespostasSPerguntas.pt_gov_ar_objectos_requerimentos_RespostasOut.publicacao.pt_gov_ar_objectos_PublicacoesOut.pagFinalDiarioSupl",
         }
 
     def validate_and_map(
@@ -231,6 +261,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
             # Process related data
             self._process_request_publications(request, existing)
             self._process_request_destinatarios(request, existing)
+            self._process_request_respostas_perguntas(request, existing)
             self._process_request_authors(request, existing)
 
             return True
@@ -435,6 +466,16 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                         )
                         ficheiro = self._get_text_value(resp, "ficheiro")
                         doc_remetida = self._get_text_value(resp, "docRemetida")
+                        
+                        # Process file attachment (ficheiroComTipo structure)
+                        ficheiro_url = None
+                        ficheiro_tipo = None
+                        ficheiro_com_tipo = resp.find("ficheiroComTipo")
+                        if ficheiro_com_tipo is not None:
+                            ficheiro_resposta = ficheiro_com_tipo.find("pt_gov_ar_objectos_Requirimento_Ficheiro_de_Resposta")
+                            if ficheiro_resposta is not None:
+                                ficheiro_url = self._get_text_value(ficheiro_resposta, "url")
+                                ficheiro_tipo = self._get_text_value(ficheiro_resposta, "tipo")
 
                         resposta_record = PerguntaRequerimentoResposta(
                             destinatario_id=destinatario_record.id,
@@ -442,6 +483,8 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                             data_resposta=data_resposta,
                             ficheiro=ficheiro,
                             doc_remetida=doc_remetida,
+                            ficheiro_url=ficheiro_url,
+                            ficheiro_tipo=ficheiro_tipo,
                         )
                         self.session.add(resposta_record)
 
@@ -479,3 +522,72 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                     gp=gp,
                 )
                 self.session.add(autor_record)
+
+    def _process_request_respostas_perguntas(
+        self, request: ET.Element, pergunta_req: PerguntaRequerimento
+    ):
+        """Process RespostasSPerguntas (direct responses to questions) for request"""
+        respostas_perguntas = request.find("RespostasSPerguntas")
+        if respostas_perguntas is not None:
+            for resp in respostas_perguntas.findall(
+                "pt_gov_ar_objectos_requerimentos_RespostasOut"
+            ):
+                entidade = self._get_text_value(resp, "entidade")
+                data_resposta = self._parse_date(
+                    self._get_text_value(resp, "dataResposta")
+                )
+                ficheiro = self._get_text_value(resp, "ficheiro")
+                doc_remetida = self._get_text_value(resp, "docRemetida")
+                
+                # Create response record (direct response to question, no destinatario)
+                resposta_record = PerguntaRequerimentoResposta(
+                    destinatario_id=None,  # Direct response, not through a recipient
+                    entidade=entidade,
+                    data_resposta=data_resposta,
+                    ficheiro=ficheiro,
+                    doc_remetida=doc_remetida
+                )
+                
+                self.session.add(resposta_record)
+                self.session.flush()  # Get the ID for publications
+                
+                # Process publications within this response
+                publicacao = resp.find("publicacao")
+                if publicacao is not None:
+                    for pub in publicacao.findall("pt_gov_ar_objectos_PublicacoesOut"):
+                        pub_nr = self._get_int_value(pub, "pubNr")
+                        pub_tipo = self._get_text_value(pub, "pubTipo")
+                        pub_tp = self._get_text_value(pub, "pubTp")
+                        pub_leg = self._get_text_value(pub, "pubLeg")
+                        pub_sl = self._get_int_value(pub, "pubSL")
+                        pub_dt = self._parse_date(self._get_text_value(pub, "pubdt"))
+                        id_pag = self._get_int_value(pub, "idPag")
+                        url_diario = self._get_text_value(pub, "URLDiario")
+                        supl = self._get_text_value(pub, "supl")
+                        obs = self._get_text_value(pub, "obs")
+                        pag_final_diario_supl = self._get_text_value(pub, "pagFinalDiarioSupl")
+
+                        # Handle page numbers
+                        pag_text = None
+                        pag_elem = pub.find("pag")
+                        if pag_elem is not None:
+                            string_elems = pag_elem.findall("string")
+                            if string_elems:
+                                pag_text = ", ".join([s.text for s in string_elems if s.text])
+
+                        publicacao_record = PerguntaRequerimentoPublicacao(
+                            pergunta_requerimento_id=pergunta_req.id,
+                            pub_nr=pub_nr,
+                            pub_tipo=pub_tipo,
+                            pub_tp=pub_tp,
+                            pub_leg=pub_leg,
+                            pub_sl=pub_sl,
+                            pub_dt=pub_dt,
+                            id_pag=id_pag,
+                            url_diario=url_diario,
+                            pag=pag_text,
+                            supl=supl,
+                            obs=obs,
+                            pag_final_diario_supl=pag_final_diario_supl,
+                        )
+                        self.session.add(publicacao_record)

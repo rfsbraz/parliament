@@ -1084,7 +1084,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 )
                 return False
 
-            from database.models import Deputado, RegistoInteressesV2
+            from database.models import Deputado, RegistoInteressesUnified
 
             cad_id = self._get_text_value(record, "cadId")
             if not cad_id:
@@ -1122,16 +1122,16 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
 
             # Check if already exists
             existing = (
-                self.session.query(RegistoInteressesV2)
+                self.session.query(RegistoInteressesUnified)
                 .filter(
-                    RegistoInteressesV2.deputado_id == deputy.id,
-                    RegistoInteressesV2.cad_id == cad_id,
+                    RegistoInteressesUnified.deputado_id == deputy.id,
+                    RegistoInteressesUnified.cad_id == cad_id,
                 )
                 .first()
             )
 
             if not existing:
-                interest_registry = RegistoInteressesV2(
+                interest_registry = RegistoInteressesUnified(
                     deputado_id=deputy.id,
                     cad_id=cad_id,
                     cad_estado_civil_cod=self._get_text_value(

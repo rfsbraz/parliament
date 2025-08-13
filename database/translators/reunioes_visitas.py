@@ -46,11 +46,10 @@ class TipoParticipanteReuniao(Enum):
     
     Documentation Reference:
     - Tipo: "Tipo de participante" field in Participante structure
-    - Currently only supports deputies (D=Deputado)
     - Based on ReunioesNacionais.xml specification (December 2017)
     
-    Note: Single participant type indicates these meetings focus on
-    deputy participation in external relations activities.
+    Note: Only includes officially documented types. Unknown codes are handled
+    gracefully at runtime with is_valid=False in translation objects.
     """
     
     D = "Deputado"  # Deputy
