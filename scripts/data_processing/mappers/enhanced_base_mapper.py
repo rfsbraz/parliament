@@ -667,10 +667,36 @@ class XMLProcessingMixin:
             return corrected
         
         # Log encoding issues for further investigation
-        if '?' in text:
+        # Only flag encoding issues, not legitimate question marks
+        if self._has_encoding_corruption(text):
             logger.warning(f"Potential Portuguese character encoding issue detected: {text}")
         
         return text
+
+    def _has_encoding_corruption(self, text: str) -> bool:
+        """
+        Detect character encoding corruption patterns.
+        Returns True if corruption patterns are found, False otherwise.
+        """
+        if not text or '?' not in text:
+            return False
+        
+        import re
+        
+        # Patterns that indicate encoding corruption:
+        corruption_patterns = [
+            r'[a-zA-ZÀ-ÿ]\?[a-zA-ZÀ-ÿ]',     # Question mark between letters (Gon?alves)
+            r'[aeiouAEIOU]\?\s',               # Question mark after vowel followed by space (S?nia )
+            r'[a-zA-ZÀ-ÿ]\?\s+[a-zA-ZÀ-ÿ]',  # Question mark in middle of sentence (Jos? Silva)
+            r'^\?[a-zA-ZÀ-ÿ]',                # Question mark at start of word (?ndrea)
+            r'\?{2,}',                         # Multiple question marks (not normal punctuation)
+        ]
+        
+        for pattern in corruption_patterns:
+            if re.search(pattern, text):
+                return True
+        
+        return False
 
     def _get_int_value(self, parent: ET.Element, tag_name: str) -> Optional[int]:
         """Get integer value from XML element - standardized method used across all mappers"""

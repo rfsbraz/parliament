@@ -79,15 +79,31 @@ class ParliamentURLExtractor:
             "number": None,
         }
 
-        # Extract file type from extension
+        # Extract file type from extension and URL patterns
         if file_name.endswith(".xml"):
             metadata["file_type"] = "XML"
         elif file_name.endswith(".json") or file_name.endswith("_json.txt"):
             metadata["file_type"] = "JSON"
         elif file_name.endswith(".pdf"):
             metadata["file_type"] = "PDF"
+        elif file_name.endswith(".xsd"):
+            metadata["file_type"] = "XSD"
         elif file_name.endswith(".zip"):
             metadata["file_type"] = "Archive"
+        elif not file_name or "." not in file_name:
+            # For files without extensions, try to detect from URL patterns
+            if "doc.pdf" in file_url.lower():
+                metadata["file_type"] = "PDF"
+            elif "doc.xsd" in file_url.lower():
+                metadata["file_type"] = "XSD"
+            elif "doc.xml" in file_url.lower():
+                metadata["file_type"] = "XML"
+            elif "doc.json" in file_url.lower():
+                metadata["file_type"] = "JSON"
+            elif "doc.zip" in file_url.lower():
+                metadata["file_type"] = "Archive"
+            else:
+                metadata["file_type"] = "Unknown"
         else:
             metadata["file_type"] = "Unknown"
 
@@ -197,8 +213,10 @@ class ParliamentURLExtractor:
 class DiscoveryService:
     """Main discovery service for parliament data files"""
 
-    def __init__(self, rate_limit_delay: float = 0.5):
+    def __init__(self, rate_limit_delay: float = 0.5, enable_metadata_requests: bool = False, quiet: bool = False):
         self.rate_limit_delay = rate_limit_delay
+        self.enable_metadata_requests = enable_metadata_requests  # Disabled by default due to server issues
+        self.quiet = quiet  # Suppress console output when True
         self.base_url = "https://www.parlamento.pt/Cidadania/paginas/dadosabertos.aspx"
         # Use HTTP retry client instead of regular requests session
         self.http_client = HTTPRetryClient(
@@ -209,26 +227,31 @@ class DiscoveryService:
             timeout=30,
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         )
+    
+    def _print(self, *args, **kwargs):
+        """Print only if not in quiet mode"""
+        if not self.quiet:
+            print(*args, **kwargs)
 
     def discover_all_files(
         self, legislature_filter: str = None, category_filter: str = None
     ) -> int:
         """Discover all parliament files and store metadata in database"""
-        print(f"Starting discovery from {self.base_url}")
+        self._print(f"Starting discovery from {self.base_url}")
         if legislature_filter:
-            print(f"Filtering for legislature: {legislature_filter}")
+            self._print(f"Filtering for legislature: {legislature_filter}")
         if category_filter:
-            print(f"Filtering for category: {category_filter}")
+            self._print(f"Filtering for category: {category_filter}")
 
         discovered_count = 0
 
         # Get recursos links from main page
         recursos_links = self._extract_recursos_links()
         if not recursos_links:
-            print("ERROR: No recursos links found")
+            self._print("ERROR: No recursos links found")
             return 0
 
-        print(f"Found {len(recursos_links)} main sections")
+        self._print(f"Found {len(recursos_links)} main sections")
 
         # Process each section
         with DatabaseSession() as db_session:
@@ -236,7 +259,7 @@ class DiscoveryService:
                 section_name = link_info["section_name"]
                 section_url = link_info["url"]
 
-                print(
+                self._print(
                     f"\n[{i}/{len(recursos_links)}] Processing section: {section_name}"
                 )
 
@@ -245,7 +268,7 @@ class DiscoveryService:
                     category_filter
                     and category_filter.lower() not in section_name.lower()
                 ):
-                    print(f"SKIP: Skipping section (category filter)")
+                    self._print(f"SKIP: Skipping section (category filter)")
                     continue
 
                 section_count = self._discover_section_files(
@@ -253,14 +276,14 @@ class DiscoveryService:
                 )
                 discovered_count += section_count
 
-                print(f"DONE: Section complete: {section_count} files discovered")
+                self._print(f"DONE: Section complete: {section_count} files discovered")
 
                 # Rate limiting
                 time.sleep(self.rate_limit_delay)
 
             # No bulk commit needed - each file commits immediately
 
-        print(f"\nDiscovery complete: {discovered_count} total files cataloged")
+        self._print(f"\nDiscovery complete: {discovered_count} total files cataloged")
         return discovered_count
 
     def _extract_recursos_links(self) -> List[Dict[str, str]]:
@@ -300,7 +323,7 @@ class DiscoveryService:
             return recursos_links
 
         except Exception as e:
-            print(f"ERROR: Error extracting recursos links: {e}")
+            self._print(f"ERROR: Error extracting recursos links: {e}")
             return []
 
     def _discover_section_files(
@@ -323,10 +346,10 @@ class DiscoveryService:
             archive_items = soup.find_all("div", class_="archive-item")
 
             if not archive_items:
-                print(f"  FOLDER: No archive items found in section")
+                self._print(f"  FOLDER: No archive items found in section")
                 return 0
 
-            print(f"  FOLDER: Found {len(archive_items)} level-2 items")
+            self._print(f"  FOLDER: Found {len(archive_items)} level-2 items")
 
             for item in archive_items:
                 link = item.find("a", href=True)
@@ -345,7 +368,7 @@ class DiscoveryService:
                 ):
                     continue
 
-                print(
+                self._print(
                     f"    SEARCH: Exploring: {item_name} (Legislature: {item_legislature or 'Unknown'})"
                 )
 
@@ -366,7 +389,7 @@ class DiscoveryService:
                 time.sleep(self.rate_limit_delay * 0.5)
 
         except Exception as e:
-            print(f"  ERROR: Error processing section {section_name}: {e}")
+            self._print(f"  ERROR: Error processing section {section_name}: {e}")
 
         return discovered_count
 
@@ -403,7 +426,7 @@ class DiscoveryService:
             archive_items = soup.find_all("div", class_="archive-item")
 
             if archive_items:
-                print(
+                self._print(
                     f"      {'  ' * current_depth}DIR: Level {current_depth + 1}: {len(archive_items)} items"
                 )
 
@@ -454,12 +477,12 @@ class DiscoveryService:
                     # Rate limiting
                     time.sleep(self.rate_limit_delay * 0.2)
             else:
-                print(
+                self._print(
                     f"      {'  ' * current_depth}FILE: No more archive items at level {current_depth + 1}"
                 )
 
         except Exception as e:
-            print(
+            self._print(
                 f"      {'  ' * current_depth}ERROR: Error at depth {current_depth}: {e}"
             )
 
@@ -491,18 +514,31 @@ class DiscoveryService:
                 file_url, file_name
             )
 
-            # Use navigation context as primary source, fallback to extracted metadata
-            category = (
-                navigation_context["section_category"] or fallback_metadata["category"]
-            )
-            legislatura = (
-                navigation_context["legislature"] or fallback_metadata["legislatura"]
-            )
+            # Special handling for DAR files using navigation context
+            if self._is_dar_file(navigation_context.get("path", []), file_url):
+                category, dar_metadata = self._extract_dar_hierarchy_from_navigation(
+                    navigation_context.get("path", []), file_name
+                )
+                legislatura = dar_metadata.get("legislature") or navigation_context.get("legislature")
+                sub_series = dar_metadata.get("sub_series")
+                session = dar_metadata.get("session") 
+                number = dar_metadata.get("number")
+            else:
+                # Use navigation context as primary source, fallback to extracted metadata
+                category = (
+                    navigation_context["section_category"] or fallback_metadata["category"]
+                )
+                legislatura = (
+                    navigation_context["legislature"] or fallback_metadata["legislatura"]
+                )
+                sub_series = fallback_metadata.get("sub_series")
+                session = fallback_metadata.get("session")
+                number = fallback_metadata.get("number")
 
-            # Enhance category with subcategory if available (like original folder structure)
-            subcategory = navigation_context.get("subcategory")
-            if subcategory and subcategory != category:
-                category = f"{category} > {subcategory}"
+                # Enhance category with subcategory if available (like original folder structure)
+                subcategory = navigation_context.get("subcategory")
+                if subcategory and subcategory != category:
+                    category = f"{category} > {subcategory}"
 
             # Extract URL pattern heuristic for potential token refresh
             url_pattern = self._extract_url_pattern(file_url)
@@ -553,11 +589,11 @@ class DiscoveryService:
                     # Flush and commit immediately for updates
                     db_session.flush()
                     db_session.commit()
-                    print(
+                    self._print(
                         f"        UPDATE: Updated: {file_name} (Cat: {category}, Leg: {legislatura})"
                     )
                 else:
-                    print(f"        SKIP:  Unchanged: {file_name}")
+                    self._print(f"        SKIP:  Unchanged: {file_name}")
                     # Still commit to ensure any session state is flushed
                     db_session.commit()
 
@@ -572,13 +608,12 @@ class DiscoveryService:
                     file_type=fallback_metadata["file_type"],
                     category=category,
                     legislatura=legislatura,
-                    sub_series=fallback_metadata["sub_series"],
-                    session=fallback_metadata["session"],
-                    number=fallback_metadata["number"],
-                    # Store navigation path in existing field for context preservation
-                    # (equivalent to folder structure in original downloader)
-                    error_message=(
-                        f"Navigation: {navigation_path}"
+                    sub_series=sub_series,
+                    session=session,
+                    number=number,
+                    # Store navigation path for debugging and context preservation
+                    navigation_context=(
+                        navigation_path
                         if len(navigation_context["path"]) > 2
                         else None
                     ),
@@ -598,7 +633,7 @@ class DiscoveryService:
                 db_session.add(import_status)
                 # Flush immediately to persist the discovery
                 db_session.flush()
-                print(
+                self._print(
                     f"        SUCCESS: Cataloged: {file_name} (Cat: {category}, Leg: {legislatura})"
                 )
 
@@ -612,36 +647,114 @@ class DiscoveryService:
                 db_session.rollback()
             except:
                 pass  # Ignore rollback errors
-            print(f"        ERROR: Error cataloging {file_name}: {e}")
+            self._print(f"        ERROR: Error cataloging {file_name}: {e}")
             return 0
 
+    def _is_dar_file(self, navigation_path: List[str], file_url: str) -> bool:
+        """Check if this is a DAR (Diário da Assembleia da República) file"""
+        if not navigation_path:
+            return False
+        
+        # Check if DAR is in the navigation path
+        first_level = navigation_path[0].lower() if navigation_path else ""
+        return "dar" in first_level or "diário" in first_level or "diario" in first_level
+
+    def _extract_dar_hierarchy_from_navigation(self, navigation_path: List[str], file_name: str) -> Tuple[str, Dict]:
+        """
+        Extract DAR hierarchical structure from navigation path.
+        Expected structure: dar > Série I > XVII Legislatura > Sessão 01 > Número 001 > file.xml
+        
+        Returns: (category, dar_metadata)
+        """
+        dar_metadata = {
+            "sub_series": None,
+            "legislature": None,
+            "session": None,
+            "number": None
+        }
+        
+        # Base category
+        category = "Diário da Assembleia da República"
+        
+        if len(navigation_path) < 2:
+            return category, dar_metadata
+        
+        # Parse navigation path (skip first 'dar' element)
+        for i, path_element in enumerate(navigation_path[1:], 1):
+            element_lower = path_element.lower()
+            
+            # Extract series (e.g., "Série I", "Série II-A")
+            if "série" in element_lower or "serie" in element_lower:
+                # Clean and standardize series format
+                series_match = re.search(r"s[eé]rie\s*(.*)", path_element, re.IGNORECASE)
+                if series_match:
+                    series_part = series_match.group(1).strip()
+                    dar_metadata["sub_series"] = f"Série {series_part}" if series_part else "Série I"
+                    
+            # Extract legislature (e.g., "XVII Legislatura")
+            elif "legislatura" in element_lower:
+                leg_match = re.search(r"([xvii]+)\s*legislatura", path_element, re.IGNORECASE)
+                if leg_match:
+                    dar_metadata["legislature"] = leg_match.group(1).upper()
+                    
+            # Extract session (e.g., "Sessão 01")
+            elif "sess" in element_lower:
+                session_match = re.search(r"sess[aã]o\s*(\d+)", path_element, re.IGNORECASE)
+                if session_match:
+                    session_num = session_match.group(1).zfill(2)  # Pad to 2 digits
+                    dar_metadata["session"] = f"Sessão {session_num}"
+                    
+            # Extract number from path element (e.g., "Número 001")
+            elif "número" in element_lower or "numero" in element_lower:
+                number_match = re.search(r"n[uú]mero\s*(\d+)", path_element, re.IGNORECASE)
+                if number_match:
+                    number_num = number_match.group(1).zfill(3)  # Pad to 3 digits
+                    dar_metadata["number"] = f"Número {number_num}"
+        
+        # Also try to extract number from filename if not found in path
+        if not dar_metadata["number"] and file_name:
+            filename_number_match = re.search(r"n[uú]mero[_\s]*(\d+)", file_name, re.IGNORECASE)
+            if filename_number_match:
+                number_num = filename_number_match.group(1).zfill(3)
+                dar_metadata["number"] = f"Número {number_num}"
+        
+        return category, dar_metadata
+
     def _get_http_metadata(self, url: str) -> Dict:
-        """Get HTTP metadata using HEAD request"""
-        metadata_raw = self.http_client.get_metadata(url, indent="          ")
+        """Get HTTP metadata using HEAD request (if enabled)"""
+        if not self.enable_metadata_requests:
+            return {}  # Return empty metadata if HEAD requests are disabled
         
-        # Convert to the format expected by the rest of the code
-        metadata = {}
-        
-        # Parse Last-Modified header  
-        if metadata_raw.get("last_modified"):
-            from email.utils import parsedate_to_datetime
-            try:
-                metadata["last_modified"] = parsedate_to_datetime(metadata_raw["last_modified"])
-            except:
-                pass
-        
-        # Parse Content-Length header
-        if metadata_raw.get("content_length"):
-            try:
-                metadata["content_length"] = int(metadata_raw["content_length"])
-            except:
-                pass
-        
-        # Parse ETag header
-        if metadata_raw.get("etag"):
-            metadata["etag"] = metadata_raw["etag"]
-        
-        return metadata
+        try:
+            metadata_raw = self.http_client.get_metadata(url, indent="          ")
+            
+            # Convert to the format expected by the rest of the code
+            metadata = {}
+            
+            # Parse Last-Modified header  
+            if metadata_raw.get("last_modified"):
+                from email.utils import parsedate_to_datetime
+                try:
+                    metadata["last_modified"] = parsedate_to_datetime(metadata_raw["last_modified"])
+                except:
+                    pass
+            
+            # Parse Content-Length header
+            if metadata_raw.get("content_length"):
+                try:
+                    metadata["content_length"] = int(metadata_raw["content_length"])
+                except:
+                    pass
+            
+            # Parse ETag header
+            if metadata_raw.get("etag"):
+                metadata["etag"] = metadata_raw["etag"]
+            
+            return metadata
+            
+        except Exception as e:
+            self._print(f"          WARNING: HEAD request failed: {e}")
+            return {}  # Return empty metadata on error
 
     def _matches_legislature(self, name: str, target_legislature: str) -> bool:
         """Check if item name matches target legislature"""
@@ -849,7 +962,7 @@ class DiscoveryService:
     
     def recrawl_files(self, status_filter: str = 'recrawl') -> int:
         """Recrawl files with 'recrawl' status to refresh their URLs"""
-        print(f"Starting recrawl of files with status '{status_filter}'")
+        self._print(f"Starting recrawl of files with status '{status_filter}'")
         
         recrawled_count = 0
         
@@ -858,24 +971,24 @@ class DiscoveryService:
             files_to_recrawl = db_session.query(ImportStatus).filter_by(status=status_filter).all()
             
             if not files_to_recrawl:
-                print(f"No files found with status '{status_filter}'")
+                self._print(f"No files found with status '{status_filter}'")
                 return 0
                 
-            print(f"Found {len(files_to_recrawl)} files to recrawl")
+            self._print(f"Found {len(files_to_recrawl)} files to recrawl")
             
             for i, import_record in enumerate(files_to_recrawl, 1):
-                print(f"\n[{i}/{len(files_to_recrawl)}] Recrawling: {import_record.file_name}")
+                self._print(f"\n[{i}/{len(files_to_recrawl)}] Recrawling: {import_record.file_name}")
                 
                 if self._recrawl_single_file(db_session, import_record):
                     recrawled_count += 1
-                    print(f"    SUCCESS: URL refreshed")
+                    self._print(f"    SUCCESS: URL refreshed")
                 else:
-                    print(f"    FAILED: Could not refresh URL")
+                    self._print(f"    FAILED: Could not refresh URL")
                 
                 # Rate limiting between recrawl attempts
                 time.sleep(self.rate_limit_delay)
         
-        print(f"\nRecrawl complete: {recrawled_count}/{len(files_to_recrawl)} files refreshed")
+        self._print(f"\nRecrawl complete: {recrawled_count}/{len(files_to_recrawl)} files refreshed")
         return recrawled_count
     
     def _recrawl_single_file(self, db_session, import_record: ImportStatus) -> bool:
@@ -883,22 +996,22 @@ class DiscoveryService:
         try:
             # Step 1: Check if we have the necessary metadata for recrawling
             if not import_record.source_page_url:
-                print(f"    ERROR: No source_page_url available for {import_record.file_name}")
+                self._print(f"    ERROR: No source_page_url available for {import_record.file_name}")
                 return False
             
             if not import_record.anchor_text:
-                print(f"    ERROR: No anchor_text available for {import_record.file_name}")
+                self._print(f"    ERROR: No anchor_text available for {import_record.file_name}")
                 return False
             
-            print(f"    Source page: {import_record.source_page_url[:60]}...")
-            print(f"    Looking for: {import_record.anchor_text}")
+            self._print(f"    Source page: {import_record.source_page_url[:60]}...")
+            self._print(f"    Looking for: {import_record.anchor_text}")
             
             # Step 2: Fetch the source page
             try:
                 response = self.http_client.get(import_record.source_page_url)
                 response.raise_for_status()
             except Exception as e:
-                print(f"    ERROR: Failed to fetch source page: {e}")
+                self._print(f"    ERROR: Failed to fetch source page: {e}")
                 return False
             
             # Step 3: Parse the page and look for our anchor text
@@ -914,19 +1027,20 @@ class DiscoveryService:
                     matching_links.append(full_url)
             
             if not matching_links:
-                print(f"    ERROR: Anchor text '{import_record.anchor_text}' not found on source page")
+                self._print(f"    ERROR: Anchor text '{import_record.anchor_text}' not found on source page")
                 return False
             
             if len(matching_links) > 1:
-                print(f"    WARNING: Found {len(matching_links)} links with same anchor text, using first one")
+                self._print(f"    WARNING: Found {len(matching_links)} links with same anchor text, using first one")
             
             new_url = matching_links[0]
-            print(f"    Found new URL: {new_url[:60]}...")
+            self._print(f"    Found new URL: {new_url[:60]}...")
             
             # Step 4: Verify the new URL is different and valid
             if new_url == import_record.file_url:
-                print(f"    INFO: URL unchanged, marking as discovered")
+                self._print(f"    INFO: URL unchanged, marking as discovered")
                 import_record.status = 'discovered'
+                import_record.recrawl_count = (import_record.recrawl_count or 0) + 1
                 import_record.updated_at = datetime.now()
                 db_session.commit()
                 return True
@@ -935,14 +1049,15 @@ class DiscoveryService:
             try:
                 test_response = self.http_client.head(new_url)
                 if test_response.status_code not in [200, 302, 303, 307, 308]:
-                    print(f"    ERROR: New URL returns status {test_response.status_code}")
+                    self._print(f"    ERROR: New URL returns status {test_response.status_code}")
                     return False
             except Exception as e:
-                print(f"    WARNING: HEAD request failed, but continuing: {e}")
+                self._print(f"    WARNING: HEAD request failed, but continuing: {e}")
             
             # Step 6: Update the record with the new URL
             import_record.file_url = new_url
             import_record.status = 'discovered'  # Reset to discovered for re-processing
+            import_record.recrawl_count = (import_record.recrawl_count or 0) + 1
             import_record.updated_at = datetime.now()
             
             # Update HTTP metadata if we got it from the HEAD request
@@ -977,7 +1092,7 @@ class DiscoveryService:
             return True
             
         except Exception as e:
-            print(f"    ERROR: Recrawl failed: {e}")
+            self._print(f"    ERROR: Recrawl failed: {e}")
             # Mark as failed so it doesn't keep trying
             import_record.status = 'failed'
             import_record.error_message = f"Recrawl failed: {str(e)}"

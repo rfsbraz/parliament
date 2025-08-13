@@ -2096,15 +2096,22 @@ class ImportStatus(Base):
     source_page_url = Column(String(1000), comment="URL of the page where the link was found")
     anchor_text = Column(String(500), comment="Text content of the link anchor element")
     url_pattern = Column(String(200), comment="Heuristic pattern for URL token refresh (e.g., doc.xml?path=...&fich=...)")
+    navigation_context = Column(String(1000), comment="Navigation hierarchy path for debugging (e.g., 'section > subsection > item')")
     
     status = Column(
         String(50), nullable=False, default="pending"
-    )  # 'discovered', 'download_pending', 'downloading', 'pending', 'processing', 'completed', 'failed', 'schema_mismatch'
+    )  # 'discovered', 'download_pending', 'downloading', 'pending', 'processing', 'completed', 'failed', 'recrawl', 'import_error', 'schema_mismatch'
     schema_issues = Column(Text)  # JSON array of schema validation issues
     processing_started_at = Column(DateTime)
     processing_completed_at = Column(DateTime)
     error_message = Column(Text)
     records_imported = Column(Integer, default=0)
+    
+    # Error tracking and retry counters
+    recrawl_count = Column(Integer, default=0, comment="Number of times URL has been recrawled")
+    error_count = Column(Integer, default=0, comment="Number of import errors encountered")
+    retry_at = Column(DateTime, comment="Scheduled retry time for failed imports with exponential backoff")
+    
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 

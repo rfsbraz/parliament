@@ -120,8 +120,31 @@ class AgendaParlamentarMapper(SchemaMapper):
         # Validate schema coverage according to strict mode
         self.validate_schema_coverage(xml_root, file_info, strict_mode)
         
-        # Extract legislatura from filename or XML
-        legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+        # Extract legislatura - prioritize ImportStatus data, then XML, finally filename  
+        legislatura_sigla = None
+        
+        # First try: Use legislature data from ImportStatus (most reliable)
+        if 'legislatura' in file_info and file_info['legislatura']:
+            legislatura_sigla = file_info['legislatura']
+            logger.debug(f"Using legislature from ImportStatus: {legislatura_sigla}")
+        
+        # Second try: Extract from XML content
+        elif xml_root is not None:
+            try:
+                legislatura_sigla = self._extract_legislatura_from_xml(xml_root)
+                logger.debug(f"Extracted legislature from XML: {legislatura_sigla}")
+            except:
+                pass
+        
+        # Third try: Extract from filename (fallback)
+        if not legislatura_sigla:
+            try:
+                legislatura_sigla = self._extract_legislatura(file_info['file_path'], xml_root)
+                logger.debug(f"Extracted legislature from filename: {legislatura_sigla}")
+            except Exception as e:
+                logger.error(f"Could not extract legislature from any source: {e}")
+                raise
+        
         legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
         
         # Process each agenda item
@@ -399,6 +422,25 @@ class AgendaParlamentarMapper(SchemaMapper):
         """Cleanup SQLAlchemy session"""
         if hasattr(self, 'session'):
             self.session.close()
+    
+    def _extract_legislatura_from_xml(self, xml_root: ET.Element) -> str:
+        """Extract legislature information from XML LegDes elements"""
+        # Look for LegDes elements in the XML content
+        for agenda_item in xml_root.findall('.//AgendaParlamentar'):
+            leg_des_element = agenda_item.find('LegDes')
+            if leg_des_element is not None and leg_des_element.text:
+                leg_text = leg_des_element.text.strip()
+                if leg_text and leg_text.upper() != 'NULL':
+                    return leg_text.upper()
+        
+        # Fallback - look for any LegDes elements at any level
+        leg_des_element = xml_root.find('.//LegDes')
+        if leg_des_element is not None and leg_des_element.text:
+            leg_text = leg_des_element.text.strip()
+            if leg_text and leg_text.upper() != 'NULL':
+                return leg_text.upper()
+        
+        raise Exception("No legislature information found in XML content")
     
     def _convert_roman_to_int(self, roman: str) -> int:
         """Convert Roman numeral to integer"""
