@@ -249,11 +249,13 @@ class LegislatureHandlerMixin:
                 rf"(Biografico|Atividade.*|Iniciativas|Intervencoes|File|Data){legislature}\.xml$",
                 # Pattern 2: After Composicao (for OrgaoComposicao files)
                 rf"(Composicao){legislature}\.xml$",
-                # Pattern 3: After underscore/dash
+                # Pattern 3: After specific meeting types and other common prefixes
+                rf"(ReuniaoNacional|Reuniao|Nacional|Grupo.*Amizade|Agenda|Peticoes|Diploma){legislature}\.xml$",
+                # Pattern 4: After underscore/dash
                 rf"[_-]{legislature}\.xml$",
-                # Pattern 4: Before underscore/dash
+                # Pattern 5: Before underscore/dash
                 rf"^{legislature}[_-]",
-                # Pattern 5: Standalone at start or end
+                # Pattern 6: Standalone at start or end
                 rf"^{legislature}([^A-Za-z]|$)",
                 rf"[^A-Za-z]{legislature}\.xml$",
             ]
@@ -416,7 +418,6 @@ class LegislatureHandlerMixin:
             designacao=designacao,
             data_inicio=None,  # Will be set from XML data
             data_fim=None,
-            ativa=False,
         )
 
         self.session.add(legislatura)

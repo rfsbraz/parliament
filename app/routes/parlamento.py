@@ -98,7 +98,7 @@ def legislatura_to_dict(legislatura):
         'designacao': legislatura.designacao,
         'data_inicio': legislatura.data_inicio.isoformat() if legislatura.data_inicio else None,
         'data_fim': legislatura.data_fim.isoformat() if legislatura.data_fim else None,
-        'ativa': legislatura.ativa
+        'ativa': legislatura.data_fim is None  # Dynamic calculation: active if no end date
     }
 
 
@@ -173,9 +173,10 @@ def get_deputado(cad_id):
 
 def get_latest_legislature_id(session):
     """Get the ID of the latest/current legislature"""
-    latest_legislature = session.query(Legislatura).filter_by(ativa=True).first()
+    # Current legislature is the one with NULL data_fim (no end date)
+    latest_legislature = session.query(Legislatura).filter(Legislatura.data_fim.is_(None)).first()
     if not latest_legislature:
-        # If no active legislature, get the one with highest number
+        # If no legislature with NULL end date, get the one with highest number
         latest_legislature = session.query(Legislatura).order_by(Legislatura.numero.desc()).first()
     return latest_legislature.id if latest_legislature else None
 
@@ -229,7 +230,7 @@ def get_deputado_detalhes(cad_id):
                 response['legislatura'] = {
                     'numero': legislatura.numero,
                     'designacao': legislatura.designacao,
-                    'ativa': legislatura.ativa
+                    'ativa': legislatura.data_fim is None  # Dynamic calculation: active if no end date
                 }
             
             # Calculate statistics for this deputy
@@ -384,7 +385,7 @@ def get_deputado_detalhes(cad_id):
                         'circulo': mand.ce_des if mand else None,  # Electoral circle from mandate info
                         'partido_sigla': mand.par_sigla if mand else None,
                         'partido_nome': mand.par_des if mand else None,
-                        'is_current': dep.id == deputado.id  # Mark current mandate
+                        'is_current': leg.data_fim is None  # Mark current mandate based on active legislature
                     }
                     mandatos_historico.append(mandato_data)
             
@@ -716,7 +717,7 @@ def get_estatisticas():
                     'designacao': legislature_info.designacao if legislature_info else f'{legislatura} Legislatura',
                     'data_inicio': legislature_info.data_inicio.isoformat() if legislature_info and legislature_info.data_inicio else None,
                     'data_fim': legislature_info.data_fim.isoformat() if legislature_info and legislature_info.data_fim else None,
-                    'ativa': legislature_info.ativa if legislature_info else True
+                    'ativa': legislature_info.data_fim is None if legislature_info else True
                 }
             })
         

@@ -66,9 +66,7 @@ class Legislatura(Base):
     )
     data_inicio = Column(Date, comment="Legislature start date (XML: dtini)")
     data_fim = Column(Date, comment="Legislature end date (XML: dtfim)")
-    ativa = Column(
-        Boolean, default=False, comment="Whether legislature is currently active"
-    )
+    # Note: Active legislature is now determined dynamically (data_fim IS NULL)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 

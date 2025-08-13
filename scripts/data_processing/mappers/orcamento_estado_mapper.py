@@ -562,7 +562,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
             legislatura = Legislatura(
                 numero=legislatura_num,
                 designacao=f"Legislatura {legislatura_num}",
-                ativa=False,
+                
             )
             self.session.add(legislatura)
             self.session.flush()

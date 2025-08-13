@@ -929,7 +929,7 @@ class DatabaseDrivenImporter:
         return sorted(import_records, key=get_order_index)
 
     def cleanup_database(self):
-        """Drop all tables except ImportStatus and reset ImportStatus to 'discovered'"""
+        """Truncate all tables except ImportStatus and alembic_version, reset ImportStatus to 'discovered'"""
         try:
             logger.info("Starting database cleanup...")
 
@@ -978,22 +978,28 @@ class DatabaseDrivenImporter:
                     
                     logger.info(f"Reset {reset_count} ImportStatus records out of {total_records} total records to 'discovered' status")
 
-                # Drop all other tables except ImportStatus and alembic_version
+                # Truncate all other tables except ImportStatus and alembic_version
                 tables_to_preserve = {'import_status', 'alembic_version'}
-                tables_to_drop = [table for table in tables if table not in tables_to_preserve]
+                tables_to_truncate = [table for table in tables if table not in tables_to_preserve]
                 
-                logger.info(f"Dropping {len(tables_to_drop)} tables (preserving ImportStatus and alembic_version)")
+                logger.info(f"Truncating {len(tables_to_truncate)} tables (preserving ImportStatus and alembic_version)")
 
-                for table_name in tables_to_drop:
-                    connection.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
-                    logger.info(f"Dropped table: {table_name}")
+                for table_name in tables_to_truncate:
+                    try:
+                        connection.execute(text(f"TRUNCATE TABLE {table_name}"))
+                        logger.info(f"Truncated table: {table_name}")
+                    except Exception as e:
+                        # If truncate fails (e.g., due to foreign keys), try delete
+                        logger.warning(f"Truncate failed for {table_name}, using DELETE: {e}")
+                        connection.execute(text(f"DELETE FROM {table_name}"))
+                        logger.info(f"Deleted all records from table: {table_name}")
 
                 # Re-enable foreign key checks
                 connection.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
 
                 connection.commit()
                 logger.info(
-                    f"Database cleanup completed successfully. Dropped {len(tables_to_drop)} tables, preserved and reset ImportStatus"
+                    f"Database cleanup completed successfully. Truncated {len(tables_to_truncate)} tables, preserved and reset ImportStatus"
                 )
 
             finally:

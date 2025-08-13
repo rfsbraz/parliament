@@ -402,8 +402,7 @@ class AgendaParlamentarMapper(SchemaMapper):
             
             new_legislatura = Legislatura(
                 numero=legislatura_sigla,
-                designacao=f"{numero_int}.ª Legislatura",
-                ativa=False
+                designacao=f"{numero_int}.ª Legislatura"
             )
             
             self.session.add(new_legislatura)
