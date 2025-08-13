@@ -8,7 +8,7 @@ This guide explains the different cleanup options available for the Parliament D
 **Preserves ImportStatus and resets to 'discovered'**
 
 ```bash
-python scripts/data_processing/unified_importer.py --cleanup
+python scripts/data_processing/database_driven_importer.py --cleanup
 ```
 
 **What it does:**
@@ -28,7 +28,7 @@ python scripts/data_processing/unified_importer.py --cleanup
 **Drops everything including ImportStatus**
 
 ```bash
-python scripts/data_processing/unified_importer.py --full-cleanup
+python scripts/data_processing/database_driven_importer.py --full-cleanup
 ```
 
 **What it does:**
@@ -71,7 +71,7 @@ WHERE status != 'discovered';
 ### Reprocessing After Mapper Updates
 ```bash
 # 1. Standard cleanup (preserves discovery data)
-python scripts/data_processing/unified_importer.py --cleanup
+python scripts/data_processing/database_driven_importer.py --cleanup
 
 # 2. Run import processing
 python scripts/data_processing/database_driven_importer.py --limit 50
@@ -83,7 +83,7 @@ python scripts/data_processing/pipeline_orchestrator.py
 ### Fresh Start After Discovery Changes
 ```bash
 # 1. Full cleanup (drops everything)
-python scripts/data_processing/unified_importer.py --full-cleanup
+python scripts/data_processing/database_driven_importer.py --full-cleanup
 
 # 2. Run discovery to find files again
 python scripts/data_processing/discovery_service.py --save-to-db
@@ -106,7 +106,7 @@ python scripts/data_processing/database_driven_importer.py --file-types XML --li
 Check current import status distribution:
 
 ```bash
-python scripts/data_processing/unified_importer.py --status
+python scripts/data_processing/database_driven_importer.py --status
 ```
 
 Or use SQL:

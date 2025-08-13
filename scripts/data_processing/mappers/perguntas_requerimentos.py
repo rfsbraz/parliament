@@ -142,26 +142,24 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                 except Exception as e:
                     error_msg = f"Request processing error: {str(e)}"
                     logger.error(error_msg)
+                    logger.error("Data integrity issue detected during request processing")
+                    import traceback
+                    logger.error(f"Traceback: {traceback.format_exc()}")
                     results["errors"].append(error_msg)
                     results["records_processed"] += 1
-                    logger.error("Data integrity issue detected - exiting immediately")
-                    import sys
-
-                    sys.exit(1)
+                    raise RuntimeError(f"Data integrity issue: {error_msg}")
 
             # Commit all changes
-            self.session.commit()
             return results
 
         except Exception as e:
             error_msg = f"Critical error processing requests: {str(e)}"
             logger.error(error_msg)
+            logger.error("Data integrity issue detected during critical request processing")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             results["errors"].append(error_msg)
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-
-            sys.exit(1)
-            return results
+            raise RuntimeError(f"Data integrity issue: {error_msg}")
 
     def _process_request(self, request: ET.Element, legislatura: Legislatura) -> bool:
         """Process individual request/question"""

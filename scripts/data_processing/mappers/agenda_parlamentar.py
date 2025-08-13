@@ -267,15 +267,15 @@ class AgendaParlamentarMapper(SchemaMapper):
             # Process attachments (AnexoEventos structures)
             self._process_agenda_anexos(agenda_item, new_agenda if 'new_agenda' in locals() else existing_agenda)
             
-            self.session.commit()
             return True
             
         except Exception as e:
-            logger.error(f"Error processing agenda item: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-            sys.exit(1)
-            return False
+            error_msg = f"Error processing agenda item: {e}"
+            logger.error(error_msg)
+            logger.error("Data integrity issue detected during agenda item processing")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise RuntimeError(f"Data integrity issue: {error_msg}")
     
     
     def _get_boolean_value(self, parent: ET.Element, tag_name: str) -> bool:
@@ -407,16 +407,16 @@ class AgendaParlamentarMapper(SchemaMapper):
             )
             
             self.session.add(new_legislatura)
-            self.session.commit()
             
             return new_legislatura.id
             
         except Exception as e:
-            logger.error(f"Error creating legislatura: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-            sys.exit(1)
-            return None
+            error_msg = f"Error creating legislatura: {e}"
+            logger.error(error_msg)
+            logger.error("Data integrity issue detected during legislatura creation")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise RuntimeError(f"Data integrity issue: {error_msg}")
     
     def __del__(self):
         """Cleanup SQLAlchemy session"""

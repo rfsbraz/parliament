@@ -889,12 +889,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             return self.finalize_processing(results)
 
         except Exception as e:
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-
-            sys.exit(1)
             error_msg = f"Error in validate_and_map: {e}"
-            self._handle_processing_error(error_msg, results, strict_mode)
+            logger.error(f"Data integrity issue detected during processing: {error_msg}")
+            logger.error(f"Full exception: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise RuntimeError(f"Data integrity issue in validate_and_map: {error_msg}")
 
     def _process_plenario(self, plenario: ET.Element, legislatura: Legislatura) -> bool:
         """Process plenary composition"""
@@ -956,12 +956,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         except Exception as e:
             error_msg = f"Error processing plenary: {e}"
             logger.error(error_msg)
+            logger.error("Data integrity issue detected during plenary processing")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             if hasattr(self, "strict_mode") and self.strict_mode:
-                import sys
-
-                logger.error(f"STRICT MODE: Exiting due to plenary processing error")
-                logger.error(f"Error details: {error_msg}")
-                sys.exit(1)
+                logger.error(f"STRICT MODE: Raising exception due to plenary processing error")
+                raise RuntimeError(f"STRICT MODE - Data integrity issue: {error_msg}")
             return False
 
     def _process_comissao(self, comissao: ET.Element, legislatura: Legislatura) -> bool:
@@ -1004,12 +1004,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         except Exception as e:
             error_msg = f"Error processing committee: {e}"
             logger.error(error_msg)
+            logger.error("Data integrity issue detected during committee processing")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             if hasattr(self, "strict_mode") and self.strict_mode:
-                import sys
-
-                logger.error(f"STRICT MODE: Exiting due to committee processing error")
-                logger.error(f"Error details: {error_msg}")
-                sys.exit(1)
+                logger.error(f"STRICT MODE: Raising exception due to committee processing error")
+                raise RuntimeError(f"STRICT MODE - Data integrity issue: {error_msg}")
             return False
 
     def _process_subcomissao(
@@ -1068,14 +1068,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         except Exception as e:
             error_msg = f"Error processing subcommittee: {e}"
             logger.error(error_msg)
+            logger.error("Data integrity issue detected during subcommittee processing")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             if hasattr(self, "strict_mode") and self.strict_mode:
-                import sys
-
-                logger.error(
-                    f"STRICT MODE: Exiting due to subcommittee processing error"
-                )
-                logger.error(f"Error details: {error_msg}")
-                sys.exit(1)
+                logger.error(f"STRICT MODE: Raising exception due to subcommittee processing error")
+                raise RuntimeError(f"STRICT MODE - Data integrity issue: {error_msg}")
             return False
 
     def _process_grupo_trabalho(
@@ -1271,12 +1269,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             return True
 
         except Exception as e:
-            logger.error(f"Error processing deputy committee membership: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-
-            sys.exit(1)
-            return False
+            error_msg = f"Error processing deputy committee membership: {e}"
+            logger.error(error_msg)
+            logger.error("Data integrity issue detected during deputy committee membership processing")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise RuntimeError(f"Data integrity issue: {error_msg}")
 
     def _process_deputy_subcommittee_membership(
         self, deputado_data: ET.Element, subcommittee: SubCommittee
@@ -1331,12 +1329,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             return True
 
         except Exception as e:
-            logger.error(f"Error processing deputy subcommittee membership: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-
-            sys.exit(1)
-            return False
+            error_msg = f"Error processing deputy subcommittee membership: {e}"
+            logger.error(error_msg)
+            logger.error("Data integrity issue detected during deputy subcommittee membership processing")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise RuntimeError(f"Data integrity issue: {error_msg}")
 
     def _process_deputy_work_group_membership(
         self, deputado_data: ET.Element, work_group: WorkGroup
@@ -1391,12 +1389,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             return True
 
         except Exception as e:
-            logger.error(f"Error processing deputy work group membership: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-
-            sys.exit(1)
-            return False
+            error_msg = f"Error processing deputy work group membership: {e}"
+            logger.error(error_msg)
+            logger.error("Data integrity issue detected during deputy work group membership processing")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise RuntimeError(f"Data integrity issue: {error_msg}")
 
     def _process_i_legislature_deputy_composition(
         self, deputado_data: ET.Element, plenary: Plenary, legislatura: Legislatura
@@ -1456,12 +1454,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             return True
 
         except Exception as e:
-            logger.error(f"Error processing I Legislature deputy composition: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-
-            sys.exit(1)
-            return False
+            error_msg = f"Error processing I Legislature deputy composition: {e}"
+            logger.error(error_msg)
+            logger.error("Data integrity issue detected during I Legislature deputy composition processing")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise RuntimeError(f"Data integrity issue: {error_msg}")
 
     def _get_deputado_and_legislatura_from_data(
         self, data_element: ET.Element
@@ -2526,14 +2524,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         except Exception as e:
             error_msg = f"Error processing ReuniaoPlenario: {e}"
             logger.error(error_msg)
+            logger.error("Data integrity issue detected during ReuniaoPlenario processing")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             if hasattr(self, "strict_mode") and self.strict_mode:
-                import sys
-
-                logger.error(
-                    f"STRICT MODE: Exiting due to ReuniaoPlenario processing error"
-                )
-                logger.error(f"Error details: {error_msg}")
-                sys.exit(1)
+                logger.error(f"STRICT MODE: Raising exception due to ReuniaoPlenario processing error")
+                raise RuntimeError(f"STRICT MODE - Data integrity issue: {error_msg}")
             return False
 
     def _process_organ_meeting_namespace(
@@ -3825,8 +3821,6 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         results["errors"].append(error_msg)
         results["records_processed"] += 1
         if strict_mode:
-            import sys
-
-            logger.error(f"STRICT MODE: Exiting due to processing error")
+            logger.error(f"STRICT MODE: Raising exception due to processing error")
             logger.error(f"Error details: {error_msg}")
-            sys.exit(1)
+            raise RuntimeError(f"STRICT MODE - Data integrity issue: {error_msg}")

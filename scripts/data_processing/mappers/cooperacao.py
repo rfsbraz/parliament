@@ -117,14 +117,14 @@ class CooperacaoMapper(SchemaMapper):
             except Exception as e:
                 error_msg = f"Cooperation item processing error: {str(e)}"
                 logger.error(error_msg)
+                logger.error("Data integrity issue detected during cooperation item processing")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
                 results['errors'].append(error_msg)
                 results['records_processed'] += 1
-                logger.error("Data integrity issue detected - exiting immediately")
-                import sys
-                sys.exit(1)
+                raise RuntimeError(f"Data integrity issue: {error_msg}")
         
         # Commit all changes
-        self.session.commit()
         return results
     
     

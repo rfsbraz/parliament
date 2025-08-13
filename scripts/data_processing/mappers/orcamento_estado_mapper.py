@@ -458,7 +458,6 @@ class OrcamentoEstadoMapper(SchemaMapper):
                 return results
 
             # Commit all changes
-            self.session.commit()
 
             logger.info(f"Successfully processed Orçamento do Estado file: {file_path}")
             logger.info(

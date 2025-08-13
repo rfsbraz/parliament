@@ -207,15 +207,16 @@ class IntervencoesMapper(SchemaMapper):
                 except Exception as e:
                     error_msg = f"Intervention processing error in {filename}: {str(e)}"
                     logger.error(error_msg)
+                    logger.error("Data integrity issue detected during intervention processing")
+                    import traceback
+                    logger.error(f"Traceback: {traceback.format_exc()}")
                     results['errors'].append(error_msg)
                     results['records_processed'] += 1
                     if strict_mode:
-                        logger.error("Data integrity issue detected - exiting immediately")
-                        import sys
-                        sys.exit(1)
+                        logger.error("STRICT MODE: Raising exception due to intervention processing error")
+                        raise RuntimeError(f"STRICT MODE - Data integrity issue: {error_msg}")
             
             # Commit all changes
-            self.session.commit()
             
             logger.info(f"Successfully processed Intervencoes file: {file_path}")
             logger.info(f"Statistics: {self.processed_interventions} interventions, "
@@ -229,11 +230,13 @@ class IntervencoesMapper(SchemaMapper):
         except Exception as e:
             error_msg = f"Critical error processing interventions: {str(e)}"
             logger.error(error_msg)
+            logger.error("Data integrity issue detected during critical intervention processing")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             results['errors'].append(error_msg)
             if strict_mode:
-                logger.error("Data integrity issue detected - exiting immediately")
-                import sys
-                sys.exit(1)
+                logger.error("STRICT MODE: Raising exception due to critical intervention processing error")
+                raise RuntimeError(f"STRICT MODE - Data integrity issue: {error_msg}")
             return results
     
     def _process_intervencao_record(self, intervencao: ET.Element, legislatura: Legislatura, filename: str = None, skip_video_processing: bool = False) -> bool:

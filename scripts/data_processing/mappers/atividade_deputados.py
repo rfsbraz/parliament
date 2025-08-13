@@ -719,16 +719,18 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(atividade_deputado)
-            self.session.commit()
 
             return atividade_deputado.id
 
         except Exception as e:
             logger.error(f"Error creating atividade deputado record: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
             return None
 
     def _create_atividade_deputado_list(
@@ -741,16 +743,18 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(atividade_list)
-            self.session.commit()
 
             return atividade_list.id
 
         except Exception as e:
             logger.error(f"Error creating atividade deputado list record: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
             return None
 
     def _create_actividade_out(
@@ -765,16 +769,18 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(actividade_out)
-            self.session.commit()
 
             return actividade_out.id
 
         except Exception as e:
             logger.error(f"Error creating actividade out record: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
             return None
 
     def _process_dados_legis_deputado(
@@ -798,14 +804,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(dados_legis_obj)
 
-            self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing dados legis deputado: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_audiencias(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process Audiencias using SQLAlchemy ORM"""
@@ -816,7 +824,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 audiencia = ActividadeAudiencia(actividade_out_id=actividade_out_id)
 
                 self.session.add(audiencia)
-                self.session.commit()
 
                 # Process ActividadesComissaoOut within Audiencias
                 for comissao_out in audiencias_section.findall(
@@ -853,14 +860,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
                     self.session.add(comissao_out_obj)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing audiencias: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_audicoes(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process Audicoes using SQLAlchemy ORM"""
@@ -871,7 +880,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 audicao = ActividadeAudicao(actividade_out_id=actividade_out_id)
 
                 self.session.add(audicao)
-                self.session.commit()
 
                 # Process ActividadesComissaoOut within Audicoes
                 for comissao_out in audicoes_section.findall("ActividadesComissaoOut"):
@@ -902,14 +910,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
                     self.session.add(comissao_out_obj)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing audicoes: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_initiatives(
         self, actividade_out: ET.Element, atividade_deputado_id: int
@@ -967,14 +977,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(initiative)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing initiatives: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_interventions(
         self, actividade_out: ET.Element, actividade_out_id: int
@@ -1005,7 +1017,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(actividade_intervencao)
-                self.session.commit()
 
                 # Process each IntervencoesOut within Intev
                 for intervencao in intev_section.findall("IntervencoesOut"):
@@ -1041,14 +1052,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(intervencao_out)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing interventions: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_deputy_situacoes_real(
         self,
@@ -1072,7 +1085,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(deputado_situacao)
-                self.session.commit()
 
                 # Process each DadosSituacaoDeputado (regular format)
                 for situacao in dep_situacao.findall("DadosSituacaoDeputado"):
@@ -1116,14 +1128,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(dados_situacao)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing deputy situacoes: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
             if strict_mode:
                 raise SchemaError(
                     f"Deputy situations processing failed in strict mode: {e}"
@@ -1142,7 +1156,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(atividades_parlamentares)
-                self.session.commit()
 
                 # Process each ActividadesParlamentaresOut
                 for atividade in actp_section.findall("ActividadesParlamentaresOut"):
@@ -1174,14 +1187,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(atividade_out_obj)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing parliamentary activities: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_friendship_groups(
         self, actividade_out: ET.Element, actividade_out_id: int
@@ -1196,7 +1211,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(grupos_parlamentares_amizade)
-                self.session.commit()
 
                 # Process each GruposParlamentaresAmizadeOut
                 for grupo in gpa_section.findall("GruposParlamentaresAmizadeOut"):
@@ -1219,14 +1233,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(grupo_out)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing friendship groups: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_permanent_delegations(
         self, actividade_out: ET.Element, actividade_out_id: int
@@ -1241,7 +1257,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(delegacoes_permanentes)
-                self.session.commit()
 
                 # Process each DelegacoesPermanentesOut
                 for delegacao in dlp_section.findall("DelegacoesPermanentesOut"):
@@ -1261,7 +1276,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     self.session.add(delegacao_out)
-                    self.session.commit()  # Commit to get the delegacao_out.id
 
                     # Process meetings (DepReunioes.ReunioesDelegacoesPermanentes)
                     reunioes_section = delegacao.find("DepReunioes")
@@ -1284,14 +1298,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                             self.session.add(reuniao_obj)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing permanent delegations: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_occasional_delegations(
         self, actividade_out: ET.Element, actividade_out_id: int
@@ -1306,7 +1322,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(delegacoes_eventuais)
-                self.session.commit()
 
                 # Process each DelegacoesEventuaisOut
                 for delegacao in dle_section.findall("DelegacoesEventuaisOut"):
@@ -1335,14 +1350,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(delegacao_out)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing occasional delegations: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_requirements(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process deputy requirements (RequerimentosOut structure)
@@ -1368,7 +1385,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(requerimentos_ativ_dep)
-                self.session.commit()
 
                 # Process each RequerimentosAtivDepOut
                 for requerimento in req_section.findall("RequerimentosAtivDepOut"):
@@ -1396,14 +1412,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(requerimento_out)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing requirements: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_subcommittees_working_groups(
         self, actividade_out: ET.Element, actividade_out_id: int
@@ -1430,7 +1448,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(subcomissoes_grupos_trabalho)
-                self.session.commit()
 
                 # Process each SubComissoesGruposTrabalhoOut
                 for subcomissao in scgt_section.findall(
@@ -1457,14 +1474,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(subcomissao_out)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing sub-committees/working groups: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_petition_rapporteurs(
         self, actividade_out: ET.Element, actividade_out_id: int
@@ -1481,7 +1500,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     self.session.add(relatores_peticoes)
-                    self.session.commit()
 
                     # Process each RelatoresPeticoesOut
                     for relator in relatores_peticoes_section.findall(
@@ -1506,14 +1524,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                         self.session.add(relator_out)
 
-                    self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing petition rapporteurs: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_initiative_rapporteurs(
         self, actividade_out: ET.Element, actividade_out_id: int
@@ -1531,7 +1551,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     self.session.add(relatores_iniciativas)
-                    self.session.commit()
 
                     # Process each RelatoresIniciativasOut
                     for relator in ini_section.findall("RelatoresIniciativasOut"):
@@ -1556,14 +1575,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                         self.session.add(relator_out)
 
-                    self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing initiative rapporteurs: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_committees(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process IX Legislature Committees (Cms)"""
@@ -1574,7 +1595,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 comissoes = Comissoes(actividade_out_id=actividade_out_id)
 
                 self.session.add(comissoes)
-                self.session.commit()
 
                 # Process each ComissoesOut
                 for comissao in cms_section.findall("ComissoesOut"):
@@ -1597,14 +1617,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(comissao_out)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing committees: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_autores_pareceres_inc_imu(
         self, actividade_out: ET.Element, actividade_out_id: int
@@ -1621,7 +1643,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     self.session.add(autores_pareceres_inc_imu)
-                    self.session.commit()
 
                     # Process each AutoresPareceresIncImuOut
                     for autor in autores_section.findall("AutoresPareceresIncImuOut"):
@@ -1640,16 +1661,18 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                         self.session.add(autor_out)
 
-                    self.session.commit()
 
         except Exception as e:
             logger.error(
                 f"Error processing authors of incompatibility/immunity opinions: {e}"
             )
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_relatores_ini_europeias(
         self, actividade_out: ET.Element, actividade_out_id: int
@@ -1666,7 +1689,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     self.session.add(relatores_ini_europeias)
-                    self.session.commit()
 
                     # Process each RelatoresIniEuropeiasOut
                     for relator in relatores_section.findall(
@@ -1691,14 +1713,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                         self.session.add(relator_out)
 
-                    self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing European initiative rapporteurs: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_parlamento_jovens(
         self, actividade_out: ET.Element, actividade_out_id: int
@@ -1713,7 +1737,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(parlamento_jovens)
-                self.session.commit()
 
                 # Process DadosDeputado
                 dados_deputado = pj_section.find("DadosDeputado")
@@ -1741,14 +1764,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(dados_out)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing youth parliament: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_eventos(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process I Legislature Events (Eventos)"""
@@ -1759,7 +1784,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 eventos = Eventos(actividade_out_id=actividade_out_id)
 
                 self.session.add(eventos)
-                self.session.commit()
 
                 # Process each ActividadesComissaoOut within Events
                 for actividade_comissao in eventos_section.findall(
@@ -1804,14 +1828,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(actividade_out)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing events: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_deslocacoes(self, actividade_out: ET.Element, actividade_out_id: int):
         """Process I Legislature Displacements (Deslocacoes)"""
@@ -1822,7 +1848,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 deslocacoes = Deslocacoes(actividade_out_id=actividade_out_id)
 
                 self.session.add(deslocacoes)
-                self.session.commit()
 
                 # Process each ActividadesComissaoOut within Deslocacoes
                 for actividade_comissao in deslocacoes_section.findall(
@@ -1867,14 +1892,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(actividade_out)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing displacements: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _process_relatores_contas_publicas(
         self, actividade_out: ET.Element, actividade_out_id: int
@@ -1889,7 +1916,6 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         actividade_out_id=actividade_out_id
                     )
                     self.session.add(relatores_contas_publicas)
-                    self.session.commit()
 
                     for relator in rcp_section.findall("RelatoresContasPublicasOut"):
                         act_id = self._safe_int(self._get_text_value(relator, "ActId"))
@@ -1907,13 +1933,15 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                             cta_no=cta_no,
                         )
                         self.session.add(relator_out)
-                    self.session.commit()
         except Exception as e:
             logger.error(f"Error processing public accounts rapporteurs: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
     def _parse_datetime(self, datetime_str: str) -> Optional[object]:
         """Parse datetime string to Python datetime object"""
@@ -2008,11 +2036,13 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     self.session.add(dados_cargo)
 
-                self.session.commit()
 
         except Exception as e:
             logger.error(f"Error processing DepCargo: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")

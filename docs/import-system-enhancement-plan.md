@@ -1,7 +1,7 @@
 # Enhanced Import System: URL Discovery & State Management
 
 ## 🎯 Overview
-Transform the current download-heavy approach into a smart, incremental system that tracks URL states and only processes changed content. This builds on your existing ImportStatus infrastructure while adding a discovery layer.
+**STATUS: IMPLEMENTED** - This document describes the enhanced import system that has been successfully implemented with discovery_service.py, database_driven_importer.py, and pipeline_orchestrator.py. The system now features smart URL discovery, incremental processing, and state management through ImportStatus tracking.
 
 ## 🏗️ Architecture Changes
 
@@ -68,21 +68,21 @@ class ImportUrlDiscovery(Base):
 - **URL Deduplication**: Handle URL variations (query params, fragments)
 
 ### Phase 3: Enhanced Import Orchestration
-**Modified: `unified_importer.py`**
+**Implemented: `database_driven_importer.py`**
 
-**New Processing Modes:**
-1. **Discovery Mode**: `--discover` - Populate URL database
-2. **Smart Import Mode**: `--smart-import` - Process only changed content  
-3. **Force Mode**: `--force-all` - Ignore change detection
-4. **Retry Mode**: `--retry-failed` - Retry failed imports with backoff
+**Current Processing Modes:**
+1. **Discovery Mode**: `discovery_service.py --save-to-db` - Populate URL database
+2. **Smart Import Mode**: `database_driven_importer.py` - Process only changed content  
+3. **Force Mode**: Use `--force` flags - Ignore change detection
+4. **Retry Mode**: Built-in retry logic with exponential backoff
 
 **Processing Pipeline:**
-1. Check `ImportUrlDiscovery` for URLs marked as `content_changed=True`
-2. Download only changed files to temporary location
-3. Calculate SHA1 and compare with `current_content_hash`
-4. If different, move to permanent location and create `ImportStatus` entry
-5. Process using existing mapper logic
-6. Update both `ImportStatus` and `ImportUrlDiscovery` on completion
+1. Discovery service finds and catalogs URLs with metadata
+2. ImportStatus tracks file states with SHA1 deduplication
+3. Database-driven importer processes only discovered files
+4. Smart retry logic with exponential backoff for failed imports
+5. Transaction-per-file processing for data integrity
+6. Pipeline orchestrator coordinates the entire workflow
 
 ### Phase 4: Performance Optimizations
 
@@ -164,35 +164,33 @@ class ImportUrlDiscovery(Base):
 ## 🎛️ Usage Examples
 
 ```bash
-# Initial discovery (populate URL database)
-python unified_discovery.py --initial-scan
+# Discovery (populate URL database)
+python scripts/data_processing/discovery_service.py --save-to-db
 
-# Daily incremental discovery  
-python unified_discovery.py --check-changes
+# Smart import (only discovered files)
+python scripts/data_processing/database_driven_importer.py
 
-# Smart import (only changed content)
-python unified_importer.py --smart-import
+# Full pipeline orchestration
+python scripts/data_processing/pipeline_orchestrator.py
 
-# Force full reimport
-python unified_importer.py --force-all --ignore-cache
+# Cleanup operations
+python scripts/data_processing/database_driven_importer.py --cleanup
+python scripts/data_processing/database_driven_importer.py --full-cleanup
 
-# Retry failed URLs with backoff
-python unified_importer.py --retry-failed --max-retries 3
-
-# Status and monitoring
-python unified_discovery.py --status
-python unified_importer.py --stats --by-legislature
+# Status monitoring
+python scripts/data_processing/database_driven_importer.py --status
 ```
 
 This architecture transforms your import system from reactive bulk processing to intelligent incremental updates, dramatically improving efficiency while maintaining data accuracy and providing better operational visibility.
 
 ## Current System Analysis
 
-### Existing Components
-- `unified_downloader.py`: Downloads all files from parlament.pt with legislature filtering
-- `unified_importer.py`: Processes downloaded XML/JSON files with schema mapping
-- `ImportStatus` model: Tracks file processing status with SHA1 deduplication
-- Mapper system: Type-specific processors for different data categories
+### Current Implementation
+- `discovery_service.py`: Discovers and catalogs URLs from parlament.pt with metadata extraction
+- `database_driven_importer.py`: Processes discovered files using ImportStatus queue
+- `pipeline_orchestrator.py`: Coordinates discovery, download, and import phases
+- `ImportStatus` model: Tracks file processing status with SHA1 deduplication and retry logic
+- Enhanced mapper system: Transaction-per-file processing with data integrity validation
 
 ### Pain Points Addressed
 1. **Full Discovery Every Run**: Currently re-discovers all URLs each time

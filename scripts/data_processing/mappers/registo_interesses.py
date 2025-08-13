@@ -521,7 +521,6 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         raise SchemaError(f"V1 conflicts record processing failed - stopping importer: {e}") from e
 
             # Commit all changes
-            self.session.commit()
             logger.info(
                 f"Imported {results['records_imported']} conflicts of interest records from {file_info['file_path']}"
             )

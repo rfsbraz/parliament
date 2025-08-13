@@ -163,17 +163,19 @@ class DatabaseSessionMixin:
         try:
             self.session.commit()
         except Exception as e:
-            logger.error(f"Transaction commit failed: {str(e)}")
-            import sys
-
-            sys.exit(1)
+            error_msg = f"Transaction commit failed: {str(e)}"
+            logger.error(error_msg)
+            self.session.rollback()
+            raise RuntimeError(error_msg)
 
     def rollback_transaction(self):
-        """Exit immediately instead of rolling back"""
-        logger.error("Data integrity issue detected - exiting immediately")
-        import sys
-
-        sys.exit(1)
+        """Rollback transaction and raise exception with details"""
+        logger.error("Data integrity issue detected - rolling back transaction")
+        try:
+            self.session.rollback()
+        except Exception as rollback_error:
+            logger.error(f"Rollback failed: {rollback_error}")
+        raise RuntimeError("Data integrity issue detected during processing")
 
 
 class LegislatureHandlerMixin:
@@ -245,11 +247,13 @@ class LegislatureHandlerMixin:
             patterns = [
                 # Pattern 1: After known prefixes (RegistoBiografico, Atividade, etc.)
                 rf"(Biografico|Atividade.*|Iniciativas|Intervencoes|File|Data){legislature}\.xml$",
-                # Pattern 2: After underscore/dash
+                # Pattern 2: After Composicao (for OrgaoComposicao files)
+                rf"(Composicao){legislature}\.xml$",
+                # Pattern 3: After underscore/dash
                 rf"[_-]{legislature}\.xml$",
-                # Pattern 3: Before underscore/dash
+                # Pattern 4: Before underscore/dash
                 rf"^{legislature}[_-]",
-                # Pattern 4: Standalone at start or end
+                # Pattern 5: Standalone at start or end
                 rf"^{legislature}([^A-Za-z]|$)",
                 rf"[^A-Za-z]{legislature}\.xml$",
             ]
@@ -822,8 +826,8 @@ class EnhancedSchemaMapper(
                     logger.error(
                         f"... and {len(unmapped_fields) - 10} more unmapped fields"
                     )
-                logger.error("STRICT MODE: Exiting due to schema coverage violation")
-                sys.exit(1)
+                logger.error("STRICT MODE: Raising exception due to schema coverage violation")
+                raise RuntimeError(f"STRICT MODE - Schema coverage violation: {unmapped_summary}")
             else:
                 # Normal mode, just log warning
                 logger.warning(f"Some unmapped fields found: {unmapped_summary}")
@@ -839,10 +843,8 @@ class EnhancedSchemaMapper(
         except Exception as e:
             error_msg = f"{error_context} processing error: {str(e)}"
             logger.error(error_msg)
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
-
-            sys.exit(1)
+            logger.error("Data integrity issue detected during processing")
+            raise RuntimeError(f"Data integrity issue: {error_msg}")
 
     def create_processing_results(self) -> Dict:
         """Create standard results dictionary"""
@@ -868,10 +870,10 @@ class EnhancedSchemaMapper(
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit with proper cleanup"""
         if exc_type:
-            logger.error("Exception occurred in context manager - exiting immediately")
-            import sys
-
-            sys.exit(1)
+            logger.error("Exception occurred in context manager")
+            logger.error(f"Exception type: {exc_type}")
+            logger.error(f"Exception value: {exc_val}")
+            # Let the exception propagate naturally instead of calling sys.exit()
         self.close_session()
 
     def _find_deputy_robust(

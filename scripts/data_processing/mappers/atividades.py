@@ -502,9 +502,7 @@ class AtividadesMapper(SchemaMapper):
                         logger.error(
                             "Data integrity issue detected - exiting immediately"
                         )
-                        import sys
-
-                        sys.exit(1)
+                        raise RuntimeError("Data integrity issue detected")
                         if strict_mode:
                             logger.error(
                                 f"STRICT MODE: Exiting due to activity processing exception"
@@ -533,9 +531,7 @@ class AtividadesMapper(SchemaMapper):
                         logger.error(
                             "Data integrity issue detected - exiting immediately"
                         )
-                        import sys
-
-                        sys.exit(1)
+                        raise RuntimeError("Data integrity issue detected")
                         if strict_mode:
                             logger.error(
                                 f"STRICT MODE: Exiting due to debate processing exception"
@@ -564,9 +560,7 @@ class AtividadesMapper(SchemaMapper):
                         logger.error(
                             "Data integrity issue detected - exiting immediately"
                         )
-                        import sys
-
-                        sys.exit(1)
+                        raise RuntimeError("Data integrity issue detected")
                         if strict_mode:
                             logger.error(
                                 f"STRICT MODE: Exiting due to report processing exception"
@@ -597,9 +591,7 @@ class AtividadesMapper(SchemaMapper):
                         logger.error(
                             "Data integrity issue detected - exiting immediately"
                         )
-                        import sys
-
-                        sys.exit(1)
+                        raise RuntimeError("Data integrity issue detected")
                         if strict_mode:
                             logger.error(
                                 f"STRICT MODE: Exiting due to budget/account processing exception"
@@ -624,10 +616,13 @@ class AtividadesMapper(SchemaMapper):
                 error_msg = f"XIII Legislature structures processing error: {str(e)}"
                 logger.error(error_msg)
                 results["errors"].append(error_msg)
-                logger.error("Data integrity issue detected - exiting immediately")
-                import sys
+                logger.error("Data integrity issue detected during processing")
 
-                sys.exit(1)
+                import traceback
+
+                logger.error(f"Traceback: {traceback.format_exc()}")
+
+                raise RuntimeError("Data integrity issue detected during processing")
                 if strict_mode:
                     logger.error(
                         f"STRICT MODE: Exiting due to XIII Legislature processing exception"
@@ -635,17 +630,19 @@ class AtividadesMapper(SchemaMapper):
                     raise
 
             # Commit all changes
-            self.session.commit()
             return results
 
         except Exception as e:
             error_msg = f"Critical error processing activities: {str(e)}"
             logger.error(error_msg)
             results["errors"].append(error_msg)
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
 
             # In strict mode, re-raise the exception to trigger immediate exit
             if strict_mode:
@@ -773,10 +770,13 @@ class AtividadesMapper(SchemaMapper):
 
         except Exception as e:
             logger.error(f"Error processing activity: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
             return False
 
     def _process_debate(self, debate: ET.Element, legislatura: Legislatura) -> bool:
@@ -895,10 +895,16 @@ class AtividadesMapper(SchemaMapper):
                 # Exit the process to prevent further errors
                 raise SystemExit(f"CRITICAL: Database schema mismatch - {error_msg}")
 
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+
+            import traceback
+
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+
+            raise RuntimeError("Data integrity issue detected during processing")
             return False
 
     def _process_relatorio(
@@ -982,10 +988,13 @@ class AtividadesMapper(SchemaMapper):
 
         except Exception as e:
             logger.error(f"Error processing report: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
             return False
 
     def _map_activity_type(self, tipo: str) -> Optional[str]:
@@ -1248,10 +1257,13 @@ class AtividadesMapper(SchemaMapper):
 
         except Exception as e:
             logger.error(f"Error processing budget/account entry: {e}")
-            logger.error("Data integrity issue detected - exiting immediately")
-            import sys
+            logger.error("Data integrity issue detected during processing")
 
-            sys.exit(1)
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+            raise RuntimeError("Data integrity issue detected during processing")
             return False
 
     def _process_relatorio_documentos(

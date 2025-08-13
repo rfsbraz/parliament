@@ -132,29 +132,30 @@ class ParliamentURLExtractor:
         # Try different patterns for legislature identification
         patterns = [
             # URL-based patterns
-            r"([XVII]+)[_\s]*Legislatura",
-            r"Legislatura[_\s]*([XVII]+)",
-            r"/([XVII]+)_Legislatura/",
-            r"/([XVII]+)/",
+            # Ordered by length (longest first) to prevent false matches like "I" matching before "IB" 
+            r"(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)[_\s]*Legislatura",
+            r"Legislatura[_\s]*(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)",
+            r"/(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)_Legislatura/",
+            r"/(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)/",
             r"(Constituinte)",
-            # Filename-based patterns (common in parliament files)
-            r"([XVII]+)\.xml$",  # AtividadesXVII.xml
-            r"([XVII]+)_json\.txt$",  # AtividadesXVII_json.txt
-            r"Base([XVII]+)\.xml$",  # InformacaoBaseXVII.xml
-            r"Deputado([XVII]+)\.xml$",  # AtividadeDeputadoXVII.xml
-            r"Composicao([XVII]+)\.xml$",  # OrgaoComposicaoXVII.xml
-            r"Eventual([XVII]+)\.xml$",  # DelegacaoEventualXVII.xml
-            r"Permanente([XVII]+)\.xml$",  # DelegacaoPermanenteXVII.xml
-            r"Iniciativas([XVII]+)\.xml$",  # IniciativasXVII.xml
-            r"Intervencoes([XVII]+)\.xml$",  # IntervencoesXVII.xml
-            r"Peticoes([XVII]+)\.xml$",  # PeticoesXVII.xml
-            r"Requerimentos([XVII]+)\.xml$",  # RequerimentosXVII.xml
-            r"Biografico([XVII]+)\.xml$",  # RegistoBiograficoXVII.xml
-            r"Interesses([XVII]+)\.xml$",  # RegistoInteressesXVII.xml
-            r"Diplomas([XVII]+)\.xml$",  # DiplomasXVII.xml
-            r"Cooperacao([XVII]+)\.xml$",  # CooperacaoXVII.xml
-            r"Visitas([XVII]+)\.xml$",  # ReunioesVisitasXVII.xml
-            r"Amizade([XVII]+)\.xml$",  # GrupoDeAmizadeXVII.xml
+            # Filename-based patterns (common in parliament files) - ordered by length to avoid false matches
+            r"(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # AtividadesXVII.xml
+            r"(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)_json\.txt$",  # AtividadesXVII_json.txt
+            r"Base(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # InformacaoBaseXVII.xml
+            r"Deputado(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # AtividadeDeputadoXVII.xml
+            r"Composicao(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # OrgaoComposicaoXVII.xml
+            r"Eventual(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # DelegacaoEventualXVII.xml
+            r"Permanente(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # DelegacaoPermanenteXVII.xml
+            r"Iniciativas(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # IniciativasXVII.xml
+            r"Intervencoes(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # IntervencoesXVII.xml
+            r"Peticoes(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # PeticoesXVII.xml
+            r"Requerimentos(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # RequerimentosXVII.xml
+            r"Biografico(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # RegistoBiograficoXVII.xml
+            r"Interesses(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # RegistoInteressesXVII.xml
+            r"Diplomas(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # DiplomasXVII.xml
+            r"Cooperacao(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # CooperacaoXVII.xml
+            r"Visitas(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # ReunioesVisitasXVII.xml
+            r"Amizade(CONSTITUINTE|XVII|XVI|XV|XIV|XIII|XII|VIII|VII|VI|IV|III|IB|IA|IX|II|X|V|I)\.xml$",  # GrupoDeAmizadeXVII.xml
             # Special cases
             r"(Cons)\.xml$",  # Constituinte files end with "Cons"
         ]
@@ -320,7 +321,19 @@ class DiscoveryService:
                         }
                     )
 
-            return recursos_links
+            # Reorder so DAR sections come last
+            dar_sections = []
+            other_sections = []
+            
+            for link in recursos_links:
+                section_name = link["section_name"].lower()
+                if "dar" in section_name or "diário" in section_name or "diario" in section_name:
+                    dar_sections.append(link)
+                else:
+                    other_sections.append(link)
+            
+            # Return other sections first, then DAR sections
+            return other_sections + dar_sections
 
         except Exception as e:
             self._print(f"ERROR: Error extracting recursos links: {e}")

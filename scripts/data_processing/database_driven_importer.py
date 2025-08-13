@@ -517,35 +517,32 @@ class DatabaseDrivenImporter:
                 import_record.processing_completed_at = datetime.now()
                 return False
             
-            # Process with mapper
+            # Process with mapper using the same session for transaction-per-file
             try:
-                from database.connection import DatabaseSession
+                mapper_class = self.schema_mappers[mapper_key]
+                mapper = mapper_class(db_session)  # Use the same session for transaction control
+                results = mapper.validate_and_map(xml_root, file_info, strict_mode)
                 
-                # Use separate session for mapper to avoid conflicts
-                with DatabaseSession() as mapper_session:
-                    mapper_class = self.schema_mappers[mapper_key]
-                    mapper = mapper_class(mapper_session)
-                    results = mapper.validate_and_map(xml_root, file_info, strict_mode)
-                    
-                    mapper_session.commit()
-                    
-                    # Update import record with results
-                    import_record.status = 'completed'
-                    import_record.processing_completed_at = datetime.now()
-                    import_record.records_imported = results.get('records_imported', 0)
-                    import_record.error_message = (
-                        "; ".join(results.get('errors', []))
-                        if results.get('errors')
-                        else None
-                    )
-                    import_record.updated_at = datetime.now()
-                    
-                    # Explicitly flush the import record updates to the database
-                    db_session.flush()
-                    
-                    return True
+                # Update import record with results  
+                import_record.status = 'completed'
+                import_record.processing_completed_at = datetime.now()
+                import_record.records_imported = results.get('records_imported', 0)
+                import_record.error_message = (
+                    "; ".join(results.get('errors', []))
+                    if results.get('errors')
+                    else None
+                )
+                import_record.updated_at = datetime.now()
+                
+                # Commit the entire transaction (mapper data + import status) together
+                db_session.commit()
+                
+                return True
                     
             except Exception as e:
+                # Rollback the failed transaction (both mapper data and import status changes)
+                db_session.rollback()
+                
                 error_msg = f"Processing error: {str(e)}"
                 import_record.status = 'import_error'
                 import_record.error_message = error_msg
@@ -554,11 +551,14 @@ class DatabaseDrivenImporter:
                 import_record.processing_completed_at = datetime.now()
                 import_record.updated_at = datetime.now()
                 
-                # Explicitly flush the error record updates to the database
-                db_session.flush()
+                # Commit only the error record (not the failed mapper data)
+                db_session.commit()
                 return False
                 
         except Exception as e:
+            # Rollback any changes from the outer try block
+            db_session.rollback()
+            
             import_record.status = 'import_error'
             import_record.error_message = f"Unexpected error: {str(e)}"
             import_record.error_count = (import_record.error_count or 0) + 1
@@ -566,8 +566,8 @@ class DatabaseDrivenImporter:
             import_record.processing_completed_at = datetime.now()
             import_record.updated_at = datetime.now()
             
-            # Explicitly flush the error record updates to the database
-            db_session.flush()
+            # Commit only the error record
+            db_session.commit()
             return False
     
     def _download_file(self, import_record: ImportStatus) -> bool:
@@ -730,6 +730,197 @@ class DatabaseDrivenImporter:
         
         return sorted(import_records, key=get_order_index)
 
+    def cleanup_database(self):
+        """Drop all tables except ImportStatus and reset ImportStatus to 'discovered'"""
+        try:
+            logger.info("Starting database cleanup...")
+
+            from sqlalchemy import text
+            from database.connection import get_engine
+
+            # Use centralized database connection
+            engine = get_engine()
+            connection = engine.connect()
+
+            try:
+                # Disable foreign key checks for MySQL
+                connection.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+
+                # Get all table names
+                result = connection.execute(text("SHOW TABLES"))
+                tables = [row[0] for row in result.fetchall()]
+
+                logger.info(f"Found {len(tables)} tables")
+
+                # Reset ImportStatus instead of dropping it
+                if 'import_status' in tables:
+                    logger.info("Resetting ImportStatus records to 'discovered' status...")
+                    
+                    # Count records before reset
+                    count_result = connection.execute(text("SELECT COUNT(*) FROM import_status"))
+                    total_records = count_result.fetchone()[0]
+                    
+                    # Reset all ImportStatus records to discovered state
+                    reset_query = text("""
+                        UPDATE import_status 
+                        SET 
+                            status = 'discovered',
+                            processing_started_at = NULL,
+                            processing_completed_at = NULL,
+                            error_message = NULL,
+                            records_imported = 0,
+                            error_count = 0,
+                            retry_at = NULL,
+                            updated_at = NOW()
+                        WHERE status != 'discovered'
+                    """)
+                    
+                    reset_result = connection.execute(reset_query)
+                    reset_count = reset_result.rowcount
+                    
+                    logger.info(f"Reset {reset_count} ImportStatus records out of {total_records} total records to 'discovered' status")
+
+                # Drop all other tables except ImportStatus and alembic_version
+                tables_to_preserve = {'import_status', 'alembic_version'}
+                tables_to_drop = [table for table in tables if table not in tables_to_preserve]
+                
+                logger.info(f"Dropping {len(tables_to_drop)} tables (preserving ImportStatus and alembic_version)")
+
+                for table_name in tables_to_drop:
+                    connection.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
+                    logger.info(f"Dropped table: {table_name}")
+
+                # Re-enable foreign key checks
+                connection.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+
+                connection.commit()
+                logger.info(
+                    f"Database cleanup completed successfully. Dropped {len(tables_to_drop)} tables, preserved and reset ImportStatus"
+                )
+
+            finally:
+                connection.close()
+
+        except Exception as e:
+            logger.error(f"Database cleanup failed: {e}")
+            raise
+
+    def full_cleanup_database(self):
+        """Drop ALL tables including ImportStatus (original cleanup behavior)"""
+        try:
+            logger.info("Starting FULL database cleanup (including ImportStatus)...")
+
+            from sqlalchemy import text
+            from database.connection import get_engine
+
+            # Use centralized database connection
+            engine = get_engine()
+            connection = engine.connect()
+
+            try:
+                # Disable foreign key checks for MySQL
+                connection.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+
+                # Get all table names
+                result = connection.execute(text("SHOW TABLES"))
+                tables = [row[0] for row in result.fetchall()]
+
+                logger.info(f"Found {len(tables)} tables to drop")
+
+                # Drop all tables except alembic_version
+                tables_to_drop = [table for table in tables if table != 'alembic_version']
+                
+                for table_name in tables_to_drop:
+                    connection.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
+                    logger.info(f"Dropped table: {table_name}")
+
+                # Re-enable foreign key checks
+                connection.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+
+                connection.commit()
+                logger.info(
+                    f"FULL database cleanup completed successfully. Dropped {len(tables_to_drop)} tables"
+                )
+
+            finally:
+                connection.close()
+
+        except Exception as e:
+            logger.error(f"FULL database cleanup failed: {e}")
+            raise
+
+    def show_status(self):
+        """Show import status summary"""
+        from sqlalchemy import case, func
+        from database.connection import DatabaseSession
+        from database.models import ImportStatus
+
+        with DatabaseSession() as session:
+            # Overall status summary
+            status_summary = (
+                session.query(
+                    ImportStatus.status,
+                    func.count().label("count"),
+                    func.coalesce(func.sum(ImportStatus.records_imported), 0).label(
+                        "total_imported"
+                    ),
+                )
+                .group_by(ImportStatus.status)
+                .order_by(func.count().desc())
+                .all()
+            )
+
+            print("\\n" + "=" * 80)
+            print("IMPORT STATUS SUMMARY")
+            print("=" * 80)
+
+            for status, count, imported in status_summary:
+                print(f"{status.upper():20} {count:>8} files    {imported:>10} records")
+
+            # File type breakdown
+            file_type_summary = (
+                session.query(
+                    ImportStatus.file_type,
+                    func.count().label("count"),
+                    func.sum(
+                        case((ImportStatus.status == "completed", 1), else_=0)
+                    ).label("completed"),
+                )
+                .group_by(ImportStatus.file_type)
+                .order_by(func.count().desc())
+                .all()
+            )
+
+            print("\\n" + "-" * 80)
+            print("FILE TYPE BREAKDOWN")
+            print("-" * 80)
+
+            for file_type, total, completed in file_type_summary:
+                completion_rate = (completed / total * 100) if total > 0 else 0
+                print(
+                    f"{file_type:25} {total:>6} total    {completed:>6} done    {completion_rate:>5.1f}%"
+                )
+
+            # Enhanced statistics for retries and errors
+            error_summary = (
+                session.query(
+                    func.count(case((ImportStatus.error_count > 0, 1))).label("files_with_errors"),
+                    func.avg(case((ImportStatus.error_count > 0, ImportStatus.error_count))).label("avg_error_count"),
+                    func.max(ImportStatus.error_count).label("max_error_count"),
+                    func.count(case((ImportStatus.retry_at.isnot(None), 1))).label("files_pending_retry")
+                )
+                .first()
+            )
+
+            print("\\n" + "-" * 80)
+            print("ERROR AND RETRY STATISTICS")
+            print("-" * 80)
+            
+            print(f"Files with errors:     {error_summary.files_with_errors:>6}")
+            print(f"Files pending retry:   {error_summary.files_pending_retry:>6}")
+            print(f"Average error count:   {error_summary.avg_error_count:>6.1f}" if error_summary.avg_error_count else "Average error count:      0.0")
+            print(f"Maximum error count:   {error_summary.max_error_count:>6}")
+
 
 def main():
     """Main CLI interface"""
@@ -757,6 +948,12 @@ def main():
                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                        default='INFO',
                        help='Set logging level (default: INFO)')
+    parser.add_argument('--status', action='store_true',
+                       help='Show import status summary')
+    parser.add_argument('--cleanup', action='store_true',
+                       help='Drop all data tables (preserves ImportStatus and resets to "discovered")')
+    parser.add_argument('--full-cleanup', action='store_true',
+                       help='Drop ALL tables including ImportStatus (original cleanup behavior)')
     
     args = parser.parse_args()
     
@@ -778,6 +975,33 @@ def main():
     
     # Create and run importer with file type filter
     importer = DatabaseDrivenImporter(allowed_file_types=allowed_file_types)
+    
+    # Handle status, cleanup, and full-cleanup commands
+    if args.status:
+        importer.show_status()
+        return
+    elif args.cleanup:
+        # Confirm cleanup action (preserves ImportStatus)
+        print("WARNING: This will drop all data tables but preserve ImportStatus records!")
+        print("All ImportStatus records will be reset to 'discovered' status for reprocessing.")
+        confirmation = input("Are you sure you want to continue? (yes/no): ")
+        if confirmation.lower() == "yes":
+            importer.cleanup_database()
+            print("Database cleanup completed successfully.")
+        else:
+            print("Cleanup cancelled.")
+        return
+    elif args.full_cleanup:
+        # Confirm full cleanup action (drops everything)
+        print("WARNING: This will drop ALL database tables including ImportStatus!")
+        print("You will need to run discovery again to find files.")
+        confirmation = input("Are you sure you want to continue? (yes/no): ")
+        if confirmation.lower() == "yes":
+            importer.full_cleanup_database()
+            print("Full database cleanup completed successfully.")
+        else:
+            print("Full cleanup cancelled.")
+        return
     
     if args.watch:
         # Continuous mode - watch for new files

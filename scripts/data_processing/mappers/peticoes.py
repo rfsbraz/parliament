@@ -391,7 +391,6 @@ class PeticoesMapper(SchemaMapper):
                     continue  # Continue processing other petitions in non-strict mode
             
             # Commit all changes
-            self.session.commit()
             return results
             
         except Exception as e:

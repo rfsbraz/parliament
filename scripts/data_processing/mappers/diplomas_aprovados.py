@@ -191,7 +191,6 @@ class DiplomasAprovadosMapper(SchemaMapper):
                     continue
             
             # Commit all changes
-            self.session.commit()
             return results
             
         except Exception as e:
