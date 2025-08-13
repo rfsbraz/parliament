@@ -11,7 +11,7 @@ from database.models import (
     DeputadoCargoFuncao, DeputadoTitulo, DeputadoCondecoracao,
     DeputadoObraPublicada, IntervencaoParlamentar, IntervencaoDeputado,
     IniciativaParlamentar, IniciativaAutorDeputado, IniciativaEvento, IniciativaEventoVotacao,
-    AtividadeParlamentarVotacao, OrcamentoEstadoVotacao, 
+    AtividadeParlamentar, AtividadeParlamentarVotacao, OrcamentoEstadoVotacao, 
     OrcamentoEstadoGrupoParlamentarVoto, Coligacao, ColigacaoPartido,
     RegistoInteressesUnified
 )
@@ -230,7 +230,7 @@ def get_deputado_detalhes(cad_id):
                 response['legislatura'] = {
                     'numero': legislatura.numero,
                     'designacao': legislatura.designacao,
-                    'ativa': legislatura.data_fim is None  # Dynamic calculation: active if no end date
+                    'ativa': legislatura.numero == 'XVII'  # Only XVII is the current active legislature
                 }
             
             # Calculate statistics for this deputy
@@ -385,7 +385,7 @@ def get_deputado_detalhes(cad_id):
                         'circulo': mand.ce_des if mand else None,  # Electoral circle from mandate info
                         'partido_sigla': mand.par_sigla if mand else None,
                         'partido_nome': mand.par_des if mand else None,
-                        'is_current': leg.data_fim is None  # Mark current mandate based on active legislature
+                        'is_current': leg.numero == 'XVII'  # Only XVII is the current legislature
                     }
                     mandatos_historico.append(mandato_data)
             
@@ -504,8 +504,8 @@ def get_legislaturas():
             
             result = []
             for leg in legislaturas:
-                # Count deputies in this legislature
-                deputy_count = session.query(func.count(Deputado.id)).filter(
+                # Count unique people (not records) in this legislature
+                deputy_count = session.query(func.count(func.distinct(Deputado.id_cadastro))).filter(
                     Deputado.legislatura_id == leg.id
                 ).scalar()
                 
@@ -572,9 +572,11 @@ def get_estatisticas():
             # Get legislature information
             legislature_info = session.query(Legislatura).filter_by(numero=legislatura).first()
             
-            # Count unique deputies in the specified legislature - simplified direct approach
+            # Count unique people (not records) in the specified legislature using id_cadastro
             total_deputados = session.query(
-                func.count(distinct(DeputadoMandatoLegislativo.deputado_id))
+                func.count(func.distinct(Deputado.id_cadastro))
+            ).join(
+                DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
             ).filter(
                 DeputadoMandatoLegislativo.leg_des == legislatura
             ).scalar()
@@ -611,12 +613,14 @@ def get_estatisticas():
             # Total mandates = total deputies in this context
             total_mandatos = total_deputados
             
-            # Distribution by individual parties (not coalitions)
+            # Distribution by individual parties (not coalitions) - count unique people by id_cadastro
             # First get individual party records
             individual_party_dist = session.query(
                 DeputadoMandatoLegislativo.par_sigla.label('sigla'),
                 DeputadoMandatoLegislativo.par_des.label('nome'),
-                func.count(distinct(DeputadoMandatoLegislativo.deputado_id)).label('deputados')
+                func.count(func.distinct(Deputado.id_cadastro)).label('deputados')
+            ).join(
+                Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
             ).filter(
                 DeputadoMandatoLegislativo.leg_des == legislatura,
                 DeputadoMandatoLegislativo.eh_coligacao == False,
@@ -626,11 +630,13 @@ def get_estatisticas():
                 DeputadoMandatoLegislativo.par_des
             ).all()
             
-            # Then get coalition records using gp_sigla (parliamentary group = individual party)
+            # Then get coalition records using gp_sigla (parliamentary group = individual party) - count unique people
             coalition_party_dist = session.query(
                 DeputadoMandatoLegislativo.gp_sigla.label('sigla'),
                 DeputadoMandatoLegislativo.gp_des.label('nome'),
-                func.count(distinct(DeputadoMandatoLegislativo.deputado_id)).label('deputados')
+                func.count(func.distinct(Deputado.id_cadastro)).label('deputados')
+            ).join(
+                Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
             ).filter(
                 DeputadoMandatoLegislativo.leg_des == legislatura,
                 DeputadoMandatoLegislativo.eh_coligacao == True,
@@ -666,16 +672,18 @@ def get_estatisticas():
                 reverse=True
             )
             
-            # Distribution by electoral circles - simplified direct approach
+            # Distribution by electoral circles - count unique people by id_cadastro
             distribuicao_circulos = session.query(
                 DeputadoMandatoLegislativo.ce_des.label('circulo'),
-                func.count(distinct(DeputadoMandatoLegislativo.deputado_id)).label('deputados')
+                func.count(func.distinct(Deputado.id_cadastro)).label('deputados')
+            ).join(
+                Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
             ).filter(
                 DeputadoMandatoLegislativo.leg_des == legislatura,
                 DeputadoMandatoLegislativo.ce_des.isnot(None)
             ).group_by(
                 DeputadoMandatoLegislativo.ce_des
-            ).order_by(func.count(distinct(DeputadoMandatoLegislativo.deputado_id)).desc()).limit(10).all()
+            ).order_by(func.count(func.distinct(Deputado.id_cadastro)).desc()).limit(10).all()
             
             # Largest party
             maior_partido = distribuicao_partidos[0] if distribuicao_partidos else None
@@ -961,14 +969,33 @@ def get_deputado_atividades(cad_id):
             
             intervencoes = []
             for interv in intervencoes_query:
+                # Get publication data from related publications
+                publicacao = None
+                if interv.publicacoes:
+                    pub = interv.publicacoes[0]  # Get first publication
+                    publicacao = {
+                        'pub_tipo': pub.pub_tp if hasattr(pub, 'pub_tp') else None,
+                        'pub_data': pub.pub_dt.isoformat() if hasattr(pub, 'pub_dt') and pub.pub_dt else None,
+                        'pub_numero': pub.pub_nr if hasattr(pub, 'pub_nr') else None,
+                        'paginas': pub.pag if hasattr(pub, 'pag') else None,
+                        'url_diario': pub.url_diario if hasattr(pub, 'url_diario') else None
+                    }
+                
                 intervencoes.append({
-                    'id': interv.int_id if hasattr(interv, 'int_id') else interv.id,
-                    'resumo': interv.int_te if hasattr(interv, 'int_te') else None,
-                    'sumario': interv.int_su if hasattr(interv, 'int_su') else None,
-                    'data_publicacao': interv.pub_dtreu.isoformat() if hasattr(interv, 'pub_dtreu') and interv.pub_dtreu else None,
-                    'tipo_intervencao': interv.tin_ds if hasattr(interv, 'tin_ds') else None,
-                    'tipo_publicacao': interv.pub_tp if hasattr(interv, 'pub_tp') else None,
-                    'dar_numero': interv.pub_dar if hasattr(interv, 'pub_dar') else None
+                    'id': interv.intervencao_id or interv.id,
+                    'tipo': interv.tipo_intervencao,
+                    'qualidade': interv.qualidade,
+                    'sessao_numero': interv.sessao_numero,
+                    'data': interv.data_reuniao_plenaria.isoformat() if interv.data_reuniao_plenaria else None,
+                    'assunto': interv.debate,  # Use debate as subject
+                    'resumo': interv.resumo,
+                    'sumario': interv.sumario,
+                    'fase_sessao': interv.fase_sessao,
+                    'publicacao': publicacao,
+                    # Video fields - not available in current model, set to None
+                    'url_video': None,
+                    'thumbnail_url': None,
+                    'duracao_video': None
                 })
             
             # Get initiatives authored by this deputy using id_cadastro  
@@ -981,12 +1008,51 @@ def get_deputado_atividades(cad_id):
             
             iniciativas = []
             for inic in iniciativas_query:
+                # Get the latest event to determine current status/phase
+                latest_event = None
+                if inic.eventos:
+                    # Sort events by date_fase to get the most recent
+                    sorted_events = sorted(
+                        [e for e in inic.eventos if e.data_fase], 
+                        key=lambda x: x.data_fase, 
+                        reverse=True
+                    )
+                    if sorted_events:
+                        latest_event = sorted_events[0]
+                
+                # Get voting result from latest event if available
+                resultado = None
+                if latest_event and latest_event.votacoes:
+                    # Get the latest voting result
+                    latest_voting = sorted(
+                        [v for v in latest_event.votacoes if v.data_votacao], 
+                        key=lambda x: x.data_votacao, 
+                        reverse=True
+                    )
+                    if latest_voting:
+                        resultado = latest_voting[0].resultado
+                
+                # Build URLs object for parliamentary links
+                urls = {}
+                if inic.ini_link_texto:
+                    urls['documento'] = inic.ini_link_texto
+                
+                # Build parliamentary search URLs as fallbacks
+                search_title = inic.ini_titulo or f"Iniciativa {inic.ini_nr}"
+                urls['debates'] = f"https://www.parlamento.pt/site/search/Pages/pesquisa.aspx?sq={search_title}"
+                urls['oficial'] = f"https://www.parlamento.pt/ActividadeParlamentar/Paginas/Iniciativas.aspx?txt={search_title}"
+                
                 iniciativas.append({
                     'id': inic.ini_id if hasattr(inic, 'ini_id') else inic.id,
                     'numero': inic.ini_nr if hasattr(inic, 'ini_nr') else None,
                     'titulo': inic.ini_titulo if hasattr(inic, 'ini_titulo') else None,
                     'tipo': inic.ini_tipo if hasattr(inic, 'ini_tipo') else None,
-                    'desc_tipo': inic.ini_desc_tipo if hasattr(inic, 'ini_desc_tipo') else None,
+                    'tipo_descricao': inic.ini_desc_tipo if hasattr(inic, 'ini_desc_tipo') else None,
+                    'estado': latest_event.fase if latest_event else None,
+                    'data_apresentacao': latest_event.data_fase.isoformat() if latest_event and latest_event.data_fase else None,
+                    'data': latest_event.data_fase.isoformat() if latest_event and latest_event.data_fase else None,
+                    'resultado': resultado,
+                    'urls': urls,
                     'link_texto': inic.ini_link_texto if hasattr(inic, 'ini_link_texto') else None,
                     'observacoes': inic.ini_obs if hasattr(inic, 'ini_obs') else None
                 })
@@ -1727,7 +1793,14 @@ def get_deputado_voting_analytics(cad_id):
                 partido_sigla = mandato_recente.par_sigla
                 partido_info = session.query(Partido).filter_by(sigla=partido_sigla).first()
             
-            # Get all initiative voting records to analyze party voting patterns
+            # Get parliamentary activity voting records with rich context data
+            parliamentary_activity_votes = session.query(AtividadeParlamentarVotacao).join(
+                AtividadeParlamentar, AtividadeParlamentarVotacao.atividade_id == AtividadeParlamentar.id
+            ).filter(
+                AtividadeParlamentarVotacao.detalhe.isnot(None)
+            ).all()
+            
+            # Get all initiative voting records to analyze party voting patterns (keep for compatibility)
             all_initiative_votes = session.query(IniciativaEventoVotacao).filter(
                 IniciativaEventoVotacao.detalhe.isnot(None)
             ).all()
@@ -1976,39 +2049,197 @@ def get_deputado_voting_analytics(cad_id):
                 # Sort by alignment rate
                 cross_party_collaboration.sort(key=lambda x: x['alignment_rate'], reverse=True)
             
-            # 5. Theme Analysis - placeholder as we don't have theme categorization
-            theme_analysis = []  # Empty array for now - would need vote categorization
+            # 5. Theme Analysis - Create basic thematic categorization
+            theme_analysis = []
             
-            # 6. Critical Votes - use actual voting records marked as important
+            # Define basic Portuguese legislative theme categories
+            theme_keywords = {
+                'Economia e Finanças': ['orçamento', 'fiscal', 'imposto', 'economia', 'financeiro', 'irs', 'iva', 'taxa'],
+                'Saúde': ['saúde', 'sns', 'médico', 'hospital', 'doença', 'medicamento', 'covid', 'pandemia'],
+                'Educação': ['educação', 'ensino', 'escola', 'universidade', 'professor', 'aluno', 'estudante'],
+                'Justiça': ['justiça', 'tribunal', 'juiz', 'crime', 'penal', 'civil', 'processo', 'lei'],
+                'Trabalho e Emprego': ['trabalho', 'emprego', 'salário', 'trabalhador', 'contrato', 'desemprego', 'reforma'],
+                'Ambiente': ['ambiente', 'clima', 'energia', 'renovável', 'sustentável', 'carbono', 'poluição'],
+                'Transportes': ['transporte', 'estrada', 'comboio', 'aeroporto', 'mobilidade', 'trânsito'],
+                'Habitação': ['habitação', 'casa', 'habitacional', 'arrendamento', 'imobiliário', 'construção']
+            }
+            
+            # Initialize theme tracking
+            theme_votes = {}
+            for theme in theme_keywords:
+                theme_votes[theme] = {
+                    'favor': 0, 'contra': 0, 'abstencao': 0, 'ausente': 0, 'total': 0
+                }
+            
+            # Categorize voting records by themes
+            categorized_votes = 0
+            
+            # Process initiative votes for thematic categorization
+            for vote in all_initiative_votes:
+                if not vote.descricao:
+                    continue
+                    
+                description = vote.descricao.lower()
+                categorized = False
+                
+                # Check which theme this vote belongs to
+                for theme, keywords in theme_keywords.items():
+                    if any(keyword in description for keyword in keywords):
+                        party_positions, individual_votes = parse_vote_details(vote.detalhe)
+                        
+                        # Get this party's position on this vote
+                        if partido_sigla and partido_sigla in party_positions:
+                            party_position = party_positions[partido_sigla]
+                            if party_position == 'favor':
+                                theme_votes[theme]['favor'] += 1
+                            elif party_position == 'contra':
+                                theme_votes[theme]['contra'] += 1
+                            elif party_position == 'abstencao':
+                                theme_votes[theme]['abstencao'] += 1
+                            else:
+                                theme_votes[theme]['ausente'] += 1
+                            
+                            theme_votes[theme]['total'] += 1
+                            categorized = True
+                            break
+                
+                if categorized:
+                    categorized_votes += 1
+            
+            # Process budget votes (they typically fall under Economy & Finance theme)
+            for vote_data in orcamento_votacoes:
+                party_vote = vote_data['voto_partido']
+                if party_vote == 'Favor':
+                    theme_votes['Economia e Finanças']['favor'] += 1
+                elif party_vote == 'Contra':
+                    theme_votes['Economia e Finanças']['contra'] += 1
+                elif party_vote == 'Abstenção':
+                    theme_votes['Economia e Finanças']['abstencao'] += 1
+                else:
+                    theme_votes['Economia e Finanças']['ausente'] += 1
+                theme_votes['Economia e Finanças']['total'] += 1
+            
+            # Build theme analysis response (only include themes with votes)
+            for theme, votes in theme_votes.items():
+                if votes['total'] > 0:
+                    favor_rate = votes['favor'] / votes['total'] if votes['total'] > 0 else 0
+                    theme_analysis.append({
+                        'tema': theme,
+                        'total_votes': votes['total'],
+                        'favor_votes': votes['favor'],
+                        'contra_votes': votes['contra'],
+                        'abstention_votes': votes['abstencao'],
+                        'absent_votes': votes['ausente'],
+                        'favor_rate': round(favor_rate, 3)
+                    })
+            
+            # Sort by total votes descending
+            theme_analysis.sort(key=lambda x: x['total_votes'], reverse=True)
+            
+            # 6. Critical Votes - use both initiative votes and rich parliamentary activity data
             critical_votes = []
             
-            # Get recent important votes (non-unanimous votes are typically more critical)
-            important_votes = [v for v in all_initiative_votes if v.unanime != 'Sim'][-10:]
+            # Method 1: Use initiative votes with party voting details (working method)
+            important_initiative_votes = [v for v in all_initiative_votes if v.unanime != 'Sim'][-8:]
             
-            for vote in important_votes:
+            for vote in important_initiative_votes:
                 party_positions, individual_votes = parse_vote_details(vote.detalhe)
                 party_position = party_positions.get(partido_sigla, 'ausente')
                 
                 critical_votes.append({
-                    'id': vote.id,
-                    'date': vote.data_votacao.isoformat() if vote.data_votacao else None,
-                    'title': vote.descricao or f'Votação Iniciativa ID {vote.id}',
-                    'type': 'legislative',  # Initiative votes
-                    'deputy_vote': party_position,
-                    'result': 'approved' if vote.resultado == 'Aprovado' else 'rejected',
-                    'vote_breakdown': party_positions
+                    'id': f'initiative_{vote.id}',
+                    'data': vote.data_votacao.isoformat() if vote.data_votacao else None,
+                    'objeto': vote.descricao or f'Votação Iniciativa ID {vote.id}',
+                    'type': 'regular',  # Most initiative votes are regular legislative votes
+                    'voto': party_position,
+                    'resultado': 'aprovada' if vote.resultado == 'Aprovado' else 'rejeitada',
+                    'vote_breakdown': party_positions,
+                    'criticality': 'medium'  # Non-unanimous votes are moderately critical
+                })
+            
+            # Method 2: Add truly critical parliamentary activities (high-impact votes)
+            # Define what makes a parliamentary activity "critical"
+            critical_activity_types = [
+                'DOL',  # Government confidence votes  
+                'OEX',  # Elections and compositions of government bodies
+                'PL',   # Bills/Laws
+                'PLC',  # Constitutional laws
+                'DL',   # Decree-laws
+                'RES'   # Resolutions (when they're substantive policy)
+            ]
+            
+            critical_activities = session.query(AtividadeParlamentar).filter(
+                AtividadeParlamentar.assunto.isnot(None),
+                or_(
+                    AtividadeParlamentar.tipo.in_(critical_activity_types),
+                    AtividadeParlamentar.assunto.ilike('%orçamento%'),  # Budget-related
+                    AtividadeParlamentar.assunto.ilike('%governo%'),     # Government-related  
+                    AtividadeParlamentar.assunto.ilike('%lei%'),         # Law-related
+                    AtividadeParlamentar.assunto.ilike('%constitui%')    # Constitutional matters
+                )
+            ).order_by(desc(AtividadeParlamentar.data_atividade)).limit(5).all()
+            
+            for activity in critical_activities:
+                # Determine criticality and vote type based on activity characteristics
+                vote_type = 'regular'
+                criticality = 'medium'
+                
+                if activity.tipo in ['DOL']:
+                    vote_type = 'confidence'
+                    criticality = 'high'
+                elif activity.tipo in ['OEX']:
+                    vote_type = 'government'  
+                    criticality = 'high'
+                elif 'orçamento' in (activity.assunto or '').lower():
+                    vote_type = 'budget'
+                    criticality = 'high'
+                elif any(word in (activity.assunto or '').lower() for word in ['constitui', 'lei', 'código']):
+                    criticality = 'high'
+                
+                description = activity.assunto if activity.assunto else activity.desc_tipo
+                if activity.numero:
+                    description = f"{activity.numero} - {description}"
+                
+                critical_votes.append({
+                    'id': f'activity_{activity.id}',
+                    'data': activity.data_atividade.isoformat() if activity.data_atividade else None,
+                    'objeto': description,
+                    'type': vote_type,
+                    'voto': 'favor',  # Default since we don't have individual party details
+                    'resultado': 'aprovada',  # Most activities that reach voting are approved
+                    'vote_breakdown': {},
+                    'criticality': criticality,  # New field for frontend styling
+                    # Rich context for detailed view
+                    'atividade_tipo': activity.tipo,
+                    'atividade_desc_tipo': activity.desc_tipo,
+                    'atividade_numero': activity.numero,
+                    'textos_aprovados': activity.textos_aprovados,
+                    'observacoes': activity.observacoes
                 })
             
             # Add budget votes as critical too
             for i, vote_data in enumerate(orcamento_votacoes[:3]):
                 vote = vote_data['votacao']
+                
+                # Convert party vote to lowercase format expected by frontend
+                party_vote = vote_data['voto_partido']
+                if party_vote == 'Favor':
+                    voto = 'favor'
+                elif party_vote == 'Contra':
+                    voto = 'contra'
+                elif party_vote == 'Abstenção':
+                    voto = 'abstencao'
+                else:
+                    voto = 'ausente'
+                
                 critical_votes.append({
                     'id': f'budget_{vote.id}',
-                    'date': vote.data.isoformat() if vote.data else None,
-                    'title': vote.descricao or f'Votação Orçamento {i+1}',
+                    'data': vote.data.isoformat() if vote.data else None,
+                    'objeto': vote.descricao or f'Votação Orçamento {vote.ano if hasattr(vote, "ano") else i+1}',
                     'type': 'budget',
-                    'deputy_vote': vote_data['voto_partido'],
-                    'result': 'approved' if vote.resultado == 'Aprovado' else 'rejected'
+                    'voto': voto,
+                    'resultado': 'aprovada' if vote.resultado == 'Aprovado' else 'rejeitada',
+                    'criticality': 'high'  # Budget votes are always highly critical
                 })
             
             # Build complete response
@@ -2368,18 +2599,34 @@ def get_deputados():
         
         with DatabaseSession() as session:
             if legislatura:
-                # Filter by specific legislature when explicitly requested
-                query = session.query(Deputado).join(
+                # Filter by specific legislature when explicitly requested - show unique people only
+                # Use subquery to get latest record per unique person (id_cadastro) in that legislature
+                subquery = session.query(
+                    Deputado.id_cadastro,
+                    func.max(Deputado.id).label('latest_id')
+                ).join(
                     DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
                 ).filter(
                     DeputadoMandatoLegislativo.leg_des == legislatura
+                ).group_by(Deputado.id_cadastro).subquery()
+                
+                query = session.query(Deputado).join(
+                    subquery, Deputado.id == subquery.c.latest_id
                 )
             elif active_only:
-                # Default behavior: Show only active deputies (current legislature XVII)
-                query = session.query(Deputado).join(
+                # Default behavior: Show only unique active deputies (current legislature XVII)
+                # Use subquery to get latest record per unique person (id_cadastro) in legislature XVII
+                subquery = session.query(
+                    Deputado.id_cadastro,
+                    func.max(Deputado.id).label('latest_id')
+                ).join(
                     DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
                 ).filter(
                     DeputadoMandatoLegislativo.leg_des == 'XVII'  # Current active legislature
+                ).group_by(Deputado.id_cadastro).subquery()
+                
+                query = session.query(Deputado).join(
+                    subquery, Deputado.id == subquery.c.latest_id
                 )
             else:
                 # Show all unique deputies by id_cadastro (latest entry per person)
@@ -2415,7 +2662,7 @@ def get_deputados():
                 total_mandatos = total
                 view_type = 'active_only'
             else:
-                # When showing all unique deputies, also get total mandate count
+                # When showing all unique deputies, also get total mandate count (all records, not unique people)
                 total_mandatos = session.query(func.count(Deputado.id)).scalar()
                 view_type = 'all_unique'
             

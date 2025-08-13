@@ -245,8 +245,8 @@ class LegislatureHandlerMixin:
         # Check each legislature individually with specific context patterns
         for legislature in sorted_legislatures:
             patterns = [
-                # Pattern 1: After known prefixes (RegistoBiografico, Atividade, etc.)
-                rf"(Biografico|Atividade.*|Iniciativas|Intervencoes|File|Data){legislature}\.xml$",
+                # Pattern 1: After known prefixes (RegistoBiografico, RegistoInteresses, Atividade, etc.)
+                rf"(Biografico|Interesses|Atividade.*|Iniciativas|Intervencoes|File|Data){legislature}\.xml$",
                 # Pattern 2: After Composicao (for OrgaoComposicao files)
                 rf"(Composicao){legislature}\.xml$",
                 # Pattern 3: After specific meeting types and other common prefixes

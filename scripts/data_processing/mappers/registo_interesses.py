@@ -549,12 +549,16 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         self, record_id: str, full_name: str, legislatura: Legislatura
     ) -> Deputado:
         """
-        Centralized deputy creation/retrieval logic using id_cadastro + legislature.
+        FIXED: Deputy lookup without auto-creation to prevent cross-legislature contamination.
 
         This method implements the correct deputy association pattern:
         - Use XML RecordId as cadastral ID (id_cadastro) that tracks a person across legislatures
         - Find existing deputy by id_cadastro + legislature combination
-        - Create new deputy if not found, with auto-generated primary key
+        - FAIL if deputy doesn't exist (prevents bogus cross-legislature records)
+
+        The Interest Registry should only reference deputies who actually served in that legislature
+        as established by the authoritative Biographical Registry data. Auto-creating deputy records
+        leads to data integrity violations like André Ventura appearing in Legislature I.
 
         Args:
             record_id: XML RecordId to use as cadastral ID
@@ -562,10 +566,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             legislatura: Legislature context
 
         Returns:
-            Deputado: Deputy record with auto-generated primary key
+            Deputado: Existing deputy record
 
         Raises:
-            ValueError: If record_id is not numeric or missing required data
+            ValueError: If record_id is not numeric, missing required data, or deputy doesn't exist
         """
         # Validate cadastral ID
         id_cadastro = self._safe_int(record_id)
@@ -582,17 +586,12 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         )
 
         if not deputado:
-            # Create new deputy with id_cadastro + legislature
-            deputado = Deputado(
-                id_cadastro=id_cadastro,
-                nome=full_name,
-                nome_completo=full_name,
-                legislatura_id=legislatura.id,
-            )
-            self.session.add(deputado)
-            self.session.flush()  # Get the auto-generated primary key
-            logger.info(
-                f"Created deputy with cadastral ID {id_cadastro} for legislature {legislatura.numero}: {full_name}"
+            # CRITICAL FIX: Do NOT auto-create deputy records
+            # Deputies should only be created by Biographical Registry mapper which has authoritative data
+            # Interest Registry files sometimes contain cross-legislature contamination that would create bogus records
+            raise ValueError(
+                f"Deputy with cadastral ID {id_cadastro} ({full_name}) not found in legislature {legislatura.numero}. "
+                f"Deputies must be created by Biographical Registry first. This prevents cross-legislature contamination."
             )
         else:
             # Update existing deputy with any new information

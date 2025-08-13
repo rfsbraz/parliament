@@ -452,50 +452,113 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
       abstencao: 'text-yellow-600',
       ausente: 'text-gray-500'
     };
+
+    const criticalityColors = {
+      high: 'border-l-4 border-red-500 bg-red-50',
+      medium: 'border-l-4 border-yellow-500 bg-yellow-50',
+      low: 'border-l-4 border-gray-300 bg-gray-50'
+    };
+
+    const criticalityIcons = {
+      high: '🔴',
+      medium: '🟡', 
+      low: '⚪'
+    };
     
     return (
       <div className="space-y-6">
-        <h4 className="text-lg font-semibold text-gray-900 flex items-center">
-          <Target className="h-5 w-5 text-red-600 mr-2" />
-          Análise de Votações Críticas
-        </h4>
+        <div className="mb-6">
+          <h4 className="text-lg font-semibold text-gray-900 flex items-center mb-2">
+            <Target className="h-5 w-5 text-red-600 mr-2" />
+            Análise de Votações Críticas
+          </h4>
+          <p className="text-sm text-gray-600 mb-3">
+            Votações críticas incluem: <span className="font-medium">orçamentos de estado</span>, 
+            <span className="font-medium"> moções de confiança</span>, <span className="font-medium">eleições para órgãos</span>, 
+            <span className="font-medium"> leis constitucionais</span> e <span className="font-medium">votações não-unânimes</span> recentes.
+          </p>
+          <div className="flex items-center gap-4 text-xs text-gray-500">
+            <span className="flex items-center">🔴 Alta criticidade</span>
+            <span className="flex items-center">🟡 Média criticidade</span>
+            <span className="flex items-center">⚪ Baixa criticidade</span>
+          </div>
+        </div>
         
         <div className="space-y-3">
-          {critical_votes.slice(0, 15).map((vote, index) => (
-            <div key={index} className="bg-white border rounded-lg p-4">
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-gray-900 mb-2 line-clamp-2">
-                    {vote.objeto}
+          {critical_votes.slice(0, 15).map((vote, index) => {
+            const criticality = vote.criticality || 'medium';
+            const hasVoteBreakdown = vote.vote_breakdown && Object.keys(vote.vote_breakdown).length > 0;
+            
+            return (
+              <div key={index} className={`bg-white border rounded-lg p-4 ${criticalityColors[criticality] || criticalityColors.medium}`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className="text-sm">{criticalityIcons[criticality]}</span>
+                      <div className="text-sm font-medium text-gray-900 line-clamp-3 leading-relaxed">
+                        {vote.objeto}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${voteTypeColors[vote.type] || voteTypeColors.regular}`}>
+                        {vote.type === 'budget' ? 'Orçamento' :
+                         vote.type === 'government' ? 'Governo' :
+                         vote.type === 'confidence' ? 'Confiança' :
+                         'Regular'}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {vote.data ? new Date(vote.data).toLocaleDateString('pt-PT') : 'Data não disponível'}
+                      </span>
+                      {vote.atividade_numero && (
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                          Nº {vote.atividade_numero}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${voteTypeColors[vote.type] || voteTypeColors.regular}`}>
-                      {vote.type === 'budget' ? 'Orçamento' :
-                       vote.type === 'government' ? 'Governo' :
-                       vote.type === 'confidence' ? 'Confiança' :
-                       'Regular'}
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`text-sm font-medium ${voteColors[vote.voto] || 'text-gray-600'}`}>
+                      {vote.voto === 'favor' ? 'A Favor' :
+                       vote.voto === 'contra' ? 'Contra' :
+                       vote.voto === 'abstencao' ? 'Abstenção' :
+                       'Ausente'}
                     </span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(vote.data).toLocaleDateString('pt-PT')}
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      vote.resultado === 'aprovada' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {vote.resultado === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
                     </span>
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                  <span className={`text-sm font-medium ${voteColors[vote.voto] || 'text-gray-600'}`}>
-                    {vote.voto === 'favor' ? 'A Favor' :
-                     vote.voto === 'contra' ? 'Contra' :
-                     vote.voto === 'abstencao' ? 'Abstenção' :
-                     'Ausente'}
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    vote.resultado === 'aprovada' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {vote.resultado === 'aprovada' ? 'Aprovada' : 'Rejeitada'}
-                  </span>
-                </div>
+                
+                {/* Vote breakdown section */}
+                {hasVoteBreakdown && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="text-xs text-gray-600 mb-2">Posições dos partidos:</div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-1 text-xs">
+                      {Object.entries(vote.vote_breakdown).slice(0, 8).map(([party, position]) => (
+                        <div key={party} className="flex items-center justify-between bg-gray-50 px-2 py-1 rounded">
+                          <span className="font-medium">{party}</span>
+                          <span className={`${voteColors[position] || 'text-gray-500'}`}>
+                            {position === 'favor' ? '✓' :
+                             position === 'contra' ? '✗' :
+                             position === 'abstencao' ? '○' : '–'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Additional context for activities */}
+                {vote.atividade_desc_tipo && vote.atividade_desc_tipo !== vote.type && (
+                  <div className="mt-2 text-xs text-gray-500">
+                    <span className="font-medium">Tipo:</span> {vote.atividade_desc_tipo}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );

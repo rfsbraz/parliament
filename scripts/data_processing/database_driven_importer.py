@@ -515,7 +515,7 @@ class DatabaseDrivenImporter:
                     import_record.category = file_type.replace('_', ' ').title()
             
             # Get mapper for this file type
-            mapper_key = self._get_mapper_key(import_record.category)
+            mapper_key = self._get_mapper_key(import_record.category, import_record.file_name)
             if not mapper_key or mapper_key not in self.schema_mappers:
                 error_msg = f"No mapper available for category: {import_record.category}"
                 logger.error(f"No mapper available for category '{import_record.category}' in file: {import_record.file_name}")
@@ -861,19 +861,19 @@ class DatabaseDrivenImporter:
         }
         return mapping.get(file_type_filter.lower())
     
-    def _get_mapper_key(self, category: str) -> Optional[str]:
-        """Map category to mapper key"""
+    def _get_mapper_key(self, category: str, filename: str = None) -> Optional[str]:
+        """Map category to mapper key, with filename-based disambiguation"""
         if not category:
             return None
             
         category_lower = category.lower()
         
-        # Debug: log unknown categories to help identify mapping issues
-        # (This will be useful for troubleshooting other missing mappings)
-        
-        # Handle various forms of "Registo Biográfico"
+        # Handle "Registo Biografico" category disambiguation using filename
         if ('registo' in category_lower and ('biográfico' in category_lower or 'biografico' in category_lower)) or \
            'registo biografico' in category_lower or 'registo biográfico' in category_lower:
+            # Disambiguate using filename - RegistoInteresses files should use interest mapper
+            if filename and 'RegistoInteresses' in filename:
+                return 'registo_interesses'
             return 'registo_biografico'
         elif 'iniciativas' in category_lower:
             return 'iniciativas'
@@ -921,7 +921,7 @@ class DatabaseDrivenImporter:
     def _sort_by_import_order(self, import_records: List[ImportStatus]) -> List[ImportStatus]:
         """Sort import records by dependency order"""
         def get_order_index(record):
-            mapper_key = self._get_mapper_key(record.category)
+            mapper_key = self._get_mapper_key(record.category, record.file_name)
             if mapper_key in self.IMPORT_ORDER:
                 return self.IMPORT_ORDER.index(mapper_key)
             return len(self.IMPORT_ORDER)  # Put unknown types at the end

@@ -352,15 +352,29 @@ class Deputado(Base):
     Contains comprehensive deputy information including identity, affiliations, status,
     and complete biographical profile.
 
-    IMPORTANT: Deputy Identity Across Legislatures
-    ==============================================
-    - `id`: Primary key, unique within this table but only meaningful within a single legislature
+    CRITICAL: Deputy Identity and Uniqueness Principle
+    ================================================
+    - `id`: Primary key, unique within this table but DIFFERENT for each legislature entry
     - `id_cadastro`: Registration number - THIS IS THE TRUE UNIQUE IDENTIFIER for a person
-      across all legislatures. Use this field to identify the same person across different
-      legislative periods, not the `id` field.
+      across ALL legislatures. Use this field to identify the same person across different
+      legislative periods, NOT the `id` field.
 
-    A person may serve in multiple legislatures and will have different `id` values
-    but the same `id_cadastro` throughout their parliamentary career.
+    DESIGN PRINCIPLE:
+    - Each deputy gets a NEW `id` for EACH legislature they serve in
+    - The same person (same `id_cadastro`) will have MULTIPLE records with different `id` values
+    - Activity data (votes, interventions, initiatives) links to the legislature-specific `id`
+    - Person identity queries (counting unique deputies) MUST use `id_cadastro`
+    
+    QUERY GUIDELINES:
+    - Count unique PEOPLE: Use DISTINCT(id_cadastro)  
+    - Count unique RECORDS: Use COUNT(id)
+    - Find same person across legislatures: GROUP BY id_cadastro
+    - Link to activities: Use the legislature-specific `id`
+    
+    EXAMPLE:
+    - Tiago Barbosa Ribeiro (id_cadastro: 2445) has 5 different `id` values
+    - His XVII legislature activities link to his XVII-specific `id`
+    - To count him as 1 person, use his `id_cadastro`
 
     InformacaoBase Mapping (DadosDeputadoOrgaoPlenario):
     - DepId: id (Legislature-specific deputy identifier)

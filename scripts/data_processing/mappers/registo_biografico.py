@@ -451,6 +451,10 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                     logger.info(f"[LEG_DES_EXTRACT]   - ce_des: {ce_des}")
                     logger.info(f"[LEG_DES_EXTRACT]   - file_path: {self.file_info.get('file_path', 'unknown')}")
                     
+                    # REMOVED: _should_create_mandate filter - was a band-aid fix for Interest Registry auto-creation issue
+                    # The biographical data is clean and authoritative. Interest Registry mapper now properly
+                    # fails when deputies don't exist instead of auto-creating bogus cross-legislature records.
+                    
                     # Check if this mandate has a LegDes that overrides the file-level legislature
                     if leg_des:
                         # Use mandate-specific legislature instead of file-level legislature
@@ -1164,6 +1168,12 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
 
 
 
+
+# REMOVED: _should_create_mandate method
+# This was a band-aid fix for cross-legislature contamination that was actually caused by
+# the Interest Registry mapper auto-creating bogus deputy records. Now that the root cause
+# is fixed (Interest Registry fails instead of auto-creating), this filtering is unnecessary.
+# Biographical data should be trusted as the authoritative source of deputy service periods.
 
     def _extract_legislature_from_path(self, file_path: str) -> str:
         """Extract legislature name from file path for accurate logging"""
