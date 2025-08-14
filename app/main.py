@@ -19,6 +19,7 @@ from database.models import db
 from app.routes.parlamento import parlamento_bp
 from app.routes.agenda import agenda_bp
 from app.routes.health import health_bp
+from app.routes.transparency import transparency_bp
 
 # Configure logging with more detailed formatting for debugging
 log_dir = os.path.join(parent_dir, 'logs')
@@ -84,6 +85,7 @@ CORS(app)
 app.register_blueprint(parlamento_bp, url_prefix='/api')
 app.register_blueprint(agenda_bp, url_prefix='/api')
 app.register_blueprint(health_bp, url_prefix='/api')
+app.register_blueprint(transparency_bp, url_prefix='/api')
 
 # Initialize database
 db.init_app(app)
@@ -266,6 +268,7 @@ def test_error():
         return jsonify({'item': my_list[10]})
     else:
         raise ValueError(f"Unknown test type: {test_type}")
+
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

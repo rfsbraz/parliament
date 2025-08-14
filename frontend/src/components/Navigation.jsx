@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Users, Building, Calendar, Menu, X } from 'lucide-react';
+import { Home, Users, Building, Calendar, BarChart3, Menu, X } from 'lucide-react';
 
 // Navigation component
 const Navigation = () => {
@@ -13,6 +13,7 @@ const Navigation = () => {
     { path: '/deputados', label: 'Deputados', icon: Users },
     { path: '/partidos', label: 'Partidos', icon: Building },
     { path: '/agenda', label: 'Agenda', icon: Calendar },
+    { path: '/transparencia', label: 'Transparência', icon: BarChart3 },
   ];
 
   const isActive = (path) => location.pathname === path;

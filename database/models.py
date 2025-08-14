@@ -2222,6 +2222,14 @@ class AtividadeDeputado(Base):
 
     # legislative_data relationship removed - DeputyLegislativeData model unused
 
+    # Indexes for performance optimization
+    __table_args__ = (
+        Index("idx_atividade_deputado_id", "deputado_id"),
+        Index("idx_atividade_dep_cad_id", "dep_cad_id"),
+        Index("idx_atividade_leg_des", "leg_des"),
+        Index("idx_atividade_deputado_leg_composite", "deputado_id", "leg_des"),
+    )
+
 
 class AtividadeDeputadoList(Base):
     """
@@ -2909,6 +2917,15 @@ class PerguntaRequerimentoDestinatario(Base):
         cascade="all, delete-orphan",
     )
 
+    # Indexes for performance optimization
+    __table_args__ = (
+        Index("idx_dest_pergunta_req_id", "pergunta_requerimento_id"),
+        Index("idx_dest_nome_entidade", "nome_entidade"),
+        Index("idx_dest_data_prorrogacao", "data_prorrogacao"),
+        Index("idx_dest_data_reenvio", "data_reenvio"),
+        Index("idx_dest_prorrogado", "prorrogado"),
+    )
+
 
 class PerguntaRequerimentoResposta(Base):
     """
@@ -2956,6 +2973,13 @@ class PerguntaRequerimentoResposta(Base):
 
     destinatario = relationship(
         "PerguntaRequerimentoDestinatario", back_populates="respostas"
+    )
+
+    # Indexes for performance optimization
+    __table_args__ = (
+        Index("idx_resp_destinatario_id", "destinatario_id"),
+        Index("idx_resp_data_resposta", "data_resposta"),
+        Index("idx_resp_entidade", "entidade"),
     )
 
 
@@ -4426,6 +4450,16 @@ class IniciativaEvento(Base):
         "IniciativaEventoAnexo", back_populates="evento", cascade="all, delete-orphan"
     )
 
+    # Indexes for performance optimization
+    __table_args__ = (
+        Index("idx_eventos_iniciativa_id", "iniciativa_id"),
+        Index("idx_eventos_data_fase", "data_fase"),
+        Index("idx_eventos_oev_id", "oev_id"),
+        Index("idx_eventos_evt_id", "evt_id"),
+        Index("idx_eventos_codigo_fase", "codigo_fase"),
+        Index("idx_eventos_iniciativa_data_composite", "iniciativa_id", "data_fase"),
+    )
+
 
 class IniciativaEventoPublicacao(Base):
     """
@@ -4503,6 +4537,12 @@ class IniciativaEventoVotacao(Base):
         "IniciativaVotacaoPublicacao",
         back_populates="votacao",
         cascade="all, delete-orphan",
+    )
+
+    # Indexes for performance optimization
+    __table_args__ = (
+        Index("idx_votacoes_data_votacao", "data_votacao"),
+        Index("idx_votacoes_evento_id", "evento_id"),
     )
 
 
@@ -6996,6 +7036,14 @@ class DeputadoMandatoLegislativo(Base):
     # Relationships
     deputado = relationship("Deputado", back_populates="mandatos_legislativos")
     coligacao = relationship("Coligacao", foreign_keys=[coligacao_id])
+
+    # Indexes for performance optimization
+    __table_args__ = (
+        Index("idx_mandatos_deputado_id", "deputado_id"),
+        Index("idx_mandatos_leg_des", "leg_des"),
+        Index("idx_mandatos_par_sigla", "par_sigla"),
+        Index("idx_mandatos_legislatura_composite", "deputado_id", "leg_des"),
+    )
 
 
 

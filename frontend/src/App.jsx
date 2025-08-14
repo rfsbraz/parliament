@@ -9,6 +9,7 @@ import PartidosPage from './components/PartidosPage'
 import PartidoDetalhes from './components/PartidoDetalhes'
 import ColigacaoDetalhes from './components/ColigacaoDetalhes'
 import AgendaPage from './components/AgendaPage'
+import TransparenciaPage from './components/TransparenciaPage'
 import Navigation from './components/Navigation'
 import './App.css'
 
@@ -59,6 +60,7 @@ const AppContent = () => {
             <Route path="/partidos/:partidoId" element={<PartidoDetalhes />} />
             <Route path="/coligacoes/:coligacaoId" element={<ColigacaoDetalhes />} />
             <Route path="/agenda" element={<AgendaPage />} />
+            <Route path="/transparencia" element={<TransparenciaPage />} />
           </Routes>
         </main>
 
