@@ -10,6 +10,33 @@
 2. **Error Handling**: Implement comprehensive error handling and logging
 3. **Backups**: Regular data backups required
 4. **Documentation**: Document schema and transformations
+5. **Field Extraction**: NEVER use cascading `or` fallback patterns for XML field extraction
+
+## Field Extraction Anti-Pattern Warning
+❌ **NEVER DO THIS** - Cascading fallback pattern:
+```python
+# WRONG - Anti-pattern that obscures data provenance
+dep_nome = (
+    self._get_text_value(data_element, "DepNomeParlamentar")
+    or self._get_text_value(data_element, "depNomeParlamentar") 
+    or self._get_text_value(data_element, "depNome")
+    or self._get_text_value(data_element, "DepNome")
+)
+```
+
+✅ **DO THIS** - Explicit field mapping:
+```python
+# CORRECT - Explicit mapping with clear data provenance
+dep_nome_parlamentar = self._get_text_value(data_element, "DepNomeParlamentar")
+dep_nome_completo = self._get_text_value(data_element, "DepNomeCompleto")
+```
+
+**Why this matters:**
+- **Data Provenance**: We must know exactly which XML field goes to which database field
+- **Debugging**: When there's bad data, we can trace it to the exact XML source
+- **Validation**: We can validate that the expected XML structure is present
+- **No Silent Failures**: If XML structure changes, we get explicit failures rather than silent fallbacks
+- **Bug Prevention**: Prevents accidentally using the same source value for different fields
 
 ## Import Process
 - Run direct Python code (no test scripts)

@@ -1466,29 +1466,19 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
     ) -> tuple:
         """Extract deputado and legislatura from data element"""
         try:
-            # Try different field patterns for deputy ID and name
+            # Extract deputy data with explicit field mapping
             dep_id = self._get_int_value(data_element, "DepId") or self._get_int_value(
                 data_element, "depId"
             )
+            dep_cad_id = self._get_int_value(data_element, "DepCadId")
+            dep_nome_parlamentar = self._get_text_value(data_element, "DepNomeParlamentar")
+            dep_nome_completo = self._get_text_value(data_element, "DepNomeCompleto")
 
-            dep_cad_id = (
-                self._get_int_value(data_element, "DepCadId")
-                or self._get_int_value(data_element, "depCadId")
-                or self._get_int_value(data_element, "depCadID")
-            )
-
-            dep_nome = (
-                self._get_text_value(data_element, "DepNomeParlamentar")
-                or self._get_text_value(data_element, "depNomeParlamentar")
-                or self._get_text_value(data_element, "depNome")
-                or self._get_text_value(data_element, "DepNome")
-            )
-
-            if dep_cad_id and dep_nome:
+            if dep_cad_id and dep_nome_parlamentar:
                 # Get or create deputy using both record_id and cadastral_id
                 record_id = dep_id if dep_id else dep_cad_id
                 deputado = self._get_or_create_deputado(
-                    record_id, dep_cad_id, dep_nome, dep_nome,
+                    record_id, dep_cad_id, dep_nome_parlamentar, dep_nome_completo,
                     xml_context=data_element  # Pass XML context for LegDes extraction
                 )
 
@@ -1501,7 +1491,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 return deputado, legislatura
             else:
                 logger.debug(
-                    f"Could not extract deputy info: dep_cad_id={dep_cad_id}, dep_nome={dep_nome}"
+                    f"Could not extract deputy info: dep_cad_id={dep_cad_id}, dep_nome_parlamentar={dep_nome_parlamentar}"
                 )
                 return None, None
         except Exception as e:
@@ -3027,16 +3017,17 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
     ) -> bool:
         """Process deputy membership in AR Board"""
         try:
-            # Get or create deputy and legislatura
+            # Get or create deputy and legislatura with explicit field mapping
             dep_id = self._get_int_value(deputado_data, "DepId")
             dep_cad_id = self._get_int_value(deputado_data, "DepCadId")
-            dep_nome = self._get_text_value(deputado_data, "DepNomeParlamentar")
-            if dep_cad_id and dep_nome:
+            dep_nome_parlamentar = self._get_text_value(deputado_data, "DepNomeParlamentar")
+            dep_nome_completo = self._get_text_value(deputado_data, "DepNomeCompleto")
+            if dep_cad_id and dep_nome_parlamentar:
                 # Get or create deputy using both record_id and cadastral_id
                 record_id = dep_id if dep_id else dep_cad_id
                 deputado = self._get_or_create_deputado(
-                    record_id, dep_cad_id, dep_nome, dep_nome,
-                    xml_context=data_element  # Pass XML context for LegDes extraction
+                    record_id, dep_cad_id, dep_nome_parlamentar, dep_nome_completo,
+                    xml_context=deputado_data  # Pass XML context for LegDes extraction
                 )
 
                 # Get legislatura from file context
