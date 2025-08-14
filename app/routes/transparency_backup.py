@@ -26,7 +26,7 @@ from database.connection import get_session
 from database.models import (
     AgendaParlamentar, IniciativaParlamentar, IniciativaEventoVotacao, 
     IniciativaEvento, Deputado, DeputadoMandatoLegislativo, Legislatura,
-    PerguntaRequerimento, PerguntaRequerimentoResposta, PerguntaRequerimentoDestinatario, PeticaoParlamentar, 
+    PerguntaRequerimento, PerguntaRequerimentoResposta, PeticaoParlamentar, 
     Partido
 )
 
