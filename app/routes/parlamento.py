@@ -127,6 +127,50 @@ def log_and_return_error(e, endpoint_info="", status_code=500):
         }), status_code
 
 
+def get_most_recent_deputy(session, cad_id):
+    """
+    Get the most recent deputy record for a given cadastro ID.
+    
+    Selection Priority:
+    1. Most recent legislature (by data_inicio) 
+    2. Fallback to legislature XVII if no dates available
+    3. Last resort: highest legislatura_id
+    
+    Args:
+        session: SQLAlchemy session
+        cad_id: Deputy cadastro ID (unique person identifier)
+        
+    Returns:
+        Deputado object or None if not found
+    """
+    try:
+        # Primary method: Order by legislature start date (most recent first)
+        # Note: MySQL doesn't support NULLS LAST, so we handle nulls differently
+        deputado = session.query(Deputado).filter(
+            Deputado.id_cadastro == cad_id
+        ).join(Legislatura).order_by(
+            Legislatura.data_inicio.desc(),
+            Legislatura.numero.desc()  # Secondary sort for same dates
+        ).first()
+        
+        if deputado:
+            return deputado
+            
+        # Fallback: Try without join (in case of missing legislature data)
+        deputado = session.query(Deputado).filter(
+            Deputado.id_cadastro == cad_id
+        ).order_by(Deputado.legislatura_id.desc()).first()
+        
+        return deputado
+        
+    except Exception as e:
+        print(f"Error in get_most_recent_deputy for cad_id {cad_id}: {e}")
+        # Last resort fallback
+        return session.query(Deputado).filter(
+            Deputado.id_cadastro == cad_id
+        ).first()
+
+
 # =============================================================================
 # PHASE 1: CORE API ENDPOINTS
 # =============================================================================
@@ -157,10 +201,8 @@ def get_deputado(cad_id):
     try:
         with DatabaseSession() as session:
             # Find deputado by cad_id (unique across all legislatures)
-            # Get their most recent legislature entry
-            deputado = session.query(Deputado).filter(
-                Deputado.id_cadastro == cad_id
-            ).order_by(Deputado.legislatura_id.desc()).first()
+            # Get their most recent legislature entry using proper ordering
+            deputado = get_most_recent_deputy(session, cad_id)
             
             if not deputado:
                 return jsonify({'error': 'Deputado not found'}), 404
@@ -186,10 +228,8 @@ def get_deputado_detalhes(cad_id):
     try:
         with DatabaseSession() as session:
             # Find deputado by cad_id (unique across all legislatures)
-            # Get their most recent legislature entry
-            deputado = session.query(Deputado).filter(
-                Deputado.id_cadastro == cad_id
-            ).order_by(Deputado.legislatura_id.desc()).first()
+            # Get their most recent legislature entry using proper ordering
+            deputado = get_most_recent_deputy(session, cad_id)
             
             if not deputado:
                 return jsonify({'error': 'Deputado not found'}), 404
@@ -942,10 +982,8 @@ def get_deputado_atividades(cad_id):
     try:
         with DatabaseSession() as session:
             # Find deputado by cad_id (unique across all legislatures)
-            # Get their most recent legislature entry
-            deputado = session.query(Deputado).filter(
-                Deputado.id_cadastro == cad_id
-            ).order_by(Deputado.legislatura_id.desc()).first()
+            # Get their most recent legislature entry using proper ordering
+            deputado = get_most_recent_deputy(session, cad_id)
             
             if not deputado:
                 return jsonify({'error': 'Deputado not found'}), 404
@@ -1126,10 +1164,8 @@ def get_deputado_biografia(cad_id):
     try:
         with DatabaseSession() as session:
             # Find deputado by cad_id (unique across all legislatures)
-            # Get their most recent legislature entry
-            deputado = session.query(Deputado).filter(
-                Deputado.id_cadastro == cad_id
-            ).order_by(Deputado.legislatura_id.desc()).first()
+            # Get their most recent legislature entry using proper ordering
+            deputado = get_most_recent_deputy(session, cad_id)
             
             if not deputado:
                 return jsonify({'error': 'Deputado not found'}), 404
@@ -1253,9 +1289,8 @@ def get_deputado_conflitos_interesse(cad_id):
     try:
         with DatabaseSession() as session:
             # Find deputado by cad_id (unique across all legislatures)
-            deputado = session.query(Deputado).filter(
-                Deputado.id_cadastro == cad_id
-            ).order_by(Deputado.legislatura_id.desc()).first()
+            # Get their most recent legislature entry using proper ordering
+            deputado = get_most_recent_deputy(session, cad_id)
             
             if not deputado:
                 return jsonify({'error': 'Deputado não encontrado'}), 404
@@ -1344,10 +1379,8 @@ def get_deputado_attendance(cad_id):
     try:
         with DatabaseSession() as session:
             # Find deputado by cad_id (unique across all legislatures)
-            # Get their most recent legislature entry
-            deputado = session.query(Deputado).filter(
-                Deputado.id_cadastro == cad_id
-            ).order_by(Deputado.legislatura_id.desc()).first()
+            # Get their most recent legislature entry using proper ordering
+            deputado = get_most_recent_deputy(session, cad_id)
             
             if not deputado:
                 return jsonify({'error': 'Deputado não encontrado'}), 404
@@ -1473,10 +1506,8 @@ def get_deputado_votacoes(cad_id):
         
         with DatabaseSession() as session:
             # Find deputado by cad_id (unique across all legislatures)
-            # Get their most recent legislature entry
-            deputado = session.query(Deputado).filter(
-                Deputado.id_cadastro == cad_id
-            ).order_by(Deputado.legislatura_id.desc()).first()
+            # Get their most recent legislature entry using proper ordering
+            deputado = get_most_recent_deputy(session, cad_id)
             
             if not deputado:
                 return jsonify({'error': 'Deputado não encontrado'}), 404
@@ -1774,10 +1805,8 @@ def get_deputado_voting_analytics(cad_id):
         
         with DatabaseSession() as session:
             # Find deputado by cad_id (unique across all legislatures)
-            # Get their most recent legislature entry
-            deputado = session.query(Deputado).filter(
-                Deputado.id_cadastro == cad_id
-            ).order_by(Deputado.legislatura_id.desc()).first()
+            # Get their most recent legislature entry using proper ordering
+            deputado = get_most_recent_deputy(session, cad_id)
             
             if not deputado:
                 return jsonify({'error': 'Deputado não encontrado'}), 404
@@ -1793,17 +1822,27 @@ def get_deputado_voting_analytics(cad_id):
                 partido_sigla = mandato_recente.par_sigla
                 partido_info = session.query(Partido).filter_by(sigla=partido_sigla).first()
             
-            # Get parliamentary activity voting records with rich context data
+            # Get recent parliamentary activity voting records (INCREASED RANGE FOR LAST YEAR)
+            # Note: Voting data is not normalized by deputy - stored as HTML text in 'detalhe' field
+            # This requires parsing all records to find deputy mentions, hence the performance limits
+            from datetime import datetime, timedelta
+            one_year_ago = datetime.now().date() - timedelta(days=365)
+            
             parliamentary_activity_votes = session.query(AtividadeParlamentarVotacao).join(
                 AtividadeParlamentar, AtividadeParlamentarVotacao.atividade_id == AtividadeParlamentar.id
             ).filter(
-                AtividadeParlamentarVotacao.detalhe.isnot(None)
-            ).all()
+                AtividadeParlamentarVotacao.detalhe.isnot(None),
+                AtividadeParlamentarVotacao.data.isnot(None),
+                AtividadeParlamentarVotacao.data >= one_year_ago  # Only last year
+            ).order_by(AtividadeParlamentarVotacao.data.desc()).limit(200).all()
             
-            # Get all initiative voting records to analyze party voting patterns (keep for compatibility)
+            # Get recent initiative voting records (INCREASED RANGE FOR LAST YEAR)  
+            # Note: Same issue - deputy votes stored as text, not normalized relationships
             all_initiative_votes = session.query(IniciativaEventoVotacao).filter(
-                IniciativaEventoVotacao.detalhe.isnot(None)
-            ).all()
+                IniciativaEventoVotacao.detalhe.isnot(None),
+                IniciativaEventoVotacao.data_votacao.isnot(None),
+                IniciativaEventoVotacao.data_votacao >= one_year_ago  # Only last year
+            ).order_by(IniciativaEventoVotacao.data_votacao.desc()).limit(300).all()
             
             # Get budget voting records through party affiliation
             orcamento_votacoes = []

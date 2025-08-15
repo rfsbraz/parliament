@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail, Shield, AlertTriangle, Heart, Users } from 'lucide-react';
 import VotingAnalytics from './VotingAnalytics';
 
@@ -12,6 +12,7 @@ const DeputadoDetalhes = () => {
   const { cadId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [deputado, setDeputado] = useState(null);
   const [atividades, setAtividades] = useState(null);
@@ -19,8 +20,11 @@ const DeputadoDetalhes = () => {
   const [attendanceData, setAttendanceData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [interventionTypeFilter, setInterventionTypeFilter] = useState('');
-  const [interventionSort, setInterventionSort] = useState('recent');
+  const [interventionTypeFilter, setInterventionTypeFilter] = useState(searchParams.get('tipo_intervencao') || '');
+  const [interventionSort, setInterventionSort] = useState(searchParams.get('ordenacao_intervencoes') || 'newest');
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page')) || 1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalInterventions, setTotalInterventions] = useState(0);
   const [expandedInitiatives, setExpandedInitiatives] = useState(new Set());
   
   // Helper function to generate deputy URLs
@@ -78,6 +82,19 @@ const DeputadoDetalhes = () => {
     }
   }, [navigate, location.hash]);
 
+  // Function to update URL parameters
+  const updateInterventionParams = (newParams) => {
+    const updatedParams = new URLSearchParams(searchParams);
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value && value !== '') {
+        updatedParams.set(key, value);
+      } else {
+        updatedParams.delete(key);
+      }
+    });
+    setSearchParams(updatedParams);
+  };
+
   useEffect(() => {
     const fetchDados = async () => {
       try {
@@ -91,13 +108,30 @@ const DeputadoDetalhes = () => {
         const deputadoData = await deputadoResponse.json();
         setDeputado(deputadoData);
 
-        // Buscar atividades do deputado
-        const atividadesResponse = await fetch(`/api/deputados/${cadId}/atividades`);
+        // Buscar atividades do deputado with API parameters
+        const apiParams = new URLSearchParams();
+        if (interventionTypeFilter) {
+          apiParams.set('tipo_intervencao', interventionTypeFilter);
+        }
+        if (interventionSort) {
+          apiParams.set('ordenacao_intervencoes', interventionSort);
+        }
+        apiParams.set('page', currentPage.toString());
+        apiParams.set('per_page', '50');
+        
+        const atividadesUrl = `/api/deputados/${cadId}/atividades?${apiParams.toString()}`;
+        const atividadesResponse = await fetch(atividadesUrl);
         if (!atividadesResponse.ok) {
           throw new Error('Erro ao carregar atividades do deputado');
         }
         const atividadesData = await atividadesResponse.json();
         setAtividades(atividadesData);
+        
+        // Update pagination state if intervention metadata is available
+        if (atividadesData.intervention_metadata) {
+          setTotalPages(atividadesData.intervention_metadata.pages);
+          setTotalInterventions(atividadesData.intervention_metadata.total);
+        }
 
         // Buscar conflitos de interesse do deputado
         try {
@@ -133,7 +167,7 @@ const DeputadoDetalhes = () => {
     if (cadId) {
       fetchDados();
     }
-  }, [cadId]);
+  }, [cadId, interventionTypeFilter, interventionSort, currentPage]);
 
   if (loading) {
     return (
@@ -612,18 +646,12 @@ const DeputadoDetalhes = () => {
                     <h3 className="text-lg font-semibold text-gray-900">
                       Intervenções Parlamentares
                     </h3>
-                    {atividades && atividades.intervencoes.length > 0 && (
+                    {totalInterventions > 0 && (
                       <p className="text-sm text-gray-500 mt-1">
-                        {(() => {
-                          let filtered = atividades.intervencoes;
-                          if (interventionTypeFilter) {
-                            filtered = filtered.filter(i => i.tipo?.includes(interventionTypeFilter));
-                          }
-                          const total = atividades.intervencoes.length;
-                          return filtered.length === total 
-                            ? `${total} intervenções`
-                            : `${filtered.length} de ${total} intervenções`;
-                        })()}
+                        {interventionTypeFilter 
+                          ? `${atividades?.intervencoes?.length || 0} de ${totalInterventions} intervenções (filtrado por "${interventionTypeFilter}")`
+                          : `${totalInterventions} intervenções`
+                        }
                       </p>
                     )}
                   </div>
@@ -631,7 +659,12 @@ const DeputadoDetalhes = () => {
                     <div className="flex gap-3">
                       <select 
                         value={interventionTypeFilter}
-                        onChange={(e) => setInterventionTypeFilter(e.target.value)}
+                        onChange={(e) => {
+                          const newType = e.target.value;
+                          setInterventionTypeFilter(newType);
+                          setCurrentPage(1); // Reset to page 1 when filtering
+                          updateInterventionParams({ tipo_intervencao: newType, page: 1 });
+                        }}
                         className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="">Todos os tipos</option>
@@ -642,12 +675,15 @@ const DeputadoDetalhes = () => {
                       </select>
                       <select 
                         value={interventionSort}
-                        onChange={(e) => setInterventionSort(e.target.value)}
+                        onChange={(e) => {
+                          const newSort = e.target.value;
+                          setInterventionSort(newSort);
+                          updateInterventionParams({ ordenacao_intervencoes: newSort });
+                        }}
                         className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
-                        <option value="recent">Mais recentes</option>
+                        <option value="newest">Mais recentes</option>
                         <option value="oldest">Mais antigas</option>
-                        <option value="session">Por sessão</option>
                         <option value="type">Por tipo</option>
                       </select>
                     </div>
@@ -657,29 +693,8 @@ const DeputadoDetalhes = () => {
                 {atividades && atividades.intervencoes.length > 0 ? (
                   <div className="space-y-6">
                     {(() => {
-                      // Filter interventions
-                      let filteredInterventions = atividades.intervencoes || [];
-                      
-                      if (interventionTypeFilter) {
-                        filteredInterventions = filteredInterventions.filter(intervencao => 
-                          intervencao.tipo?.includes(interventionTypeFilter)
-                        );
-                      }
-                      
-                      // Sort interventions
-                      filteredInterventions = [...filteredInterventions].sort((a, b) => {
-                        switch (interventionSort) {
-                          case 'oldest':
-                            return new Date(a.data) - new Date(b.data);
-                          case 'session':
-                            return (a.sessao_numero || 0) - (b.sessao_numero || 0);
-                          case 'type':
-                            return (a.tipo || '').localeCompare(b.tipo || '');
-                          case 'recent':
-                          default:
-                            return new Date(b.data) - new Date(a.data);
-                        }
-                      });
+                      // Interventions are already filtered and sorted by the API
+                      const interventions = atividades.intervencoes || [];
                       
                       // Helper functions
                       const getTipoColor = (tipo) => {
@@ -696,7 +711,7 @@ const DeputadoDetalhes = () => {
                         return 'bg-gray-50 text-gray-700 border-gray-200';
                       };
                       
-                      return filteredInterventions.map((intervencao, index) => (
+                      return interventions.map((intervencao, index) => (
                         <div key={index} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
                           {/* Context badges */}
                           <div className="flex gap-2 mb-4">
@@ -850,6 +865,43 @@ const DeputadoDetalhes = () => {
                         </div>
                       ));
                     })()}
+                    
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="flex justify-center items-center gap-2 mt-8 pt-6 border-t border-gray-200">
+                        <button
+                          onClick={() => {
+                            if (currentPage > 1) {
+                              const newPage = currentPage - 1;
+                              setCurrentPage(newPage);
+                              updateInterventionParams({ page: newPage });
+                            }
+                          }}
+                          disabled={currentPage <= 1}
+                          className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Anterior
+                        </button>
+                        
+                        <span className="px-4 py-2 text-sm text-gray-700">
+                          Página {currentPage} de {totalPages}
+                        </span>
+                        
+                        <button
+                          onClick={() => {
+                            if (currentPage < totalPages) {
+                              const newPage = currentPage + 1;
+                              setCurrentPage(newPage);
+                              updateInterventionParams({ page: newPage });
+                            }
+                          }}
+                          disabled={currentPage >= totalPages}
+                          className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Próxima
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-12">
