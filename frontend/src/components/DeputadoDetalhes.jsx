@@ -1,12 +1,384 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail, Shield, AlertTriangle, Heart, Users } from 'lucide-react';
+import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail, Shield, AlertTriangle, Heart, Users, TrendingUp, TrendingDown, Minus, Info, ChevronRight } from 'lucide-react';
 import VotingAnalytics from './VotingAnalytics';
 
 // TODO: Deputy mandate linking limitation
 // Current system uses name-based linking to connect same person across legislaturas
 // This is a temporary solution because deputado_id changes every legislative period
 // Future enhancement: Implement proper unique person identifiers or create person-linking table
+
+// Enhanced Statistics Components
+
+/**
+ * Calculate trend indicator based on current vs career average
+ */
+const getTrendIndicator = (current, total, legislaturesServed = 1) => {
+  if (total === 0 || legislaturesServed === 0) return 'stable';
+  const careerAverage = total / Math.max(legislaturesServed, 1);
+  const threshold = 0.1; // 10% threshold for trend changes
+  
+  if (current > careerAverage * (1 + threshold)) return 'up';
+  if (current < careerAverage * (1 - threshold)) return 'down';
+  return 'stable';
+};
+
+/**
+ * Get progress bar color based on percentage and color scheme
+ */
+const getProgressColor = (percentage, colorScheme) => {
+  const colors = {
+    blue: {
+      bar: 'bg-blue-500',
+      bg: 'bg-blue-100',
+      text: 'text-blue-700'
+    },
+    green: {
+      bar: 'bg-green-500', 
+      bg: 'bg-green-100',
+      text: 'text-green-700'
+    },
+    purple: {
+      bar: 'bg-purple-500',
+      bg: 'bg-purple-100', 
+      text: 'text-purple-700'
+    },
+    orange: {
+      bar: percentage >= 75 ? 'bg-green-500' : percentage >= 50 ? 'bg-orange-500' : 'bg-red-500',
+      bg: percentage >= 75 ? 'bg-green-100' : percentage >= 50 ? 'bg-orange-100' : 'bg-red-100',
+      text: percentage >= 75 ? 'text-green-700' : percentage >= 50 ? 'text-orange-700' : 'text-red-700'
+    }
+  };
+  return colors[colorScheme] || colors.blue;
+};
+
+/**
+ * Enhanced Statistic Card Component with full accessibility and UX improvements
+ */
+const StatisticCard = ({ 
+  title, 
+  icon: Icon, 
+  current, 
+  total, 
+  colorScheme, 
+  description, 
+  tabId, 
+  onCardClick 
+}) => {
+  const percentage = total > 0 ? Math.min((current / total) * 100, 100) : 0;
+  const trend = getTrendIndicator(current, total, 3); // Assume average 3 legislatures
+  const colors = getProgressColor(percentage, colorScheme);
+  
+  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
+  
+  const handleClick = () => {
+    if (onCardClick) {
+      onCardClick(tabId);
+    }
+  };
+  
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+  
+  return (
+    <article 
+      className={`group relative bg-gradient-to-br from-${colorScheme}-50 to-${colorScheme}-100 rounded-lg border border-${colorScheme}-200 p-4 sm:p-6 cursor-pointer hover:shadow-md transition-all duration-200 focus-within:ring-2 focus-within:ring-${colorScheme}-500 focus-within:ring-offset-2`}
+      role="listitem"
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      aria-labelledby={`${tabId}-title`}
+      aria-describedby={`${tabId}-description ${tabId}-stats`}
+    >
+      {/* Header with Icon and Trend */}
+      <header className="flex items-start justify-between mb-4">
+        <div className={`p-2 sm:p-3 bg-${colorScheme}-500 rounded-lg shadow-sm flex-shrink-0`}>
+          <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" aria-hidden="true" />
+        </div>
+        <div className={`flex items-center space-x-1 px-2 py-1 bg-white bg-opacity-60 rounded-full`}>
+          <TrendIcon 
+            className={`h-3 w-3 ${trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-gray-500'}`}
+            aria-hidden="true"
+          />
+          <span className="sr-only">
+            Tendência: {trend === 'up' ? 'acima da média' : trend === 'down' ? 'abaixo da média' : 'estável'}
+          </span>
+        </div>
+      </header>
+      
+      {/* Content */}
+      <div>
+        <h4 
+          id={`${tabId}-title`}
+          className={`text-sm font-semibold text-${colorScheme}-900 uppercase tracking-wide mb-3`}
+        >
+          {title}
+        </h4>
+        
+        {/* Statistics */}
+        <div id={`${tabId}-stats`} className="space-y-3">
+          {/* Current Value */}
+          <div className="flex items-baseline justify-between">
+            <span className={`text-sm font-medium text-${colorScheme}-700`}>Atual</span>
+            <span className={`text-2xl font-bold text-${colorScheme}-900`}>
+              {current.toLocaleString('pt-PT')}
+            </span>
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="space-y-2">
+            <div className={`w-full ${colors.bg} rounded-full h-2 overflow-hidden`}>
+              <div 
+                className={`h-full ${colors.bar} rounded-full animate-progress progress-bar`}
+                style={{ width: `${Math.min(percentage, 100)}%` }}
+                role="progressbar"
+                aria-valuenow={percentage}
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-label={`${current} de ${total} (${percentage.toFixed(1)}%)`}
+              />
+            </div>
+            <div className="flex items-baseline justify-between text-xs">
+              <span className={colors.text}>
+                {percentage.toFixed(1)}% do total
+              </span>
+              <span className={`text-${colorScheme}-600`}>
+                {total.toLocaleString('pt-PT')} total
+              </span>
+            </div>
+          </div>
+          
+          {/* Total Career */}
+          <div className={`flex items-baseline justify-between border-t border-${colorScheme}-200 pt-2`}>
+            <span className={`text-xs text-${colorScheme}-600`}>Total carreira</span>
+            <span className={`text-lg font-semibold text-${colorScheme}-700`}>
+              {total.toLocaleString('pt-PT')}
+            </span>
+          </div>
+        </div>
+      </div>
+      
+      {/* Click indicator */}
+      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <ChevronRight className={`h-4 w-4 text-${colorScheme}-600`} aria-hidden="true" />
+      </div>
+      
+      {/* Screen reader description */}
+      <p id={`${tabId}-description`} className="sr-only">
+        {description}. Clique para ver detalhes.
+      </p>
+    </article>
+  );
+};
+
+/**
+ * Skeleton Loading Card for Statistics
+ */
+const StatisticCardSkeleton = ({ colorScheme = 'gray' }) => (
+  <article 
+    className={`bg-gradient-to-br from-${colorScheme}-50 to-${colorScheme}-100 rounded-lg border border-${colorScheme}-200 p-4 sm:p-6 animate-pulse`}
+    role="listitem"
+    aria-label="Carregando estatística..."
+  >
+    {/* Header Skeleton */}
+    <header className="flex items-start justify-between mb-4">
+      <div className={`p-2 sm:p-3 bg-${colorScheme}-300 rounded-lg flex-shrink-0`}>
+        <div className="h-5 w-5 sm:h-6 sm:w-6 bg-white rounded" />
+      </div>
+      <div className="px-2 py-1 bg-white bg-opacity-60 rounded-full">
+        <div className="h-3 w-12 bg-gray-300 rounded" />
+      </div>
+    </header>
+    
+    {/* Content Skeleton */}
+    <div>
+      <div className="h-4 bg-gray-300 rounded w-20 mb-3" />
+      <div className="space-y-3">
+        <div className="flex items-baseline justify-between">
+          <div className="h-4 bg-gray-300 rounded w-12" />
+          <div className="h-8 bg-gray-300 rounded w-16" />
+        </div>
+        
+        {/* Progress bar skeleton */}
+        <div className="space-y-2">
+          <div className={`w-full bg-${colorScheme}-200 rounded-full h-2`}>
+            <div className={`h-full bg-${colorScheme}-400 rounded-full w-3/5`} />
+          </div>
+          <div className="flex items-baseline justify-between">
+            <div className="h-3 bg-gray-300 rounded w-16" />
+            <div className="h-3 bg-gray-300 rounded w-12" />
+          </div>
+        </div>
+        
+        <div className={`flex items-baseline justify-between border-t border-${colorScheme}-200 pt-2`}>
+          <div className="h-3 bg-gray-300 rounded w-20" />
+          <div className="h-5 bg-gray-300 rounded w-14" />
+        </div>
+      </div>
+    </div>
+  </article>
+);
+
+/**
+ * Statistics Loading Skeleton Component
+ */
+const StatisticsLoadingSkeleton = () => (
+  <section className="bg-white rounded-lg shadow-sm border mb-8" aria-label="Carregando estatísticas...">
+    <header className="px-6 py-4 border-b border-gray-200">
+      <div className="h-6 bg-gray-300 rounded w-64 mb-2" />
+      <div className="h-4 bg-gray-300 rounded w-96" />
+    </header>
+    <div className="p-4 sm:p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6" role="list">
+        <StatisticCardSkeleton colorScheme="blue" />
+        <StatisticCardSkeleton colorScheme="green" />
+        <StatisticCardSkeleton colorScheme="purple" />
+        <StatisticCardSkeleton colorScheme="orange" />
+      </div>
+    </div>
+  </section>
+);
+
+/**
+ * Statistics Error Component
+ */
+const StatisticsError = ({ error, onRetry }) => (
+  <section className="bg-white rounded-lg shadow-sm border mb-8" role="alert" aria-labelledby="error-heading">
+    <header className="px-6 py-4 border-b border-gray-200">
+      <h3 id="error-heading" className="text-lg font-semibold text-gray-900">Resumo de Atividade Parlamentar</h3>
+    </header>
+    <div className="p-6">
+      <div className="text-center">
+        <AlertTriangle className="mx-auto h-12 w-12 text-red-500 mb-4" aria-hidden="true" />
+        <h4 className="text-lg font-medium text-gray-900 mb-2">Erro ao carregar estatísticas</h4>
+        <p className="text-sm text-gray-600 mb-4">
+          Não foi possível carregar as estatísticas de atividade. Por favor, tente novamente.
+        </p>
+        {error && (
+          <details className="text-xs text-gray-500 mb-4">
+            <summary className="cursor-pointer">Detalhes técnicos</summary>
+            <p className="mt-2 text-left bg-gray-50 p-2 rounded">{error}</p>
+          </details>
+        )}
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+          >
+            Tentar novamente
+          </button>
+        )}
+      </div>
+    </div>
+  </section>
+);
+
+/**
+ * Enhanced Attendance Card with percentage-based styling
+ */
+const AttendanceCard = ({ currentRate, totalRate, totalSessions, onCardClick }) => {
+  const currentPercentage = (currentRate * 100);
+  const totalPercentage = (totalRate * 100);
+  const colors = getProgressColor(currentPercentage, 'orange');
+  
+  const handleClick = () => {
+    if (onCardClick) {
+      onCardClick('attendance');
+    }
+  };
+  
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+  
+  return (
+    <article 
+      className="group relative bg-gradient-to-br from-orange-50 to-red-100 rounded-lg border border-orange-200 p-4 sm:p-6 cursor-pointer hover:shadow-md transition-all duration-200 focus-within:ring-2 focus-within:ring-orange-500 focus-within:ring-offset-2"
+      role="listitem"
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      aria-labelledby="attendance-title"
+      aria-describedby="attendance-description attendance-stats"
+    >
+      {/* Header */}
+      <header className="flex items-start justify-between mb-4">
+        <div className="p-2 sm:p-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg shadow-sm flex-shrink-0">
+          <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-white" aria-hidden="true" />
+        </div>
+        <div className={`px-2 py-1 bg-white bg-opacity-60 rounded-full text-xs font-medium ${colors.text}`}>
+          {currentPercentage >= 75 ? 'Excelente' : currentPercentage >= 50 ? 'Boa' : 'Baixa'}
+        </div>
+      </header>
+      
+      {/* Content */}
+      <div>
+        <h4 
+          id="attendance-title"
+          className="text-sm font-semibold text-orange-900 uppercase tracking-wide mb-3"
+        >
+          Taxa de Presença
+        </h4>
+        
+        {/* Statistics */}
+        <div id="attendance-stats" className="space-y-3">
+          {/* Current Rate */}
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm font-medium text-orange-700">Atual</span>
+            <span className="text-2xl font-bold text-orange-900">
+              {currentPercentage.toFixed(1)}%
+            </span>
+          </div>
+          
+          {/* Visual Progress */}
+          <div className="space-y-2">
+            <div className={`w-full ${colors.bg} rounded-full h-2 overflow-hidden`}>
+              <div 
+                className={`h-full ${colors.bar} rounded-full animate-progress progress-bar`}
+                style={{ width: `${currentPercentage}%` }}
+                role="progressbar"
+                aria-valuenow={currentPercentage}
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-label={`Taxa de presença: ${currentPercentage.toFixed(1)}%`}
+              />
+            </div>
+          </div>
+          
+          {/* Career Total */}
+          <div className="flex items-baseline justify-between border-t border-orange-200 pt-2">
+            <span className="text-xs text-orange-600">Total carreira</span>
+            <span className="text-lg font-semibold text-orange-700">
+              {totalPercentage.toFixed(1)}%
+            </span>
+          </div>
+          
+          {/* Sessions Info */}
+          <div className="mt-3 text-xs text-orange-600 text-center">
+            {totalSessions} sessões na legislatura atual
+          </div>
+        </div>
+      </div>
+      
+      {/* Click indicator */}
+      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <ChevronRight className="h-4 w-4 text-orange-600" aria-hidden="true" />
+      </div>
+      
+      {/* Screen reader description */}
+      <p id="attendance-description" className="sr-only">
+        Taxa de presença às sessões parlamentares. Clique para ver detalhes.
+      </p>
+    </article>
+  );
+};
 
 const DeputadoDetalhes = () => {
   const { cadId } = useParams();
@@ -418,143 +790,82 @@ const DeputadoDetalhes = () => {
           </div>
         </div>
 
-        {/* Overview Estatísticas de Atividade */}
-        {atividades?.statistics && (
-          <div className="bg-white rounded-lg shadow-sm border mb-8">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Resumo de Atividade Parlamentar</h3>
+        {/* Enhanced Overview Estatísticas de Atividade */}
+        {loading ? (
+          <StatisticsLoadingSkeleton />
+        ) : error && !atividades ? (
+          <StatisticsError 
+            error={error} 
+            onRetry={() => window.location.reload()} 
+          />
+        ) : atividades?.statistics ? (
+          <section className="bg-white rounded-lg shadow-sm border mb-8" aria-labelledby="activity-overview-heading">
+            <header className="px-6 py-4 border-b border-gray-200">
+              <h3 id="activity-overview-heading" className="text-lg font-semibold text-gray-900">Resumo de Atividade Parlamentar</h3>
               <p className="text-sm text-gray-500 mt-1">Atividade na legislatura atual vs. total da carreira</p>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Intervenções */}
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="p-3 bg-blue-500 rounded-lg shadow-sm">
-                      <MessageSquare className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-blue-900 uppercase tracking-wide mb-3">
-                      Intervenções
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-sm text-blue-700">Atual</span>
-                        <span className="text-2xl font-bold text-blue-900">
-                          {atividades.statistics.current_legislature.intervencoes_count}
-                        </span>
-                      </div>
-                      <div className="flex items-baseline justify-between border-t border-blue-200 pt-2">
-                        <span className="text-xs text-blue-600">Total carreira</span>
-                        <span className="text-lg font-semibold text-blue-700">
-                          {atividades.statistics.total_career.intervencoes_count}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+            </header>
+            <div className="p-4 sm:p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 animate-fade-in" role="list" style={{ animationDelay: '0.1s' }}>
+                {/* Intervenções Card */}
+                <StatisticCard
+                  title="Intervenções"
+                  icon={MessageSquare}
+                  current={atividades.statistics.current_legislature.intervencoes_count}
+                  total={atividades.statistics.total_career.intervencoes_count}
+                  colorScheme="blue"
+                  description="Participações em debates parlamentares"
+                  tabId="intervencoes"
+                  onCardClick={handleTabChange}
+                />
 
-                {/* Iniciativas */}
-                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200 p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="p-3 bg-green-500 rounded-lg shadow-sm">
-                      <FileText className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-green-900 uppercase tracking-wide mb-3">
-                      Iniciativas
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-sm text-green-700">Atual</span>
-                        <span className="text-2xl font-bold text-green-900">
-                          {atividades.statistics.current_legislature.iniciativas_count}
-                        </span>
-                      </div>
-                      <div className="flex items-baseline justify-between border-t border-green-200 pt-2">
-                        <span className="text-xs text-green-600">Total carreira</span>
-                        <span className="text-lg font-semibold text-green-700">
-                          {atividades.statistics.total_career.iniciativas_count}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                {/* Iniciativas Card */}
+                <StatisticCard
+                  title="Iniciativas"
+                  icon={FileText}
+                  current={atividades.statistics.current_legislature.iniciativas_count}
+                  total={atividades.statistics.total_career.iniciativas_count}
+                  colorScheme="green"
+                  description="Propostas de lei e outras iniciativas apresentadas"
+                  tabId="iniciativas"
+                  onCardClick={handleTabChange}
+                />
 
-                {/* Votações */}
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200 p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="p-3 bg-purple-500 rounded-lg shadow-sm">
-                      <Vote className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-purple-900 uppercase tracking-wide mb-3">
-                      Votações
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-sm text-purple-700">Atual</span>
-                        <span className="text-2xl font-bold text-purple-900">
-                          {atividades.statistics.current_legislature.votacoes_count}
-                        </span>
-                      </div>
-                      <div className="flex items-baseline justify-between border-t border-purple-200 pt-2">
-                        <span className="text-xs text-purple-600">Total carreira</span>
-                        <span className="text-lg font-semibold text-purple-700">
-                          {atividades.statistics.total_career.votacoes_count}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                {/* Votações Card */}
+                <StatisticCard
+                  title="Votações"
+                  icon={Vote}
+                  current={atividades.statistics.current_legislature.votacoes_count}
+                  total={atividades.statistics.total_career.votacoes_count}
+                  colorScheme="purple"
+                  description="Participações em votações parlamentares"
+                  tabId="votacoes"
+                  onCardClick={handleTabChange}
+                />
 
-                {/* Taxa de Presença */}
+                {/* Taxa de Presença Card */}
                 {atividades.statistics.current_legislature.attendance_rate !== undefined && (
-                  <div className="bg-gradient-to-br from-orange-50 to-red-100 rounded-lg border border-orange-200 p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="p-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg shadow-sm">
-                        <Activity className="h-6 w-6 text-white" />
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-orange-900 uppercase tracking-wide mb-3">
-                        Taxa de Presença
-                      </h4>
-                      <div className="space-y-2">
-                        <div className="flex items-baseline justify-between">
-                          <span className="text-sm text-orange-700">Atual</span>
-                          <span className="text-2xl font-bold text-orange-900">
-                            {(atividades.statistics.current_legislature.attendance_rate * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="flex items-baseline justify-between border-t border-orange-200 pt-2">
-                          <span className="text-xs text-orange-600">Total carreira</span>
-                          <span className="text-lg font-semibold text-orange-700">
-                            {(atividades.statistics.total_career.attendance_rate * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-3 text-xs text-orange-600">
-                        {atividades.statistics.current_legislature.total_sessions} sessões
-                      </div>
-                    </div>
-                  </div>
+                  <AttendanceCard
+                    currentRate={atividades.statistics.current_legislature.attendance_rate}
+                    totalRate={atividades.statistics.total_career.attendance_rate}
+                    totalSessions={atividades.statistics.current_legislature.total_sessions}
+                    onCardClick={handleTabChange}
+                  />
                 )}
               </div>
               
-              {/* Quick insight footer */}
-              <div className="mt-6 pt-4 border-t border-gray-100">
-                <p className="text-xs text-gray-500 text-center">
-                  Os números da "legislatura atual" referem-se ao mandato em curso. 
-                  O "total carreira" inclui todos os mandatos anteriores deste deputado.
-                </p>
-              </div>
+              {/* Enhanced insight footer */}
+              <footer className="mt-6 pt-4 border-t border-gray-100">
+                <div className="flex items-center justify-center space-x-2 text-xs text-gray-500">
+                  <Info className="h-4 w-4" aria-hidden="true" />
+                  <p className="text-center">
+                    Os números da "legislatura atual" referem-se ao mandato em curso. 
+                    O "total carreira" inclui todos os mandatos anteriores deste deputado.
+                  </p>
+                </div>
+              </footer>
             </div>
-          </div>
-        )}
+          </section>
+        ) : null}
 
         {/* Tabs de Atividade */}
         <div className="bg-white rounded-lg shadow-sm border">
