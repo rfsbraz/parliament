@@ -1,122 +1,40 @@
-# Terraform Outputs for Fiscaliza Infrastructure
+# Cost-Optimized Terraform Outputs
+# Key information for the deployed cost-optimized infrastructure
 
-# Common outputs
-output "environment" {
-  description = "Current environment"
-  value       = var.environment
-}
-
-output "deployment_type" {
-  description = "Current deployment type"
-  value       = var.deployment_type
-}
-
-output "aws_region" {
-  description = "AWS region"
-  value       = var.aws_region
-}
-
-# Frontend outputs
-output "s3_bucket_name" {
-  description = "S3 bucket name for frontend"
-  value       = aws_s3_bucket.frontend.bucket
-}
-
-output "cloudfront_distribution_id" {
-  description = "CloudFront distribution ID"
-  value       = var.deployment_type == "serverless" ? aws_cloudfront_distribution.frontend_serverless[0].id : aws_cloudfront_distribution.frontend.id
-}
-
-output "cloudfront_domain_name" {
-  description = "CloudFront domain name"
-  value       = var.deployment_type == "serverless" ? aws_cloudfront_distribution.frontend_serverless[0].domain_name : aws_cloudfront_distribution.frontend.domain_name
-}
-
-output "website_url" {
-  description = "URL of the website"
-  value       = var.domain_name != "" ? "https://${var.domain_name}" : "https://${var.deployment_type == "serverless" ? aws_cloudfront_distribution.frontend_serverless[0].domain_name : aws_cloudfront_distribution.frontend.domain_name}"
-}
-
-# Cloudflare outputs
-output "cloudflare_zone_id" {
-  description = "Cloudflare zone ID for fiscaliza.pt"
-  value       = var.domain_name == "fiscaliza.pt" ? data.cloudflare_zone.fiscaliza[0].id : null
-}
-
-output "fiscaliza_domain" {
-  description = "Main domain name"
-  value       = var.domain_name == "fiscaliza.pt" ? "fiscaliza.pt" : null
-}
-
-# Serverless outputs (Lambda + Aurora)
-output "lambda_function_name" {
-  description = "Lambda function name"
-  value       = var.deployment_type == "serverless" ? aws_lambda_function.backend[0].function_name : null
-}
-
+# Application URLs
 output "lambda_function_url" {
-  description = "Lambda function URL"
-  value       = var.deployment_type == "serverless" ? aws_lambda_function_url.backend[0].function_url : null
+  description = "Lambda Function URL for direct access (replaces API Gateway)"
+  value       = aws_lambda_function_url.backend.function_url
 }
 
-output "aurora_cluster_identifier" {
-  description = "Aurora cluster identifier"
-  value       = var.deployment_type == "serverless" ? aws_rds_cluster.parliament[0].cluster_identifier : null
+output "cloudflare_domain" {
+  description = "Main domain served through Cloudflare"
+  value       = var.cloudflare_zone_id != "" ? var.domain_name : "Not configured"
 }
 
-output "aurora_cluster_endpoint" {
-  description = "Aurora cluster endpoint"
-  value       = var.deployment_type == "serverless" ? aws_rds_cluster.parliament[0].endpoint : null
+output "cloudfront_domain" {
+  description = "CloudFront domain for static assets"
+  value       = var.enable_cloudfront ? aws_cloudfront_distribution.static_assets[0].domain_name : "Not enabled"
 }
 
-output "aurora_database_name" {
-  description = "Aurora database name"
-  value       = var.deployment_type == "serverless" ? aws_rds_cluster.parliament[0].database_name : null
-}
-
-output "aurora_master_user_secret_arn" {
-  description = "Aurora master user secret ARN"
-  value       = var.deployment_type == "serverless" ? aws_rds_cluster.parliament[0].master_user_secret[0].secret_arn : null
+# Database Information
+output "database_endpoint" {
+  description = "RDS PostgreSQL endpoint"
+  value       = aws_db_instance.parliament.endpoint
   sensitive   = true
 }
 
-# Fargate outputs (ECS)
-output "alb_dns_name" {
-  description = "Application Load Balancer DNS name"
-  value       = var.deployment_type == "fargate" ? aws_lb.backend[0].dns_name : null
+output "database_name" {
+  description = "Database name"
+  value       = aws_db_instance.parliament.db_name
 }
 
-output "alb_zone_id" {
-  description = "Zone ID of the Application Load Balancer"
-  value       = var.deployment_type == "fargate" ? aws_lb.backend[0].zone_id : null
+output "database_secret_arn" {
+  description = "ARN of the secret containing database credentials"
+  value       = aws_secretsmanager_secret.db_credentials.arn
 }
 
-output "backend_api_url" {
-  description = "URL of the backend API"
-  value       = var.deployment_type == "fargate" ? "http://${aws_lb.backend[0].dns_name}" : null
-}
-
-output "ecs_cluster_name" {
-  description = "ECS cluster name"
-  value       = var.deployment_type == "fargate" ? aws_ecs_cluster.backend[0].name : null
-}
-
-output "ecs_service_name" {
-  description = "ECS service name"
-  value       = var.deployment_type == "fargate" ? aws_ecs_service.backend[0].name : null
-}
-
-output "log_group_name" {
-  description = "CloudWatch log group name"
-  value       = var.deployment_type == "serverless" ? aws_cloudwatch_log_group.lambda_backend[0].name : (var.deployment_type == "fargate" ? aws_cloudwatch_log_group.backend[0].name : null)
-}
-
-output "ecr_repository_url" {
-  description = "ECR repository URL"
-  value       = aws_ecr_repository.backend.repository_url
-}
-
-# Network outputs
+# Infrastructure Details
 output "vpc_id" {
   description = "VPC ID"
   value       = aws_vpc.main.id
@@ -132,72 +50,120 @@ output "public_subnet_ids" {
   value       = aws_subnet.public[*].id
 }
 
-# Cost optimization information
-output "estimated_monthly_cost_usd" {
-  description = "Estimated monthly cost in USD"
-  value = var.deployment_type == "serverless" ? (
-    var.environment == "prod" ? "15-25 (Aurora: $7-12, Lambda: $2-8, CloudFront: $1-3, other: $2-5)" :
-    "5-10 (Aurora: $2-4, Lambda: $0-2, CloudFront: $1, other: $1-3)"
-  ) : (
-    var.environment == "prod" ? "150-200 (Fargate: $140-170, ALB: $18, other: $5-15)" :
-    "80-120 (Fargate: $70-100, ALB: $18, other: $5-10)"
-  )
+output "nat_gateway_id" {
+  description = "NAT Gateway ID (single NAT for cost optimization)"
+  value       = aws_nat_gateway.main.id
 }
 
-# Environment-specific deployment instructions
-output "deployment_instructions" {
-  description = "Environment-specific deployment instructions"
-  value = var.deployment_type == "serverless" ? <<EOF
+# Security Information
+output "lambda_security_group_id" {
+  description = "Lambda security group ID"
+  value       = aws_security_group.lambda.id
+}
 
-=== SERVERLESS DEPLOYMENT INSTRUCTIONS (${upper(var.environment)}) ===
+output "rds_security_group_id" {
+  description = "RDS security group ID"
+  value       = aws_security_group.rds.id
+}
 
-1. DATABASE MIGRATION:
-   python3 scripts/migrate-to-aurora.py --environment ${var.environment} --action migrate
+# Cost Optimization Status
+output "cost_optimization_enabled" {
+  description = "Cost optimization mode status"
+  value       = var.cost_optimization_mode
+}
 
-2. FRONTEND DEPLOYMENT:
-   npm run build
-   aws s3 sync build/ s3://${aws_s3_bucket.frontend.bucket}
-   aws cloudfront create-invalidation --distribution-id ${var.deployment_type == "serverless" ? aws_cloudfront_distribution.frontend_serverless[0].id : aws_cloudfront_distribution.frontend.id} --paths "/*"
+output "estimated_monthly_cost" {
+  description = "Estimated monthly cost in USD"
+  value       = "$11-17/month (cost-optimized architecture)"
+}
 
-3. LAMBDA DEPLOYMENT:
-   ./scripts/deploy-lambda-aurora.sh
+output "cost_savings_vs_original" {
+  description = "Cost savings compared to original architecture"
+  value       = "~50-70% savings vs Aurora + API Gateway + enhanced services"
+}
 
-4. ENDPOINTS:
-   Website: ${var.domain_name != "" ? "https://${var.domain_name}" : "https://${var.deployment_type == "serverless" ? aws_cloudfront_distribution.frontend_serverless[0].domain_name : aws_cloudfront_distribution.frontend.domain_name}"}
-   Lambda API: ${var.deployment_type == "serverless" ? aws_lambda_function_url.backend[0].function_url : "N/A"}
-   Aurora: ${var.deployment_type == "serverless" ? aws_rds_cluster.parliament[0].endpoint : "N/A"}
+# Disabled Services (for reference)
+output "disabled_services_for_cost_optimization" {
+  description = "Services disabled for cost optimization"
+  value = {
+    redis_cache             = "Disabled (using in-memory caching)"
+    api_gateway             = "Disabled (using Lambda Function URL)"
+    provisioned_concurrency = "Disabled (using reserved concurrency)"
+    xray_tracing            = "Disabled (basic monitoring only)"
+    enhanced_monitoring     = "Disabled (basic CloudWatch only)"
+    guardduty               = "Disabled"
+    security_hub            = "Disabled"
+    aws_backup              = "Disabled (using RDS automated backups)"
+    cross_region_backup     = "Disabled"
+    synthetics              = "Disabled"
+    enhanced_waf            = "Disabled (using Cloudflare WAF)"
+  }
+}
 
-5. MONITORING:
-   aws logs tail /aws/lambda/${local.name_prefix}-backend --follow
+# Environment Information
+output "environment" {
+  description = "Current environment"
+  value       = var.environment
+}
 
-6. TESTING:
-   ./scripts/database-testing-toolkit.sh create-test-env test-${var.environment}
+output "aws_region" {
+  description = "AWS region"
+  value       = var.aws_region
+}
 
-EOF
- : <<EOF
+# Migration Information
+output "migration_info" {
+  description = "Migration information from Aurora to PostgreSQL"
+  value = {
+    migration_enabled = var.migrate_from_aurora
+    preserve_aurora   = var.preserve_aurora_during_migration
+    new_database_type = "PostgreSQL RDS"
+    old_database_type = "Aurora MySQL"
+  }
+}
 
-=== FARGATE DEPLOYMENT INSTRUCTIONS (${upper(var.environment)}) ===
+# Performance Configuration
+output "lambda_configuration" {
+  description = "Lambda function configuration"
+  value = {
+    memory_size          = var.lambda_memory_size
+    timeout              = var.lambda_timeout
+    reserved_concurrency = var.lambda_reserved_concurrency
+    runtime              = "Container (AWS Lambda Web Adapter)"
+  }
+}
 
-1. DOCKER BUILD & PUSH:
-   docker build -t fiscaliza-backend .
-   docker tag fiscaliza-backend:latest ${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${aws_ecr_repository.backend.name}:latest
-   aws ecr get-login-password --region ${data.aws_region.current.name} | docker login --username AWS --password-stdin ${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com
-   docker push ${data.aws_caller_identity.current.account_id}.dkr.ecr.${data.aws_region.current.name}.amazonaws.com/${aws_ecr_repository.backend.name}:latest
+output "database_configuration" {
+  description = "Database configuration"
+  value = {
+    engine           = var.db_engine
+    instance_class   = var.db_instance_class
+    storage_type     = var.db_storage_type
+    storage_size     = var.db_allocated_storage
+    multi_az         = var.db_multi_az
+    backup_retention = var.db_backup_retention_period
+  }
+}
 
-2. ECS SERVICE UPDATE:
-   aws ecs update-service --cluster ${var.deployment_type == "fargate" ? aws_ecs_cluster.backend[0].name : "N/A"} --service ${var.deployment_type == "fargate" ? aws_ecs_service.backend[0].name : "N/A"} --force-new-deployment
+# Monitoring Information
+output "monitoring_configuration" {
+  description = "Monitoring configuration"
+  value = {
+    basic_monitoring       = var.enable_basic_monitoring
+    detailed_monitoring    = var.enable_detailed_monitoring
+    alert_email_configured = var.alert_email != ""
+    log_retention_days     = var.environment == "prod" ? 7 : 3
+  }
+}
 
-3. FRONTEND DEPLOYMENT:
-   npm run build
-   aws s3 sync build/ s3://${aws_s3_bucket.frontend.bucket}
-   aws cloudfront create-invalidation --distribution-id ${aws_cloudfront_distribution.frontend.id} --paths "/*"
-
-4. ENDPOINTS:
-   Website: ${var.domain_name != "" ? "https://${var.domain_name}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"}
-   Backend API: ${var.deployment_type == "fargate" ? "http://${aws_lb.backend[0].dns_name}" : "N/A"}
-
-5. MONITORING:
-   aws logs tail /ecs/${local.name_prefix}-backend --follow
-
-EOF
+# Caching Configuration
+output "caching_configuration" {
+  description = "Application caching configuration"
+  value = {
+    in_memory_cache    = var.enable_in_memory_cache
+    cache_ttl_seconds  = var.cache_ttl_seconds
+    connection_pooling = var.enable_connection_pooling
+    max_connections    = var.max_connections
+    redis_cache        = false # Disabled for cost optimization
+  }
 }

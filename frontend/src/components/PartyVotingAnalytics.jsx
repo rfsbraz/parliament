@@ -64,9 +64,9 @@ const PartyVotingAnalytics = ({ partidoId, legislatura }) => {
 
   // Party Cohesion by Theme Component
   const CohesionByThemeChart = () => {
-    const { cohesion_by_theme } = analytics;
+    const { cohesion_by_theme } = analytics || {};
     
-    if (!cohesion_by_theme.length) {
+    if (!cohesion_by_theme || !cohesion_by_theme.length) {
       return (
         <div className="text-center py-8">
           <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -131,7 +131,7 @@ const PartyVotingAnalytics = ({ partidoId, legislatura }) => {
 
   // Legislative Effectiveness Chart
   const EffectivenessChart = () => {
-    const { legislative_effectiveness, participation_metrics } = analytics;
+    const { legislative_effectiveness, participation_metrics } = analytics || {};
     
     return (
       <div className="space-y-6">
@@ -205,9 +205,9 @@ const PartyVotingAnalytics = ({ partidoId, legislatura }) => {
 
   // Ideological Positioning Chart
   const IdeologicalPositioningChart = () => {
-    const { ideological_positioning } = analytics;
+    const { ideological_positioning } = analytics || {};
     
-    if (!ideological_positioning.all_parties.length) {
+    if (!ideological_positioning || !ideological_positioning.all_parties || !ideological_positioning.all_parties.length) {
       return (
         <div className="text-center py-8">
           <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -217,7 +217,7 @@ const PartyVotingAnalytics = ({ partidoId, legislatura }) => {
     }
     
     const sortedParties = [...ideological_positioning.all_parties].sort((a, b) => b.favor_rate - a.favor_rate);
-    const ourParty = analytics.party_info.sigla;
+    const ourParty = analytics?.party_info?.sigla;
     
     return (
       <div className="space-y-6">
@@ -286,9 +286,9 @@ const PartyVotingAnalytics = ({ partidoId, legislatura }) => {
 
   // Coalition Patterns Chart
   const CoalitionPatternsChart = () => {
-    const { coalition_patterns } = analytics;
+    const { coalition_patterns } = analytics || {};
     
-    if (!coalition_patterns.length) {
+    if (!coalition_patterns || !coalition_patterns.length) {
       return (
         <div className="text-center py-8">
           <Network className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -366,9 +366,9 @@ const PartyVotingAnalytics = ({ partidoId, legislatura }) => {
 
   // Temporal Behavior Chart
   const TemporalBehaviorChart = () => {
-    const { temporal_behavior } = analytics;
+    const { temporal_behavior } = analytics || {};
     
-    if (!temporal_behavior.length) {
+    if (!temporal_behavior || !temporal_behavior.length) {
       return (
         <div className="text-center py-8">
           <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />

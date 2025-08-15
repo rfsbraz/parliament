@@ -68,7 +68,7 @@ const PartyDemographics = ({ partidoId, dadosDemograficos, partidoInfo }) => {
       value: count 
     }));
 
-  const educationData = Object.entries(demographics.educacao || {})
+  const educationData = Object.entries(demographics.educacao?.niveis || {})
     .map(([level, count]) => ({ name: level, value: count }))
     .sort((a, b) => b.value - a.value);
 
@@ -109,8 +109,8 @@ const PartyDemographics = ({ partidoId, dadosDemograficos, partidoInfo }) => {
             <div className="ml-3">
               <p className="text-sm font-medium text-green-600">Idade Média</p>
               <p className="text-2xl font-bold text-green-900">
-                {demographics.idades?.media ? 
-                  `${demographics.idades.media} anos` : 'N/A'}
+                {demographics.idades?.idade_media ? 
+                  `${demographics.idades.idade_media} anos` : 'N/A'}
               </p>
             </div>
           </div>
@@ -135,8 +135,8 @@ const PartyDemographics = ({ partidoId, dadosDemograficos, partidoInfo }) => {
             <div className="ml-3">
               <p className="text-sm font-medium text-orange-600">Renovação</p>
               <p className="text-2xl font-bold text-orange-900">
-                {demographics.renovacao?.percentagem_estreantes ? 
-                  `${(demographics.renovacao.percentagem_estreantes * 100).toFixed(1)}%` : 'N/A'}
+                {demographics.renovacao?.percentual_renovacao ? 
+                  `${demographics.renovacao.percentual_renovacao.toFixed(1)}%` : 'N/A'}
               </p>
             </div>
           </div>
@@ -226,13 +226,13 @@ const PartyDemographics = ({ partidoId, dadosDemograficos, partidoInfo }) => {
                 <div className="text-center p-4 bg-green-50 rounded-lg">
                   <p className="text-sm text-green-600 font-medium">Idade Média</p>
                   <p className="text-2xl font-bold text-green-900">
-                    {demographics.idades?.media || 'N/A'}
+                    {demographics.idades?.idade_media || 'N/A'}
                   </p>
                 </div>
                 <div className="text-center p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-600 font-medium">Idade Mediana</p>
                   <p className="text-2xl font-bold text-blue-900">
-                    {demographics.idades?.mediana || 'N/A'}
+                    {demographics.idades?.idade_mediana || 'N/A'}
                   </p>
                 </div>
                 <div className="text-center p-4 bg-purple-50 rounded-lg">
@@ -572,11 +572,11 @@ const PartyDemographics = ({ partidoId, dadosDemograficos, partidoInfo }) => {
                 </div>
               ))}
               
-              {demographics.educacao && (
+              {demographics.educacao?.niveis && (
                 <div className="mt-4 p-3 bg-emerald-50 rounded-lg text-center">
                   <p className="text-sm text-emerald-600 font-medium">Ensino Superior</p>
                   <p className="text-lg font-bold text-emerald-900">
-                    {Object.entries(demographics.educacao)
+                    {Object.entries(demographics.educacao.niveis)
                       .filter(([key]) => key.includes('Superior') || key.includes('Doutoramento') || key.includes('Pós-Graduação'))
                       .reduce((sum, [, value]) => sum + value, 0)}
                   </p>
@@ -598,52 +598,120 @@ const PartyDemographics = ({ partidoId, dadosDemograficos, partidoInfo }) => {
             <h3 className="text-xl font-semibold text-gray-900">Experiência Política</h3>
           </div>
           
-          {demographics.renovacao || demographics.trajetorias ? (
-            <div className="space-y-4">
+          {demographics.experiencia_politica || demographics.renovacao ? (
+            <div className="space-y-6">
+              {/* Basic renewal metrics */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-4 bg-orange-50 rounded-lg">
-                  <p className="text-sm text-orange-600 font-medium">Tenure Médio</p>
+                  <p className="text-sm text-orange-600 font-medium">Taxa de Renovação</p>
                   <p className="text-2xl font-bold text-orange-900">
-                    {demographics.renovacao?.tenure_medio || 'N/A'}
+                    {demographics.renovacao?.percentual_renovacao ? 
+                      `${demographics.renovacao.percentual_renovacao.toFixed(1)}%` : 
+                      demographics.renovacao?.percentagem_estreantes ? 
+                        `${(demographics.renovacao.percentagem_estreantes * 100).toFixed(1)}%` : 'N/A'}
                   </p>
-                  <p className="text-xs text-orange-600">mandatos</p>
+                  <p className="text-xs text-orange-600">novos deputados</p>
                 </div>
                 <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-600 font-medium">Estreantes</p>
+                  <p className="text-sm text-blue-600 font-medium">Experiência</p>
                   <p className="text-2xl font-bold text-blue-900">
-                    {demographics.renovacao?.percentagem_estreantes ? 
-                      `${(demographics.renovacao.percentagem_estreantes * 100).toFixed(1)}%` : 'N/A'}
+                    {demographics.renovacao?.veteranos || 0}
                   </p>
+                  <p className="text-xs text-blue-600">deputados com mandatos anteriores</p>
                 </div>
               </div>
-              
-              {demographics.trajetorias && (
+
+              {/* Experience categories chart */}
+              {demographics.experiencia_politica?.categorias && 
+               Object.keys(demographics.experiencia_politica.categorias).length > 0 && (
                 <div className="p-4 bg-gray-50 rounded-lg">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Trajetórias de Carreira</h4>
-                  <div className="h-48 mb-4">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Categorias de Experiência</h4>
+                  <div className="h-64 mb-4">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={Object.entries(demographics.trajetorias).map(([path, count]) => ({ name: path, value: count }))}>
+                      <BarChart data={Object.entries(demographics.experiencia_politica.categorias).map(([category, count]) => ({ 
+                        name: category.replace(/\(.*?\)/g, '').trim(), 
+                        fullName: category,
+                        value: count 
+                      }))}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis 
                           dataKey="name" 
                           angle={-45}
                           textAnchor="end"
                           height={80}
-                          fontSize={10}
+                          fontSize={11}
                         />
                         <YAxis />
-                        <Tooltip />
+                        <Tooltip 
+                          labelFormatter={(label, payload) => payload?.[0]?.payload?.fullName || label}
+                        />
                         <Bar dataKey="value" fill="#F97316" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Legend */}
+                  <div className="space-y-2">
+                    {Object.entries(demographics.experiencia_politica.categorias).map(([category, count]) => (
+                      <div key={category} className="flex items-center justify-between p-2 bg-white rounded border">
+                        <span className="text-sm text-gray-900">{category}</span>
+                        <span className="text-sm font-bold text-orange-600">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Mandate distribution */}
+              {demographics.experiencia_politica?.mandatos_anteriores && 
+               Object.keys(demographics.experiencia_politica.mandatos_anteriores).length > 0 && (
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-blue-900 mb-3">Distribuição por Número de Mandatos</h4>
+                  <div className="h-48">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={Object.entries(demographics.experiencia_politica.mandatos_anteriores)
+                        .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                        .map(([mandates, count]) => ({ 
+                          name: `${mandates} mandato${parseInt(mandates) > 1 ? 's' : ''}`, 
+                          value: count 
+                        }))}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" fontSize={12} />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="#3B82F6" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
               )}
+
+              {/* Summary stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <p className="text-sm text-green-600 font-medium">Novos Deputados</p>
+                  <p className="text-xl font-bold text-green-900">
+                    {demographics.renovacao?.novos_deputados || 0}
+                  </p>
+                </div>
+                <div className="text-center p-3 bg-purple-50 rounded-lg">
+                  <p className="text-sm text-purple-600 font-medium">Veteranos</p>
+                  <p className="text-xl font-bold text-purple-900">
+                    {demographics.renovacao?.veteranos || 0}
+                  </p>
+                </div>
+                <div className="text-center p-3 bg-indigo-50 rounded-lg">
+                  <p className="text-sm text-indigo-600 font-medium">Total Analisado</p>
+                  <p className="text-xl font-bold text-indigo-900">
+                    {(demographics.renovacao?.novos_deputados || 0) + (demographics.renovacao?.veteranos || 0)}
+                  </p>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-500 mb-2">Análise de experiência em desenvolvimento</p>
-              <p className="text-xs text-gray-400">TODO: Implementar cálculo de experiência política</p>
+              <p className="text-gray-500 mb-2">Análise de experiência política não disponível</p>
+              <p className="text-xs text-gray-400">Os dados de carreira política necessitam de processamento adicional</p>
             </div>
           )}
         </div>

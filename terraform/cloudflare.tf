@@ -1,156 +1,246 @@
-# Cloudflare configuration for fiscaliza.pt
-# This configures Cloudflare as the DNS provider and CDN for the domain
+# Cloudflare Configuration for fiscaliza.pt
+# Provides CDN, caching, security, and routing to Lambda Function URL
+# Replaces expensive AWS services with Cloudflare's free/pro tier
 
-terraform {
-  required_providers {
-    cloudflare = {
-      source  = "cloudflare/cloudflare"
-      version = "~> 4.0"
-    }
-  }
-}
-
-# Cloudflare zone data (domain should already exist in Cloudflare)
+# Data source for the existing zone
 data "cloudflare_zone" "fiscaliza" {
-  count = var.domain_name == "fiscaliza.pt" ? 1 : 0
-  name  = "fiscaliza.pt"
+  count = var.cloudflare_zone_id != "" ? 1 : 0
+
+  zone_id = var.cloudflare_zone_id
 }
 
-# DNS Records for fiscaliza.pt
-# Main domain pointing to CloudFront
-resource "cloudflare_record" "root" {
-  count   = var.domain_name == "fiscaliza.pt" ? 1 : 0
-  zone_id = data.cloudflare_zone.fiscaliza[0].id
-  name    = "@"
-  value   = aws_cloudfront_distribution.frontend.domain_name
+# Main A record pointing to Lambda Function URL
+resource "cloudflare_record" "main" {
+  count = var.cloudflare_zone_id != "" ? 1 : 0
+
+  zone_id = var.cloudflare_zone_id
+  name    = "@" # Root domain
+  value   = replace(replace(aws_lambda_function_url.backend.function_url, "https://", ""), "/", "")
   type    = "CNAME"
-  proxied = true # Enable Cloudflare proxy for additional features
+  proxied = true # Enable Cloudflare proxy (CDN + security)
 
-  comment = "Main fiscaliza.pt domain pointing to AWS CloudFront"
-
-  depends_on = [aws_cloudfront_distribution.frontend]
+  comment = "Main application pointing to AWS Lambda Function URL"
 }
 
-# WWW subdomain
+# WWW CNAME record
 resource "cloudflare_record" "www" {
-  count   = var.domain_name == "fiscaliza.pt" ? 1 : 0
-  zone_id = data.cloudflare_zone.fiscaliza[0].id
+  count = var.cloudflare_zone_id != "" ? 1 : 0
+
+  zone_id = var.cloudflare_zone_id
   name    = "www"
-  value   = "fiscaliza.pt"
+  value   = var.domain_name
   type    = "CNAME"
   proxied = true
 
   comment = "WWW redirect to main domain"
 }
 
-# API subdomain (optional - for future API separation)
-resource "cloudflare_record" "api" {
-  count   = var.domain_name == "fiscaliza.pt" && var.create_api_subdomain ? 1 : 0
-  zone_id = data.cloudflare_zone.fiscaliza[0].id
-  name    = "api"
-  value   = aws_cloudfront_distribution.frontend.domain_name
-  type    = "CNAME"
-  proxied = true
+# Page Rules for caching optimization
+resource "cloudflare_page_rule" "api_bypass_cache" {
+  count = var.cloudflare_zone_id != "" ? 1 : 0
 
-  comment = "API subdomain for future API endpoints"
-}
-
-# Cloudflare page rules for performance and security
-resource "cloudflare_page_rule" "root_redirect" {
-  count   = var.domain_name == "fiscaliza.pt" ? 1 : 0
-  zone_id = data.cloudflare_zone.fiscaliza[0].id
-  target  = "www.fiscaliza.pt/*"
-  
-  actions {
-    forwarding_url {
-      url         = "https://fiscaliza.pt/$1"
-      status_code = 301
-    }
-  }
-
+  zone_id  = var.cloudflare_zone_id
+  target   = "${var.domain_name}/api/*"
   priority = 1
+
+  actions {
+    cache_level = "bypass"
+
+    # Security headers for API
+    security_level = "medium"
+
+    # Disable unnecessary features for API
+    disable_apps        = true
+    disable_performance = false
+    disable_railgun     = true
+    disable_zaraz       = true
+  }
 }
 
-# Security settings for fiscaliza.pt
-resource "cloudflare_zone_settings_override" "fiscaliza_settings" {
-  count   = var.domain_name == "fiscaliza.pt" ? 1 : 0
-  zone_id = data.cloudflare_zone.fiscaliza[0].id
+resource "cloudflare_page_rule" "static_cache_everything" {
+  count = var.cloudflare_zone_id != "" && var.enable_cloudflare_cache ? 1 : 0
 
-  settings {
-    # Security settings
-    ssl                      = "flexible"  # Let Cloudflare handle SSL termination
-    always_use_https         = "on"
-    automatic_https_rewrites = "on"
-    security_level           = "medium"
-    challenge_ttl           = 1800
+  zone_id  = var.cloudflare_zone_id
+  target   = "${var.domain_name}/static/*"
+  priority = 2
 
-    # Performance settings
-    browser_cache_ttl = 14400  # 4 hours
-    browser_check     = "on"
-    cache_level       = "aggressive"
-    
-    # Compression and optimization
-    brotli              = "on"
+  actions {
+    cache_level       = "cache_everything"
+    edge_cache_ttl    = 86400 # 24 hours
+    browser_cache_ttl = 3600  # 1 hour
+  }
+}
+
+resource "cloudflare_page_rule" "assets_cache_everything" {
+  count = var.cloudflare_zone_id != "" && var.enable_cloudflare_cache ? 1 : 0
+
+  zone_id  = var.cloudflare_zone_id
+  target   = "${var.domain_name}/*.{css,js,png,jpg,jpeg,gif,ico,svg,woff,woff2,ttf,eot}"
+  priority = 3
+
+  actions {
+    cache_level       = "cache_everything"
+    edge_cache_ttl    = 172800 # 48 hours
+    browser_cache_ttl = 86400  # 24 hours
+  }
+}
+
+resource "cloudflare_page_rule" "root_cache_level" {
+  count = var.cloudflare_zone_id != "" ? 1 : 0
+
+  zone_id  = var.cloudflare_zone_id
+  target   = "${var.domain_name}/*"
+  priority = 4
+
+  actions {
+    cache_level       = var.cloudflare_cache_level
+    browser_cache_ttl = 300 # 5 minutes for dynamic content
+
+    # Performance optimizations
     minify {
       css  = "on"
       html = "on"
       js   = "on"
     }
-    
-    # Modern web features
-    http3               = "on"
-    zero_rtt            = "on"
-    tls_1_3             = "zrt"
-    
-    # Bot protection
-    bot_fight_mode = "on"
+
+    # Security
+    security_level = "medium"
+    ssl            = "flexible" # Accept HTTP from origin, serve HTTPS to visitors
   }
 }
 
-# WAF rules for additional security (Cloudflare's Web Application Firewall)
-resource "cloudflare_ruleset" "fiscaliza_waf" {
-  count   = var.domain_name == "fiscaliza.pt" && var.enable_cloudflare_waf ? 1 : 0
-  zone_id = data.cloudflare_zone.fiscaliza[0].id
-  name    = "Fiscaliza WAF Rules"
-  kind    = "zone"
-  phase   = "http_request_firewall_custom"
+# Zone settings optimization
+resource "cloudflare_zone_settings_override" "fiscaliza" {
+  count = var.cloudflare_zone_id != "" ? 1 : 0
 
-  rules {
-    action = "challenge"
-    expression = "(http.request.uri.path contains \"/api/\" and cf.threat_score gt 10)"
-    description = "Challenge suspicious requests to API endpoints"
-    enabled = true
-  }
+  zone_id = var.cloudflare_zone_id
 
-  rules {
-    action = "block"
-    expression = "(http.request.method eq \"POST\" and cf.threat_score gt 25)"
-    description = "Block high-risk POST requests"
-    enabled = true
+  settings {
+    # SSL/TLS settings
+    ssl                      = "flexible"
+    always_use_https         = "on"
+    min_tls_version          = "1.2"
+    tls_1_3                  = "on"
+    automatic_https_rewrites = "on"
+
+    # Security settings
+    security_level      = "medium"
+    challenge_ttl       = 1800
+    browser_check       = "on"
+    hotlink_protection  = "on"
+    email_obfuscation   = "on"
+    server_side_exclude = "on"
+
+    # Performance settings
+    brotli = "on"
+    minify {
+      css  = "on"
+      html = "on"
+      js   = "on"
+    }
+    rocket_loader = "on"
+    mirage        = "on"
+    polish        = "lossless"
+
+    # Caching settings
+    browser_cache_ttl = 3600 # 1 hour
+    always_online     = "on"
+    development_mode  = var.environment == "dev" ? "on" : "off"
+
+    # IP Geolocation
+    ip_geolocation = "on"
+
+    # HTTP/2 and HTTP/3
+    http2 = "on"
+    http3 = "on"
+
+    # Zero Downtime Failover
+    origin_error_page_pass_thru = "off"
   }
 }
 
-# Rate limiting for API protection
+# Rate limiting rules for cost optimization and security
 resource "cloudflare_rate_limit" "api_rate_limit" {
-  count   = var.domain_name == "fiscaliza.pt" ? 1 : 0
-  zone_id = data.cloudflare_zone.fiscaliza[0].id
+  count = var.cloudflare_zone_id != "" && var.enable_cloudflare_waf ? 1 : 0
 
-  threshold = 100  # requests
-  period    = 60   # seconds
-  
+  zone_id   = var.cloudflare_zone_id
+  threshold = 100 # Max 100 requests
+  period    = 60  # Per minute
+
   match {
     request {
-      url_pattern = "fiscaliza.pt/api/*"
-      schemes     = ["HTTPS"]
-      methods     = ["GET", "POST"]
+      url_pattern = "${var.domain_name}/api/*"
+      schemes     = ["HTTP", "HTTPS"]
+      methods     = ["GET", "POST", "PUT", "DELETE"]
+    }
+  }
+
+  action {
+    mode    = "challenge" # Challenge instead of block
+    timeout = 60
+  }
+
+  # Bypass rate limiting for specific paths
+  bypass_url_patterns = [
+    "${var.domain_name}/api/health",
+    "${var.domain_name}/api/status"
+  ]
+}
+
+resource "cloudflare_rate_limit" "global_rate_limit" {
+  count = var.cloudflare_zone_id != "" && var.enable_cloudflare_waf ? 1 : 0
+
+  zone_id   = var.cloudflare_zone_id
+  threshold = 200 # Max 200 requests
+  period    = 60  # Per minute
+
+  match {
+    request {
+      url_pattern = "${var.domain_name}/*"
+      schemes     = ["HTTP", "HTTPS"]
+      methods     = ["_ALL_"]
     }
   }
 
   action {
     mode    = "challenge"
-    timeout = 300  # 5 minutes
+    timeout = 300 # 5 minutes
   }
+}
 
-  disabled    = false
-  description = "Rate limiting for API endpoints"
+# Firewall rules for additional protection
+resource "cloudflare_filter" "block_bad_bots" {
+  count = var.cloudflare_zone_id != "" && var.enable_cloudflare_waf ? 1 : 0
+
+  zone_id     = var.cloudflare_zone_id
+  description = "Block known bad bots and scrapers"
+  expression  = "(cf.client.bot) or (http.user_agent contains \"scrapy\") or (http.user_agent contains \"crawler\")"
+}
+
+resource "cloudflare_firewall_rule" "block_bad_bots" {
+  count = var.cloudflare_zone_id != "" && var.enable_cloudflare_waf ? 1 : 0
+
+  zone_id     = var.cloudflare_zone_id
+  description = "Block bad bots and scrapers"
+  filter_id   = cloudflare_filter.block_bad_bots[0].id
+  action      = "block"
+  priority    = 1
+}
+
+resource "cloudflare_filter" "challenge_suspicious" {
+  count = var.cloudflare_zone_id != "" && var.enable_cloudflare_waf ? 1 : 0
+
+  zone_id     = var.cloudflare_zone_id
+  description = "Challenge suspicious requests"
+  expression  = "(cf.threat_score gt 10) or (not cf.verified_bot)"
+}
+
+resource "cloudflare_firewall_rule" "challenge_suspicious" {
+  count = var.cloudflare_zone_id != "" && var.enable_cloudflare_waf ? 1 : 0
+
+  zone_id     = var.cloudflare_zone_id
+  description = "Challenge suspicious traffic"
+  filter_id   = cloudflare_filter.challenge_suspicious[0].id
+  action      = "challenge"
+  priority    = 2
 }
