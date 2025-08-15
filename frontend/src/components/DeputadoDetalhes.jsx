@@ -418,6 +418,144 @@ const DeputadoDetalhes = () => {
           </div>
         </div>
 
+        {/* Overview Estatísticas de Atividade */}
+        {atividades?.statistics && (
+          <div className="bg-white rounded-lg shadow-sm border mb-8">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Resumo de Atividade Parlamentar</h3>
+              <p className="text-sm text-gray-500 mt-1">Atividade na legislatura atual vs. total da carreira</p>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Intervenções */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-blue-500 rounded-lg shadow-sm">
+                      <MessageSquare className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-blue-900 uppercase tracking-wide mb-3">
+                      Intervenções
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-sm text-blue-700">Atual</span>
+                        <span className="text-2xl font-bold text-blue-900">
+                          {atividades.statistics.current_legislature.intervencoes_count}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between border-t border-blue-200 pt-2">
+                        <span className="text-xs text-blue-600">Total carreira</span>
+                        <span className="text-lg font-semibold text-blue-700">
+                          {atividades.statistics.total_career.intervencoes_count}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Iniciativas */}
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200 p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-green-500 rounded-lg shadow-sm">
+                      <FileText className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-green-900 uppercase tracking-wide mb-3">
+                      Iniciativas
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-sm text-green-700">Atual</span>
+                        <span className="text-2xl font-bold text-green-900">
+                          {atividades.statistics.current_legislature.iniciativas_count}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between border-t border-green-200 pt-2">
+                        <span className="text-xs text-green-600">Total carreira</span>
+                        <span className="text-lg font-semibold text-green-700">
+                          {atividades.statistics.total_career.iniciativas_count}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Votações */}
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200 p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="p-3 bg-purple-500 rounded-lg shadow-sm">
+                      <Vote className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-purple-900 uppercase tracking-wide mb-3">
+                      Votações
+                    </h4>
+                    <div className="space-y-2">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-sm text-purple-700">Atual</span>
+                        <span className="text-2xl font-bold text-purple-900">
+                          {atividades.statistics.current_legislature.votacoes_count}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between border-t border-purple-200 pt-2">
+                        <span className="text-xs text-purple-600">Total carreira</span>
+                        <span className="text-lg font-semibold text-purple-700">
+                          {atividades.statistics.total_career.votacoes_count}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Taxa de Presença */}
+                {atividades.statistics.current_legislature.attendance_rate !== undefined && (
+                  <div className="bg-gradient-to-br from-orange-50 to-red-100 rounded-lg border border-orange-200 p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="p-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg shadow-sm">
+                        <Activity className="h-6 w-6 text-white" />
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-orange-900 uppercase tracking-wide mb-3">
+                        Taxa de Presença
+                      </h4>
+                      <div className="space-y-2">
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-sm text-orange-700">Atual</span>
+                          <span className="text-2xl font-bold text-orange-900">
+                            {(atividades.statistics.current_legislature.attendance_rate * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="flex items-baseline justify-between border-t border-orange-200 pt-2">
+                          <span className="text-xs text-orange-600">Total carreira</span>
+                          <span className="text-lg font-semibold text-orange-700">
+                            {(atividades.statistics.total_career.attendance_rate * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-3 text-xs text-orange-600">
+                        {atividades.statistics.current_legislature.total_sessions} sessões
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Quick insight footer */}
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <p className="text-xs text-gray-500 text-center">
+                  Os números da "legislatura atual" referem-se ao mandato em curso. 
+                  O "total carreira" inclui todos os mandatos anteriores deste deputado.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tabs de Atividade */}
         <div className="bg-white rounded-lg shadow-sm border">
           {/* Tab Headers */}

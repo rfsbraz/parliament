@@ -1095,6 +1095,74 @@ def get_deputado_atividades(cad_id):
                     'observacoes': inic.ini_obs if hasattr(inic, 'ini_obs') else None
                 })
             
+            # Get total counts across all legislatures for this deputy
+            total_intervencoes_count = session.query(func.count(IntervencaoParlamentar.id)).join(
+                IntervencaoDeputado, IntervencaoParlamentar.id == IntervencaoDeputado.intervencao_id
+            ).filter(
+                IntervencaoDeputado.id_cadastro == deputado.id_cadastro
+            ).scalar()
+            
+            total_iniciativas_count = session.query(func.count(IniciativaParlamentar.id)).join(
+                IniciativaAutorDeputado, IniciativaParlamentar.id == IniciativaAutorDeputado.iniciativa_id
+            ).filter(
+                IniciativaAutorDeputado.id_cadastro == deputado.id_cadastro
+            ).scalar()
+            
+            # Current legislature counts
+            current_intervencoes_count = len(intervencoes)
+            current_iniciativas_count = len(iniciativas)
+            
+            # Get attendance statistics
+            attendance_stats = {'current_legislature': {'attendance_rate': 0}, 'total_career': {'attendance_rate': 0}}
+            try:
+                # Query attendance records for current legislature
+                from sqlalchemy import text
+                attendance_query = text("""
+                    SELECT 
+                        sigla_falta,
+                        COUNT(*) as count
+                    FROM meeting_attendances 
+                    WHERE dep_nome_parlamentar = :deputy_name
+                    AND dt_reuniao IS NOT NULL
+                    GROUP BY sigla_falta
+                """)
+                
+                attendance_records = session.execute(attendance_query, {'deputy_name': deputado.nome}).fetchall()
+                
+                # Attendance code meanings
+                attendance_codes = {
+                    'PR': 'present',
+                    'FJ': 'justified', 'ME': 'justified', 'QVJ': 'justified', 'MP': 'justified', 'FIJ': 'justified',
+                    'FI': 'unjustified', 'FA': 'unjustified'
+                }
+                
+                total_sessions = 0
+                present_sessions = 0
+                justified_sessions = 0
+                
+                for record in attendance_records:
+                    sigla_falta, count = record
+                    total_sessions += count
+                    
+                    attendance_type = attendance_codes.get(sigla_falta, 'other')
+                    if attendance_type == 'present':
+                        present_sessions += count
+                    elif attendance_type == 'justified':
+                        justified_sessions += count
+                
+                # Calculate attendance rate (present + justified / total)
+                if total_sessions > 0:
+                    good_attendance = present_sessions + justified_sessions
+                    attendance_rate = round(good_attendance / total_sessions, 3)
+                    
+                    # For now, use the same rate for both current and total (since we don't have legislature-specific attendance data)
+                    attendance_stats = {
+                        'current_legislature': {'attendance_rate': attendance_rate, 'total_sessions': total_sessions},
+                        'total_career': {'attendance_rate': attendance_rate, 'total_sessions': total_sessions}
+                    }
+            except Exception as e:
+                print(f"Warning: Could not get attendance data: {e}")
+            
             return jsonify({
                 'deputado': {
                     'id': deputado.id,
@@ -1104,6 +1172,22 @@ def get_deputado_atividades(cad_id):
                 'legislatura': {
                     'numero': leg.numero,
                     'designacao': leg.designacao
+                },
+                'statistics': {
+                    'current_legislature': {
+                        'intervencoes_count': current_intervencoes_count,
+                        'iniciativas_count': current_iniciativas_count,
+                        'votacoes_count': 0,  # Placeholder
+                        'attendance_rate': attendance_stats['current_legislature']['attendance_rate'],
+                        'total_sessions': attendance_stats['current_legislature'].get('total_sessions', 0)
+                    },
+                    'total_career': {
+                        'intervencoes_count': total_intervencoes_count,
+                        'iniciativas_count': total_iniciativas_count,
+                        'votacoes_count': 0,  # Placeholder
+                        'attendance_rate': attendance_stats['total_career']['attendance_rate'],
+                        'total_sessions': attendance_stats['total_career'].get('total_sessions', 0)
+                    }
                 },
                 'intervencoes': intervencoes,
                 'iniciativas': iniciativas,
@@ -2684,6 +2768,14 @@ def get_deputados():
                     Deputado.nome_completo.contains(search)
                 )
             
+            # Apply sorting: newest legislature first, then by name
+            query = query.join(
+                Legislatura, Deputado.legislatura_id == Legislatura.id
+            ).order_by(
+                desc(Legislatura.data_inicio),  # Newest legislature first
+                Deputado.nome_completo.asc()  # Then alphabetically by name
+            )
+            
             # Get total count for pagination
             total = query.count()
             
@@ -2705,6 +2797,15 @@ def get_deputados():
                 total_mandatos = session.query(func.count(Deputado.id)).scalar()
                 view_type = 'all_unique'
             
+            # Always calculate active deputies count (deputies in current legislature XVII)
+            active_deputies_count = session.query(
+                func.count(distinct(Deputado.id_cadastro))
+            ).join(
+                DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
+            ).filter(
+                DeputadoMandatoLegislativo.leg_des == 'XVII'  # Current active legislature
+            ).scalar()
+            
             return jsonify({
                 'deputados': [deputado_to_dict(d, session) for d in deputados],
                 'pagination': {
@@ -2717,6 +2818,7 @@ def get_deputados():
                 },
                 'filters': {
                     'total_deputy_records': total_mandatos,
+                    'active_deputies_count': active_deputies_count,
                     'view_type': view_type,
                     'legislatura': legislatura,
                     'active_only': active_only,

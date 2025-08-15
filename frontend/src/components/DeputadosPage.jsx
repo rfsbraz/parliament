@@ -12,11 +12,10 @@ const DeputadosPage = () => {
   const [page, setPage] = useState(1)
   const [pagination, setPagination] = useState(null)
   const [filters, setFilters] = useState(null)
-  const [activeOnly, setActiveOnly] = useState(false)
 
   useEffect(() => {
     fetchDeputados()
-  }, [page, search, activeOnly])
+  }, [page, search])
 
   const fetchDeputados = async () => {
     try {
@@ -24,7 +23,7 @@ const DeputadosPage = () => {
       const params = new URLSearchParams({
         page: page.toString(),
         per_page: '20',
-        active_only: activeOnly.toString()
+        active_only: 'false'
       })
       
       if (search) {
@@ -75,8 +74,7 @@ const DeputadosPage = () => {
         <p className="text-gray-600">
           {filters ? (
             <>
-              {pagination?.total || 0} pessoas únicas • {filters.total_deputy_records} mandatos totais
-              {activeOnly && <span className="text-blue-600 font-medium"> • Apenas Ativos</span>}
+              {pagination?.total || 0} pessoas únicas • {filters.total_deputy_records} mandatos totais • {filters.active_deputies_count || 0} deputados ativos
             </>
           ) : 'Carregando...'}
         </p>
@@ -102,25 +100,9 @@ const DeputadosPage = () => {
               </Button>
             </form>
             
-            {/* Filter Toggle */}
-            <div className="flex items-center space-x-4">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={activeOnly}
-                  onChange={(e) => {
-                    setActiveOnly(e.target.checked);
-                    setPage(1);
-                  }}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  Apenas deputados ativos
-                </span>
-              </label>
-              <div className="text-xs text-gray-500">
-                {activeOnly ? 'Mostrando apenas deputados com mandatos ativos' : 'Mostrando todos os deputados da história parlamentar'}
-              </div>
+            {/* Info Text */}
+            <div className="text-xs text-gray-500">
+              Mostrando todos os deputados da história parlamentar
             </div>
           </div>
         </CardContent>
