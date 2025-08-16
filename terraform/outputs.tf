@@ -82,23 +82,6 @@ output "cost_savings_vs_original" {
   value       = "~50-70% savings vs Aurora + API Gateway + enhanced services"
 }
 
-# Disabled Services (for reference)
-output "disabled_services_for_cost_optimization" {
-  description = "Services disabled for cost optimization"
-  value = {
-    redis_cache             = "Disabled (using in-memory caching)"
-    api_gateway             = "Disabled (using Lambda Function URL)"
-    provisioned_concurrency = "Disabled (using reserved concurrency)"
-    xray_tracing            = "Disabled (basic monitoring only)"
-    enhanced_monitoring     = "Disabled (basic CloudWatch only)"
-    guardduty               = "Disabled"
-    security_hub            = "Disabled"
-    aws_backup              = "Disabled (using RDS automated backups)"
-    cross_region_backup     = "Disabled"
-    synthetics              = "Disabled"
-    enhanced_waf            = "Disabled (using Cloudflare WAF)"
-  }
-}
 
 # Environment Information
 output "environment" {
@@ -111,16 +94,6 @@ output "aws_region" {
   value       = var.aws_region
 }
 
-# Migration Information
-output "migration_info" {
-  description = "Migration information from Aurora to PostgreSQL"
-  value = {
-    migration_enabled = var.migrate_from_aurora
-    preserve_aurora   = var.preserve_aurora_during_migration
-    new_database_type = "PostgreSQL RDS"
-    old_database_type = "Aurora MySQL"
-  }
-}
 
 # Performance Configuration
 output "lambda_configuration" {
@@ -164,6 +137,5 @@ output "caching_configuration" {
     cache_ttl_seconds  = var.cache_ttl_seconds
     connection_pooling = var.enable_connection_pooling
     max_connections    = var.max_connections
-    redis_cache        = false # Disabled for cost optimization
   }
 }

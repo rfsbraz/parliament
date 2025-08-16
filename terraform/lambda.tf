@@ -60,9 +60,6 @@ resource "aws_lambda_function" "backend" {
     security_group_ids = [aws_security_group.lambda.id]
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-backend-lambda"
-  })
 }
 
 # Lambda Function URL for direct HTTP access (replaces API Gateway)
@@ -79,9 +76,6 @@ resource "aws_lambda_function_url" "backend" {
     max_age           = 86400
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-backend-lambda-url"
-  })
 }
 
 # IAM Role for Lambda Execution
@@ -101,9 +95,6 @@ resource "aws_iam_role" "lambda_execution" {
     ]
   })
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-lambda-execution-role"
-  })
 }
 
 # Basic Lambda execution policy
@@ -138,9 +129,6 @@ resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
 
   alarm_actions = var.alert_email != "" ? [aws_sns_topic.lambda_alerts[0].arn] : []
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-lambda-errors-alarm"
-  })
 }
 
 resource "aws_cloudwatch_metric_alarm" "lambda_duration" {
@@ -162,9 +150,6 @@ resource "aws_cloudwatch_metric_alarm" "lambda_duration" {
 
   alarm_actions = var.alert_email != "" ? [aws_sns_topic.lambda_alerts[0].arn] : []
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-lambda-duration-alarm"
-  })
 }
 
 resource "aws_cloudwatch_metric_alarm" "lambda_throttles" {
@@ -186,9 +171,6 @@ resource "aws_cloudwatch_metric_alarm" "lambda_throttles" {
 
   alarm_actions = var.alert_email != "" ? [aws_sns_topic.lambda_alerts[0].arn] : []
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-lambda-throttles-alarm"
-  })
 }
 
 # CloudWatch Log Group for Lambda with cost-optimized retention
@@ -196,9 +178,6 @@ resource "aws_cloudwatch_log_group" "lambda_backend" {
   name              = "/aws/lambda/${local.name_prefix}-backend"
   retention_in_days = var.environment == "prod" ? 7 : 3 # Short retention for cost optimization
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-lambda-backend-logs"
-  })
 }
 
 # Security Group for Lambda
@@ -215,9 +194,6 @@ resource "aws_security_group" "lambda" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-lambda-sg"
-  })
 
   lifecycle {
     create_before_destroy = true
@@ -230,9 +206,6 @@ resource "aws_sns_topic" "lambda_alerts" {
 
   name = "${local.name_prefix}-lambda-alerts"
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-lambda-alerts"
-  })
 }
 
 resource "aws_sns_topic_subscription" "lambda_alerts_email" {
@@ -263,9 +236,6 @@ resource "aws_lambda_function" "warmer" {
     }
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-warmer"
-  })
 }
 
 # Archive for warmer function
@@ -317,9 +287,6 @@ resource "aws_iam_role" "warmer_execution" {
     ]
   })
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-warmer-execution-role"
-  })
 }
 
 resource "aws_iam_role_policy_attachment" "warmer_basic" {
@@ -337,9 +304,6 @@ resource "aws_cloudwatch_event_rule" "lambda_warmer" {
   description         = "Warm up Lambda function every 5 minutes"
   schedule_expression = "rate(5 minutes)"
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-lambda-warmer-rule"
-  })
 }
 
 resource "aws_cloudwatch_event_target" "lambda_warmer" {

@@ -95,6 +95,7 @@ resource "aws_db_instance" "parliament" {
   db_subnet_group_name   = aws_db_subnet_group.parliament.name
   vpc_security_group_ids = [aws_security_group.rds.id]
   publicly_accessible    = false
+  parameter_group_name   = aws_db_parameter_group.parliament.name
 
   # Availability and backup
   multi_az                = var.db_multi_az
@@ -237,17 +238,6 @@ resource "aws_iam_role_policy" "lambda_rds_access" {
   })
 }
 
-# Database migration script (from Aurora to PostgreSQL)
-resource "local_file" "migration_script" {
-  count = var.migrate_from_aurora ? 1 : 0
-
-  filename = "${path.module}/scripts/migrate_aurora_to_postgres.sql"
-  content = templatefile("${path.module}/templates/migration_script.sql.tpl", {
-    source_endpoint = "aurora-endpoint-here" # Replace with actual Aurora endpoint
-    target_endpoint = aws_db_instance.parliament.endpoint
-    database_name   = aws_db_instance.parliament.db_name
-  })
-}
 
 # Parameter Group for PostgreSQL optimization
 resource "aws_db_parameter_group" "parliament" {
@@ -258,12 +248,6 @@ resource "aws_db_parameter_group" "parliament" {
   parameter {
     name  = "shared_preload_libraries"
     value = "pg_stat_statements"
-  }
-
-  parameter {
-    name         = "log_statement"
-    value        = "all"
-    apply_method = "pending-reboot"
   }
 
   parameter {

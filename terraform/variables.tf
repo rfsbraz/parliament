@@ -156,11 +156,6 @@ variable "cloudflare_cache_level" {
   }
 }
 
-variable "create_api_subdomain" {
-  description = "Create api subdomain for Cloudflare"
-  type        = bool
-  default     = false
-}
 
 # CloudFront Configuration - Simplified for S3 only
 variable "enable_cloudfront" {
@@ -202,60 +197,6 @@ variable "alert_email" {
   }
 }
 
-# Disabled Services for Cost Optimization
-variable "enable_redis_cache" {
-  description = "Enable ElastiCache Redis (DISABLED for cost optimization)"
-  type        = bool
-  default     = false
-}
-
-variable "lambda_provisioned_concurrency" {
-  description = "Provisioned concurrency (DISABLED for cost optimization)"
-  type        = number
-  default     = 0
-}
-
-variable "enable_backup_service" {
-  description = "Enable AWS Backup service (DISABLED for cost optimization)"
-  type        = bool
-  default     = false
-}
-
-variable "enable_guardduty" {
-  description = "Enable AWS GuardDuty (DISABLED for cost optimization)"
-  type        = bool
-  default     = false
-}
-
-variable "enable_security_hub" {
-  description = "Enable AWS Security Hub (DISABLED for cost optimization)"
-  type        = bool
-  default     = false
-}
-
-variable "enable_xray_tracing" {
-  description = "Enable AWS X-Ray tracing (DISABLED for cost optimization)"
-  type        = bool
-  default     = false
-}
-
-variable "enable_synthetics" {
-  description = "Enable CloudWatch Synthetics (DISABLED for cost optimization)"
-  type        = bool
-  default     = false
-}
-
-variable "enable_enhanced_waf" {
-  description = "Enable enhanced WAF (DISABLED for cost optimization)"
-  type        = bool
-  default     = false
-}
-
-variable "enable_cross_region_backup" {
-  description = "Enable cross-region backup (DISABLED for cost optimization)"
-  type        = bool
-  default     = false
-}
 
 # Application Caching Configuration
 variable "enable_in_memory_cache" {
@@ -292,15 +233,3 @@ variable "backend_image" {
   default     = ""
 }
 
-# Migration Configuration
-variable "migrate_from_aurora" {
-  description = "Enable migration mode from Aurora to PostgreSQL"
-  type        = bool
-  default     = false
-}
-
-variable "preserve_aurora_during_migration" {
-  description = "Keep Aurora running during migration"
-  type        = bool
-  default     = false
-}

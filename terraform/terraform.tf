@@ -27,13 +27,13 @@ terraform {
     }
   }
 
-  # Remote state configuration (uncomment and configure as needed)
+  # Remote state configuration - configure for your environment
   # backend "s3" {
-  #   bucket         = "your-terraform-state-bucket"
+  #   bucket         = "parliament-terraform-state"
   #   key            = "parliament/terraform.tfstate"
   #   region         = "eu-west-1"
   #   encrypt        = true
-  #   dynamodb_table = "terraform-locks"
+  #   dynamodb_table = "terraform-state-locks"
   # }
 }
 

@@ -1,20 +1,45 @@
-# AWS Configuration
-aws_region = "eu-west-1"  # Ireland - closest to Portugal
+# Example Terraform Variables
+# Copy this file to terraform.tfvars and set your values
 
-# Environment
-environment = "prod"
+# Basic Configuration
+environment = "dev"  # or "prod"
+aws_region  = "eu-west-1"
 
 # Domain Configuration (optional)
-# domain_name = "parliament.yourdomain.com"
-# certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/12345678-1234-1234-1234-123456789012"
+domain_name = "fiscaliza.pt"
 
-# Backend Configuration
-backend_image = "parliament-backend:latest"
-backend_cpu = 512
-backend_memory = 1024
-backend_desired_count = 2
+# Cloudflare Configuration (optional - set these if using Cloudflare)
+cloudflare_zone_id    = ""  # Your Cloudflare zone ID
+cloudflare_api_token  = ""  # Your Cloudflare API token (set via environment variable)
 
-# Database Persistence
-# Set to true if you want to persist the SQLite database using EFS
-# Warning: This adds cost and complexity
-enable_database_persistence = false
+# Docker Image
+backend_image = ""  # Your ECR image URI for the Lambda function
+
+# Alert Configuration (optional)
+alert_email = "alerts@yourdomain.com"
+
+# Cost Optimization
+cost_optimization_mode = true
+
+# Lambda Configuration
+lambda_memory_size = 512
+lambda_timeout = 30
+lambda_reserved_concurrency = 10
+
+# Database Configuration
+db_allocated_storage = 20
+db_backup_retention_period = 1
+db_multi_az = false
+
+# Monitoring
+enable_basic_monitoring = true
+enable_detailed_monitoring = false
+
+# CloudFront (for static assets)
+enable_cloudfront = true
+
+# Caching
+enable_in_memory_cache = true
+cache_ttl_seconds = 300
+enable_connection_pooling = true
+max_connections = 5
