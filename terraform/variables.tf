@@ -233,3 +233,123 @@ variable "backend_image" {
   default     = ""
 }
 
+# ============================================================================
+# TAGGING CONFIGURATION FOR COST ANALYSIS AND RESOURCE MANAGEMENT
+# ============================================================================
+
+variable "project_name" {
+  description = "Project name for tagging and identification"
+  type        = string
+  default     = "Parliament"
+  validation {
+    condition     = length(var.project_name) > 0 && length(var.project_name) <= 50
+    error_message = "Project name must be between 1 and 50 characters."
+  }
+}
+
+variable "application_name" {
+  description = "Application name for tagging"
+  type        = string
+  default     = "Fiscaliza"
+  validation {
+    condition     = length(var.application_name) > 0 && length(var.application_name) <= 50
+    error_message = "Application name must be between 1 and 50 characters."
+  }
+}
+
+variable "cost_center" {
+  description = "Cost center for billing allocation"
+  type        = string
+  default     = "Parliament-Analytics"
+  validation {
+    condition     = length(var.cost_center) > 0 && length(var.cost_center) <= 100
+    error_message = "Cost center must be between 1 and 100 characters."
+  }
+}
+
+variable "owner_team" {
+  description = "Team responsible for the resources"
+  type        = string
+  default     = "DevOps"
+  validation {
+    condition     = length(var.owner_team) > 0 && length(var.owner_team) <= 50
+    error_message = "Owner team must be between 1 and 50 characters."
+  }
+}
+
+variable "owner_email" {
+  description = "Email of the resource owner for contact purposes"
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.owner_email == "" || can(regex("^[\\w\\.-]+@[\\w\\.-]+\\.[a-zA-Z]{2,}$", var.owner_email))
+    error_message = "Owner email must be a valid email address or empty string."
+  }
+}
+
+variable "business_unit" {
+  description = "Business unit responsible for costs"
+  type        = string
+  default     = "Government-Transparency"
+  validation {
+    condition     = length(var.business_unit) > 0 && length(var.business_unit) <= 100
+    error_message = "Business unit must be between 1 and 100 characters."
+  }
+}
+
+variable "backup_schedule" {
+  description = "Backup schedule for resources (daily, weekly, monthly, none)"
+  type        = string
+  default     = "daily"
+  validation {
+    condition     = contains(["daily", "weekly", "monthly", "none"], var.backup_schedule)
+    error_message = "Backup schedule must be one of: daily, weekly, monthly, none."
+  }
+}
+
+variable "data_classification" {
+  description = "Data classification level (public, internal, confidential, restricted)"
+  type        = string
+  default     = "public"
+  validation {
+    condition     = contains(["public", "internal", "confidential", "restricted"], var.data_classification)
+    error_message = "Data classification must be one of: public, internal, confidential, restricted."
+  }
+}
+
+variable "compliance_requirements" {
+  description = "Compliance requirements (gdpr, none, custom)"
+  type        = string
+  default     = "gdpr"
+  validation {
+    condition     = contains(["gdpr", "none", "custom"], var.compliance_requirements)
+    error_message = "Compliance requirements must be one of: gdpr, none, custom."
+  }
+}
+
+variable "auto_shutdown" {
+  description = "Whether resources support auto-shutdown for cost optimization"
+  type        = bool
+  default     = false
+}
+
+variable "monitoring_level" {
+  description = "Level of monitoring required (basic, standard, enhanced)"
+  type        = string
+  default     = "basic"
+  validation {
+    condition     = contains(["basic", "standard", "enhanced"], var.monitoring_level)
+    error_message = "Monitoring level must be one of: basic, standard, enhanced."
+  }
+}
+
+variable "additional_tags" {
+  description = "Additional custom tags to apply to all resources"
+  type        = map(string)
+  default     = {}
+  validation {
+    condition     = length(var.additional_tags) <= 10
+    error_message = "Additional tags cannot exceed 10 key-value pairs."
+  }
+}
+

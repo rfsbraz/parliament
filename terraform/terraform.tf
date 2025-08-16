@@ -27,14 +27,21 @@ terraform {
     }
   }
 
-  # Remote state configuration - configure for your environment
-  # backend "s3" {
-  #   bucket         = "parliament-terraform-state"
-  #   key            = "parliament/terraform.tfstate"
-  #   region         = "eu-west-1"
-  #   encrypt        = true
-  #   dynamodb_table = "terraform-state-locks"
-  # }
+  # Remote state configuration
+  # NOTE: Backend configuration cannot use variables
+  # Use different key paths for different environments:
+  # - Dev:  terraform init -backend-config="key=dev/terraform.tfstate"
+  # - Prod: terraform init -backend-config="key=prod/terraform.tfstate"
+  backend "s3" {
+    bucket         = "parliament-terraform-state-eu-west-1"
+    key            = "terraform.tfstate"  # Override this during init
+    region         = "eu-west-1"
+    encrypt        = true
+    dynamodb_table = "parliament-terraform-locks"
+    
+    # Additional security settings
+    kms_key_id = "alias/terraform-state-key"
+  }
 }
 
 # Cloudflare provider configuration

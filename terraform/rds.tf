@@ -14,8 +14,11 @@ resource "aws_secretsmanager_secret" "db_credentials" {
   description             = "Database credentials for PostgreSQL RDS"
   recovery_window_in_days = 7
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-db-credentials"
+  tags = merge(local.security_tags, {
+    Name         = "${local.name_prefix}-db-credentials"
+    ResourceType = "secrets-manager-secret"
+    Purpose      = "database-credentials-storage"
+    SecretType   = "database"
   })
 }
 
@@ -36,8 +39,10 @@ resource "aws_db_subnet_group" "parliament" {
   name       = "${local.name_prefix}-db-subnet-group"
   subnet_ids = aws_subnet.private[*].id
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-db-subnet-group"
+  tags = merge(local.database_tags, {
+    Name         = "${local.name_prefix}-db-subnet-group"
+    ResourceType = "db-subnet-group"
+    Purpose      = "database-network-isolation"
   })
 }
 
@@ -62,8 +67,12 @@ resource "aws_security_group" "rds" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-rds-sg"
+  tags = merge(local.security_tags, {
+    Name         = "${local.name_prefix}-rds-sg"
+    ResourceType = "security-group"
+    Purpose      = "database-access-control"
+    Port         = "5432"
+    Protocol     = "postgresql"
   })
 
   lifecycle {
@@ -116,8 +125,18 @@ resource "aws_db_instance" "parliament" {
   auto_minor_version_upgrade = true
   copy_tags_to_snapshot      = true
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-postgres"
+  tags = merge(local.database_tags, {
+    Name           = "${local.name_prefix}-postgres"
+    ResourceType   = "rds-instance"
+    Purpose        = "primary-database"
+    Engine         = "postgresql"
+    EngineVersion  = "15.8"
+    InstanceClass  = var.db_instance_class
+    StorageType    = var.db_storage_type
+    StorageSize    = "${var.db_allocated_storage}GB"
+    MultiAZ        = var.db_multi_az ? "enabled" : "disabled"
+    BackupRetention = "${var.db_backup_retention_period}days"
+    Database       = "parliament"
   })
 
   lifecycle {
@@ -143,8 +162,13 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
     DBInstanceIdentifier = aws_db_instance.parliament.id
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-rds-cpu-alarm"
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-rds-cpu-alarm"
+    ResourceType = "cloudwatch-alarm"
+    Purpose      = "database-performance-monitoring"
+    MetricName   = "CPUUtilization"
+    Threshold    = "80%"
+    AlarmType    = "high-cpu"
   })
 }
 
@@ -165,8 +189,13 @@ resource "aws_cloudwatch_metric_alarm" "rds_connections" {
     DBInstanceIdentifier = aws_db_instance.parliament.id
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-rds-connections-alarm"
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-rds-connections-alarm"
+    ResourceType = "cloudwatch-alarm"
+    Purpose      = "database-connection-monitoring"
+    MetricName   = "DatabaseConnections"
+    Threshold    = "15"
+    AlarmType    = "high-connections"
   })
 }
 
@@ -187,8 +216,13 @@ resource "aws_cloudwatch_metric_alarm" "rds_freeable_memory" {
     DBInstanceIdentifier = aws_db_instance.parliament.id
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-rds-memory-alarm"
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-rds-memory-alarm"
+    ResourceType = "cloudwatch-alarm"
+    Purpose      = "database-memory-monitoring"
+    MetricName   = "FreeableMemory"
+    Threshold    = "100MB"
+    AlarmType    = "low-memory"
   })
 }
 
@@ -198,8 +232,11 @@ resource "aws_sns_topic" "rds_alerts" {
 
   name = "${local.name_prefix}-rds-alerts"
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-rds-alerts"
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-rds-alerts"
+    ResourceType = "sns-topic"
+    Purpose      = "database-alert-notifications"
+    NotificationType = "email"
   })
 }
 
@@ -276,7 +313,11 @@ resource "aws_db_parameter_group" "parliament" {
     value = "524288" # 512MB estimate of OS cache
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-postgres-params"
+  tags = merge(local.database_tags, {
+    Name         = "${local.name_prefix}-postgres-params"
+    ResourceType = "db-parameter-group"
+    Purpose      = "database-performance-optimization"
+    Family       = "postgres15"
+    MaxConnections = var.max_connections
   })
 }

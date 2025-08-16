@@ -8,8 +8,13 @@ resource "aws_s3_bucket" "static_assets" {
 
   bucket = "${local.name_prefix}-static-assets"
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-static-assets"
+  tags = merge(local.storage_tags, {
+    Name         = "${local.name_prefix}-static-assets"
+    ResourceType = "s3-bucket"
+    Purpose      = "static-assets-storage"
+    BucketType   = "static-content"
+    Encryption   = "AES256"
+    Versioning   = "enabled"
   })
 }
 
@@ -109,8 +114,17 @@ resource "aws_cloudfront_distribution" "static_assets" {
     cloudfront_default_certificate = true
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-static-assets-cloudfront"
+  tags = merge(local.storage_tags, {
+    Name            = "${local.name_prefix}-static-assets-cloudfront"
+    ResourceType    = "cloudfront-distribution"
+    Purpose         = "static-assets-cdn"
+    PriceClass      = var.cloudfront_price_class
+    CacheBehavior   = "aggressive"
+    ViewerProtocol  = "redirect-to-https"
+    CompressionEnabled = "true"
+    MinTTL          = "86400"
+    DefaultTTL      = "604800"
+    MaxTTL          = "31536000"
   })
 }
 

@@ -18,6 +18,18 @@ resource "aws_lambda_function" "backend" {
   # Reserved concurrency (free up to 1000)
   reserved_concurrent_executions = var.lambda_reserved_concurrency
 
+  tags = merge(local.compute_tags, {
+    Name                    = "${local.name_prefix}-backend"
+    ResourceType           = "lambda-function"
+    Purpose                = "backend-api-service"
+    Runtime                = "container"
+    MemorySize             = "${var.lambda_memory_size}MB"
+    Timeout                = "${var.lambda_timeout}s"
+    ReservedConcurrency    = var.lambda_reserved_concurrency
+    FunctionType           = "web-api"
+    Handler                = "container"
+  })
+
   # Environment variables with in-memory caching
   environment {
     variables = {
@@ -95,6 +107,12 @@ resource "aws_iam_role" "lambda_execution" {
     ]
   })
 
+  tags = merge(local.security_tags, {
+    Name         = "${local.name_prefix}-lambda-execution"
+    ResourceType = "iam-role"
+    Purpose      = "lambda-execution-permissions"
+    ServicePrincipal = "lambda.amazonaws.com"
+  })
 }
 
 # Basic Lambda execution policy
@@ -129,6 +147,14 @@ resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
 
   alarm_actions = var.alert_email != "" ? [aws_sns_topic.lambda_alerts[0].arn] : []
 
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-lambda-errors"
+    ResourceType = "cloudwatch-alarm"
+    Purpose      = "lambda-error-monitoring"
+    MetricName   = "Errors"
+    Threshold    = "5"
+    AlarmType    = "lambda-errors"
+  })
 }
 
 resource "aws_cloudwatch_metric_alarm" "lambda_duration" {
@@ -150,6 +176,14 @@ resource "aws_cloudwatch_metric_alarm" "lambda_duration" {
 
   alarm_actions = var.alert_email != "" ? [aws_sns_topic.lambda_alerts[0].arn] : []
 
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-lambda-duration"
+    ResourceType = "cloudwatch-alarm"
+    Purpose      = "lambda-performance-monitoring"
+    MetricName   = "Duration"
+    Threshold    = "${var.lambda_timeout * 1000 * 0.8}ms"
+    AlarmType    = "lambda-duration"
+  })
 }
 
 resource "aws_cloudwatch_metric_alarm" "lambda_throttles" {
@@ -171,6 +205,14 @@ resource "aws_cloudwatch_metric_alarm" "lambda_throttles" {
 
   alarm_actions = var.alert_email != "" ? [aws_sns_topic.lambda_alerts[0].arn] : []
 
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-lambda-throttles"
+    ResourceType = "cloudwatch-alarm"
+    Purpose      = "lambda-throttling-monitoring"
+    MetricName   = "Throttles"
+    Threshold    = "0"
+    AlarmType    = "lambda-throttles"
+  })
 }
 
 # CloudWatch Log Group for Lambda with cost-optimized retention
@@ -178,6 +220,13 @@ resource "aws_cloudwatch_log_group" "lambda_backend" {
   name              = "/aws/lambda/${local.name_prefix}-backend"
   retention_in_days = var.environment == "prod" ? 7 : 3 # Short retention for cost optimization
 
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-lambda-backend-logs"
+    ResourceType = "cloudwatch-log-group"
+    Purpose      = "lambda-application-logs"
+    LogType      = "application"
+    RetentionDays = var.environment == "prod" ? "7" : "3"
+  })
 }
 
 # Security Group for Lambda
@@ -194,6 +243,12 @@ resource "aws_security_group" "lambda" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  tags = merge(local.security_tags, {
+    Name         = "${local.name_prefix}-lambda-sg"
+    ResourceType = "security-group"
+    Purpose      = "lambda-function-network-access"
+    VPCId        = aws_vpc.main.id
+  })
 
   lifecycle {
     create_before_destroy = true
@@ -236,6 +291,16 @@ resource "aws_lambda_function" "warmer" {
     }
   }
 
+  tags = merge(local.compute_tags, {
+    Name         = "${local.name_prefix}-warmer"
+    ResourceType = "lambda-function"
+    Purpose      = "cold-start-prevention"
+    Runtime      = "python3.9"
+    MemorySize   = "128MB"
+    Timeout      = "10s"
+    FunctionType = "utility"
+    Handler      = "index.handler"
+  })
 }
 
 # Archive for warmer function
@@ -287,6 +352,12 @@ resource "aws_iam_role" "warmer_execution" {
     ]
   })
 
+  tags = merge(local.security_tags, {
+    Name         = "${local.name_prefix}-warmer-execution"
+    ResourceType = "iam-role"
+    Purpose      = "warmer-lambda-execution-permissions"
+    ServicePrincipal = "lambda.amazonaws.com"
+  })
 }
 
 resource "aws_iam_role_policy_attachment" "warmer_basic" {
@@ -304,6 +375,13 @@ resource "aws_cloudwatch_event_rule" "lambda_warmer" {
   description         = "Warm up Lambda function every 5 minutes"
   schedule_expression = "rate(5 minutes)"
 
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-lambda-warmer"
+    ResourceType = "eventbridge-rule"
+    Purpose      = "lambda-warming-schedule"
+    Schedule     = "rate(5 minutes)"
+    RuleType     = "scheduled"
+  })
 }
 
 resource "aws_cloudwatch_event_target" "lambda_warmer" {

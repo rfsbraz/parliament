@@ -4,6 +4,29 @@
 
 provider "aws" {
   region = var.aws_region
+
+  # Default tags applied to all AWS resources
+  default_tags {
+    tags = {
+      Project              = var.project_name
+      Application          = var.application_name
+      Environment          = var.environment
+      ManagedBy           = "Terraform"
+      BusinessUnit        = var.business_unit
+      CostCenter          = var.cost_center
+      OwnerTeam           = var.owner_team
+      OwnerEmail          = var.owner_email
+      DataClassification  = var.data_classification
+      ComplianceRequirements = var.compliance_requirements
+      BackupSchedule      = var.backup_schedule
+      MonitoringLevel     = var.monitoring_level
+      AutoShutdown        = var.auto_shutdown ? "enabled" : "disabled"
+      CostOptimized       = var.cost_optimization_mode ? "true" : "false"
+      CreatedDate         = formatdate("YYYY-MM-DD", timestamp())
+      Terraform           = "true"
+      Repository          = "parliament"
+    }
+  }
 }
 
 # Data sources
@@ -17,14 +40,73 @@ data "aws_availability_zones" "available" {
 locals {
   name_prefix = "fiscaliza-${var.environment}"
 
-  tags = {
-    Project       = "Fiscaliza"
-    Environment   = var.environment
-    ManagedBy     = "Terraform"
-    Website       = "fiscaliza.pt"
-    CostOptimized = "true"
-    TargetCost    = "$11-17/month"
-  }
+  # Enhanced tagging strategy for cost analysis and resource management
+  common_tags = merge(
+    {
+      Project              = var.project_name
+      Application          = var.application_name
+      Environment          = var.environment
+      ManagedBy           = "Terraform"
+      BusinessUnit        = var.business_unit
+      CostCenter          = var.cost_center
+      OwnerTeam           = var.owner_team
+      OwnerEmail          = var.owner_email
+      DataClassification  = var.data_classification
+      ComplianceRequirements = var.compliance_requirements
+      BackupSchedule      = var.backup_schedule
+      MonitoringLevel     = var.monitoring_level
+      AutoShutdown        = var.auto_shutdown ? "enabled" : "disabled"
+      CostOptimized       = var.cost_optimization_mode ? "true" : "false"
+      Website             = var.domain_name
+      TargetCost          = "$11-17/month"
+      Terraform           = "true"
+      Repository          = "parliament"
+      CreatedDate         = formatdate("YYYY-MM-DD", timestamp())
+      LastModified        = formatdate("YYYY-MM-DD", timestamp())
+    },
+    var.additional_tags
+  )
+
+  # Backwards compatibility - remove this after migration
+  tags = local.common_tags
+
+  # Component-specific tag sets for different resource types
+  compute_tags = merge(local.common_tags, {
+    ComponentType = "compute"
+    ServiceType   = "lambda"
+    Billable      = "true"
+  })
+
+  database_tags = merge(local.common_tags, {
+    ComponentType = "database"
+    ServiceType   = "rds"
+    Billable      = "true"
+    DataStore     = "true"
+  })
+
+  storage_tags = merge(local.common_tags, {
+    ComponentType = "storage"
+    ServiceType   = "s3"
+    Billable      = "true"
+  })
+
+  network_tags = merge(local.common_tags, {
+    ComponentType = "network"
+    ServiceType   = "vpc"
+    Billable      = "conditional"
+  })
+
+  monitoring_tags = merge(local.common_tags, {
+    ComponentType = "monitoring"
+    ServiceType   = "cloudwatch"
+    Billable      = "true"
+  })
+
+  security_tags = merge(local.common_tags, {
+    ComponentType = "security"
+    ServiceType   = "iam"
+    Billable      = "false"
+  })
 
   # Calculate number of availability zones (minimum 2 for redundancy)
   azs = slice(data.aws_availability_zones.available.names, 0, 2)
@@ -36,8 +118,10 @@ resource "aws_vpc" "main" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-vpc"
+  tags = merge(local.network_tags, {
+    Name         = "${local.name_prefix}-vpc"
+    ResourceType = "vpc"
+    Purpose      = "main-network-infrastructure"
   })
 }
 
@@ -45,8 +129,10 @@ resource "aws_vpc" "main" {
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-igw"
+  tags = merge(local.network_tags, {
+    Name         = "${local.name_prefix}-igw"
+    ResourceType = "internet-gateway"
+    Purpose      = "internet-access"
   })
 }
 
@@ -59,9 +145,12 @@ resource "aws_subnet" "public" {
   availability_zone       = local.azs[count.index]
   map_public_ip_on_launch = true
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-public-${count.index + 1}"
-    Type = "Public"
+  tags = merge(local.network_tags, {
+    Name         = "${local.name_prefix}-public-${count.index + 1}"
+    ResourceType = "subnet"
+    SubnetType   = "public"
+    Purpose      = "public-subnet-${count.index + 1}"
+    AZ           = local.azs[count.index]
   })
 }
 
@@ -73,9 +162,12 @@ resource "aws_subnet" "private" {
   cidr_block        = "10.0.${count.index + 10}.0/24"
   availability_zone = local.azs[count.index]
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-private-${count.index + 1}"
-    Type = "Private"
+  tags = merge(local.network_tags, {
+    Name         = "${local.name_prefix}-private-${count.index + 1}"
+    ResourceType = "subnet"
+    SubnetType   = "private"
+    Purpose      = "private-subnet-${count.index + 1}"
+    AZ           = local.azs[count.index]
   })
 }
 
@@ -85,8 +177,11 @@ resource "aws_eip" "nat" {
 
   depends_on = [aws_internet_gateway.main]
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-nat-eip"
+  tags = merge(local.network_tags, {
+    Name         = "${local.name_prefix}-nat-eip"
+    ResourceType = "elastic-ip"
+    Purpose      = "nat-gateway"
+    Billable     = "true"
   })
 }
 
@@ -96,8 +191,11 @@ resource "aws_nat_gateway" "main" {
 
   depends_on = [aws_internet_gateway.main]
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-nat"
+  tags = merge(local.network_tags, {
+    Name         = "${local.name_prefix}-nat"
+    ResourceType = "nat-gateway"
+    Purpose      = "private-subnet-internet-access"
+    Billable     = "true"
   })
 }
 
@@ -110,8 +208,10 @@ resource "aws_route_table" "public" {
     gateway_id = aws_internet_gateway.main.id
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-public-rt"
+  tags = merge(local.network_tags, {
+    Name         = "${local.name_prefix}-public-rt"
+    ResourceType = "route-table"
+    Purpose      = "public-subnet-routing"
   })
 }
 
@@ -124,8 +224,10 @@ resource "aws_route_table" "private" {
     nat_gateway_id = aws_nat_gateway.main.id
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-private-rt"
+  tags = merge(local.network_tags, {
+    Name         = "${local.name_prefix}-private-rt"
+    ResourceType = "route-table"
+    Purpose      = "private-subnet-routing"
   })
 }
 
@@ -149,8 +251,11 @@ resource "aws_vpc_endpoint" "s3" {
   vpc_id       = aws_vpc.main.id
   service_name = "com.amazonaws.${var.aws_region}.s3"
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-s3-endpoint"
+  tags = merge(local.network_tags, {
+    Name         = "${local.name_prefix}-s3-endpoint"
+    ResourceType = "vpc-endpoint"
+    Purpose      = "s3-access-cost-optimization"
+    EndpointType = "gateway"
   })
 }
 
@@ -168,8 +273,11 @@ resource "aws_flow_log" "vpc" {
   traffic_type    = "REJECT" # Only log rejected traffic for security
   vpc_id          = aws_vpc.main.id
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-vpc-flow-logs"
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-vpc-flow-logs"
+    ResourceType = "vpc-flow-logs"
+    Purpose      = "network-security-monitoring"
+    LogType      = "vpc-flow"
   })
 }
 
@@ -179,8 +287,12 @@ resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
   name              = "/aws/vpc/flowlogs/${local.name_prefix}"
   retention_in_days = 3 # Short retention for cost optimization
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-vpc-flow-logs"
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-vpc-flow-logs-group"
+    ResourceType = "cloudwatch-log-group"
+    Purpose      = "vpc-flow-logs-storage"
+    LogType      = "vpc-flow"
+    RetentionDays = "3"
   })
 }
 
@@ -202,8 +314,11 @@ resource "aws_iam_role" "flow_logs" {
     ]
   })
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-flow-logs-role"
+  tags = merge(local.security_tags, {
+    Name         = "${local.name_prefix}-flow-logs-role"
+    ResourceType = "iam-role"
+    Purpose      = "vpc-flow-logs-permissions"
+    ServiceType  = "iam"
   })
 }
 
@@ -251,8 +366,10 @@ resource "aws_security_group" "vpc_endpoints" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-vpc-endpoints-sg"
+  tags = merge(local.security_tags, {
+    Name         = "${local.name_prefix}-vpc-endpoints-sg"
+    ResourceType = "security-group"
+    Purpose      = "vpc-endpoints-access-control"
   })
 
   lifecycle {

@@ -8,8 +8,12 @@ resource "aws_sns_topic" "critical_alerts" {
 
   name = "${local.name_prefix}-critical-alerts"
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-critical-alerts"
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-critical-alerts"
+    ResourceType = "sns-topic"
+    Purpose      = "critical-system-alerts"
+    NotificationType = "email"
+    TopicType    = "critical"
   })
 }
 
@@ -95,8 +99,13 @@ resource "aws_cloudwatch_metric_alarm" "application_health" {
 
   alarm_actions = var.alert_email != "" ? [aws_sns_topic.critical_alerts[0].arn] : []
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-application-health-alarm"
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-application-health-alarm"
+    ResourceType = "cloudwatch-alarm"
+    Purpose      = "application-health-monitoring"
+    MetricName   = "Invocations"
+    Threshold    = "1"
+    AlarmType    = "application-health"
   })
 }
 
@@ -120,8 +129,14 @@ resource "aws_cloudwatch_metric_alarm" "cost_alarm" {
 
   alarm_actions = [aws_sns_topic.critical_alerts[0].arn]
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-cost-alarm"
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-cost-alarm"
+    ResourceType = "cloudwatch-alarm"
+    Purpose      = "cost-monitoring"
+    MetricName   = "EstimatedCharges"
+    Threshold    = "25USD"
+    AlarmType    = "billing"
+    Currency     = "USD"
   })
 }
 
@@ -130,8 +145,12 @@ resource "aws_cloudwatch_log_group" "application_logs" {
   name              = "/fiscaliza/application"
   retention_in_days = var.environment == "prod" ? 7 : 3
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-application-logs"
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-application-logs"
+    ResourceType = "cloudwatch-log-group"
+    Purpose      = "application-logging"
+    LogType      = "application"
+    RetentionDays = var.environment == "prod" ? "7" : "3"
   })
 }
 
@@ -166,7 +185,12 @@ resource "aws_cloudwatch_metric_alarm" "application_error_rate" {
 
   alarm_actions = var.alert_email != "" ? [aws_sns_topic.critical_alerts[0].arn] : []
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-application-error-rate-alarm"
+  tags = merge(local.monitoring_tags, {
+    Name         = "${local.name_prefix}-application-error-rate-alarm"
+    ResourceType = "cloudwatch-alarm"
+    Purpose      = "application-error-monitoring"
+    MetricName   = "ApplicationErrors"
+    Threshold    = "5"
+    AlarmType    = "error-rate"
   })
 }
