@@ -94,6 +94,14 @@ config/local.py
 ehthumbs.db
 Thumbs.db
 
+# Terraform
+terraform/terraform.tfvars
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate*
+terraform/*.tfplan
+terraform/*.zip
+
 # Claude Code
 .claude/
 parlamento.db-shm

@@ -28,23 +28,49 @@ terraform {
   }
 
   # Remote state configuration
-  # NOTE: Backend configuration cannot use variables
-  # Use different key paths for different environments:
-  # - Dev:  terraform init -backend-config="key=dev/terraform.tfstate"
-  # - Prod: terraform init -backend-config="key=prod/terraform.tfstate"
   backend "s3" {
     bucket         = "parliament-terraform-state-eu-west-1"
-    key            = "terraform.tfstate"  # Override this during init
+    key            = "terraform.tfstate"
     region         = "eu-west-1"
+    profile        = "reddit-proxy"
     encrypt        = true
     dynamodb_table = "parliament-terraform-locks"
-    
-    # Additional security settings
-    kms_key_id = "alias/terraform-state-key"
+  }
+}
+
+# AWS provider configuration
+provider "aws" {
+  profile = "reddit-proxy"
+  region = var.aws_region
+
+  # Default tags applied to all AWS resources
+  default_tags {
+    tags = {
+      Project              = var.project_name
+      Application          = var.application_name
+      Environment          = var.environment
+      ManagedBy           = "Terraform"
+      BusinessUnit        = var.business_unit
+      CostCenter          = var.cost_center
+      OwnerTeam           = var.owner_team
+      OwnerEmail          = var.owner_email
+      DataClassification  = var.data_classification
+      ComplianceRequirements = var.compliance_requirements
+      BackupSchedule      = var.backup_schedule
+      MonitoringLevel     = var.monitoring_level
+      AutoShutdown        = var.auto_shutdown ? "enabled" : "disabled"
+      CostOptimized       = var.cost_optimization_mode ? "true" : "false"
+      CreatedDate         = formatdate("YYYY-MM-DD", timestamp())
+      Terraform           = "true"
+      Repository          = "parliament"
+    }
   }
 }
 
 # Cloudflare provider configuration
 provider "cloudflare" {
   api_token = var.cloudflare_api_token
+  # Alternative: use email + api_key for full access
+  # email   = "your-email@example.com"
+  # api_key = var.cloudflare_api_key
 }

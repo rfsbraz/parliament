@@ -2,23 +2,18 @@
 # This file creates the S3 bucket and DynamoDB table needed for remote state
 # Run this FIRST before configuring the main infrastructure
 
-terraform {
-  required_version = ">= 1.0"
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-  # NOTE: This file uses LOCAL state to bootstrap remote state infrastructure
-}
-
+# Backend setup uses local state to bootstrap remote state infrastructure
+# Separate provider for backend resources without default tags to avoid conflicts
 provider "aws" {
-  region = var.aws_region
+  alias   = "backend"
+  profile = "reddit-proxy"
+  region  = var.aws_region
+  # No default tags to avoid conflicts with explicit tags
 }
 
 # S3 bucket for Terraform state
 resource "aws_s3_bucket" "terraform_state" {
+  provider = aws.backend
   bucket = "parliament-terraform-state-eu-west-1"
 
   tags = {
@@ -32,6 +27,7 @@ resource "aws_s3_bucket" "terraform_state" {
 
 # Enable versioning for state file recovery
 resource "aws_s3_bucket_versioning" "terraform_state_versioning" {
+  provider = aws.backend
   bucket = aws_s3_bucket.terraform_state.id
   versioning_configuration {
     status = "Enabled"
@@ -40,6 +36,7 @@ resource "aws_s3_bucket_versioning" "terraform_state_versioning" {
 
 # Enable server-side encryption
 resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state_encryption" {
+  provider = aws.backend
   bucket = aws_s3_bucket.terraform_state.id
 
   rule {
@@ -53,6 +50,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state_e
 
 # Block public access to the state bucket
 resource "aws_s3_bucket_public_access_block" "terraform_state_pab" {
+  provider = aws.backend
   bucket = aws_s3_bucket.terraform_state.id
 
   block_public_acls       = true
@@ -63,6 +61,7 @@ resource "aws_s3_bucket_public_access_block" "terraform_state_pab" {
 
 # S3 bucket lifecycle configuration to manage costs
 resource "aws_s3_bucket_lifecycle_configuration" "terraform_state_lifecycle" {
+  provider = aws.backend
   bucket = aws_s3_bucket.terraform_state.id
 
   rule {
@@ -81,6 +80,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "terraform_state_lifecycle" {
 
 # KMS key for state encryption
 resource "aws_kms_key" "terraform_state_key" {
+  provider = aws.backend
   description             = "KMS key for Terraform state encryption"
   deletion_window_in_days = 7
 
@@ -94,12 +94,14 @@ resource "aws_kms_key" "terraform_state_key" {
 
 # KMS key alias
 resource "aws_kms_alias" "terraform_state_key_alias" {
+  provider = aws.backend
   name          = "alias/terraform-state-key"
   target_key_id = aws_kms_key.terraform_state_key.key_id
 }
 
 # DynamoDB table for state locking
 resource "aws_dynamodb_table" "terraform_locks" {
+  provider       = aws.backend
   name           = "parliament-terraform-locks"
   billing_mode   = "PAY_PER_REQUEST"  # Cost-optimized
   hash_key       = "LockID"
@@ -109,9 +111,10 @@ resource "aws_dynamodb_table" "terraform_locks" {
     type = "S"
   }
 
-  point_in_time_recovery {
-    enabled = true
-  }
+  # point_in_time_recovery disabled due to permission requirements
+  # point_in_time_recovery {
+  #   enabled = true
+  # }
 
   tags = {
     Name        = "Parliament Terraform Locks"

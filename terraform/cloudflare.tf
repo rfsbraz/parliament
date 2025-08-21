@@ -52,7 +52,6 @@ resource "cloudflare_page_rule" "api_bypass_cache" {
     # Disable unnecessary features for API
     disable_apps        = true
     disable_performance = false
-    disable_railgun     = true
     disable_zaraz       = true
   }
 }
@@ -110,54 +109,22 @@ resource "cloudflare_page_rule" "root_cache_level" {
 }
 
 # Zone settings optimization
-resource "cloudflare_zone_settings_override" "fiscaliza" {
-  count = var.cloudflare_zone_id != "" ? 1 : 0
-
-  zone_id = var.cloudflare_zone_id
-
-  settings {
-    # SSL/TLS settings
-    ssl                      = "flexible"
-    always_use_https         = "on"
-    min_tls_version          = "1.2"
-    tls_1_3                  = "on"
-    automatic_https_rewrites = "on"
-
-    # Security settings
-    security_level      = "medium"
-    challenge_ttl       = 1800
-    browser_check       = "on"
-    hotlink_protection  = "on"
-    email_obfuscation   = "on"
-    server_side_exclude = "on"
-
-    # Performance settings
-    brotli = "on"
-    minify {
-      css  = "on"
-      html = "on"
-      js   = "on"
-    }
-    rocket_loader = "on"
-    mirage        = "on"
-    polish        = "lossless"
-
-    # Caching settings
-    browser_cache_ttl = 3600 # 1 hour
-    always_online     = "on"
-    development_mode  = var.environment == "dev" ? "on" : "off"
-
-    # IP Geolocation
-    ip_geolocation = "on"
-
-    # HTTP/2 and HTTP/3
-    http2 = "on"
-    http3 = "on"
-
-    # Zero Downtime Failover
-    origin_error_page_pass_thru = "off"
-  }
-}
+# Temporarily disabled due to read-only setting conflicts with Cloudflare plan
+# TODO: Re-enable with compatible settings after investigating plan limitations
+# resource "cloudflare_zone_settings_override" "fiscaliza" {
+#   count = var.cloudflare_zone_id != "" ? 1 : 0
+#
+#   zone_id = var.cloudflare_zone_id
+#
+#   settings {
+#     # Essential SSL/TLS settings only
+#     ssl              = "flexible"
+#     always_use_https = "on"
+#
+#     # Essential Security settings  
+#     security_level = "medium"
+#   }
+# }
 
 # Rate limiting rules for cost optimization and security
 resource "cloudflare_rate_limit" "api_rate_limit" {
@@ -176,8 +143,8 @@ resource "cloudflare_rate_limit" "api_rate_limit" {
   }
 
   action {
-    mode    = "challenge" # Challenge instead of block
-    timeout = 60
+    mode = "challenge" # Challenge instead of block
+    # timeout not allowed with challenge mode
   }
 
   # Bypass rate limiting for specific paths
@@ -203,8 +170,8 @@ resource "cloudflare_rate_limit" "global_rate_limit" {
   }
 
   action {
-    mode    = "challenge"
-    timeout = 300 # 5 minutes
+    mode = "challenge"
+    # timeout not allowed with challenge mode
   }
 }
 
@@ -214,7 +181,7 @@ resource "cloudflare_filter" "block_bad_bots" {
 
   zone_id     = var.cloudflare_zone_id
   description = "Block known bad bots and scrapers"
-  expression  = "(cf.client.bot) or (http.user_agent contains \"scrapy\") or (http.user_agent contains \"crawler\")"
+  expression  = "(cf.threat_score gt 30) or (http.user_agent contains \"scrapy\") or (http.user_agent contains \"crawler\")"
 }
 
 resource "cloudflare_firewall_rule" "block_bad_bots" {
@@ -232,7 +199,7 @@ resource "cloudflare_filter" "challenge_suspicious" {
 
   zone_id     = var.cloudflare_zone_id
   description = "Challenge suspicious requests"
-  expression  = "(cf.threat_score gt 10) or (not cf.verified_bot)"
+  expression  = "(cf.threat_score gt 10) or (http.user_agent contains \"bot\")"
 }
 
 resource "cloudflare_firewall_rule" "challenge_suspicious" {

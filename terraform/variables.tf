@@ -220,10 +220,10 @@ variable "enable_connection_pooling" {
 variable "max_connections" {
   description = "Maximum database connections"
   type        = number
-  default     = 5
+  default     = 10
   validation {
-    condition     = var.max_connections >= 1 && var.max_connections <= 20
-    error_message = "Max connections must be between 1 and 20."
+    condition     = var.max_connections >= 6 && var.max_connections <= 20
+    error_message = "Max connections must be between 6 and 20 (PostgreSQL minimum is 6)."
   }
 }
 
@@ -350,6 +350,31 @@ variable "additional_tags" {
   validation {
     condition     = length(var.additional_tags) <= 10
     error_message = "Additional tags cannot exceed 10 key-value pairs."
+  }
+}
+
+# ============================================================================
+# AUTOMATED DATA IMPORT CONFIGURATION
+# ============================================================================
+# Ultra-cost-effective spot instance based automated data import
+# Total additional cost: ~$0.03/month for daily 20-minute imports
+
+variable "enable_automated_import" {
+  description = "Enable automated parliament data import using spot instances"
+  type        = bool
+  default     = true
+}
+
+# Import-related variables are defined in spot-import-variables.tf
+
+# Remote Database Access
+variable "admin_ip_address" {
+  description = "IP address allowed for remote database access (your current IP)"
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.admin_ip_address == "" || can(regex("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", var.admin_ip_address))
+    error_message = "Admin IP address must be a valid IPv4 address or empty string."
   }
 }
 

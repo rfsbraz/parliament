@@ -379,7 +379,7 @@ resource "aws_cloudwatch_event_rule" "lambda_warmer" {
     Name         = "${local.name_prefix}-lambda-warmer"
     ResourceType = "eventbridge-rule"
     Purpose      = "lambda-warming-schedule"
-    Schedule     = "rate(5 minutes)"
+    Schedule     = "rate-5-minutes"
     RuleType     = "scheduled"
   })
 }

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail, Shield, AlertTriangle, Heart, Users, TrendingUp, TrendingDown, Minus, Info, ChevronRight } from 'lucide-react';
+import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail, Shield, AlertTriangle, Heart, Users, TrendingUp, TrendingDown, Minus, Info, ChevronRight, Target, Award, Globe, CheckCircle2, BarChart3 } from 'lucide-react';
 import VotingAnalytics from './VotingAnalytics';
+import LegislatureDropdown from './LegislatureDropdown';
 
 // TODO: Deputy mandate linking limitation
 // Current system uses name-based linking to connect same person across legislaturas
@@ -398,6 +399,7 @@ const DeputadoDetalhes = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalInterventions, setTotalInterventions] = useState(0);
   const [expandedInitiatives, setExpandedInitiatives] = useState(new Set());
+  const [selectedLegislature, setSelectedLegislature] = useState(null);
   
   // Helper function to generate deputy URLs
   const getDeputadoUrl = (cadId) => {
@@ -488,6 +490,9 @@ const DeputadoDetalhes = () => {
         if (interventionSort) {
           apiParams.set('ordenacao_intervencoes', interventionSort);
         }
+        if (selectedLegislature) {
+          apiParams.set('legislatura', selectedLegislature);
+        }
         apiParams.set('page', currentPage.toString());
         apiParams.set('per_page', '50');
         
@@ -539,7 +544,7 @@ const DeputadoDetalhes = () => {
     if (cadId) {
       fetchDados();
     }
-  }, [cadId, interventionTypeFilter, interventionSort, currentPage]);
+  }, [cadId, interventionTypeFilter, interventionSort, currentPage, selectedLegislature]);
 
   if (loading) {
     return (
@@ -700,91 +705,140 @@ const DeputadoDetalhes = () => {
           </div>
         </div>
 
-        {/* Estatísticas Rápidas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <MessageSquare className="h-8 w-8 text-blue-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Intervenções</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {deputado.estatisticas.total_intervencoes}
-                </p>
-              </div>
-            </div>
+        {/* Political Performance Metrics - Meaningful Statistics */}
+        <div className="mb-8">
+          <div className="flex items-center mb-4">
+            <BarChart3 className="h-6 w-6 text-blue-600 mr-2" />
+            <h3 className="text-lg font-semibold text-gray-900">Performance Parliamentary</h3>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <FileText className="h-8 w-8 text-green-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Iniciativas</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {deputado.estatisticas.total_iniciativas}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <Activity className={`h-8 w-8 ${
-                deputado.estatisticas.taxa_assiduidade >= 0.9 ? 'text-green-600' :
-                deputado.estatisticas.taxa_assiduidade >= 0.8 ? 'text-blue-600' :
-                deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'text-yellow-600' :
-                deputado.estatisticas.taxa_assiduidade >= 0.5 ? 'text-orange-600' :
-                'text-red-600'
-              }`} />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Taxa Assiduidade</p>
-                <p className={`text-2xl font-bold ${
-                  deputado.estatisticas.taxa_assiduidade >= 0.9 ? 'text-green-700' :
-                  deputado.estatisticas.taxa_assiduidade >= 0.8 ? 'text-blue-700' :
-                  deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'text-yellow-700' :
-                  deputado.estatisticas.taxa_assiduidade >= 0.5 ? 'text-orange-700' :
-                  'text-red-700'
-                }`}>
-                  {(deputado.estatisticas.taxa_assiduidade * 100).toFixed(1)}%
-                </p>
-                <div className={`text-xs font-medium mt-1 ${
-                  deputado.estatisticas.taxa_assiduidade >= 0.9 ? 'text-green-600' :
-                  deputado.estatisticas.taxa_assiduidade >= 0.8 ? 'text-blue-600' :
-                  deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'text-yellow-600' :
-                  deputado.estatisticas.taxa_assiduidade >= 0.5 ? 'text-orange-600' :
-                  'text-red-600'
-                }`}>
-                  {deputado.estatisticas.taxa_assiduidade >= 0.9 ? 'Excelente' :
-                   deputado.estatisticas.taxa_assiduidade >= 0.8 ? 'Muito Boa' :
-                   deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'Boa' :
-                   deputado.estatisticas.taxa_assiduidade >= 0.5 ? 'Razoável' :
-                   'Baixa'}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Legislative Effectiveness */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <Target className="h-8 w-8 text-blue-600" />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-600">Eficácia Legislativa</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {deputado.estatisticas.iniciativas_propostas}
+                    </p>
+                  </div>
                 </div>
               </div>
+              <div className="text-xs text-gray-500">
+                <span className="font-medium">Taxa Atividade:</span> {deputado.estatisticas.taxa_atividade_anual}/ano
+              </div>
+              <div className="text-xs text-gray-400 mt-1">
+                Iniciativas + Intervenções por ano de serviço
+              </div>
             </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <Calendar className="h-8 w-8 text-orange-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Mandatos</p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold text-gray-900">
-                    {deputado.estatisticas.total_mandatos}
-                  </p>
-                  {deputado.estatisticas.legislaturas_servidas && (
-                    <span className="text-xs px-2 py-1 bg-orange-50 text-orange-700 rounded-full">
-                      {deputado.estatisticas.legislaturas_servidas.includes(',') 
-                        ? `Legs. ${deputado.estatisticas.legislaturas_servidas}`
-                        : `Leg. ${deputado.estatisticas.legislaturas_servidas}`}
-                    </span>
-                  )}
+
+            {/* Political Experience */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <Award className="h-8 w-8 text-purple-600" />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-600">Experiência</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {deputado.estatisticas.nivel_experiencia}
+                    </p>
+                  </div>
                 </div>
-                {deputado.estatisticas.anos_servico > 0 && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    {deputado.estatisticas.anos_servico} anos de serviço
-                  </p>
+              </div>
+              <div className="text-xs text-gray-500">
+                <span className="font-medium">{deputado.estatisticas.total_mandatos}</span> mandatos • <span className="font-medium">{deputado.estatisticas.tempo_servico_anos}</span> anos
+              </div>
+              <div className="text-xs text-gray-400 mt-1">
+                Legislaturas: {deputado.estatisticas.legislaturas_servidas}
+              </div>
+            </div>
+
+            {/* Parliamentary Engagement */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <Activity className={`h-8 w-8 ${
+                    deputado.estatisticas.taxa_assiduidade >= 0.9 ? 'text-green-600' :
+                    deputado.estatisticas.taxa_assiduidade >= 0.8 ? 'text-blue-600' :
+                    deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'text-yellow-600' :
+                    'text-orange-600'
+                  }`} />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-600">Participação</p>
+                    <p className={`text-2xl font-bold ${
+                      deputado.estatisticas.taxa_assiduidade >= 0.9 ? 'text-green-700' :
+                      deputado.estatisticas.taxa_assiduidade >= 0.8 ? 'text-blue-700' :
+                      deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'text-yellow-700' :
+                      'text-orange-700'
+                    }`}>
+                      {(deputado.estatisticas.taxa_assiduidade * 100).toFixed(0)}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500">
+                <span className="font-medium">{deputado.estatisticas.intervencoes_parlamentares}</span> intervenções
+              </div>
+              <div className="text-xs text-gray-400 mt-1">
+                Taxa de assiduidade às sessões plenárias
+              </div>
+            </div>
+
+            {/* National Performance Context */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center">
+                  <Globe className={`h-8 w-8 ${
+                    deputado.estatisticas.percentil_nacional >= 75 ? 'text-green-600' :
+                    deputado.estatisticas.percentil_nacional >= 50 ? 'text-blue-600' :
+                    deputado.estatisticas.percentil_nacional >= 25 ? 'text-yellow-600' :
+                    'text-orange-600'
+                  }`} />
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-600">Ranking Nacional</p>
+                    <p className={`text-2xl font-bold ${
+                      deputado.estatisticas.percentil_nacional >= 75 ? 'text-green-700' :
+                      deputado.estatisticas.percentil_nacional >= 50 ? 'text-blue-700' :
+                      deputado.estatisticas.percentil_nacional >= 25 ? 'text-yellow-700' :
+                      'text-orange-700'
+                    }`}>
+                      {deputado.estatisticas.percentil_nacional}º
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500">
+                {deputado.estatisticas.consistencia_eleitoral && (
+                  <div className="flex items-center">
+                    <CheckCircle2 className="h-3 w-3 text-green-500 mr-1" />
+                    <span>Círculo consistente: {deputado.estatisticas.circulo_principal}</span>
+                  </div>
                 )}
+              </div>
+              <div className="text-xs text-gray-400 mt-1">
+                Percentil com base na atividade legislativa
+              </div>
+            </div>
+          </div>
+
+          {/* Comparative Context Footer */}
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center">
+                  <Info className="h-4 w-4 mr-1" />
+                  <span>Contexto Comparativo:</span>
+                </div>
+                {deputado.estatisticas.partido_atual && (
+                  <span>
+                    Média do <strong>{deputado.estatisticas.partido_atual}</strong>: {deputado.estatisticas.media_partido_iniciativas} iniciativas
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-gray-400">
+                Dados baseados em atividade parlamentar verificável
               </div>
             </div>
           </div>
@@ -1104,8 +1158,9 @@ const DeputadoDetalhes = () => {
                       </p>
                     )}
                   </div>
-                  {atividades && atividades.intervencoes.length > 0 && (
-                    <div className="flex gap-3">
+                  <div className="flex gap-3 items-center">
+                    {atividades && atividades.intervencoes.length > 0 && (
+                      <div className="flex gap-2">
                       <select 
                         value={interventionTypeFilter}
                         onChange={(e) => {
@@ -1135,8 +1190,15 @@ const DeputadoDetalhes = () => {
                         <option value="oldest">Mais antigas</option>
                         <option value="type">Por tipo</option>
                       </select>
-                    </div>
-                  )}
+                      </div>
+                    )}
+                    <LegislatureDropdown
+                      selectedLegislature={selectedLegislature}
+                      onLegislatureChange={setSelectedLegislature}
+                      deputyCadId={cadId}
+                      size="sm"
+                    />
+                  </div>
                 </div>
 
                 {atividades && atividades.intervencoes.length > 0 ? (
@@ -1375,11 +1437,19 @@ const DeputadoDetalhes = () => {
                       Projetos de lei e resoluções apresentados pelo deputado
                     </p>
                   </div>
-                  {atividades && atividades.iniciativas && atividades.iniciativas.length > 0 && (
-                    <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                      {atividades.iniciativas.length} iniciativas
-                    </div>
-                  )}
+                  <div className="flex gap-3 items-center">
+                    {atividades && atividades.iniciativas && atividades.iniciativas.length > 0 && (
+                      <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                        {atividades.iniciativas.length} iniciativas
+                      </div>
+                    )}
+                    <LegislatureDropdown
+                      selectedLegislature={selectedLegislature}
+                      onLegislatureChange={setSelectedLegislature}
+                      deputyCadId={cadId}
+                      size="sm"
+                    />
+                  </div>
                 </div>
                 
                 {atividades && atividades.iniciativas && atividades.iniciativas.length > 0 ? (

@@ -2,32 +2,7 @@
 # Fiscaliza.pt - Cost-optimized architecture with PostgreSQL RDS and Lambda Function URL
 # Target cost: $11-17/month
 
-provider "aws" {
-  region = var.aws_region
-
-  # Default tags applied to all AWS resources
-  default_tags {
-    tags = {
-      Project              = var.project_name
-      Application          = var.application_name
-      Environment          = var.environment
-      ManagedBy           = "Terraform"
-      BusinessUnit        = var.business_unit
-      CostCenter          = var.cost_center
-      OwnerTeam           = var.owner_team
-      OwnerEmail          = var.owner_email
-      DataClassification  = var.data_classification
-      ComplianceRequirements = var.compliance_requirements
-      BackupSchedule      = var.backup_schedule
-      MonitoringLevel     = var.monitoring_level
-      AutoShutdown        = var.auto_shutdown ? "enabled" : "disabled"
-      CostOptimized       = var.cost_optimization_mode ? "true" : "false"
-      CreatedDate         = formatdate("YYYY-MM-DD", timestamp())
-      Terraform           = "true"
-      Repository          = "parliament"
-    }
-  }
-}
+# AWS provider configuration moved to terraform.tf to avoid duplicates
 
 # Data sources
 data "aws_caller_identity" "current" {}
@@ -57,12 +32,12 @@ locals {
       MonitoringLevel     = var.monitoring_level
       AutoShutdown        = var.auto_shutdown ? "enabled" : "disabled"
       CostOptimized       = var.cost_optimization_mode ? "true" : "false"
-      Website             = var.domain_name
-      TargetCost          = "$11-17/month"
+      Website             = replace(var.domain_name, ".", "-")
+      TargetCost          = "11_17_USD_monthly"
       Terraform           = "true"
       Repository          = "parliament"
-      CreatedDate         = formatdate("YYYY-MM-DD", timestamp())
-      LastModified        = formatdate("YYYY-MM-DD", timestamp())
+      CreatedDate         = formatdate("YYYY_MM_DD", timestamp())
+      LastModified        = formatdate("YYYY_MM_DD", timestamp())
     },
     var.additional_tags
   )

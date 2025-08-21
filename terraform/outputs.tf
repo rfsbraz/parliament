@@ -7,6 +7,11 @@ output "lambda_function_url" {
   value       = aws_lambda_function_url.backend.function_url
 }
 
+output "spot_import_function_url" {
+  description = "Lambda Function URL for manual data import triggers (when enabled)"
+  value       = var.enable_automated_import ? aws_lambda_function_url.spot_launcher[0].function_url : "Not enabled"
+}
+
 output "cloudflare_domain" {
   description = "Main domain served through Cloudflare"
   value       = var.cloudflare_zone_id != "" ? var.domain_name : "Not configured"
@@ -74,7 +79,7 @@ output "cost_optimization_enabled" {
 
 output "estimated_monthly_cost" {
   description = "Estimated monthly cost in USD"
-  value       = "$11-17/month (cost-optimized architecture)"
+  value = var.enable_automated_import ? "$11-17/month + ~$0.03/month for spot imports" : "$11-17/month (cost-optimized architecture)"
 }
 
 output "cost_savings_vs_original" {
@@ -359,5 +364,57 @@ output "cost_optimization_summary" {
       conditional_billable = var.enable_cloudfront ? 2 : 0  # S3, CloudFront
       monitoring_billable = var.enable_basic_monitoring ? 3 : 1  # CloudWatch logs, alarms, SNS
     }
+  }
+}
+
+# ============================================================================
+# AUTOMATED IMPORT CONFIGURATION OUTPUTS
+# ============================================================================
+
+output "import_automation_status" {
+  description = "Status of automated data import configuration"
+  value = var.enable_automated_import ? {
+    enabled                 = true
+    automation_mode         = var.import_automation_mode
+    schedule               = var.import_automation_mode == "daily" ? "Daily at 2 AM UTC" : (var.import_automation_mode == "custom" ? var.import_schedule : "Manual only")
+    spot_instance_type     = var.spot_instance_type
+    timeout_minutes        = var.import_timeout_minutes
+    manual_trigger_enabled = true
+    monitoring_enabled     = var.enable_basic_monitoring
+    estimated_cost_per_run = "~$0.001 (20 minutes on t3.nano spot)"
+    estimated_monthly_cost = "~$0.03"
+  } : {
+    enabled = false
+    message = "Set enable_automated_import = true to enable spot instance imports"
+  }
+}
+
+# ============================================================================
+# DATABASE CONNECTION INFORMATION
+# ============================================================================
+
+output "database_connection_info" {
+  description = "Database connection information for remote access"
+  value = var.admin_ip_address != "" ? {
+    endpoint      = aws_db_instance.parliament.endpoint
+    port          = aws_db_instance.parliament.port
+    database_name = aws_db_instance.parliament.db_name
+    username      = aws_db_instance.parliament.username
+    admin_ip      = var.admin_ip_address
+    publicly_accessible = aws_db_instance.parliament.publicly_accessible
+    connection_string = "postgresql://${aws_db_instance.parliament.username}:PASSWORD@${aws_db_instance.parliament.endpoint}:${aws_db_instance.parliament.port}/${aws_db_instance.parliament.db_name}"
+    note          = "Replace PASSWORD with the actual database password. Password is stored in AWS Secrets Manager."
+  } : {
+    note = "Database remote access is disabled. Set admin_ip_address variable to enable."
+  }
+  sensitive = false
+}
+
+output "database_security_info" {
+  description = "Database security configuration"
+  value = {
+    security_group_id = aws_security_group.rds.id
+    allowed_sources   = var.admin_ip_address != "" ? ["Lambda functions", "Admin IP: ${var.admin_ip_address}/32"] : ["Lambda functions only"]
+    subnet_type       = var.admin_ip_address != "" ? "public" : "private"
   }
 }

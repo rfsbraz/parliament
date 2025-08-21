@@ -6,6 +6,7 @@ import { Users, TrendingUp, BarChart3, ArrowRight, Building, Handshake, Filter }
 const PartidosPage = () => {
   const [partidos, setPartidos] = useState([]);
   const [coligacoes, setColigacoes] = useState([]);
+  const [legislaturaInfo, setLegislaturaInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState('all'); // 'all', 'partidos', 'coligacoes'
   const [showInactiveCoalitions, setShowInactiveCoalitions] = useState(false);
@@ -29,6 +30,16 @@ const PartidosPage = () => {
       const coligacoesResponse = await fetch(`/api/coligacoes?include_inactive=${showInactiveCoalitions}`);
       const coligacoesData = await coligacoesResponse.json();
       setColigacoes(coligacoesData.coligacoes || []);
+
+      // Fetch legislature info
+      const legislaturasResponse = await fetch('/api/legislaturas');
+      const legislaturasData = await legislaturasResponse.json();
+      
+      // Get current legislature (one with null data_fim)
+      const currentLegislature = legislaturasData.legislaturas?.find(leg => leg.data_fim === null);
+      if (currentLegislature) {
+        setLegislaturaInfo(currentLegislature);
+      }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -65,6 +76,23 @@ const PartidosPage = () => {
     'direita': '#1E40AF'
   };
 
+  // Generate legislature display text (similar to Dashboard)
+  const getLegislatureDisplayText = () => {
+    if (!legislaturaInfo) return 'XVII Legislatura (2025-presente)';
+    
+    const numero = legislaturaInfo.numero;
+    const dataInicio = legislaturaInfo.data_inicio ? new Date(legislaturaInfo.data_inicio).getFullYear() : null;
+    const dataFim = legislaturaInfo.data_fim ? new Date(legislaturaInfo.data_fim).getFullYear() : null;
+    
+    if (dataInicio && dataFim) {
+      return `${numero} Legislatura (${dataInicio}-${dataFim})`;
+    } else if (dataInicio) {
+      return `${numero} Legislatura (${dataInicio}-presente)`;
+    } else {
+      return `${numero} Legislatura`;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -88,9 +116,14 @@ const PartidosPage = () => {
         animate={{ opacity: 1, y: 0 }}
         className="text-center"
       >
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">
           Partidos e Coligações
         </h1>
+        <div className="mb-4">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+            {getLegislatureDisplayText()}
+          </span>
+        </div>
         <p className="text-xl text-gray-600 max-w-3xl mx-auto">
           Explore o panorama completo dos partidos políticos e coligações no Parlamento Português
         </p>

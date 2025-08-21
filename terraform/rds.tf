@@ -37,7 +37,8 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
 # DB Subnet Group
 resource "aws_db_subnet_group" "parliament" {
   name       = "${local.name_prefix}-db-subnet-group"
-  subnet_ids = aws_subnet.private[*].id
+  # Use public subnets if admin IP is specified for remote access, otherwise use private
+  subnet_ids = var.admin_ip_address != "" ? aws_subnet.public[*].id : aws_subnet.private[*].id
 
   tags = merge(local.database_tags, {
     Name         = "${local.name_prefix}-db-subnet-group"
@@ -58,6 +59,18 @@ resource "aws_security_group" "rds" {
     to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.lambda.id]
+  }
+
+  # Allow remote access from admin IP only
+  dynamic "ingress" {
+    for_each = var.admin_ip_address != "" ? [1] : []
+    content {
+      description = "PostgreSQL remote access from admin IP"
+      from_port   = 5432
+      to_port     = 5432
+      protocol    = "tcp"
+      cidr_blocks = ["${var.admin_ip_address}/32"]
+    }
   }
 
   egress {
@@ -91,7 +104,7 @@ resource "aws_db_instance" "parliament" {
 
   # Database configuration
   db_name  = "parliament"
-  username = "admin"
+  username = "parluser"
   password = random_password.db_password.result
 
   # Storage configuration
@@ -103,7 +116,7 @@ resource "aws_db_instance" "parliament" {
   # Network configuration
   db_subnet_group_name   = aws_db_subnet_group.parliament.name
   vpc_security_group_ids = [aws_security_group.rds.id]
-  publicly_accessible    = false
+  publicly_accessible    = var.admin_ip_address != "" ? true : false
   parameter_group_name   = aws_db_parameter_group.parliament.name
 
   # Availability and backup
@@ -117,7 +130,8 @@ resource "aws_db_instance" "parliament" {
   monitoring_interval          = 0     # Disable enhanced monitoring
 
   # Security
-  deletion_protection       = var.environment == "prod" ? true : false
+  # TODO: Re-enable deletion protection after initial setup is complete
+  deletion_protection       = false # Temporarily disabled for initial setup
   skip_final_snapshot       = var.environment == "prod" ? false : true
   final_snapshot_identifier = var.environment == "prod" ? "${local.name_prefix}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}" : null
 
@@ -167,7 +181,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
     ResourceType = "cloudwatch-alarm"
     Purpose      = "database-performance-monitoring"
     MetricName   = "CPUUtilization"
-    Threshold    = "80%"
+    Threshold    = "80-percent"
     AlarmType    = "high-cpu"
   })
 }
