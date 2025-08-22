@@ -83,46 +83,131 @@ variable "db_multi_az" {
   default     = false # Single AZ for cost optimization
 }
 
-# Lambda Configuration - Optimized
-variable "lambda_memory_size" {
-  description = "Memory size for Lambda function (MB)"
+# ECS Fargate Configuration - Optimized
+variable "fargate_cpu" {
+  description = "CPU units for Fargate task (1024 = 1 vCPU)"
+  type        = number
+  default     = 256
+  validation {
+    condition     = contains([256, 512, 1024, 2048, 4096], var.fargate_cpu)
+    error_message = "Fargate CPU must be one of: 256, 512, 1024, 2048, 4096."
+  }
+}
+
+variable "fargate_memory" {
+  description = "Memory for Fargate task (MB)"
   type        = number
   default     = 512
   validation {
-    condition     = var.lambda_memory_size >= 128 && var.lambda_memory_size <= 1024
-    error_message = "Lambda memory size must be between 128 MB and 1024 MB for cost optimization."
+    condition     = var.fargate_memory >= 512 && var.fargate_memory <= 30720
+    error_message = "Fargate memory must be between 512 MB and 30720 MB."
   }
 }
 
-variable "lambda_timeout" {
-  description = "Timeout for Lambda function (seconds)"
+variable "fargate_desired_count" {
+  description = "Desired number of Fargate tasks"
   type        = number
-  default     = 30
+  default     = 1
   validation {
-    condition     = var.lambda_timeout >= 1 && var.lambda_timeout <= 300
-    error_message = "Lambda timeout must be between 1 and 300 seconds."
+    condition     = var.fargate_desired_count >= 1 && var.fargate_desired_count <= 10
+    error_message = "Desired count must be between 1 and 10 for cost optimization."
   }
 }
 
-variable "lambda_reserved_concurrency" {
-  description = "Reserved concurrency for Lambda (free up to 1000)"
+variable "fargate_min_capacity" {
+  description = "Minimum number of Fargate tasks for auto-scaling"
   type        = number
-  default     = 10
+  default     = 1
   validation {
-    condition     = var.lambda_reserved_concurrency >= 0 && var.lambda_reserved_concurrency <= 100
-    error_message = "Reserved concurrency must be between 0 and 100."
+    condition     = var.fargate_min_capacity >= 1 && var.fargate_min_capacity <= 5
+    error_message = "Minimum capacity must be between 1 and 5."
   }
 }
 
-variable "lambda_use_function_url" {
-  description = "Use Lambda Function URL instead of API Gateway"
-  type        = bool
-  default     = true # Cost optimization
+variable "fargate_max_capacity" {
+  description = "Maximum number of Fargate tasks for auto-scaling"
+  type        = number
+  default     = 3
+  validation {
+    condition     = var.fargate_max_capacity >= 2 && var.fargate_max_capacity <= 10
+    error_message = "Maximum capacity must be between 2 and 10 for cost optimization."
+  }
 }
+
+variable "cloudflare_ip_ranges" {
+  description = "CloudFlare IP ranges for security group access"
+  type        = list(string)
+  default = [
+    "173.245.48.0/20",
+    "103.21.244.0/22",
+    "103.22.200.0/22",
+    "103.31.4.0/22",
+    "141.101.64.0/18",
+    "108.162.192.0/18",
+    "190.93.240.0/20",
+    "188.114.96.0/20",
+    "197.234.240.0/22",
+    "198.41.128.0/17",
+    "162.158.0.0/15",
+    "104.16.0.0/13",
+    "104.24.0.0/14",
+    "172.64.0.0/13",
+    "131.0.72.0/22"
+  ]
+}
+
 
 # Cloudflare Configuration
 variable "cloudflare_zone_id" {
   description = "Cloudflare Zone ID for fiscaliza.pt"
+  type        = string
+  default     = ""
+}
+
+# Load Balancer Configuration
+variable "enable_alb" {
+  description = "Enable Application Load Balancer (HTTP/HTTPS, ~$16/month)"
+  type        = bool
+  default     = true
+}
+
+variable "enable_nlb" {
+  description = "Enable Network Load Balancer with Elastic IP (TCP, static IP, ~$16/month)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_ip_automation" {
+  description = "Enable automated CloudFlare IP updates via Lambda (~$0.01/month)"
+  type        = bool
+  default     = false
+}
+
+# Static Website Configuration
+variable "enable_cloudfront_for_website" {
+  description = "Enable CloudFront for static website (better performance, extra cost)"
+  type        = bool
+  default     = false
+}
+
+variable "cloudfront_price_class" {
+  description = "CloudFront price class for website distribution"
+  type        = string
+  default     = "PriceClass_100" # US, Canada, Europe only
+  validation {
+    condition     = contains(["PriceClass_100", "PriceClass_200", "PriceClass_All"], var.cloudfront_price_class)
+    error_message = "CloudFront price class must be PriceClass_100, PriceClass_200, or PriceClass_All."
+  }
+}
+
+variable "api_subdomain" {
+  description = "Subdomain for API endpoints"
+  type        = string
+  default     = "api"
+}
+
+variable "api_domain_name" {
+  description = "Full API domain name (auto-generated from api_subdomain + domain_name)"
   type        = string
   default     = ""
 }
@@ -134,45 +219,36 @@ variable "cloudflare_api_token" {
   default     = ""
 }
 
+# Cloudflare Cache Configuration
 variable "enable_cloudflare_cache" {
-  description = "Enable Cloudflare caching rules"
-  type        = bool
-  default     = true
-}
-
-variable "enable_cloudflare_waf" {
-  description = "Enable Cloudflare WAF rules"
+  description = "Enable Cloudflare caching (Free plan compatible)"
   type        = bool
   default     = true
 }
 
 variable "cloudflare_cache_level" {
-  description = "Cloudflare cache level"
+  description = "Cloudflare cache level (aggressive, basic, simplified)"
   type        = string
   default     = "aggressive"
   validation {
-    condition     = contains(["basic", "simplified", "aggressive"], var.cloudflare_cache_level)
-    error_message = "Cache level must be basic, simplified, or aggressive."
+    condition     = contains(["aggressive", "basic", "simplified"], var.cloudflare_cache_level)
+    error_message = "Cache level must be aggressive, basic, or simplified."
   }
 }
 
-
-# CloudFront Configuration - Simplified for S3 only
-variable "enable_cloudfront" {
-  description = "Enable CloudFront for S3 static assets"
+variable "enable_cloudflare_waf" {
+  description = "Enable Cloudflare WAF (requires Pro plan or higher)"
   type        = bool
-  default     = true
+  default     = false
 }
 
-variable "cloudfront_price_class" {
-  description = "CloudFront price class"
-  type        = string
-  default     = "PriceClass_100" # US, Canada, Europe only
-  validation {
-    condition     = contains(["PriceClass_100", "PriceClass_200", "PriceClass_All"], var.cloudfront_price_class)
-    error_message = "CloudFront price class must be PriceClass_100, PriceClass_200, or PriceClass_All."
-  }
+variable "enable_alb_alternative" {
+  description = "Use ALB with static DNS name instead of dynamic IP (costs ~$16/month extra but more reliable)"
+  type        = bool
+  default     = false
 }
+
+
 
 # Monitoring Configuration - Minimal
 variable "enable_basic_monitoring" {

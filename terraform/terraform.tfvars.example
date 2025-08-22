@@ -43,8 +43,6 @@ db_multi_az = false
 enable_basic_monitoring = true
 enable_detailed_monitoring = false
 
-# CloudFront (for static assets)
-enable_cloudfront = true
 
 # Caching
 enable_in_memory_cache = true

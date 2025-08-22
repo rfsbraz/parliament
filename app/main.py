@@ -69,11 +69,16 @@ file_handler.setFormatter(logging.Formatter(
 ))
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,  # Reduced from DEBUG to INFO
     handlers=[file_handler, console_handler]
 )
 
-app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static', 'dist'))
+# Reduce boto3/botocore logging to WARNING level
+logging.getLogger('boto3').setLevel(logging.WARNING)
+logging.getLogger('botocore').setLevel(logging.WARNING)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
+
+app = Flask(__name__)
 app.config.update(FLASK_CONFIG)
 
 # Ensure debug mode is enabled for development
@@ -87,8 +92,13 @@ app.register_blueprint(agenda_bp, url_prefix='/api')
 app.register_blueprint(health_bp, url_prefix='/api')
 app.register_blueprint(transparency_bp, url_prefix='/api')
 
-# Initialize database
-db.init_app(app)
+# Initialize database - defer actual connection until first use
+try:
+    db.init_app(app)
+    print("Database initialization completed (no connection established yet)")
+except Exception as e:
+    print(f"Database initialization failed: {e}")
+    # Continue without database - routes will handle connection errors
 
 # Create a dedicated exception logger
 exception_logger = logging.getLogger('flask.exceptions')
@@ -270,21 +280,22 @@ def test_error():
         raise ValueError(f"Unknown test type: {test_type}")
 
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve(path):
-    static_folder_path = app.static_folder
-    if static_folder_path is None:
-            return "Static folder not configured", 404
-
-    if path != "" and os.path.exists(os.path.join(static_folder_path, path)):
-        return send_from_directory(static_folder_path, path)
-    else:
-        index_path = os.path.join(static_folder_path, 'index.html')
-        if os.path.exists(index_path):
-            return send_from_directory(static_folder_path, 'index.html')
-        else:
-            return "index.html not found", 404
+@app.route('/')
+def api_root():
+    """API root endpoint - no frontend serving"""
+    return jsonify({
+        "service": "parliament-backend",
+        "version": "1.0.0",
+        "message": "Parliament Transparency Platform API",
+        "endpoints": {
+            "health": "/api/health",
+            "deputies": "/api/deputies",
+            "parties": "/api/parties", 
+            "agenda": "/api/agenda",
+            "transparency": "/api/transparency"
+        },
+        "frontend": "https://fiscaliza.pt"
+    })
 
 
 if __name__ == '__main__':

@@ -2,9 +2,58 @@
 # Key information for the deployed cost-optimized infrastructure
 
 # Application URLs
-output "lambda_function_url" {
-  description = "Lambda Function URL for direct access (replaces API Gateway)"
-  value       = aws_lambda_function_url.backend.function_url
+output "alb_dns_name" {
+  description = "Application Load Balancer DNS name (stable endpoint)"
+  value       = var.enable_alb ? aws_lb.main[0].dns_name : "ALB disabled"
+}
+
+output "alb_http_endpoint" {
+  description = "ALB HTTP endpoint (redirects to HTTPS)"
+  value       = var.enable_alb ? "http://${aws_lb.main[0].dns_name}" : "ALB disabled"
+}
+
+output "alb_https_endpoint" {
+  description = "ALB HTTPS endpoint for testing"
+  value       = var.enable_alb ? "https://${aws_lb.main[0].dns_name}" : "ALB disabled"
+}
+
+output "website_url" {
+  description = "Static website URL"
+  value = var.cloudflare_zone_id != "" ? "https://${var.domain_name}" : aws_s3_bucket_website_configuration.static_website.website_endpoint
+}
+
+output "api_url" {
+  description = "API endpoint URL"
+  value = var.enable_alb && var.cloudflare_zone_id != "" ? "https://${local.api_domain_name}" : (var.enable_alb ? "https://${aws_lb.main[0].dns_name}" : "API not configured")
+}
+
+output "s3_website_endpoint" {
+  description = "S3 static website endpoint"
+  value = aws_s3_bucket_website_configuration.static_website.website_endpoint
+}
+
+output "s3_bucket_name" {
+  description = "S3 bucket name for frontend deployment"
+  value = aws_s3_bucket.static_website.bucket
+}
+
+output "load_balancer_status" {
+  description = "Current load balancer configuration"
+  value = {
+    alb_enabled = var.enable_alb
+    nlb_enabled = var.enable_nlb
+    ip_automation_enabled = var.enable_ip_automation
+  }
+}
+
+output "ecs_cluster_name" {
+  description = "ECS Cluster name"
+  value       = aws_ecs_cluster.parliament.name
+}
+
+output "ecs_service_name" {
+  description = "ECS Service name"
+  value       = aws_ecs_service.parliament.name
 }
 
 output "spot_import_function_url" {
@@ -17,10 +66,6 @@ output "cloudflare_domain" {
   value       = var.cloudflare_zone_id != "" ? var.domain_name : "Not configured"
 }
 
-output "cloudfront_domain" {
-  description = "CloudFront domain for static assets"
-  value       = var.enable_cloudfront ? aws_cloudfront_distribution.static_assets[0].domain_name : "Not enabled"
-}
 
 # Database Information
 output "database_endpoint" {
@@ -61,9 +106,9 @@ output "nat_gateway_id" {
 }
 
 # Security Information
-output "lambda_security_group_id" {
-  description = "Lambda security group ID"
-  value       = aws_security_group.lambda.id
+output "ecs_security_group_id" {
+  description = "ECS service security group ID"
+  value       = aws_security_group.ecs_service.id
 }
 
 output "rds_security_group_id" {
@@ -79,12 +124,12 @@ output "cost_optimization_enabled" {
 
 output "estimated_monthly_cost" {
   description = "Estimated monthly cost in USD"
-  value = var.enable_automated_import ? "$11-17/month + ~$0.03/month for spot imports" : "$11-17/month (cost-optimized architecture)"
+  value = var.enable_automated_import ? "$8-12/month + ~$0.03/month for spot imports" : "$8-12/month (ECS Fargate with direct CloudFlare connection)"
 }
 
 output "cost_savings_vs_original" {
   description = "Cost savings compared to original architecture"
-  value       = "~50-70% savings vs Aurora + API Gateway + enhanced services"
+  value       = "~40-60% savings vs Aurora + enhanced API Gateway + provisioned services"
 }
 
 
@@ -101,13 +146,15 @@ output "aws_region" {
 
 
 # Performance Configuration
-output "lambda_configuration" {
-  description = "Lambda function configuration"
+output "fargate_configuration" {
+  description = "ECS Fargate service configuration"
   value = {
-    memory_size          = var.lambda_memory_size
-    timeout              = var.lambda_timeout
-    reserved_concurrency = var.lambda_reserved_concurrency
-    runtime              = "Container (AWS Lambda Web Adapter)"
+    cpu               = var.fargate_cpu
+    memory            = var.fargate_memory
+    desired_count     = var.fargate_desired_count
+    min_capacity      = var.fargate_min_capacity
+    max_capacity      = var.fargate_max_capacity
+    runtime           = "ECS Fargate with Gunicorn"
   }
 }
 
@@ -182,22 +229,14 @@ output "billable_resources_summary" {
       billable          = "true"
       component_type    = "database"
     }
-    lambda_backend = {
-      resource_type        = "Lambda Function"
-      memory_size_mb       = var.lambda_memory_size
-      timeout_seconds      = var.lambda_timeout
-      reserved_concurrency = var.lambda_reserved_concurrency
-      billable             = "true"
-      component_type       = "compute"
+    ecs_fargate = {
+      resource_type    = "ECS Fargate Service"
+      cpu_units        = var.fargate_cpu
+      memory_mb        = var.fargate_memory
+      desired_count    = var.fargate_desired_count
+      billable         = "true"
+      component_type   = "compute"
     }
-    lambda_warmer = var.enable_basic_monitoring ? {
-      resource_type   = "Lambda Function (Warmer)"
-      memory_size_mb  = "128"
-      timeout_seconds = "10"
-      billable        = "true"
-      component_type  = "compute"
-      purpose         = "cost-optimization"
-    } : null
     nat_gateway = {
       resource_type  = "NAT Gateway"
       billable       = "true"
@@ -210,19 +249,6 @@ output "billable_resources_summary" {
       component_type = "network"
       purpose        = "nat-gateway"
     }
-    s3_bucket = var.enable_cloudfront ? {
-      resource_type  = "S3 Bucket"
-      billable       = "true"
-      component_type = "storage"
-      purpose        = "static-assets"
-    } : null
-    cloudfront_distribution = var.enable_cloudfront ? {
-      resource_type  = "CloudFront Distribution"
-      price_class    = var.cloudfront_price_class
-      billable       = "true"
-      component_type = "storage"
-      purpose        = "cdn"
-    } : null
     cloudwatch_logs = {
       resource_type     = "CloudWatch Log Groups"
       retention_days    = var.environment == "prod" ? "7" : "3"
@@ -293,18 +319,16 @@ output "resource_inventory_by_component" {
   description = "Resource inventory organized by component type for cost analysis"
   value = {
     compute_resources = [
-      "aws_lambda_function.backend",
-      var.enable_basic_monitoring ? "aws_lambda_function.warmer" : null
+      "aws_ecs_cluster.parliament",
+      "aws_ecs_service.parliament",
+      "aws_ecs_task_definition.parliament"
     ]
     database_resources = [
       "aws_db_instance.parliament",
       "aws_db_parameter_group.parliament",
       "aws_db_subnet_group.parliament"
     ]
-    storage_resources = var.enable_cloudfront ? [
-      "aws_s3_bucket.static_assets",
-      "aws_cloudfront_distribution.static_assets"
-    ] : []
+    storage_resources = []
     network_resources = [
       "aws_vpc.main",
       "aws_subnet.public",
@@ -316,22 +340,22 @@ output "resource_inventory_by_component" {
       "aws_route_table.private"
     ]
     security_resources = [
-      "aws_security_group.lambda",
+      "aws_security_group.ecs_service",
       "aws_security_group.rds",
       "aws_security_group.vpc_endpoints",
-      "aws_iam_role.lambda_execution",
+      "aws_iam_role.ecs_execution",
+      "aws_iam_role.ecs_task",
       "aws_secretsmanager_secret.db_credentials"
     ]
     monitoring_resources = concat(
       [
-        "aws_cloudwatch_log_group.lambda_backend",
+        "aws_cloudwatch_log_group.ecs_backend",
         "aws_cloudwatch_log_group.application_logs"
       ],
       var.enable_basic_monitoring ? [
         "aws_cloudwatch_log_group.vpc_flow_logs",
-        "aws_cloudwatch_metric_alarm.lambda_errors",
-        "aws_cloudwatch_metric_alarm.lambda_duration", 
-        "aws_cloudwatch_metric_alarm.lambda_throttles",
+        "aws_cloudwatch_metric_alarm.ecs_cpu_high",
+        "aws_cloudwatch_metric_alarm.ecs_memory_high",
         "aws_cloudwatch_metric_alarm.rds_cpu",
         "aws_cloudwatch_metric_alarm.rds_connections",
         "aws_cloudwatch_metric_alarm.rds_freeable_memory",
@@ -349,19 +373,19 @@ output "cost_optimization_summary" {
   value = {
     optimization_mode = var.cost_optimization_mode
     cost_saving_features = {
-      single_nat_gateway    = "Reduced network costs vs multi-AZ NAT"
-      function_url_vs_api_gateway = "Eliminated API Gateway costs"
-      rds_single_az         = "Reduced database costs vs Multi-AZ"
-      short_log_retention   = "Reduced CloudWatch storage costs"
-      basic_monitoring_only = "Reduced monitoring costs"
-      reserved_concurrency  = "Controlled Lambda costs"
-      cost_optimized_cloudfront = var.enable_cloudfront ? "EU/US only distribution" : "Disabled for dev"
+      single_nat_gateway         = "Reduced network costs vs multi-AZ NAT"
+      fargate_direct_connection  = "Direct CloudFlare connection eliminates API Gateway (~$3-5/month saved)"
+      rds_single_az              = "Reduced database costs vs Multi-AZ"
+      short_log_retention        = "Reduced CloudWatch storage costs"
+      basic_monitoring_only      = "Reduced monitoring costs"
+      fargate_optimized_sizing   = "Right-sized CPU/memory allocation"
+      cost_optimized_cloudfront  = "Disabled - CloudFront removed"
     }
-    target_monthly_cost = "$11-17"
+    target_monthly_cost = "$8-12"
     cost_savings_percentage = "50-70% vs full-featured architecture"
     billable_resource_count = {
-      always_billable = 4  # RDS, Lambda, NAT Gateway, EIP
-      conditional_billable = var.enable_cloudfront ? 2 : 0  # S3, CloudFront
+      always_billable = 4  # RDS, ECS Fargate, NAT Gateway, EIP
+      conditional_billable = 0  # No CloudFront/S3 static assets
       monitoring_billable = var.enable_basic_monitoring ? 3 : 1  # CloudWatch logs, alarms, SNS
     }
   }
@@ -402,7 +426,7 @@ output "database_connection_info" {
     username      = aws_db_instance.parliament.username
     admin_ip      = var.admin_ip_address
     publicly_accessible = aws_db_instance.parliament.publicly_accessible
-    connection_string = "postgresql://${aws_db_instance.parliament.username}:PASSWORD@${aws_db_instance.parliament.endpoint}:${aws_db_instance.parliament.port}/${aws_db_instance.parliament.db_name}"
+    connection_string = "postgresql://${aws_db_instance.parliament.username}:PASSWORD@${aws_db_instance.parliament.endpoint}/${aws_db_instance.parliament.db_name}"
     note          = "Replace PASSWORD with the actual database password. Password is stored in AWS Secrets Manager."
   } : {
     note = "Database remote access is disabled. Set admin_ip_address variable to enable."

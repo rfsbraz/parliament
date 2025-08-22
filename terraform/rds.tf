@@ -10,7 +10,7 @@ resource "random_password" "db_password" {
 
 # Secrets Manager secret for database credentials
 resource "aws_secretsmanager_secret" "db_credentials" {
-  name                    = "${local.name_prefix}-db-credentials"
+  name                    = "${local.name_prefix}-db-credentials-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
   description             = "Database credentials for PostgreSQL RDS"
   recovery_window_in_days = 7
 
@@ -19,7 +19,12 @@ resource "aws_secretsmanager_secret" "db_credentials" {
     ResourceType = "secrets-manager-secret"
     Purpose      = "database-credentials-storage"
     SecretType   = "database"
+    CreatedAt    = formatdate("YYYY-MM-DD-hhmm", timestamp())
   })
+
+  lifecycle {
+    ignore_changes = [name] # Prevent recreation due to timestamp changes
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "db_credentials" {
@@ -54,11 +59,11 @@ resource "aws_security_group" "rds" {
   description = "Security group for RDS PostgreSQL instance"
 
   ingress {
-    description     = "PostgreSQL from Lambda"
+    description     = "PostgreSQL from ECS Fargate"
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [aws_security_group.lambda.id]
+    security_groups = [aws_security_group.ecs_service.id]
   }
 
   # Allow remote access from admin IP only
@@ -262,10 +267,10 @@ resource "aws_sns_topic_subscription" "rds_alerts_email" {
   endpoint  = var.alert_email
 }
 
-# Lambda IAM policy for RDS access
-resource "aws_iam_role_policy" "lambda_rds_access" {
-  name = "${local.name_prefix}-lambda-rds-access"
-  role = aws_iam_role.lambda_execution.id
+# ECS IAM policy for RDS access (via task role)
+resource "aws_iam_role_policy" "ecs_rds_access" {
+  name = "${local.name_prefix}-ecs-rds-access"
+  role = aws_iam_role.ecs_task.id
 
   policy = jsonencode({
     Version = "2012-10-17"

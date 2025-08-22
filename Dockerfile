@@ -1,26 +1,68 @@
-# Serverless Flask with Aurora Serverless v2 using AWS Lambda Web Adapter
-FROM public.ecr.aws/lambda/python:3.12
+# Standard Flask application for ECS Fargate
+FROM python:3.12-slim
 
-# Install Lambda Web Adapter
-COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:0.8.1 /lambda-adapter ${LAMBDA_RUNTIME_DIR}
+# Set working directory
+WORKDIR /app
 
-# Copy application code (NO embedded database)
-COPY app/ ${LAMBDA_TASK_ROOT}/app/
-COPY config/ ${LAMBDA_TASK_ROOT}/config/
-COPY requirements.txt ${LAMBDA_TASK_ROOT}/
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies + MySQL client
-RUN pip install -r requirements.txt gunicorn pymysql cryptography
+# Copy requirements first for better caching
+COPY requirements.txt .
 
-# Environment variables for Lambda Web Adapter
-ENV AWS_LWA_INVOKE_MODE=response_stream
-ENV AWS_LWA_PORT=8000
-ENV PYTHONPATH=${LAMBDA_TASK_ROOT}
+# Install Python dependencies including PostgreSQL client
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir psycopg2-binary gunicorn
 
-# Database configuration for Aurora
-ENV DATABASE_TYPE=mysql
-ENV DATABASE_HOST_SECRET_ARN=""  # Will be set by Terraform
+# Copy application code
+COPY app/ ./app/
+COPY database/ ./database/
+COPY config/ ./config/
+
+# Copy script files (exclude downloads and large data directories)
+COPY scripts/data_processing/*.py ./scripts/data_processing/
+COPY scripts/data_processing/mappers/ ./scripts/data_processing/mappers/
+COPY scripts/data_processing/utils/ ./scripts/data_processing/utils/
+COPY scripts/database/ ./scripts/database/
+COPY scripts/analysis/ ./scripts/analysis/
+COPY scripts/analytics/ ./scripts/analytics/
+COPY scripts/utilities/ ./scripts/utilities/
+COPY scripts/deploy/ ./scripts/deploy/
+# Copy individual Python files from scripts root
+COPY scripts/*.py ./scripts/
+
+# Create static directory for frontend files if they exist
+RUN mkdir -p ./app/static/dist/
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Database configuration for PostgreSQL RDS
+ENV DATABASE_TYPE=postgresql
 ENV DATABASE_NAME=parliament
 
-# Your Flask app runs exactly as before, but connects to Aurora!
-CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "app.main:app"]
+# Flask configuration
+ENV FLASK_ENV=production
+ENV FLASK_DEBUG=0
+ENV LOG_LEVEL=INFO
+
+# Application configuration
+ENV PORT=5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:5000/api/ping || exit 1
+
+# Expose port
+EXPOSE 5000
+
+# Create non-root user for security
+RUN groupadd -r flask && useradd -r -g flask flask
+RUN chown -R flask:flask /app
+USER flask
+
+# Start Flask application with Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--keep-alive", "5", "app.main:app"]

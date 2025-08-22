@@ -42,15 +42,14 @@ resource "aws_cloudwatch_dashboard" "main" {
 
         properties = {
           metrics = [
-            ["AWS/Lambda", "Duration", "FunctionName", aws_lambda_function.backend.function_name],
-            [".", "Errors", ".", "."],
-            [".", "Invocations", ".", "."],
-            [".", "Throttles", ".", "."]
+            ["AWS/ECS", "CPUUtilization", "ServiceName", aws_ecs_service.parliament.name, "ClusterName", aws_ecs_cluster.parliament.name],
+            [".", "MemoryUtilization", ".", ".", ".", "."],
+            ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "ecs-fargate"]
           ]
           view    = "timeSeries"
           stacked = false
           region  = var.aws_region
-          title   = "Lambda Metrics"
+          title   = "ECS Fargate Metrics"
           period  = 300
         }
       },
@@ -94,7 +93,8 @@ resource "aws_cloudwatch_metric_alarm" "application_health" {
   treat_missing_data  = "breaching"
 
   dimensions = {
-    FunctionName = aws_lambda_function.backend.function_name
+    ServiceName = aws_ecs_service.parliament.name
+    ClusterName = aws_ecs_cluster.parliament.name
   }
 
   alarm_actions = var.alert_email != "" ? [aws_sns_topic.critical_alerts[0].arn] : []
@@ -159,7 +159,7 @@ resource "aws_cloudwatch_log_metric_filter" "application_errors" {
   count = var.enable_basic_monitoring ? 1 : 0
 
   name           = "${local.name_prefix}-application-errors"
-  log_group_name = aws_cloudwatch_log_group.lambda_backend.name
+  log_group_name = aws_cloudwatch_log_group.ecs_backend.name
   pattern        = "ERROR"
 
   metric_transformation {

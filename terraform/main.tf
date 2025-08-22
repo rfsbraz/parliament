@@ -16,29 +16,37 @@ locals {
   name_prefix = "fiscaliza-${var.environment}"
 
   # Enhanced tagging strategy for cost analysis and resource management
+  # Filter out empty values to prevent AWS validation errors
+  base_tags = {
+    Project              = var.project_name
+    Application          = var.application_name
+    Environment          = var.environment
+    ManagedBy           = "Terraform"
+    BusinessUnit        = var.business_unit
+    CostCenter          = var.cost_center
+    OwnerTeam           = var.owner_team
+    DataClassification  = var.data_classification
+    ComplianceRequirements = var.compliance_requirements
+    BackupSchedule      = var.backup_schedule
+    MonitoringLevel     = var.monitoring_level
+    AutoShutdown        = var.auto_shutdown ? "enabled" : "disabled"
+    CostOptimized       = var.cost_optimization_mode ? "true" : "false"
+    Website             = replace(var.domain_name, ".", "-")
+    TargetCost          = "8_12_USD_monthly"
+    Terraform           = "true"
+    Repository          = "parliament"
+    CreatedDate         = formatdate("YYYY_MM_DD", timestamp())
+    LastModified        = formatdate("YYYY_MM_DD", timestamp())
+  }
+  
+  # Add optional tags only if they have values
+  optional_tags = var.owner_email != "" ? {
+    OwnerEmail = var.owner_email
+  } : {}
+  
   common_tags = merge(
-    {
-      Project              = var.project_name
-      Application          = var.application_name
-      Environment          = var.environment
-      ManagedBy           = "Terraform"
-      BusinessUnit        = var.business_unit
-      CostCenter          = var.cost_center
-      OwnerTeam           = var.owner_team
-      OwnerEmail          = var.owner_email
-      DataClassification  = var.data_classification
-      ComplianceRequirements = var.compliance_requirements
-      BackupSchedule      = var.backup_schedule
-      MonitoringLevel     = var.monitoring_level
-      AutoShutdown        = var.auto_shutdown ? "enabled" : "disabled"
-      CostOptimized       = var.cost_optimization_mode ? "true" : "false"
-      Website             = replace(var.domain_name, ".", "-")
-      TargetCost          = "11_17_USD_monthly"
-      Terraform           = "true"
-      Repository          = "parliament"
-      CreatedDate         = formatdate("YYYY_MM_DD", timestamp())
-      LastModified        = formatdate("YYYY_MM_DD", timestamp())
-    },
+    local.base_tags,
+    local.optional_tags,
     var.additional_tags
   )
 
@@ -48,7 +56,7 @@ locals {
   # Component-specific tag sets for different resource types
   compute_tags = merge(local.common_tags, {
     ComponentType = "compute"
-    ServiceType   = "lambda"
+    ServiceType   = "ecs-fargate"
     Billable      = "true"
   })
 
@@ -85,6 +93,9 @@ locals {
 
   # Calculate number of availability zones (minimum 2 for redundancy)
   azs = slice(data.aws_availability_zones.available.names, 0, 2)
+
+  # API domain name (computed from subdomain + main domain)
+  api_domain_name = var.api_domain_name != "" ? var.api_domain_name : "${var.api_subdomain}.${var.domain_name}"
 }
 
 # VPC for cost-optimized infrastructure

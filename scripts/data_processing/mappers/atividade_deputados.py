@@ -610,12 +610,16 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 deputado, "DepNomeParlamentar"
             ) or self._get_text_value(deputado, "depNomeParlamentar")
 
+            # Convert deputy IDs to integers (handles "16572.0" -> 16572)
+            dep_id = self._safe_int(dep_id_text)
+            dep_cad_id = self._safe_int(dep_cad_id_text)
+
             # Find or create deputado record in our database using base class method
             dep_nome_completo = self._get_text_value(
                 deputado, "DepNomeCompleto"
             ) or self._get_text_value(deputado, "depNomeCompleto")
             deputado_record = self._get_or_create_deputado(
-                dep_id_text, dep_cad_id_text, dep_nome, dep_nome_completo,
+                dep_id, dep_cad_id, dep_nome, dep_nome_completo,
                 xml_context=deputado  # CRITICAL: Pass XML context for LegDes extraction
             )
             if not deputado_record:
@@ -624,7 +628,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
             # Create AtividadeDeputado record using our new models
             atividade_deputado_id = self._create_atividade_deputado(
-                dep_id_text, dep_cad_id_text, legislatura_sigla, deputado
+                dep_id, dep_cad_id, legislatura_sigla, deputado
             )
 
             if not atividade_deputado_id:

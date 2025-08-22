@@ -41,30 +41,14 @@ terraform {
 # AWS provider configuration
 provider "aws" {
   profile = "reddit-proxy"
-  region = var.aws_region
+  region  = var.aws_region
+}
 
-  # Default tags applied to all AWS resources
-  default_tags {
-    tags = {
-      Project              = var.project_name
-      Application          = var.application_name
-      Environment          = var.environment
-      ManagedBy           = "Terraform"
-      BusinessUnit        = var.business_unit
-      CostCenter          = var.cost_center
-      OwnerTeam           = var.owner_team
-      OwnerEmail          = var.owner_email
-      DataClassification  = var.data_classification
-      ComplianceRequirements = var.compliance_requirements
-      BackupSchedule      = var.backup_schedule
-      MonitoringLevel     = var.monitoring_level
-      AutoShutdown        = var.auto_shutdown ? "enabled" : "disabled"
-      CostOptimized       = var.cost_optimization_mode ? "true" : "false"
-      CreatedDate         = formatdate("YYYY-MM-DD", timestamp())
-      Terraform           = "true"
-      Repository          = "parliament"
-    }
-  }
+# AWS provider for us-east-1 (required for CloudFront SSL certificates)
+provider "aws" {
+  alias   = "us_east_1"
+  profile = "reddit-proxy"
+  region  = "us-east-1"
 }
 
 # Cloudflare provider configuration
