@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { User, Search, Filter, MapPin, Briefcase, ArrowRight, Calendar, Users } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { apiFetch } from '../config/api';
 
 const DeputadosPage = () => {
   const [deputados, setDeputados] = useState([])
@@ -30,7 +31,7 @@ const DeputadosPage = () => {
         params.append('search', search)
       }
 
-      const response = await fetch(`/api/deputados?${params}`)
+      const response = await apiFetch('deputados?${params}')
       const data = await response.json()
       setDeputados(data.deputados || [])
       setPagination(data.pagination)

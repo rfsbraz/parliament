@@ -44,6 +44,42 @@ resource "cloudflare_record" "api" {
   comment = "API subdomain pointing to ALB with SSL termination"
 }
 
+# CloudFlare Cache Settings - Disable caching for development
+resource "cloudflare_zone_settings_override" "fiscaliza" {
+  count   = var.cloudflare_zone_id != "" ? 1 : 0
+  zone_id = var.cloudflare_zone_id
+
+  settings {
+    # Minimal caching to prevent stale content issues
+    cache_level = "basic"
+    
+    # Browser cache TTL - minimal (120 seconds - CloudFlare minimum)
+    browser_cache_ttl = 120
+    
+    # Always use HTTPS
+    always_use_https = "on"
+    
+    # Security settings
+    security_level = "medium"
+    
+    # Development mode - bypasses cache
+    development_mode = "on"
+  }
+}
+
+# Page Rules to disable caching for specific paths
+resource "cloudflare_page_rule" "disable_cache_all" {
+  count    = var.cloudflare_zone_id != "" ? 1 : 0
+  zone_id  = var.cloudflare_zone_id
+  target   = "${var.domain_name}/*"
+  priority = 1
+
+  actions {
+    cache_level = "bypass"
+    browser_cache_ttl = 120
+  }
+}
+
 # Output the retrieved IP for debugging - Temporarily disabled
 # output "ecs_task_ip_status" {
 #   description = "Status of ECS task IP retrieval"

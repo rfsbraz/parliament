@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, MapPin, Users, FileText, Vote, Activity, ChevronRight, AlertCircle } from 'lucide-react';
+import { apiFetch } from '../config/api';
 
 const AgendaPage = () => {
   const [agendaHoje, setAgendaHoje] = useState(null);
@@ -20,10 +21,10 @@ const AgendaPage = () => {
       
       // Buscar dados em paralelo
       const [agendaHojeRes, agendaSemanaRes, votacoesRes, estatisticasRes] = await Promise.all([
-        fetch('/api/agenda/hoje'),
-        fetch('/api/agenda/semana'),
-        fetch('/api/votacoes/recentes?limite=5'),
-        fetch('/api/estatisticas/atividade')
+        apiFetch('agenda/hoje'),
+        apiFetch('agenda/semana'),
+        apiFetch('votacoes/recentes?limite=5'),
+        apiFetch('estatisticas/atividade')
       ]);
 
       if (agendaHojeRes.ok) {

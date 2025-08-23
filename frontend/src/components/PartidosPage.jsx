@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Users, TrendingUp, BarChart3, ArrowRight, Building, Handshake, Filter } from 'lucide-react';
+import { apiFetch } from '../config/api';
 
 const PartidosPage = () => {
   const [partidos, setPartidos] = useState([]);
@@ -22,17 +23,17 @@ const PartidosPage = () => {
   const fetchData = async () => {
     try {
       // Fetch parties
-      const partidosResponse = await fetch('/api/partidos');
+      const partidosResponse = await apiFetch('partidos');
       const partidosData = await partidosResponse.json();
       setPartidos(partidosData.partidos || []);
 
       // Fetch coalitions
-      const coligacoesResponse = await fetch(`/api/coligacoes?include_inactive=${showInactiveCoalitions}`);
+      const coligacoesResponse = await apiFetch('coligacoes?include_inactive=${showInactiveCoalitions}');
       const coligacoesData = await coligacoesResponse.json();
       setColigacoes(coligacoesData.coligacoes || []);
 
       // Fetch legislature info
-      const legislaturasResponse = await fetch('/api/legislaturas');
+      const legislaturasResponse = await apiFetch('legislaturas');
       const legislaturasData = await legislaturasResponse.json();
       
       // Get current legislature (one with null data_fim)

@@ -11,6 +11,7 @@ import ColigacaoDetalhes from './components/ColigacaoDetalhes'
 import AgendaPage from './components/AgendaPage'
 import TransparenciaPage from './components/TransparenciaPage'
 import Navigation from './components/Navigation'
+import { apiFetch } from './config/api'
 import './App.css'
 
 const AppContent = () => {
@@ -24,7 +25,7 @@ const AppContent = () => {
   const fetchStats = async () => {
     try {
       // Get overall statistics instead of per-legislatura
-      const response = await fetch('/api/estatisticas')
+      const response = await apiFetch('estatisticas')
       const data = await response.json()
       setStats(data)
     } catch (error) {

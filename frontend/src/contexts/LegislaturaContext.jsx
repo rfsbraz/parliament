@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiFetch } from '../config/api';
 
 const LegislaturaContext = createContext();
 
@@ -21,7 +22,7 @@ export const LegislaturaProvider = ({ children }) => {
 
   const fetchLegislaturas = async () => {
     try {
-      const response = await fetch('/api/legislaturas');
+      const response = await apiFetch('legislaturas');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

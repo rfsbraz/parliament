@@ -177,7 +177,28 @@ resource "aws_cloudfront_distribution" "static_website" {
   default_root_object = "index.html"
   price_class         = var.cloudfront_price_class
 
-  # Cache behavior for static assets
+  # Cache behavior for index.html - no caching
+  ordered_cache_behavior {
+    path_pattern           = "index.html"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "S3-${aws_s3_bucket.static_website.bucket}"
+    compress               = true
+    viewer_protocol_policy = "redirect-to-https"
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0    # No caching
+    max_ttl     = 0    # No caching
+  }
+
+  # Cache behavior for static assets - long cache
   default_cache_behavior {
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
@@ -193,8 +214,8 @@ resource "aws_cloudfront_distribution" "static_website" {
     }
 
     min_ttl     = 0
-    default_ttl = 3600   # 1 hour
-    max_ttl     = 86400  # 24 hours
+    default_ttl = 31536000  # 1 year for static assets
+    max_ttl     = 31536000  # 1 year for static assets
   }
 
   # Custom error pages for SPA routing

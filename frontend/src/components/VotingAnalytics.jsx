@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, TrendingUp, Users, Target, BarChart3, PieChart, Activity, Shield } from 'lucide-react';
+import { apiFetch } from '../config/api';
 
 const VotingAnalytics = ({ deputadoId, legislatura }) => {
   const [analytics, setAnalytics] = useState(null);
@@ -11,7 +12,7 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
     const fetchVotingAnalytics = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/deputados/${deputadoId}/voting-analytics`);
+        const response = await apiFetch('deputados/${deputadoId}/voting-analytics');
         if (!response.ok) {
           throw new Error('Erro ao carregar análises de votação');
         }

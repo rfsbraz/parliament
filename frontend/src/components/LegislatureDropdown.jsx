@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, Calendar } from 'lucide-react';
+import { apiFetch } from '../config/api';
 
 /**
  * Reusable Legislature Dropdown Component
@@ -54,7 +55,7 @@ const LegislatureDropdown = ({
       
       if (deputyCadId) {
         // Fetch deputy-specific legislatures from deputy details
-        const deputyResponse = await fetch(`/api/deputados/${deputyCadId}/detalhes`);
+        const deputyResponse = await apiFetch('deputados/${deputyCadId}/detalhes');
         
         if (!deputyResponse.ok) {
           throw new Error(`HTTP ${deputyResponse.status}: ${deputyResponse.statusText}`);
@@ -78,7 +79,7 @@ const LegislatureDropdown = ({
         }
       } else {
         // Fetch all legislatures if no specific deputy
-        const response = await fetch('/api/legislaturas');
+        const response = await apiFetch('legislaturas');
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);

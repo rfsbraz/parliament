@@ -18,6 +18,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 from database.connection import get_database_url, create_database_engine
+from sqlalchemy import text
 
 health_bp = Blueprint('health', __name__)
 
@@ -44,7 +45,7 @@ def health_check():
         logger.info("About to connect to database...")
         with engine.connect() as conn:
             # Test query that works with both PostgreSQL and SQLite
-            result = conn.execute("SELECT 1 as test").fetchone()
+            result = conn.execute(text("SELECT 1 as test")).fetchone()
             db_status = "healthy" if result[0] == 1 else "unhealthy"
             
         db_url = get_database_url()
@@ -73,12 +74,12 @@ def readiness_check():
         with engine.connect() as conn:
             # Try to query for deputies/deputados table
             try:
-                result = conn.execute("SELECT COUNT(*) FROM deputado").fetchone()
+                result = conn.execute(text("SELECT COUNT(*) FROM deputado")).fetchone()
                 count = result[0] if result else 0
             except:
                 # Try alternative table name
                 try:
-                    result = conn.execute("SELECT COUNT(*) FROM deputados").fetchone()
+                    result = conn.execute(text("SELECT COUNT(*) FROM deputados")).fetchone()
                     count = result[0] if result else 0
                 except:
                     # Database exists but tables might not be created yet

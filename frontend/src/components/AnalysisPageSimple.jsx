@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { apiFetch } from '../config/api';
 
 const AnalysisPageSimple = () => {
   const [stats, setStats] = useState(null)
@@ -13,7 +14,7 @@ const AnalysisPageSimple = () => {
   const fetchData = async () => {
     try {
       console.log('Fetching data...')
-      const response = await fetch('/api/estatisticas')
+      const response = await apiFetch('estatisticas')
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)

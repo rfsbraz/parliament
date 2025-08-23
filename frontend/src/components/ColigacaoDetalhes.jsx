@@ -4,6 +4,7 @@ import { ArrowLeft, Users, Building, Calendar, TrendingUp, Handshake, History, M
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { apiFetch } from '../config/api';
 
 const ColigacaoDetalhes = () => {
   const { coligacaoId } = useParams();
@@ -63,7 +64,7 @@ const ColigacaoDetalhes = () => {
         setLoading(true);
         
         // Fetch coalition details
-        const coligacaoResponse = await fetch(`/api/coligacoes/${encodeURIComponent(coligacaoId)}`);
+        const coligacaoResponse = await apiFetch('coligacoes/${encodeURIComponent(coligacaoId)}');
         if (!coligacaoResponse.ok) {
           throw new Error('Erro ao carregar dados da coligação');
         }
@@ -71,14 +72,14 @@ const ColigacaoDetalhes = () => {
         setDados(coligacaoData);
 
         // Fetch coalition deputies
-        const deputadosResponse = await fetch(`/api/coligacoes/${encodeURIComponent(coligacaoId)}/deputados`);
+        const deputadosResponse = await apiFetch('coligacoes/${encodeURIComponent(coligacaoId)}/deputados');
         if (deputadosResponse.ok) {
           const deputadosData = await deputadosResponse.json();
           setDeputados(deputadosData.deputados || []);
         }
 
         // Fetch component parties
-        const partidosResponse = await fetch(`/api/coligacoes/${encodeURIComponent(coligacaoId)}/partidos`);
+        const partidosResponse = await apiFetch('coligacoes/${encodeURIComponent(coligacaoId)}/partidos');
         if (partidosResponse.ok) {
           const partidosData = await partidosResponse.json();
           setPartidos(partidosData.partidos || []);

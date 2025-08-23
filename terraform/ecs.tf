@@ -136,8 +136,8 @@ resource "aws_ecs_service" "parliament" {
   deployment_maximum_percent         = 200
   deployment_minimum_healthy_percent = 100
 
-  # Health check grace period
-  health_check_grace_period_seconds = 60
+  # Health check grace period - increased for stability
+  health_check_grace_period_seconds = 120
 
   tags = merge(local.compute_tags, {
     Name         = "${local.name_prefix}-backend-service"

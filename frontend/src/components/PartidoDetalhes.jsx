@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Users, MapPin, User, BarChart3, TrendingUp, UserCheck, Handshake } from 'lucide-react';
 import PartyVotingAnalytics from './PartyVotingAnalytics';
 import PartyDemographics from './PartyDemographics';
+import { apiFetch } from '../config/api';
 
 const PartidoDetalhes = () => {
   const { partidoId } = useParams();
@@ -53,7 +54,7 @@ const PartidoDetalhes = () => {
       try {
         setLoading(true);
         // Fetch all party deputies from all periods (no legislatura filter)
-        const response = await fetch(`/api/partidos/${encodeURIComponent(partidoId)}/deputados`);
+        const response = await apiFetch('partidos/${encodeURIComponent(partidoId)}/deputados');
         if (!response.ok) {
           throw new Error('Erro ao carregar dados do partido');
         }

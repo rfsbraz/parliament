@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Briefcase, GraduationCap, MapPin, Calendar, UserCheck, RotateCcw, User, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Link } from 'react-router-dom';
+import { apiFetch } from '../config/api';
 
 const PartyDemographics = ({ partidoId, dadosDemograficos, partidoInfo }) => {
   const [loading, setLoading] = useState(false);
@@ -18,7 +19,7 @@ const PartyDemographics = ({ partidoId, dadosDemograficos, partidoInfo }) => {
   const fetchDemographics = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/partidos/${encodeURIComponent(partidoId)}/deputados`);
+      const response = await apiFetch('partidos/${encodeURIComponent(partidoId)}/deputados');
       if (!response.ok) throw new Error('Erro ao carregar dados demográficos');
       const data = await response.json();
       setDemographics(data.demografia);

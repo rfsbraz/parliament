@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Area, AreaChart } from 'recharts'
+import { apiFetch } from '../config/api';
 
 const TransparenciaPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -42,7 +43,7 @@ const TransparenciaPage = () => {
     { id: 'accountability', label: 'Métricas Transparência', icon: BarChart3, color: 'text-red-600' }
   ]
 
-  const API_BASE_URL = '/api/transparency'
+  const API_BASE_URL = 'transparency'
 
   const fetchData = async (endpoint, key) => {
     setLoading(prev => ({ ...prev, [key]: true }))
