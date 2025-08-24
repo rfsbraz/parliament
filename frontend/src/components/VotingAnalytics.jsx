@@ -12,7 +12,7 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
     const fetchVotingAnalytics = async () => {
       try {
         setLoading(true);
-        const response = await apiFetch('deputados/${deputadoId}/voting-analytics');
+        const response = await apiFetch(`deputados/${deputadoId}/voting-analytics`);
         if (!response.ok) {
           throw new Error('Erro ao carregar análises de votação');
         }

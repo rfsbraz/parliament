@@ -38,12 +38,29 @@ def get_database_credentials():
     """Get database credentials from AWS Secrets Manager if running in Lambda."""
     if DATABASE_SECRET_ARN:
         try:
-            # Use very short timeout for startup to prevent container blocking
-            client = boto3.client('secretsmanager', config=boto3.session.Config(
-                connect_timeout=2,  # 2 second connection timeout
-                read_timeout=2,     # 2 second read timeout
-                retries={'max_attempts': 1}  # Only 1 retry attempt during startup
-            ))
+            # Get AWS region from environment or default to eu-west-1
+            region = os.getenv('AWS_DEFAULT_REGION', os.getenv('AWS_REGION', 'eu-west-1'))
+            logger.info(f"Using AWS region: {region}")
+            
+            # Check if we have AWS credentials
+            try:
+                session = boto3.Session()
+                credentials = session.get_credentials()
+                if credentials:
+                    logger.info(f"Found credentials from IAM Role: {credentials.access_key[:8]}...")
+                else:
+                    logger.warning("No AWS credentials found")
+            except Exception as cred_e:
+                logger.warning(f"Could not check AWS credentials: {cred_e}")
+            
+            # Use longer timeout for AWS Secrets Manager in spot instances
+            client = boto3.client('secretsmanager', 
+                region_name=region,
+                config=boto3.session.Config(
+                    connect_timeout=30,  # 30 second connection timeout
+                    read_timeout=30,     # 30 second read timeout
+                    retries={'max_attempts': 3}  # 3 retry attempts
+                ))
             logger.info(f"Fetching database credentials from Secrets Manager: {DATABASE_SECRET_ARN}")
             response = client.get_secret_value(SecretId=DATABASE_SECRET_ARN)
             secret = json.loads(response['SecretString'])
@@ -95,20 +112,20 @@ def get_database_credentials():
                 'database': secret.get('database', 'parliament')
             }
         except Exception as e:
-            logger.error(f"Error getting credentials from Secrets Manager (will fallback): {e}")
-            # Don't raise the exception, return None to allow fallback
+            logger.error(f"Error getting credentials from Secrets Manager: {e}")
+            raise RuntimeError(f"Failed to get database credentials from Secrets Manager: {e}")
     
-    return None
+    raise RuntimeError("DATABASE_SECRET_ARN is required but not set")
 
 
 def get_database_url() -> str:
-    """Get the database URL for PostgreSQL or SQLite fallback."""
+    """Get the database URL for PostgreSQL only - no fallbacks."""
     if DATABASE_URL:
         return DATABASE_URL
     
-    # Try AWS Secrets Manager first (for Lambda)
-    credentials = get_database_credentials()
-    if credentials:
+    # Try AWS Secrets Manager first (for production)
+    if DATABASE_SECRET_ARN:
+        credentials = get_database_credentials()
         encoded_password = quote_plus(credentials['password'])
         host = credentials['host']
         port = credentials['port']
@@ -155,41 +172,32 @@ def get_database_url() -> str:
         encoded_password = quote_plus(PG_PASSWORD)
         return f"postgresql://{PG_USER}:{encoded_password}@{PG_HOST}:{PG_PORT}/{PG_DATABASE}?sslmode=require"
     
-    # Fallback to SQLite for local development
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    db_path = os.path.join(base_dir, 'database', 'parliament_data.db')
-    return f"sqlite:///{db_path}"
+    # No fallback - require proper PostgreSQL configuration
+    raise RuntimeError(
+        "No valid PostgreSQL configuration found. Either set DATABASE_URL, "
+        "DATABASE_SECRET_ARN for production, or PG_PASSWORD for local development"
+    )
 
 
 def create_database_engine(echo: bool = False):
-    """Create and return a database engine with connection pooling."""
+    """Create and return a PostgreSQL database engine with connection pooling."""
     url = get_database_url()
     
-    # PostgreSQL-specific configuration
-    if url.startswith('postgresql://'):
-        engine_kwargs = {
-            'echo': echo,
-            'pool_pre_ping': True,  # Verify connections before use
-            'pool_size': 2,  # Much smaller pool for micro instance
-            'max_overflow': 3,  # Reduced overflow
-            'pool_timeout': 10,  # Shorter timeout
-            'pool_recycle': 300,  # Recycle connections every 5 minutes
-            'pool_reset_on_return': 'commit',  # Reset connections more aggressively
-            'connect_args': {
-                'connect_timeout': 10,
-                'application_name': 'parliament-fiscaliza',
-                'sslmode': 'require'  # Required for RDS PostgreSQL
-            }
+    # PostgreSQL-only configuration - Balanced pooling for 30 connection limit
+    engine_kwargs = {
+        'echo': echo,
+        'pool_pre_ping': True,  # Verify connections before use
+        'pool_size': 5,  # Base connection pool size
+        'max_overflow': 10,  # Allow overflow connections when needed
+        'pool_timeout': 30,  # Increased timeout for spot instances
+        'pool_recycle': 300,  # Recycle connections every 5 minutes
+        'pool_reset_on_return': 'commit',  # Reset connections more aggressively
+        'connect_args': {
+            'connect_timeout': 30,  # Increased timeout for spot instances
+            'application_name': 'parliament-fiscaliza',
+            'sslmode': 'require'  # Required for RDS PostgreSQL
         }
-    else:  # SQLite
-        engine_kwargs = {
-            'echo': echo,
-            'pool_pre_ping': True,
-            'connect_args': {
-                'check_same_thread': False,
-                'timeout': 20
-            }
-        }
+    }
     
     return create_engine(url, **engine_kwargs)
 

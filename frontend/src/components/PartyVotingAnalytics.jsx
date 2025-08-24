@@ -12,7 +12,7 @@ const PartyVotingAnalytics = ({ partidoId, legislatura }) => {
     const fetchPartyAnalytics = async () => {
       try {
         setLoading(true);
-        const response = await apiFetch('partidos/${encodeURIComponent(partidoId)}/voting-analytics?legislatura=${legislatura}');
+        const response = await apiFetch(`partidos/${encodeURIComponent(partidoId)}/voting-analytics?legislatura=${legislatura}`);
         if (!response.ok) {
           throw new Error('Erro ao carregar análises do partido');
         }

@@ -50,7 +50,7 @@ resource "aws_lambda_function" "spot_launcher" {
       SPOT_INSTANCE_TYPE     = var.spot_instance_type
       SPOT_MAX_PRICE         = ""  # Use current spot price
       IMPORT_TIMEOUT_MINUTES = var.import_timeout_minutes
-      PRIVATE_SUBNET_IDS     = join(",", aws_subnet.private[*].id)
+      PUBLIC_SUBNET_IDS      = join(",", aws_subnet.public[*].id)
       SECURITY_GROUP_ID      = aws_security_group.spot_import.id
       IAM_INSTANCE_PROFILE   = aws_iam_instance_profile.spot_import.name
       AMI_ID                 = data.aws_ami.amazon_linux.id
@@ -90,6 +90,22 @@ resource "aws_lambda_function_url" "spot_launcher" {
     expose_headers    = ["date", "keep-alive"]
     max_age           = 86400
   }
+}
+
+# ============================================================================
+# SERVICE-LINKED ROLES
+# ============================================================================
+
+# Service-linked role for EC2 Spot Instances
+resource "aws_iam_service_linked_role" "ec2_spot" {
+  aws_service_name = "spot.amazonaws.com"
+  description      = "Service-linked role for EC2 Spot Instances"
+
+  tags = merge(local.security_tags, {
+    Name         = "${local.name_prefix}-ec2-spot-service-role"
+    ResourceType = "service-linked-role"
+    Purpose      = "ec2-spot-instance-management"
+  })
 }
 
 # ============================================================================
@@ -217,7 +233,10 @@ resource "aws_iam_role_policy" "spot_import_permissions" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ]
-        Resource = aws_secretsmanager_secret.db_credentials.arn
+        Resource = [
+          aws_secretsmanager_secret.db_credentials.arn,
+          "arn:aws:secretsmanager:${var.aws_region}:*:secret:fiscaliza-prod-github-deploy-key-*"
+        ]
       },
       {
         Effect = "Allow"
@@ -239,6 +258,20 @@ resource "aws_iam_role_policy" "spot_import_permissions" {
           "rds:DescribeDBInstances"
         ]
         Resource = aws_db_instance.parliament.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject"
+        ]
+        Resource = "${aws_s3_bucket.static_website.arn}/parliament-code.zip"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeInstances"
+        ]
+        Resource = "*"
       }
     ]
   })
@@ -269,12 +302,35 @@ resource "aws_security_group" "spot_import" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # PostgreSQL access to RDS
+  # DNS resolution (required for hostname lookups)
+  egress {
+    from_port   = 53
+    to_port     = 53
+    protocol    = "udp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  egress {
+    from_port   = 53
+    to_port     = 53
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # PostgreSQL access to RDS (via security group reference)
   egress {
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.rds.id]
+  }
+  
+  # Direct PostgreSQL access to RDS subnet (fallback for IP-based connections)
+  egress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.1.0/24", "10.0.2.0/24"]  # RDS subnets
   }
 
   tags = merge(local.security_tags, {

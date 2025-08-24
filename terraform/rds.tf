@@ -104,7 +104,7 @@ resource "aws_db_instance" "parliament" {
 
   # Engine configuration
   engine         = var.db_engine
-  engine_version = "15.8" # Latest PostgreSQL 15.x version
+  engine_version = "15.12" # Latest PostgreSQL 15.x version
   instance_class = var.db_instance_class
 
   # Database configuration
@@ -149,7 +149,7 @@ resource "aws_db_instance" "parliament" {
     ResourceType   = "rds-instance"
     Purpose        = "primary-database"
     Engine         = "postgresql"
-    EngineVersion  = "15.8"
+    EngineVersion  = "15.12"
     InstanceClass  = var.db_instance_class
     StorageType    = var.db_storage_type
     StorageSize    = "${var.db_allocated_storage}GB"

@@ -55,7 +55,7 @@ const LegislatureDropdown = ({
       
       if (deputyCadId) {
         // Fetch deputy-specific legislatures from deputy details
-        const deputyResponse = await apiFetch('deputados/${deputyCadId}/detalhes');
+        const deputyResponse = await apiFetch(`deputados/${deputyCadId}/detalhes`);
         
         if (!deputyResponse.ok) {
           throw new Error(`HTTP ${deputyResponse.status}: ${deputyResponse.statusText}`);

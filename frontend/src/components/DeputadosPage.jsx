@@ -31,7 +31,7 @@ const DeputadosPage = () => {
         params.append('search', search)
       }
 
-      const response = await apiFetch('deputados?${params}')
+      const response = await apiFetch(`deputados?${params}`)
       const data = await response.json()
       setDeputados(data.deputados || [])
       setPagination(data.pagination)

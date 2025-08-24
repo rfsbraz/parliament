@@ -132,12 +132,12 @@ resource "aws_ecs_service" "parliament" {
   # Auto-scaling configuration
   enable_execute_command = var.environment != "prod" # Enable ECS Exec for dev/test
 
-  # Deployment configuration
-  deployment_maximum_percent         = 200
-  deployment_minimum_healthy_percent = 100
+  # Deployment configuration - Zero-downtime with 2 tasks
+  deployment_maximum_percent         = 200  # Allow 2x tasks during deployment (4 total)
+  deployment_minimum_healthy_percent = 50   # Keep 50% (1 task) healthy during deployment
 
-  # Health check grace period - increased for stability
-  health_check_grace_period_seconds = 120
+  # Health check grace period - optimized for faster deployments
+  health_check_grace_period_seconds = 60  # 1 minute grace period
 
   tags = merge(local.compute_tags, {
     Name         = "${local.name_prefix}-backend-service"

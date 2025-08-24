@@ -22,6 +22,11 @@ output "website_url" {
   value = var.cloudflare_zone_id != "" ? "https://${var.domain_name}" : aws_s3_bucket_website_configuration.static_website.website_endpoint
 }
 
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for cache invalidation"
+  value = var.enable_cloudfront_for_website ? aws_cloudfront_distribution.static_website[0].id : "CloudFront not enabled"
+}
+
 output "api_url" {
   description = "API endpoint URL"
   value = var.enable_alb && var.cloudflare_zone_id != "" ? "https://${local.api_domain_name}" : (var.enable_alb ? "https://${aws_lb.main[0].dns_name}" : "API not configured")

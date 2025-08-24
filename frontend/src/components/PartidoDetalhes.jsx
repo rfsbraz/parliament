@@ -54,7 +54,7 @@ const PartidoDetalhes = () => {
       try {
         setLoading(true);
         // Fetch all party deputies from all periods (no legislatura filter)
-        const response = await apiFetch('partidos/${encodeURIComponent(partidoId)}/deputados');
+        const response = await apiFetch(`partidos/${encodeURIComponent(partidoId)}/deputados`);
         if (!response.ok) {
           throw new Error('Erro ao carregar dados do partido');
         }

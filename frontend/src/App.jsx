@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, AlertTriangle, X } from 'lucide-react'
 import Dashboard from './components/Dashboard'
 import DeputadosPage from './components/DeputadosPage'
 import DeputadoDetalhes from './components/DeputadoDetalhes'
@@ -17,6 +17,7 @@ import './App.css'
 const AppContent = () => {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showBanner, setShowBanner] = useState(true)
 
   useEffect(() => {
     fetchStats()
@@ -51,6 +52,39 @@ const AppContent = () => {
     <Router>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <Navigation />
+        
+        {/* Construction Banner */}
+        {showBanner && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-amber-500 border-b-2 border-amber-600 shadow-lg"
+          >
+            <div className="container mx-auto px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-900 flex-shrink-0" />
+                  <div className="text-amber-900">
+                    <p className="font-semibold text-sm sm:text-base">
+                      🚧 Website em Desenvolvimento
+                    </p>
+                    <p className="text-xs sm:text-sm opacity-90">
+                      Este portal encontra-se em fase de desenvolvimento. Os dados apresentados são meramente demonstrativos e não devem ser considerados oficiais ou definitivos.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowBanner(false)}
+                  className="ml-4 p-1 rounded-md text-amber-900 hover:bg-amber-400 transition-colors flex-shrink-0"
+                  aria-label="Fechar aviso"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
         
         <main className="container mx-auto px-4 py-8">
           <Routes>

@@ -476,7 +476,7 @@ const DeputadoDetalhes = () => {
         setLoading(true);
         
         // Buscar detalhes do deputado
-        const deputadoResponse = await apiFetch('deputados/${cadId}/detalhes');
+        const deputadoResponse = await apiFetch(`deputados/${cadId}/detalhes`);
         if (!deputadoResponse.ok) {
           throw new Error('Erro ao carregar dados do deputado');
         }
@@ -497,8 +497,8 @@ const DeputadoDetalhes = () => {
         apiParams.set('page', currentPage.toString());
         apiParams.set('per_page', '50');
         
-        const atividadesUrl = 'deputados/${cadId}/atividades?${apiParams.toString()}';
-        const atividadesResponse = await fetch(atividadesUrl);
+        const atividadesUrl = `deputados/${cadId}/atividades?${apiParams.toString()}`;
+        const atividadesResponse = await apiFetch(atividadesUrl);
         if (!atividadesResponse.ok) {
           throw new Error('Erro ao carregar atividades do deputado');
         }
@@ -513,7 +513,7 @@ const DeputadoDetalhes = () => {
 
         // Buscar conflitos de interesse do deputado
         try {
-          const conflitosResponse = await apiFetch('deputados/${cadId}/conflitos-interesse');
+          const conflitosResponse = await apiFetch(`deputados/${cadId}/conflitos-interesse`);
           if (conflitosResponse.ok) {
             const conflitosData = await conflitosResponse.json();
             setConflitosInteresse(conflitosData);
@@ -525,7 +525,7 @@ const DeputadoDetalhes = () => {
 
         // Buscar dados de presenças do deputado
         try {
-          const attendanceResponse = await apiFetch('deputados/${cadId}/attendance');
+          const attendanceResponse = await apiFetch(`deputados/${cadId}/attendance`);
           if (attendanceResponse.ok) {
             const attendanceDataResult = await attendanceResponse.json();
             setAttendanceData(attendanceDataResult);

@@ -941,11 +941,13 @@ class DatabaseDrivenImporter:
             connection = engine.connect()
 
             try:
-                # Disable foreign key checks for MySQL
-                connection.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+                # Disable foreign key constraints for PostgreSQL
+                connection.execute(text("SET session_replication_role = replica"))
 
-                # Get all table names
-                result = connection.execute(text("SHOW TABLES"))
+                # Get all table names (PostgreSQL syntax)
+                result = connection.execute(text(
+                    "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+                ))
                 tables = [row[0] for row in result.fetchall()]
 
                 logger.info(f"Found {len(tables)} tables")
@@ -986,16 +988,17 @@ class DatabaseDrivenImporter:
 
                 for table_name in tables_to_truncate:
                     try:
-                        connection.execute(text(f"TRUNCATE TABLE {table_name}"))
+                        # Use TRUNCATE CASCADE for PostgreSQL to handle foreign keys
+                        connection.execute(text(f"TRUNCATE TABLE {table_name} CASCADE"))
                         logger.info(f"Truncated table: {table_name}")
                     except Exception as e:
-                        # If truncate fails (e.g., due to foreign keys), try delete
+                        # If truncate fails, try delete
                         logger.warning(f"Truncate failed for {table_name}, using DELETE: {e}")
                         connection.execute(text(f"DELETE FROM {table_name}"))
                         logger.info(f"Deleted all records from table: {table_name}")
 
-                # Re-enable foreign key checks
-                connection.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+                # Re-enable foreign key constraints for PostgreSQL
+                connection.execute(text("SET session_replication_role = DEFAULT"))
 
                 connection.commit()
                 logger.info(

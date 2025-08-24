@@ -326,14 +326,18 @@ def legislatura_to_dict(legislatura):
 def log_and_return_error(e, endpoint_info="", status_code=500):
     """Helper function to log errors to console and return JSON error response"""
     import traceback
+    import logging
+    
     error_msg = f'Error in {endpoint_info}: {str(e)}'
     traceback_msg = f'Traceback: {traceback.format_exc()}'
+    full_error = f"\n{'='*50}\n{error_msg}\n{traceback_msg}\n{'='*50}"
     
-    # Print to console directly (for debugging)
-    print(f"\n{'='*50}")
-    print(error_msg)
-    print(traceback_msg)
-    print('='*50)
+    # Use proper logging for CloudWatch compatibility
+    logger = logging.getLogger(__name__)
+    logger.error(full_error)
+    
+    # Also print to console directly (for local debugging)
+    print(full_error)
     
     # SECURITY: Only expose traceback in debug mode
     from flask import current_app
@@ -834,7 +838,7 @@ def get_partido_deputados(partido_sigla):
                 DeputadoMandatoLegislativo.eh_coligacao
             ).filter(
                 DeputadoMandatoLegislativo.par_sigla == partido_sigla,
-                DeputadoMandatoLegislativo.eh_coligacao == 1
+                DeputadoMandatoLegislativo.eh_coligacao == True
             )
             
             if legislatura:

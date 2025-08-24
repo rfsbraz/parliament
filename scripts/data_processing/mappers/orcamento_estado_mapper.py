@@ -395,8 +395,21 @@ class OrcamentoEstadoMapper(SchemaMapper):
             # Validate schema coverage according to strict mode
             self.validate_schema_coverage(xml_root, file_info, strict_mode)
 
-            # Extract legislatura from filename or path
-            legislatura = self._extract_legislatura_from_path(file_path)
+            # Extract legislatura - prioritize ImportStatus data, then path fallback
+            legislatura = None
+            
+            # First try: Use legislature data from ImportStatus (most reliable)
+            if 'legislatura' in file_info and file_info['legislatura']:
+                legislatura_sigla = file_info['legislatura']
+                logger.debug(f"Using legislature from ImportStatus: {legislatura_sigla}")
+                
+                # Get or create legislatura using the enhanced base mapper method
+                legislatura = self._get_or_create_legislatura(legislatura_sigla)
+            
+            # Fallback: Extract from filename or path (legacy behavior)
+            if not legislatura:
+                logger.debug("No legislature in ImportStatus, falling back to path extraction")
+                legislatura = self._extract_legislatura_from_path(file_path)
 
             # Determine format type based on root element and filename
             format_type = self._detect_format_type(xml_root, filename)

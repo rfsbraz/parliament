@@ -38,11 +38,11 @@ variable "enable_manual_trigger" {
 variable "spot_instance_type" {
   description = "EC2 instance type for import jobs (optimized for cost)"
   type        = string
-  default     = "t3.nano"
+  default     = "t3.large"
   validation {
     condition = contains([
       "t3.nano", "t3.micro", "t3.small", 
-      "t4g.nano", "t4g.micro", "t4g.small"
+      "t4g.nano", "t4g.micro", "t4g.small", "t3.large"
     ], var.spot_instance_type)
     error_message = "Spot instance type must be a cost-optimized instance (t3.nano, t3.micro, t3.small, t4g.nano, t4g.micro, t4g.small)."
   }
@@ -61,10 +61,10 @@ variable "spot_max_price" {
 variable "import_timeout_minutes" {
   description = "Maximum import execution time in minutes (instance auto-terminates after this)"
   type        = number
-  default     = 30
+  default     = 120  # 2 hours default timeout
   validation {
-    condition     = var.import_timeout_minutes >= 10 && var.import_timeout_minutes <= 120
-    error_message = "Import timeout must be between 10 and 120 minutes."
+    condition     = var.import_timeout_minutes >= 10 && var.import_timeout_minutes <= 240
+    error_message = "Import timeout must be between 10 and 240 minutes (4 hours max)."
   }
 }
 

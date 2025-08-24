@@ -28,7 +28,7 @@ const PartidosPage = () => {
       setPartidos(partidosData.partidos || []);
 
       // Fetch coalitions
-      const coligacoesResponse = await apiFetch('coligacoes?include_inactive=${showInactiveCoalitions}');
+      const coligacoesResponse = await apiFetch(`coligacoes?include_inactive=${showInactiveCoalitions}`);
       const coligacoesData = await coligacoesResponse.json();
       setColigacoes(coligacoesData.coligacoes || []);
 

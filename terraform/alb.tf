@@ -80,15 +80,18 @@ resource "aws_lb_target_group" "ecs" {
 
   health_check {
     enabled             = true
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-    timeout             = 5
-    interval            = 30
+    healthy_threshold   = 2   # 2 consecutive successes = healthy  
+    unhealthy_threshold = 3   # 3 consecutive failures = unhealthy (more tolerance)
+    timeout             = 5   # 5 second timeout per check
+    interval            = 15  # Check every 15 seconds (faster than 30s)
     path                = "/api/ping"
     matcher             = "200"
     protocol            = "HTTP"
     port                = "traffic-port"
   }
+
+  # Fast deregistration for zero-downtime deployments
+  deregistration_delay = 30  # 30 seconds instead of default 300
 
   tags = merge(local.network_tags, {
     Name         = "${local.name_prefix}-ecs-target-group"

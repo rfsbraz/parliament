@@ -42,8 +42,8 @@ variable "db_instance_class" {
   type        = string
   default     = "db.t4g.micro"
   validation {
-    condition     = var.db_instance_class == "db.t4g.micro"
-    error_message = "Only db.t4g.micro is supported for cost optimization."
+    condition     = contains(["db.t4g.micro", "db.t4g.small"], var.db_instance_class)
+    error_message = "Only db.t4g.micro and db.t4g.small are supported for cost optimization."
   }
 }
 
@@ -298,8 +298,8 @@ variable "max_connections" {
   type        = number
   default     = 10
   validation {
-    condition     = var.max_connections >= 6 && var.max_connections <= 20
-    error_message = "Max connections must be between 6 and 20 (PostgreSQL minimum is 6)."
+    condition     = var.max_connections >= 6 && var.max_connections <= 50
+    error_message = "Max connections must be between 6 and 50 (PostgreSQL minimum is 6)."
   }
 }
 
