@@ -2128,6 +2128,13 @@ class ImportStatus(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
     __table_args__ = (
+        # Unique constraint on logical file identity - prevents duplicates even with changing URLs
+        # The parliament uses token-based URLs that change between sessions, so we identify files
+        # by their (file_name, category, legislatura) combination instead of URL
+        UniqueConstraint(
+            "file_name", "category", "legislatura",
+            name="uq_import_status_file_identity"
+        ),
         # Index('idx_import_status_url', 'file_url'),  # Removed - VARCHAR(1000) too long for MySQL index
         Index("idx_import_status_hash", "file_hash"),
         Index("idx_import_status_status", "status"),

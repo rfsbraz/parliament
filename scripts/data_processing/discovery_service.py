@@ -558,54 +558,85 @@ class DiscoveryService:
             # Get HTTP metadata with HEAD request
             http_metadata = self._get_http_metadata(file_url)
 
-            # Check if file already exists in database
+            # Check if file already exists in database by logical identity
+            # (file_name, category, legislatura) - NOT by URL since parliament uses
+            # token-based URLs that change between sessions
             existing = (
-                db_session.query(ImportStatus).filter_by(file_url=file_url).first()
+                db_session.query(ImportStatus).filter_by(
+                    file_name=file_name,
+                    category=category,
+                    legislatura=legislatura
+                ).first()
             )
 
             if existing:
-                # Update existing record if HTTP metadata changed
-                updated = False
-                if http_metadata.get("last_modified") != existing.last_modified:
-                    existing.last_modified = http_metadata.get("last_modified")
-                    updated = True
-                if http_metadata.get("content_length") != existing.content_length:
-                    existing.content_length = http_metadata.get("content_length")
-                    updated = True
-                if http_metadata.get("etag") != existing.etag:
-                    existing.etag = http_metadata.get("etag")
-                    updated = True
+                # Separate concerns:
+                # 1. content_changed - triggers re-download (HTTP metadata indicates new version)
+                # 2. metadata_updated - silent update (URL token refresh, context improvements)
+                content_changed = False
+                metadata_updated = False
 
-                # Also update category and legislature if we have better context
+                # Always update URL if it changed (parliament uses token-based URLs)
+                # This ensures downloads use fresh tokens - but does NOT trigger re-download
+                if file_url != existing.file_url:
+                    existing.file_url = file_url
+                    metadata_updated = True
+
+                # HTTP metadata changes indicate content changed - triggers re-download
+                if http_metadata.get("last_modified") and http_metadata.get("last_modified") != existing.last_modified:
+                    existing.last_modified = http_metadata.get("last_modified")
+                    content_changed = True
+                if http_metadata.get("content_length") and http_metadata.get("content_length") != existing.content_length:
+                    existing.content_length = http_metadata.get("content_length")
+                    content_changed = True
+                if http_metadata.get("etag") and http_metadata.get("etag") != existing.etag:
+                    existing.etag = http_metadata.get("etag")
+                    content_changed = True
+
+                # Context improvements - silent updates, don't trigger re-download
                 if category and category != existing.category:
                     existing.category = category
-                    updated = True
+                    metadata_updated = True
                 if legislatura and legislatura != existing.legislatura:
                     existing.legislatura = legislatura
-                    updated = True
-                
-                # Update discovery metadata if provided
+                    metadata_updated = True
+
+                # Discovery metadata updates - silent, don't trigger re-download
                 if source_page_url and source_page_url != existing.source_page_url:
                     existing.source_page_url = source_page_url
-                    updated = True
+                    metadata_updated = True
                 if anchor_text and anchor_text != existing.anchor_text:
                     existing.anchor_text = anchor_text
-                    updated = True
+                    metadata_updated = True
                 if url_pattern and url_pattern != existing.url_pattern:
                     existing.url_pattern = url_pattern
-                    updated = True
+                    metadata_updated = True
 
-                if updated:
+                if content_changed:
+                    # Content actually changed - mark for re-download
                     existing.updated_at = datetime.now()
-                    existing.status = "download_pending"  # Mark for re-download
-                    # Flush and commit immediately for updates
+                    existing.status = "download_pending"
                     db_session.flush()
                     db_session.commit()
+                    # Log what triggered the re-download
+                    changes = []
+                    if http_metadata.get("last_modified") != existing.last_modified:
+                        changes.append("last_modified")
+                    if http_metadata.get("content_length") != existing.content_length:
+                        changes.append("content_length")
+                    if http_metadata.get("etag") != existing.etag:
+                        changes.append("etag")
                     self._print(
-                        f"        UPDATE: Updated: {file_name} (Cat: {category}, Leg: {legislatura})"
+                        f"        RE-DOWNLOAD: {file_name} ({', '.join(changes)} changed)"
                     )
+                elif metadata_updated:
+                    # Only metadata changed (URL token, context) - save but don't re-download
+                    existing.updated_at = datetime.now()
+                    db_session.flush()
+                    db_session.commit()
+                    self._print(f"        REFRESH: {file_name} (URL token updated)")
                 else:
-                    self._print(f"        SKIP:  Unchanged: {file_name}")
+                    self._print(f"        SKIP: {file_name} (unchanged)")
                     # Still commit to ensure any session state is flushed
                     db_session.commit()
 

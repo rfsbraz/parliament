@@ -610,11 +610,15 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
         )
         stats_table.add_row(
             "Downloads",
-            f"OK: {self.stats.download_completed} | ERR: {self.stats.download_failed} | QUEUE: {self.download_queue.qsize()}"
+            f"OK: {self.stats.download_completed} | ERR: {self.stats.download_failed} | PENDING: {self.stats.download_queue_size}"
         )
         stats_table.add_row(
             "Imports", 
-            f"OK: {self.stats.import_completed} | ERR: {self.stats.import_failed} | RECORDS: {self.stats.total_records_imported}"
+            f"OK: {self.stats.import_completed} | ERR: {self.stats.import_failed} | PENDING: {self.stats.import_queue_size}"
+        )
+        stats_table.add_row(
+            "Records",
+            f"{self.stats.total_records_imported:,} total imported"
         )
         
         layout["stats"].update(Panel(stats_table, border_style="green"))
