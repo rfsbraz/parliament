@@ -18,7 +18,7 @@ resource "aws_ecr_repository" "parliament_app" {
 
   lifecycle {
     # Prevent accidental deletion of existing repository
-    prevent_destroy = true
+    prevent_destroy = false
   }
 }
 

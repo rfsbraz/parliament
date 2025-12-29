@@ -63,7 +63,7 @@ variable "import_timeout_minutes" {
   type        = number
   default     = 120  # 2 hours default timeout
   validation {
-    condition     = var.import_timeout_minutes >= 10 && var.import_timeout_minutes <= 240
+    condition     = var.import_timeout_minutes >= 10 && var.import_timeout_minutes <= 800
     error_message = "Import timeout must be between 10 and 240 minutes (4 hours max)."
   }
 }
