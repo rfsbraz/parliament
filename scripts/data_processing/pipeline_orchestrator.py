@@ -78,12 +78,20 @@ class PipelineStats:
     downloaded_files: List[DownloadInfo] = None
     stop_on_error: bool = False
     error_occurred: bool = False
+    pinned_errors: List[str] = None  # Errors that stay visible at top of activity log
+    # Current file being processed
+    current_file: Optional[str] = None
+    current_file_category: Optional[str] = None
+    current_file_started: Optional[datetime] = None
+    current_file_is_retry: bool = False
 
     def __post_init__(self):
         if self.recent_messages is None:
             self.recent_messages = []
         if self.downloaded_files is None:
             self.downloaded_files = []
+        if self.pinned_errors is None:
+            self.pinned_errors = []
         # Initialize thread-safe attributes upfront to avoid race conditions
         self._message_lock = threading.Lock()
         self._message_buffer = {}
@@ -92,11 +100,17 @@ class PipelineStats:
 
     def add_message(self, message: str, priority: str = 'normal'):
         """Add a message to recent messages with priority-based filtering"""
-        
+
         timestamp = datetime.now().strftime('%H:%M:%S')
         formatted_message = f"{timestamp} - {message}"
-        
+
         with self._message_lock:
+            # Pin error messages so they stay visible even when idle messages come in
+            if priority == 'error':
+                self.pinned_errors.append(formatted_message)
+                if len(self.pinned_errors) > 5:  # Keep last 5 errors pinned
+                    self.pinned_errors.pop(0)
+
             # Handle high priority messages immediately
             if priority in ['high', 'error', 'success']:
                 self.recent_messages.append(formatted_message)
@@ -270,11 +284,6 @@ class DownloadManager:
                     files_to_download = query.limit(10).all()
                     
                     if not files_to_download:
-                        # Throttled debug message (every 30 seconds max)
-                        if not hasattr(self, '_last_waiting_log') or \
-                           (datetime.now() - self._last_waiting_log).total_seconds() > 30:
-                            stats.add_message("Download manager: waiting for files...", priority='low')
-                            self._last_waiting_log = datetime.now()
                         time.sleep(1)
                         continue
                     
@@ -399,22 +408,29 @@ class ImportProcessor:
                             record_id = pending_files[0].id
                             from_queue = False
                         else:
-                            # Throttled debug message (every 30 seconds max)
-                            if not hasattr(self, '_last_waiting_log') or \
-                               (datetime.now() - self._last_waiting_log).total_seconds() > 30:
-                                stats.add_message("Import processor: waiting for files...", priority='low')
-                                self._last_waiting_log = datetime.now()
                             time.sleep(1)
                             continue
                         
                     # Get the import record
                     import_record = db_session.get(ImportStatus, record_id)
-                    if not import_record or import_record.status not in ['pending', 'discovered', 'download_pending']:
+                    if not import_record or import_record.status not in ['pending', 'discovered', 'download_pending', 'import_error']:
                         continue
-                    
+
+                    # Check if this is a retry
+                    is_retry = import_record.status == 'import_error'
+
+                    # Track current file being processed
+                    stats.current_file = import_record.file_name
+                    stats.current_file_category = import_record.category
+                    stats.current_file_started = datetime.now()
+                    stats.current_file_is_retry = is_retry
+
                     try:
-                        stats.add_message(f"Processing: {import_record.file_name}", priority='normal')
-                        
+                        if is_retry:
+                            stats.add_message(f"RETRY: {import_record.file_name} (attempt {(import_record.error_count or 0) + 1})", priority='high')
+                        else:
+                            stats.add_message(f"Processing: {import_record.file_name}", priority='normal')
+
                         # Use the actual database-driven importer (now in quiet mode)
                         success = self.importer._process_single_import(db_session, import_record, strict_mode=False)
                         
@@ -448,6 +464,12 @@ class ImportProcessor:
                                 db_session.rollback()
                         
                     finally:
+                        # Clear current file tracking
+                        stats.current_file = None
+                        stats.current_file_category = None
+                        stats.current_file_started = None
+                        stats.current_file_is_retry = False
+
                         # Only mark task done if it came from download queue
                         if from_queue:
                             try:
@@ -619,7 +641,27 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
             "Records",
             f"{self.stats.total_records_imported:,} total imported"
         )
-        
+
+        # Current file being processed
+        if self.stats.current_file:
+            elapsed = ""
+            if self.stats.current_file_started:
+                elapsed_secs = (datetime.now() - self.stats.current_file_started).total_seconds()
+                elapsed = f" ({int(elapsed_secs)}s)"
+            retry_indicator = "[yellow]RETRY[/yellow] " if self.stats.current_file_is_retry else ""
+            file_display = self.stats.current_file
+            if len(file_display) > 30:
+                file_display = file_display[:27] + "..."
+            stats_table.add_row(
+                "[bold]Processing[/bold]",
+                f"{retry_indicator}{file_display}{elapsed}"
+            )
+        else:
+            stats_table.add_row(
+                "Processing",
+                "[dim]Idle[/dim]"
+            )
+
         layout["stats"].update(Panel(stats_table, border_style="green"))
         
         # Downloaded files tracking with stable panel updates
@@ -716,17 +758,32 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
             pending_panel = Panel("No pending files found", title="Files Ready for Processing", border_style="green")
             
         layout["pending"].update(pending_panel)
-        
-        # Recent activity log  
+
+        # Recent activity log with pinned errors at top
+        activity_lines = []
+
+        # Show pinned errors at the top (in red, always visible)
+        if self.stats.pinned_errors:
+            activity_lines.append("[bold red]━━━ ERRORS (pinned) ━━━[/bold red]")
+            for error in self.stats.pinned_errors:
+                activity_lines.append(f"[red]{error}[/red]")
+            activity_lines.append("[dim]━━━━━━━━━━━━━━━━━━━━━━[/dim]")
+
+        # Show recent messages below
         if self.stats.recent_messages:
-            messages_text = "\n".join(self.stats.recent_messages[-10:])  # Show last 10 messages
-        else:
-            messages_text = "Waiting for activity..."
-            
+            # Calculate how many recent messages we can show (leave room for pinned errors)
+            pinned_count = len(self.stats.pinned_errors) + 2 if self.stats.pinned_errors else 0
+            max_recent = max(3, 10 - pinned_count)  # At least 3 recent messages
+            activity_lines.extend(self.stats.recent_messages[-max_recent:])
+        elif not self.stats.pinned_errors:
+            activity_lines.append("Waiting for activity...")
+
+        messages_text = "\n".join(activity_lines)
+
         activity_panel = Panel(
             messages_text,
             title="Processing Activity Log",
-            border_style="yellow"
+            border_style="red" if self.stats.pinned_errors else "yellow"
         )
         layout["activity"].update(activity_panel)
         
