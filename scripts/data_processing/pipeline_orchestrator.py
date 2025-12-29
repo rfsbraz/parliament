@@ -842,12 +842,16 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
                     self.threads.append(import_thread)
 
                 # Main UI update loop
+                error_paused = False
                 while self.running:
                     # Check for stop-on-error condition
-                    if self.stats.stop_on_error and self.stats.error_occurred:
-                        self.stats.add_message("🛑 Stopping due to error (--stop-on-error enabled)", priority='error')
-                        self.running = False
-                        break
+                    if self.stats.stop_on_error and self.stats.error_occurred and not error_paused:
+                        self.stats.add_message("🛑 Error occurred - pipeline paused (--stop-on-error)", priority='error')
+                        self.stats.add_message("   Review the activity log above, then press Ctrl+C to exit", priority='error')
+                        # Stop processing but keep UI running so user can read the error
+                        self.stop_processing()
+                        error_paused = True
+                        # Don't break - keep UI running
 
                     # Force flush buffered messages periodically
                     if hasattr(self.stats, '_message_buffer') and self.stats._message_buffer:
@@ -915,16 +919,22 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
             self.console.print("\n🛑 Shutdown requested...")
             self.stop_pipeline()
     
+    def stop_processing(self):
+        """Stop processing components but keep UI running for error review"""
+        self.download_manager.stop()
+        self.import_processor.stop()
+        # Don't set self.running = False - keep UI alive
+
     def stop_pipeline(self):
-        """Stop all pipeline components"""
+        """Stop all pipeline components including UI"""
         self.running = False
         self.download_manager.stop()
         self.import_processor.stop()
-        
+
         # Wait for threads to complete
         for thread in self.threads:
             thread.join(timeout=2)
-            
+
         self.console.print("✅ Pipeline stopped gracefully")
 
 
