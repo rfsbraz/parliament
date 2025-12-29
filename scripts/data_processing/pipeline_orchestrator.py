@@ -475,11 +475,12 @@ class PipelineOrchestrator:
 
     def __init__(self, discovery_rate_limit: float = 0.5, download_rate_limit: float = 0.3,
                  allowed_file_types: List[str] = None, stop_on_error: bool = False,
-                 download_only: bool = False):
+                 download_only: bool = False, import_only: bool = False):
         self.console = Console()
         self.stats = PipelineStats()
         self.stats.stop_on_error = stop_on_error
         self.download_only = download_only
+        self.import_only = import_only
         self.allowed_file_types = allowed_file_types or ['XML']  # Default to XML only
         
         # Initialize services with file type filters
@@ -788,8 +789,11 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
             self.stats.add_message(f"📂 Category filter: {category_filter}", priority='high')
 
         # Add service startup messages before UI starts
-        self.stats.add_message("🔍 Starting discovery service...", priority='high')
-        self.stats.add_message("⬇️ Starting download manager...", priority='high')
+        if not self.import_only:
+            self.stats.add_message("🔍 Starting discovery service...", priority='high')
+            self.stats.add_message("⬇️ Starting download manager...", priority='high')
+        else:
+            self.stats.add_message("⏭️ Discovery & download skipped (import-only mode)", priority='high')
         if not self.download_only:
             self.stats.add_message("⚙️ Starting import processor...", priority='high')
         else:
@@ -804,24 +808,25 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
         try:
             with Live(layout, refresh_per_second=1, screen=True):
                 
-                # Start discovery in background thread
-                discovery_thread = threading.Thread(
-                    target=self.run_discovery,
-                    args=(legislature_filter, category_filter)
-                )
-                discovery_thread.daemon = True
-                discovery_thread.start()
-                self.threads.append(discovery_thread)
-                
-                # Start download manager
-                download_thread = threading.Thread(
-                    target=self.download_manager.start,
-                    args=(self.download_queue, self.stats, self.console)
-                )
-                download_thread.daemon = True
-                download_thread.start()
-                self.threads.append(download_thread)
-                
+                # Start discovery in background thread (unless import-only mode)
+                if not self.import_only:
+                    discovery_thread = threading.Thread(
+                        target=self.run_discovery,
+                        args=(legislature_filter, category_filter)
+                    )
+                    discovery_thread.daemon = True
+                    discovery_thread.start()
+                    self.threads.append(discovery_thread)
+
+                    # Start download manager
+                    download_thread = threading.Thread(
+                        target=self.download_manager.start,
+                        args=(self.download_queue, self.stats, self.console)
+                    )
+                    download_thread.daemon = True
+                    download_thread.start()
+                    self.threads.append(download_thread)
+
                 # Start import processor (unless download-only mode)
                 if not self.download_only:
                     import_thread = threading.Thread(
@@ -940,8 +945,24 @@ def main():
                        help='Stop the pipeline when an error occurs')
     parser.add_argument('--download-only', action='store_true',
                        help='Only run discovery and download, skip import processing')
+    parser.add_argument('--retry-failed', action='store_true',
+                       help='Reset import_error status to pending before starting (retry failed imports)')
+    parser.add_argument('--import-only', action='store_true',
+                       help='Only run import processing, skip discovery and download (use existing files)')
 
     args = parser.parse_args()
+
+    # Reset failed imports if requested
+    if args.retry_failed:
+        with DatabaseSession() as db_session:
+            from sqlalchemy import update
+            result = db_session.execute(
+                update(ImportStatus)
+                .where(ImportStatus.status == 'import_error')
+                .values(status='pending', error_message=None)
+            )
+            db_session.commit()
+            print(f"Reset {result.rowcount} failed imports to pending status")
     
     # Determine file types to process
     if args.all_file_types:
@@ -955,7 +976,8 @@ def main():
         download_rate_limit=args.download_rate_limit,
         allowed_file_types=allowed_file_types,
         stop_on_error=args.stop_on_error,
-        download_only=args.download_only
+        download_only=args.download_only,
+        import_only=args.import_only
     )
     
     try:
