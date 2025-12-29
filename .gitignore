@@ -107,3 +107,16 @@ terraform/*.zip
 parlamento.db-shm
 parlamento.db-wal
 *.db.backup*
+
+# Build artifacts
+parliament-code.zip
+code-bundle/
+temp_*.tfvars
+
+# Sensitive files (store in AWS Secrets Manager)
+parliament_deploy_key
+*_deploy_key
+.env.remote
+
+# Windows artifacts
+nul

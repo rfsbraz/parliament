@@ -76,24 +76,22 @@ class PipelineStats:
     start_time: Optional[datetime] = None
     recent_messages: List[str] = None
     downloaded_files: List[DownloadInfo] = None
-    
+    stop_on_error: bool = False
+    error_occurred: bool = False
+
     def __post_init__(self):
         if self.recent_messages is None:
             self.recent_messages = []
         if self.downloaded_files is None:
             self.downloaded_files = []
-    
+        # Initialize thread-safe attributes upfront to avoid race conditions
+        self._message_lock = threading.Lock()
+        self._message_buffer = {}
+        self._last_summary_time = datetime.now()
+        self._last_debug_time = datetime.now()
+
     def add_message(self, message: str, priority: str = 'normal'):
         """Add a message to recent messages with priority-based filtering"""
-        import threading
-        
-        # Initialize attributes if needed
-        if not hasattr(self, '_message_lock'):
-            self._message_lock = threading.Lock()
-        if not hasattr(self, '_message_buffer'):
-            self._message_buffer = {}
-        if not hasattr(self, '_last_summary_time'):
-            self._last_summary_time = datetime.now()
         
         timestamp = datetime.now().strftime('%H:%M:%S')
         formatted_message = f"{timestamp} - {message}"
@@ -211,8 +209,9 @@ class DownloadManager:
         )
         self.running = False
         
-        # Create downloads directory
-        self.downloads_dir = Path("E:/dev/parliament/scripts/data_processing/data/downloads")
+        # Create downloads directory relative to this script's location
+        script_dir = Path(__file__).parent
+        self.downloads_dir = script_dir / "data" / "downloads"
         self.downloads_dir.mkdir(parents=True, exist_ok=True)
     
     @contextlib.contextmanager
@@ -271,10 +270,11 @@ class DownloadManager:
                     files_to_download = query.limit(10).all()
                     
                     if not files_to_download:
-                        # Add debug message occasionally to show download manager is active
-                        import random
-                        if random.random() < 0.01:  # 1% chance to show debug message
+                        # Throttled debug message (every 30 seconds max)
+                        if not hasattr(self, '_last_waiting_log') or \
+                           (datetime.now() - self._last_waiting_log).total_seconds() > 30:
                             stats.add_message("Download manager: waiting for files...", priority='low')
+                            self._last_waiting_log = datetime.now()
                         time.sleep(1)
                         continue
                     
@@ -341,7 +341,8 @@ class DownloadManager:
                                 import_record.status = 'failed'
                                 import_record.error_message = f"Download error: {str(e)}"
                                 stats.add_message(f"Download failed: {import_record.file_name} - {str(e)}", priority='error')
-                            
+                                stats.error_occurred = True
+
                             db_session.commit()
                         
                         # Rate limiting
@@ -349,8 +350,9 @@ class DownloadManager:
                         
             except Exception as e:
                 stats.add_message(f"Download manager error: {str(e)}", priority='error')
+                stats.error_occurred = True
                 time.sleep(1)
-    
+
     def stop(self):
         """Stop download processing"""
         self.running = False
@@ -366,44 +368,6 @@ class ImportProcessor:
         from scripts.data_processing.database_driven_importer import DatabaseDrivenImporter
         self.importer = DatabaseDrivenImporter(allowed_file_types=self.allowed_file_types, quiet=True, orchestrator_mode=True)
     
-    def run(self, stats: PipelineStats):
-        """Context manager to capture console output and redirect to stats"""
-        import sys
-        import io
-        
-        # Capture stdout
-        old_stdout = sys.stdout
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-        
-        try:
-            yield
-        finally:
-            # Restore stdout
-            sys.stdout = old_stdout
-            
-            # Process captured output
-            output = captured_output.getvalue()
-            if output.strip():
-                # Split into lines and send important ones to stats
-                lines = output.strip().split('\n')
-                for line in lines:
-                    line = line.strip()
-                    if line and not line.startswith('  '):  # Skip indented debug lines
-                        # Determine priority based on content (support both emoji and ASCII formats)
-                        priority = 'normal'
-                        if any(marker in line for marker in ['ERROR', 'Failed', '❌', '🛑', '>>', 'error', 'Error']):
-                            priority = 'error'
-                        elif any(marker in line for marker in ['SUCCESS', '✅', 'completed', 'Success', 'success']):
-                            priority = 'success'
-                        elif any(marker in line for marker in ['🔄', '⬇️', '📡', 'Processing', 'Downloading', 'Starting']):
-                            priority = 'high'
-                        
-                        # Clean up the line (remove emoji, ASCII markers and extra formatting for stats)
-                        clean_line = line.replace('🔄', '').replace('⬇️', '').replace('📡', '').replace('✅', '').replace('❌', '').replace('>>', '').strip()
-                        if clean_line:
-                            stats.add_message(clean_line, priority=priority)
-        
     def start(self, download_queue: Queue, stats: PipelineStats, console: Console):
         """Start import processing"""
         self.running = True
@@ -435,15 +399,16 @@ class ImportProcessor:
                             record_id = pending_files[0].id
                             from_queue = False
                         else:
-                            # Add debug message occasionally to show import processor is active
-                            import random
-                            if random.random() < 0.01:  # 1% chance to show debug message
+                            # Throttled debug message (every 30 seconds max)
+                            if not hasattr(self, '_last_waiting_log') or \
+                               (datetime.now() - self._last_waiting_log).total_seconds() > 30:
                                 stats.add_message("Import processor: waiting for files...", priority='low')
+                                self._last_waiting_log = datetime.now()
                             time.sleep(1)
                             continue
                         
                     # Get the import record
-                    import_record = db_session.query(ImportStatus).get(record_id)
+                    import_record = db_session.get(ImportStatus, record_id)
                     if not import_record or import_record.status not in ['pending', 'discovered', 'download_pending']:
                         continue
                     
@@ -462,6 +427,7 @@ class ImportProcessor:
                             if len(error_msg) > 50:
                                 error_msg = error_msg[:47] + "..."
                             stats.add_message(f"FAILED: {import_record.file_name} - {error_msg}", priority='error')
+                            stats.error_occurred = True
                             # Commit failed import status to database
                             db_session.commit()
                         
@@ -470,6 +436,7 @@ class ImportProcessor:
                         if len(error_msg) > 50:
                             error_msg = error_msg[:47] + "..."
                         stats.add_message(f"ERROR: {import_record.file_name} - {error_msg}", priority='error')
+                        stats.error_occurred = True
                         
                         # Update record status if not already updated
                         if import_record.status not in ['completed', 'import_error']:
@@ -479,7 +446,7 @@ class ImportProcessor:
                             import_record.processing_completed_at = datetime.now()
                             try:
                                 db_session.commit()
-                            except:
+                            except Exception:
                                 db_session.rollback()
                         
                     finally:
@@ -487,13 +454,14 @@ class ImportProcessor:
                         if from_queue:
                             try:
                                 download_queue.task_done()
-                            except:
-                                pass  # Ignore if task wasn't from queue
+                            except ValueError:
+                                pass  # Ignore if task_done called more times than get
                         
             except Exception as e:
                 stats.add_message(f"Import processor error: {str(e)}", priority='error')
+                stats.error_occurred = True
                 time.sleep(1)
-    
+
     def stop(self):
         """Stop import processing"""
         self.running = False
@@ -504,11 +472,14 @@ class ImportProcessor:
 
 class PipelineOrchestrator:
     """Main orchestrator for the parliament data pipeline"""
-    
-    def __init__(self, discovery_rate_limit: float = 0.5, download_rate_limit: float = 0.3, 
-                 allowed_file_types: List[str] = None):
+
+    def __init__(self, discovery_rate_limit: float = 0.5, download_rate_limit: float = 0.3,
+                 allowed_file_types: List[str] = None, stop_on_error: bool = False,
+                 download_only: bool = False):
         self.console = Console()
         self.stats = PipelineStats()
+        self.stats.stop_on_error = stop_on_error
+        self.download_only = download_only
         self.allowed_file_types = allowed_file_types or ['XML']  # Default to XML only
         
         # Initialize services with file type filters
@@ -807,16 +778,22 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
         
         # Add initial startup messages
         file_types_str = ", ".join(self.allowed_file_types) if self.allowed_file_types else "ALL"
-        self.stats.add_message(f"🚀 Pipeline started - Processing: {file_types_str}", priority='high')
+        mode_info = " (download-only mode)" if self.download_only else ""
+        self.stats.add_message(f"🚀 Pipeline started{mode_info} - Processing: {file_types_str}", priority='high')
+        if self.stats.stop_on_error:
+            self.stats.add_message("⚠️ Stop-on-error enabled", priority='high')
         if legislature_filter:
             self.stats.add_message(f"📋 Legislature filter: {legislature_filter}", priority='high')
         if category_filter:
             self.stats.add_message(f"📂 Category filter: {category_filter}", priority='high')
-        
+
         # Add service startup messages before UI starts
         self.stats.add_message("🔍 Starting discovery service...", priority='high')
         self.stats.add_message("⬇️ Starting download manager...", priority='high')
-        self.stats.add_message("⚙️ Starting import processor...", priority='high')
+        if not self.download_only:
+            self.stats.add_message("⚙️ Starting import processor...", priority='high')
+        else:
+            self.stats.add_message("⏭️ Import processor skipped (download-only mode)", priority='high')
         
         # Create UI layout
         layout = self.create_ui_layout()
@@ -845,21 +822,28 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
                 download_thread.start()
                 self.threads.append(download_thread)
                 
-                # Start import processor
-                import_thread = threading.Thread(
-                    target=self.import_processor.start,
-                    args=(self.download_queue, self.stats, self.console)
-                )
-                import_thread.daemon = True
-                import_thread.start()
-                self.threads.append(import_thread)
-                
+                # Start import processor (unless download-only mode)
+                if not self.download_only:
+                    import_thread = threading.Thread(
+                        target=self.import_processor.start,
+                        args=(self.download_queue, self.stats, self.console)
+                    )
+                    import_thread.daemon = True
+                    import_thread.start()
+                    self.threads.append(import_thread)
+
                 # Main UI update loop
                 while self.running:
+                    # Check for stop-on-error condition
+                    if self.stats.stop_on_error and self.stats.error_occurred:
+                        self.stats.add_message("🛑 Stopping due to error (--stop-on-error enabled)", priority='error')
+                        self.running = False
+                        break
+
                     # Force flush buffered messages periodically
                     if hasattr(self.stats, '_message_buffer') and self.stats._message_buffer:
                         self.stats._flush_message_buffer()
-                    
+
                     self.update_layout(layout)
                     time.sleep(1.0)  # Slower updates to reduce flashing
                     
@@ -952,7 +936,11 @@ def main():
                        help='File types to process (default: XML only)')
     parser.add_argument('--all-file-types', action='store_true',
                        help='Process all file types (overrides --file-types)')
-    
+    parser.add_argument('--stop-on-error', action='store_true',
+                       help='Stop the pipeline when an error occurs')
+    parser.add_argument('--download-only', action='store_true',
+                       help='Only run discovery and download, skip import processing')
+
     args = parser.parse_args()
     
     # Determine file types to process
@@ -965,7 +953,9 @@ def main():
     orchestrator = PipelineOrchestrator(
         discovery_rate_limit=args.discovery_rate_limit,
         download_rate_limit=args.download_rate_limit,
-        allowed_file_types=allowed_file_types
+        allowed_file_types=allowed_file_types,
+        stop_on_error=args.stop_on_error,
+        download_only=args.download_only
     )
     
     try:
