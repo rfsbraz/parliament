@@ -424,18 +424,16 @@ class ImportProcessor:
                             db_session.commit()
                         else:
                             error_msg = import_record.error_message or "Unknown error"
-                            if len(error_msg) > 50:
-                                error_msg = error_msg[:47] + "..."
-                            stats.add_message(f"FAILED: {import_record.file_name} - {error_msg}", priority='error')
+                            stats.add_message(f"FAILED: {import_record.file_name}", priority='error')
+                            stats.add_message(f"  Error: {error_msg}", priority='error')
                             stats.error_occurred = True
                             # Commit failed import status to database
                             db_session.commit()
-                        
+
                     except Exception as e:
                         error_msg = str(e)
-                        if len(error_msg) > 50:
-                            error_msg = error_msg[:47] + "..."
-                        stats.add_message(f"ERROR: {import_record.file_name} - {error_msg}", priority='error')
+                        stats.add_message(f"ERROR: {import_record.file_name}", priority='error')
+                        stats.add_message(f"  Exception: {error_msg}", priority='error')
                         stats.error_occurred = True
                         
                         # Update record status if not already updated
@@ -528,6 +526,7 @@ class PipelineOrchestrator:
                 return pending_files
         except Exception as e:
             self.stats.add_message(f"Error getting pending files: {str(e)}", priority='error')
+            self.stats.error_occurred = True
             return []
         
     def create_ui_layout(self) -> Layout:
@@ -769,6 +768,7 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
         except Exception as e:
             self.stats.discovery_status = f"Error: {str(e)}"
             self.stats.add_message(f"Discovery error: {str(e)}", priority='error')
+            self.stats.error_occurred = True
             # Print the full error for debugging
             import traceback
             error_details = traceback.format_exc()

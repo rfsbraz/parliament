@@ -255,8 +255,8 @@ class CooperacaoMapper(SchemaMapper):
         
         legislatura = Legislatura(
             numero=legislatura_sigla,
-            designacao=f"{numero_int}.ª Legislatura",
-            ativa=False
+            designacao=f"{numero_int}.ª Legislatura"
+            # Note: 'ativa' is determined dynamically by data_fim IS NULL
         )
         
         self.session.add(legislatura)

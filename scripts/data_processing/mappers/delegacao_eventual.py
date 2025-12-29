@@ -151,7 +151,7 @@ class DelegacaoEventualMapper(SchemaMapper):
             id_externo = self._get_int_value(delegation_event, 'Id')
             nome = self._get_text_value(delegation_event, 'Nome')
             local = self._get_text_value(delegation_event, 'Local')
-            sessao = self._get_text_value(delegation_event, 'Sessao')
+            sessao = self._get_int_value(delegation_event, 'Sessao')
             data_inicio_str = self._get_text_value(delegation_event, 'DataInicio')
             data_fim_str = self._get_text_value(delegation_event, 'DataFim')
             
@@ -243,8 +243,8 @@ class DelegacaoEventualMapper(SchemaMapper):
         
         legislatura = Legislatura(
             numero=legislatura_sigla,
-            designacao=f"{numero_int}.ª Legislatura",
-            ativa=False
+            designacao=f"{numero_int}.ª Legislatura"
+            # Note: 'ativa' is determined dynamically by data_fim IS NULL
         )
         
         self.session.add(legislatura)
