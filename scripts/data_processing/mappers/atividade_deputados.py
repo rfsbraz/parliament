@@ -723,6 +723,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(atividade_deputado)
+            self.session.flush()  # Get the ID assigned
 
             return atividade_deputado.id
 
@@ -747,6 +748,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(atividade_list)
+            self.session.flush()  # Get the ID assigned
 
             return atividade_list.id
 
@@ -773,6 +775,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(actividade_out)
+            self.session.flush()  # Get the ID assigned
 
             return actividade_out.id
 

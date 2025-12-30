@@ -558,9 +558,9 @@ class DeputyIdentityMapping(Base):
 
     # Indexes for efficient lookups
     __table_args__ = (
-        Index("idx_old_cad_id", "old_cad_id"),
-        Index("idx_new_cad_id", "new_cad_id"),
-        Index("idx_deputy_name", "deputy_name"),
+        Index("idx_identity_mapping_old_cad_id", "old_cad_id"),
+        Index("idx_identity_mapping_new_cad_id", "new_cad_id"),
+        Index("idx_identity_mapping_deputy_name", "deputy_name"),
         UniqueConstraint("old_cad_id", "new_cad_id", name="uq_identity_mapping"),
     )
 
@@ -2118,7 +2118,8 @@ class ImportStatus(Base):
     processing_completed_at = Column(DateTime)
     error_message = Column(Text)
     records_imported = Column(Integer, default=0)
-    
+    processing_duration_seconds = Column(Float, comment="Time taken to process the file in seconds")
+
     # Error tracking and retry counters
     recrawl_count = Column(Integer, default=0, comment="Number of times URL has been recrawled")
     error_count = Column(Integer, default=0, comment="Number of import errors encountered")

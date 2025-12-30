@@ -558,12 +558,14 @@ class DatabaseDrivenImporter:
                 import_record.error_count = (import_record.error_count or 0) + 1
                 import_record.retry_at = self._calculate_retry_time(import_record.error_count)
                 import_record.processing_completed_at = datetime.now()
+                if import_record.processing_started_at:
+                    import_record.processing_duration_seconds = (import_record.processing_completed_at - import_record.processing_started_at).total_seconds()
                 import_record.updated_at = datetime.now()
-                
+
                 # Explicitly flush the error record updates to the database
                 db_session.flush()
                 return False
-            
+
             # Parse XML content
             try:
                 xml_content = self._get_file_content(import_record)
@@ -593,6 +595,8 @@ class DatabaseDrivenImporter:
                     import_record.retry_at = self._calculate_retry_time(import_record.error_count)
 
                 import_record.processing_completed_at = datetime.now()
+                if import_record.processing_started_at:
+                    import_record.processing_duration_seconds = (import_record.processing_completed_at - import_record.processing_started_at).total_seconds()
                 return False
 
             # Process with mapper using the same session for transaction-per-file
@@ -601,11 +605,13 @@ class DatabaseDrivenImporter:
                 mapper = mapper_class(db_session)  # Use the same session for transaction control
                 results = mapper.validate_and_map(xml_root, file_info, strict_mode)
                 
-                # Update import record with results  
+                # Update import record with results
                 import_record.status = 'completed'
                 import_record.processing_completed_at = datetime.now()
+                if import_record.processing_started_at:
+                    import_record.processing_duration_seconds = (import_record.processing_completed_at - import_record.processing_started_at).total_seconds()
                 import_record.records_imported = results.get('records_imported', 0)
-                
+
                 # Clear all error-related fields on successful completion
                 import_record.error_message = None
                 import_record.error_count = 0
@@ -635,39 +641,45 @@ class DatabaseDrivenImporter:
                 import_record.error_count = (import_record.error_count or 0) + 1
                 import_record.retry_at = self._calculate_retry_time(import_record.error_count)
                 import_record.processing_completed_at = datetime.now()
+                if import_record.processing_started_at:
+                    import_record.processing_duration_seconds = (import_record.processing_completed_at - import_record.processing_started_at).total_seconds()
                 import_record.updated_at = datetime.now()
-                
+
                 # Commit only the error record (not the failed mapper data)
                 db_session.commit()
                 return False
-                
+
             except Exception as e:
                 # Rollback the failed transaction (both mapper data and import status changes)
                 db_session.rollback()
-                
+
                 error_msg = f"Processing error: {str(e)}"
                 import_record.status = 'import_error'
                 import_record.error_message = error_msg
                 import_record.error_count = (import_record.error_count or 0) + 1
                 import_record.retry_at = self._calculate_retry_time(import_record.error_count)
                 import_record.processing_completed_at = datetime.now()
+                if import_record.processing_started_at:
+                    import_record.processing_duration_seconds = (import_record.processing_completed_at - import_record.processing_started_at).total_seconds()
                 import_record.updated_at = datetime.now()
-                
+
                 # Commit only the error record (not the failed mapper data)
                 db_session.commit()
                 return False
-                
+
         except Exception as e:
             # Rollback any changes from the outer try block
             db_session.rollback()
-            
+
             import_record.status = 'import_error'
             import_record.error_message = f"Unexpected error: {str(e)}"
             import_record.error_count = (import_record.error_count or 0) + 1
             import_record.retry_at = self._calculate_retry_time(import_record.error_count)
             import_record.processing_completed_at = datetime.now()
+            if import_record.processing_started_at:
+                import_record.processing_duration_seconds = (import_record.processing_completed_at - import_record.processing_started_at).total_seconds()
             import_record.updated_at = datetime.now()
-            
+
             # Commit only the error record
             db_session.commit()
             return False
@@ -1008,11 +1020,12 @@ class DatabaseDrivenImporter:
                     
                     # Reset all ImportStatus records to discovered state
                     reset_query = text("""
-                        UPDATE import_status 
-                        SET 
+                        UPDATE import_status
+                        SET
                             status = 'discovered',
                             processing_started_at = NULL,
                             processing_completed_at = NULL,
+                            processing_duration_seconds = NULL,
                             error_message = NULL,
                             records_imported = 0,
                             error_count = 0,
