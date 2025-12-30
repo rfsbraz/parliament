@@ -169,10 +169,109 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
 
     Maps to comprehensive SQLAlchemy ORM models maintaining all field relationships
     and historical composition data as documented in official Parliament specifications.
+
+    Inherits from EnhancedSchemaMapper which provides:
+    - _legislatura_cache, _deputado_cache, _partido_cache (via CacheMixin)
+    - _batch_flush() for batch processing
+    - BATCH_SIZE = 100 (configurable)
     """
+
+    # NOTE: BATCH_SIZE inherited from CacheMixin (default 100)
+    # NOTE: _batch_flush() inherited from CacheMixin
+    # NOTE: _deputado_cache inherited from CacheMixin (replaces _deputy_cache)
 
     def __init__(self, db_connection_or_session):
         super().__init__(db_connection_or_session)
+        # Entity-specific caches for parliamentary organs (not in base class)
+        self._org_cache = {}           # legislature_sigla -> ParliamentaryOrganization
+        self._plenary_cache = {}       # (id_orgao, org_id) -> Plenary
+        self._committee_cache = {}     # (id_orgao, org_id) -> Commission
+        self._subcommittee_cache = {}  # (id_orgao, org_id) -> SubCommittee
+        self._work_group_cache = {}    # (id_orgao, org_id) -> WorkGroup
+        self._ar_board_cache = {}      # (id_orgao, org_id) -> ARBoard
+        self._admin_council_cache = {} # (id_orgao, org_id) -> AdministrativeCouncil
+        self._perm_committee_cache = {} # (id_orgao, org_id) -> PermanentCommittee
+        self._leader_conf_cache = {}   # (id_orgao, org_id) -> LeaderConference
+        self._comm_pres_conf_cache = {} # (id_orgao, org_id) -> CommissionPresidentConference
+
+    def _preload_caches(self, legislatura: Legislatura) -> None:
+        """
+        Preload existing entities into caches to avoid repeated queries.
+        Called once at the start of processing for significant performance gains.
+        """
+        logger.info(f"Preloading entity caches for legislature {legislatura.numero}...")
+
+        # Preload parliamentary organization
+        org = (
+            self.session.query(ParliamentaryOrganization)
+            .filter_by(legislatura_sigla=legislatura.numero)
+            .first()
+        )
+        if org:
+            self._org_cache[legislatura.numero] = org
+
+            # Preload plenaries
+            for plenary in self.session.query(Plenary).filter_by(organization_id=org.id).all():
+                self._plenary_cache[(plenary.id_orgao, org.id)] = plenary
+
+            # Preload committees
+            for committee in self.session.query(Commission).filter_by(organization_id=org.id).all():
+                self._committee_cache[(committee.id_orgao, org.id)] = committee
+
+            # Preload subcommittees
+            for subcommittee in self.session.query(SubCommittee).filter_by(organization_id=org.id).all():
+                self._subcommittee_cache[(subcommittee.id_orgao, org.id)] = subcommittee
+
+            # Preload work groups
+            for work_group in self.session.query(WorkGroup).filter_by(organization_id=org.id).all():
+                self._work_group_cache[(work_group.id_orgao, org.id)] = work_group
+
+            # Preload AR boards
+            for ar_board in self.session.query(ARBoard).filter_by(organization_id=org.id).all():
+                self._ar_board_cache[(ar_board.id_orgao, org.id)] = ar_board
+
+            # Preload administrative councils
+            for admin_council in self.session.query(AdministrativeCouncil).filter_by(organization_id=org.id).all():
+                self._admin_council_cache[(admin_council.id_orgao, org.id)] = admin_council
+
+            # Preload permanent committees
+            for perm_committee in self.session.query(PermanentCommittee).filter_by(organization_id=org.id).all():
+                self._perm_committee_cache[(perm_committee.id_orgao, org.id)] = perm_committee
+
+            # Preload leader conferences
+            for leader_conf in self.session.query(LeaderConference).filter_by(organization_id=org.id).all():
+                self._leader_conf_cache[(leader_conf.id_orgao, org.id)] = leader_conf
+
+            # Preload commission president conferences
+            for comm_pres_conf in self.session.query(CommissionPresidentConference).filter_by(organization_id=org.id).all():
+                self._comm_pres_conf_cache[(comm_pres_conf.id_orgao, org.id)] = comm_pres_conf
+
+        # Preload deputies for this legislature using base class cache
+        deputies = self.session.query(Deputado).filter_by(legislatura_id=legislatura.id).all()
+        for deputy in deputies:
+            # Use base class's _deputado_cache with consistent key format
+            self._deputado_cache[f"cadastro_{deputy.id_cadastro}"] = deputy
+            self._deputado_cache[f"id_{deputy.id}"] = deputy
+
+        logger.info(f"Preloaded caches: {len(self._deputado_cache)//2} deputies, "
+                   f"{len(self._committee_cache)} committees, "
+                   f"{len(self._plenary_cache)} plenaries")
+
+    def _clear_caches(self) -> None:
+        """Clear all entity caches - call when switching legislatures or after processing."""
+        # Clear base class caches (legislatura, deputado, partido, pending_count)
+        super()._clear_caches()
+        # Clear mapper-specific organ caches
+        self._org_cache.clear()
+        self._plenary_cache.clear()
+        self._committee_cache.clear()
+        self._subcommittee_cache.clear()
+        self._work_group_cache.clear()
+        self._ar_board_cache.clear()
+        self._admin_council_cache.clear()
+        self._perm_committee_cache.clear()
+        self._leader_conf_cache.clear()
+        self._comm_pres_conf_cache.clear()
 
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -730,6 +829,9 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
             legislatura = self._get_or_create_legislatura(legislatura_sigla)
 
+            # Preload entity caches for performance optimization
+            self._preload_caches(legislatura)
+
             # Process MesaAR (AR Board)
             mesa_ar = xml_root.find(".//MesaAR")
             if mesa_ar is not None:
@@ -885,6 +987,10 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                         error_msg = f"Subcommittee processing error: {str(e)}"
                         self._handle_processing_error(error_msg, results, strict_mode)
 
+            # Force final flush before commit
+            self._batch_flush(force=True)
+            # Clear caches after processing
+            self._clear_caches()
             # Finalize processing with commit
             return self.finalize_processing(results)
 
@@ -1185,7 +1291,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(plenary_composition)
-            self.session.flush()
+            self._batch_flush()
 
             # Process videos for this deputy (XIII Legislature structure)
             videos = deputado_data.find("Videos")
@@ -1572,7 +1678,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                             composition_context=composition_type,
                         )
                         self.session.add(gp_record)
-                        self.session.flush()  # Ensure immediate persistence
+                        self._batch_flush()  # Ensure immediate persistence
                         logger.debug(
                             f"Created GP situation record: {gp_data['gp_sigla']} (ID: {gp_id_int}) for {composition_type}"
                         )
@@ -1758,7 +1864,11 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
     def _get_or_create_parliamentary_organization(
         self, legislatura: Legislatura
     ) -> ParliamentaryOrganization:
-        """Get or create parliamentary organization for the given legislature"""
+        """Get or create parliamentary organization for the given legislature (cached)"""
+        # Check cache first
+        if legislatura.numero in self._org_cache:
+            return self._org_cache[legislatura.numero]
+
         organization = (
             self.session.query(ParliamentaryOrganization)
             .filter_by(legislatura_sigla=legislatura.numero)
@@ -1766,6 +1876,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         if organization:
+            self._org_cache[legislatura.numero] = organization
             return organization
 
         # Create new parliamentary organization
@@ -1775,15 +1886,21 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         self.session.add(organization)
-        self.session.flush()  # Get the ID
+        self._batch_flush(force=True)  # Need ID for foreign keys
+        self._org_cache[legislatura.numero] = organization
         return organization
 
     def _get_or_create_plenary(
         self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura
     ) -> Plenary:
-        """Get or create plenary record"""
+        """Get or create plenary record (cached)"""
         # First get or create parliamentary organization
         organization = self._get_or_create_parliamentary_organization(legislatura)
+
+        # Check cache first
+        cache_key = (id_externo, organization.id)
+        if cache_key in self._plenary_cache:
+            return self._plenary_cache[cache_key]
 
         plenary = (
             self.session.query(Plenary)
@@ -1792,6 +1909,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         if plenary:
+            self._plenary_cache[cache_key] = plenary
             return plenary
 
         # Create new plenary
@@ -1804,21 +1922,27 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         self.session.add(plenary)
-        self.session.flush()  # Get the ID
+        self._batch_flush(force=True)  # Need ID for foreign keys
 
         # Validate the plenary was created successfully
         if not plenary.id:
             raise ValueError(f"Failed to create plenary for organ {id_externo}")
 
+        self._plenary_cache[cache_key] = plenary
         logger.debug(f"Created plenary {plenary.id} for organ {id_externo}")
         return plenary
 
     def _get_or_create_committee(
         self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura
     ) -> Commission:
-        """Get or create committee record"""
+        """Get or create committee record (cached)"""
         # First get or create parliamentary organization
         organization = self._get_or_create_parliamentary_organization(legislatura)
+
+        # Check cache first
+        cache_key = (id_externo, organization.id)
+        if cache_key in self._committee_cache:
+            return self._committee_cache[cache_key]
 
         committee = (
             self.session.query(Commission)
@@ -1827,6 +1951,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         if committee:
+            self._committee_cache[cache_key] = committee
             return committee
 
         # Create new committee
@@ -1839,15 +1964,21 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         self.session.add(committee)
-        self.session.flush()  # Get the ID
+        self._batch_flush(force=True)  # Need ID for foreign keys
+        self._committee_cache[cache_key] = committee
         return committee
 
     def _get_or_create_subcommittee(
         self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura
     ) -> SubCommittee:
-        """Get or create subcommittee record"""
+        """Get or create subcommittee record (cached)"""
         # First get or create parliamentary organization
         organization = self._get_or_create_parliamentary_organization(legislatura)
+
+        # Check cache first
+        cache_key = (id_externo, organization.id)
+        if cache_key in self._subcommittee_cache:
+            return self._subcommittee_cache[cache_key]
 
         subcommittee = (
             self.session.query(SubCommittee)
@@ -1856,6 +1987,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         if subcommittee:
+            self._subcommittee_cache[cache_key] = subcommittee
             return subcommittee
 
         # Create new subcommittee
@@ -1868,15 +2000,21 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         self.session.add(subcommittee)
-        self.session.flush()  # Get the ID
+        self._batch_flush(force=True)  # Need ID for foreign keys
+        self._subcommittee_cache[cache_key] = subcommittee
         return subcommittee
 
     def _get_or_create_work_group(
         self, id_externo: int, sigla: str, nome: str, legislatura: Legislatura
     ) -> WorkGroup:
-        """Get or create work group record"""
+        """Get or create work group record (cached)"""
         # First get or create parliamentary organization
         organization = self._get_or_create_parliamentary_organization(legislatura)
+
+        # Check cache first
+        cache_key = (id_externo, organization.id)
+        if cache_key in self._work_group_cache:
+            return self._work_group_cache[cache_key]
 
         work_group = (
             self.session.query(WorkGroup)
@@ -1885,6 +2023,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         if work_group:
+            self._work_group_cache[cache_key] = work_group
             return work_group
 
         # Create new work group
@@ -1897,7 +2036,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         self.session.add(work_group)
-        self.session.flush()  # Get the ID
+        self._batch_flush(force=True)  # Need ID for foreign keys
+        self._work_group_cache[cache_key] = work_group
         return work_group
 
     # _get_or_create_deputado method now inherited from enhanced base mapper
@@ -2502,7 +2642,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(meeting)
-                self.session.flush()
+                self._batch_flush(force=True)  # Need ID for meeting_attendances FK
 
                 # Process attendance data (Presencas)
                 presencas = reuniao_plenario.find("Presencas")
@@ -2848,9 +2988,14 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         numero: str,
         legislatura: Legislatura,
     ):
-        """Get or create AR Board record"""
+        """Get or create AR Board record (cached)"""
         # First get or create parliamentary organization
         organization = self._get_or_create_parliamentary_organization(legislatura)
+
+        # Check cache first
+        cache_key = (id_orgao, organization.id)
+        if cache_key in self._ar_board_cache:
+            return self._ar_board_cache[cache_key]
 
         ar_board = (
             self.session.query(ARBoard)
@@ -2859,6 +3004,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         if ar_board:
+            self._ar_board_cache[cache_key] = ar_board
             return ar_board
 
         ar_board = ARBoard(
@@ -2871,7 +3017,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         self.session.add(ar_board)
-        self.session.flush()
+        self._batch_flush(force=True)  # Need ID for foreign keys
+        self._ar_board_cache[cache_key] = ar_board
         return ar_board
 
     def _get_or_create_administrative_council(
@@ -2882,9 +3029,14 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         numero: str,
         legislatura: Legislatura,
     ):
-        """Get or create Administrative Council record"""
+        """Get or create Administrative Council record (cached)"""
         # First get or create parliamentary organization
         organization = self._get_or_create_parliamentary_organization(legislatura)
+
+        # Check cache first
+        cache_key = (id_orgao, organization.id)
+        if cache_key in self._admin_council_cache:
+            return self._admin_council_cache[cache_key]
 
         admin_council = (
             self.session.query(AdministrativeCouncil)
@@ -2893,6 +3045,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         if admin_council:
+            self._admin_council_cache[cache_key] = admin_council
             return admin_council
 
         admin_council = AdministrativeCouncil(
@@ -2905,7 +3058,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         self.session.add(admin_council)
-        self.session.flush()
+        self._batch_flush(force=True)  # Need ID for foreign keys
+        self._admin_council_cache[cache_key] = admin_council
         return admin_council
 
     def _get_or_create_permanent_committee(
@@ -2916,9 +3070,14 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         numero: str,
         legislatura: Legislatura,
     ):
-        """Get or create Permanent Committee record"""
+        """Get or create Permanent Committee record (cached)"""
         # First get or create parliamentary organization
         organization = self._get_or_create_parliamentary_organization(legislatura)
+
+        # Check cache first
+        cache_key = (id_orgao, organization.id)
+        if cache_key in self._perm_committee_cache:
+            return self._perm_committee_cache[cache_key]
 
         permanent_committee = (
             self.session.query(PermanentCommittee)
@@ -2927,6 +3086,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         if permanent_committee:
+            self._perm_committee_cache[cache_key] = permanent_committee
             return permanent_committee
 
         permanent_committee = PermanentCommittee(
@@ -2939,7 +3099,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         self.session.add(permanent_committee)
-        self.session.flush()
+        self._batch_flush(force=True)  # Need ID for foreign keys
+        self._perm_committee_cache[cache_key] = permanent_committee
         return permanent_committee
 
     def _get_or_create_leader_conference(
@@ -2950,9 +3111,14 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         numero: str,
         legislatura: Legislatura,
     ):
-        """Get or create Leader Conference record"""
+        """Get or create Leader Conference record (cached)"""
         # First get or create parliamentary organization
         organization = self._get_or_create_parliamentary_organization(legislatura)
+
+        # Check cache first
+        cache_key = (id_orgao, organization.id)
+        if cache_key in self._leader_conf_cache:
+            return self._leader_conf_cache[cache_key]
 
         leader_conference = (
             self.session.query(LeaderConference)
@@ -2961,6 +3127,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         if leader_conference:
+            self._leader_conf_cache[cache_key] = leader_conference
             return leader_conference
 
         leader_conference = LeaderConference(
@@ -2973,7 +3140,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         self.session.add(leader_conference)
-        self.session.flush()
+        self._batch_flush(force=True)  # Need ID for foreign keys
+        self._leader_conf_cache[cache_key] = leader_conference
         return leader_conference
 
     def _get_or_create_commission_president_conference(
@@ -2985,7 +3153,12 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         sigla_legislatura: str,
         organization,
     ):
-        """Get or create Commission President Conference record"""
+        """Get or create Commission President Conference record (cached)"""
+        # Check cache first
+        cache_key = (id_orgao, organization.id)
+        if cache_key in self._comm_pres_conf_cache:
+            return self._comm_pres_conf_cache[cache_key]
+
         commission_conference = (
             self.session.query(CommissionPresidentConference)
             .filter_by(id_orgao=id_orgao, organization_id=organization.id)
@@ -2996,7 +3169,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             # Update sigla_legislatura if provided (for XIII Legislature)
             if sigla_legislatura and not commission_conference.sigla_legislatura:
                 commission_conference.sigla_legislatura = sigla_legislatura
-                self.session.flush()
+                self._batch_flush()
+            self._comm_pres_conf_cache[cache_key] = commission_conference
             return commission_conference
 
         commission_conference = CommissionPresidentConference(
@@ -3009,7 +3183,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         )
 
         self.session.add(commission_conference)
-        self.session.flush()
+        self._batch_flush(force=True)  # Need ID for foreign keys
+        self._comm_pres_conf_cache[cache_key] = commission_conference
         return commission_conference
 
     def _process_deputy_ar_board_membership(
@@ -3050,7 +3225,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(composition)
-            self.session.flush()
+            self._batch_flush()
 
             # Process parliamentary group situations
             dep_gp = deputado_data.find("DepGP")
@@ -3098,7 +3273,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(composition)
-            self.session.flush()
+            self._batch_flush()
 
             # Process parliamentary group situations
             dep_gp = historico_data.find("depGP")
@@ -3150,7 +3325,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(composition)
-            self.session.flush()
+            self._batch_flush()
 
             # Process parliamentary group situations
             dep_gp = historico_data.find("depGP")
@@ -3209,7 +3384,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(composition)
-            self.session.flush()
+            self._batch_flush()
 
             # Process parliamentary group situations
             dep_gp = historico_data.find("depGP")
@@ -3268,7 +3443,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(composition)
-            self.session.flush()
+            self._batch_flush()
 
             # Process parliamentary group situations
             dep_gp = historico_data.find("depGP")
@@ -3322,7 +3497,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(composition)
-            self.session.flush()
+            self._batch_flush()
 
             # Process parliamentary group situations
             dep_gp = deputado_data.find("DepGP")
@@ -3371,7 +3546,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(composition)
-            self.session.flush()
+            self._batch_flush()
 
             # Process parliamentary group situations
             dep_gp = deputado_data.find("DepGP")
@@ -3423,7 +3598,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(composition)
-            self.session.flush()
+            self._batch_flush()
 
             # Process parliamentary group situations
             dep_gp = historico_data.find("depGP")
@@ -3479,7 +3654,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(composition)
-            self.session.flush()
+            self._batch_flush()
 
             # Process parliamentary group situations
             dep_gp = deputado_data.find("DepGP")
@@ -3531,7 +3706,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(composition)
-            self.session.flush()
+            self._batch_flush()
 
             # Process parliamentary group situations
             dep_gp = historico_data.find("depGP")
@@ -3592,7 +3767,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(composition)
-            self.session.flush()
+            self._batch_flush()
 
             # Process parliamentary group situations
             dep_gp = historico_data.find("depGP")

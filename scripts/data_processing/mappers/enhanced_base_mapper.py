@@ -28,6 +28,115 @@ from .coalition_detector import CoalitionDetector
 logger = logging.getLogger(__name__)
 
 
+class CacheMixin:
+    """
+    Mixin providing entity caching and batch processing capabilities.
+
+    This mixin dramatically improves import performance by:
+    1. Caching frequently accessed entities (Legislatura, Deputado, Partido)
+    2. Batching database flushes to reduce round-trips
+    3. Providing foundation for import order dependencies
+
+    All caches are session-scoped and should be cleared between processing runs.
+    """
+
+    # Batch processing configuration
+    BATCH_SIZE = 100  # Flush every N records for performance
+
+    # Import order dependencies - override in child classes to declare dependencies
+    # Example: IMPORT_DEPENDENCIES = ['biografico', 'legislaturas']
+    IMPORT_DEPENDENCIES: List[str] = []
+
+    def _init_caches(self):
+        """Initialize all entity caches - call from __init__"""
+        # Core entity caches
+        self._legislatura_cache: Dict[str, 'Legislatura'] = {}  # numero -> Legislatura
+        self._deputado_cache: Dict[str, 'Deputado'] = {}  # Various keys -> Deputado
+        self._partido_cache: Dict[str, Any] = {}  # sigla -> Partido (when model exists)
+
+        # Batch flush counter
+        self._pending_count = 0
+
+    def _batch_flush(self, force: bool = False) -> None:
+        """
+        Batch flush strategy - only flush every BATCH_SIZE operations.
+        This dramatically reduces database round-trips.
+
+        Args:
+            force: If True, flush immediately regardless of pending count
+        """
+        self._pending_count += 1
+        if force or self._pending_count >= self.BATCH_SIZE:
+            self.session.flush()
+            self._pending_count = 0
+
+    def _preload_shared_caches(self, legislatura: 'Legislatura' = None) -> None:
+        """
+        Preload shared entity caches for performance optimization.
+
+        Call this at the start of processing to pre-populate caches with
+        existing entities, avoiding individual queries during processing.
+
+        Args:
+            legislatura: Optional legislature to scope preloading
+        """
+        logger.info("Preloading shared entity caches...")
+
+        # Preload all legislaturas (typically small table)
+        from database.models import Legislatura as LegislaturaModel
+        all_legislaturas = self.session.query(LegislaturaModel).all()
+        for leg in all_legislaturas:
+            self._legislatura_cache[leg.numero] = leg
+        logger.debug(f"Cached {len(self._legislatura_cache)} legislaturas")
+
+        # Preload deputies for specific legislature if provided
+        if legislatura:
+            from database.models import Deputado as DeputadoModel
+            deputies = self.session.query(DeputadoModel).filter_by(
+                legislatura_id=legislatura.id
+            ).all()
+            for deputy in deputies:
+                # Cache by multiple keys for flexible lookup
+                self._deputado_cache[f"id_{deputy.id}"] = deputy
+                if deputy.id_cadastro:
+                    self._deputado_cache[f"cadastro_{deputy.id_cadastro}"] = deputy
+            logger.debug(f"Cached {len(deputies)} deputies for legislature {legislatura.numero}")
+
+    def _clear_caches(self) -> None:
+        """
+        Clear all entity caches.
+
+        Call this when switching legislatures or after processing completes
+        to free memory and ensure fresh data on next processing run.
+        """
+        if hasattr(self, '_legislatura_cache'):
+            self._legislatura_cache.clear()
+        if hasattr(self, '_deputado_cache'):
+            self._deputado_cache.clear()
+        if hasattr(self, '_partido_cache'):
+            self._partido_cache.clear()
+        self._pending_count = 0
+        logger.debug("Cleared all entity caches")
+
+    def _get_cached_legislatura(self, numero: str) -> Optional['Legislatura']:
+        """Get legislatura from cache if available"""
+        return self._legislatura_cache.get(numero)
+
+    def _cache_legislatura(self, legislatura: 'Legislatura') -> None:
+        """Add legislatura to cache"""
+        self._legislatura_cache[legislatura.numero] = legislatura
+
+    def _get_cached_deputado(self, key: str) -> Optional['Deputado']:
+        """Get deputado from cache if available"""
+        return self._deputado_cache.get(key)
+
+    def _cache_deputado(self, deputado: 'Deputado') -> None:
+        """Add deputado to cache with multiple lookup keys"""
+        self._deputado_cache[f"id_{deputado.id}"] = deputado
+        if deputado.id_cadastro:
+            self._deputado_cache[f"cadastro_{deputado.id_cadastro}"] = deputado
+
+
 class CoalitionDetectionMixin:
     """Mixin providing coalition detection capabilities to mappers"""
     
@@ -363,56 +472,70 @@ class LegislatureHandlerMixin:
         return leg_des
 
     def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
-        """Get existing or create new legislatura record by Roman numeral"""
+        """
+        Get existing or create new legislatura record by Roman numeral (cached).
+
+        Uses CacheMixin cache if available for performance optimization.
+        """
         logger.debug(f"_get_or_create_legislatura called with sigla: '{legislatura_sigla}'")
-        
+
         if not hasattr(self, "session"):
             raise AttributeError(
                 "Session not available - ensure DatabaseSessionMixin is used"
             )
-        
+
         # Normalize input
         normalized_sigla = legislatura_sigla.upper().strip()
-        
+        if not normalized_sigla:
+            raise ValueError("legislatura_sigla cannot be empty or whitespace-only")
+
         # Map variations to standard forms
         legislature_mappings = {
             # CONSTITUINTE variations
             "CONSTITUINTE": "CONSTITUINTE",
-            "CONSTITUENTE": "CONSTITUINTE", 
+            "CONSTITUENTE": "CONSTITUINTE",
             "CONS": "CONSTITUINTE",
             "CONST": "CONSTITUINTE",
             # First legislature variations
             "I": "I",
-            "IA": "I", 
+            "IA": "I",
             "IB": "I",
             # All other Roman numerals (no variations)
-            "II": "II", "III": "III", "IV": "IV", "V": "V", "VI": "VI", 
-            "VII": "VII", "VIII": "VIII", "IX": "IX", "X": "X", "XI": "XI", 
-            "XII": "XII", "XIII": "XIII", "XIV": "XIV", "XV": "XV", 
+            "II": "II", "III": "III", "IV": "IV", "V": "V", "VI": "VI",
+            "VII": "VII", "VIII": "VIII", "IX": "IX", "X": "X", "XI": "XI",
+            "XII": "XII", "XIII": "XIII", "XIV": "XIV", "XV": "XV",
             "XVI": "XVI", "XVII": "XVII", "XVIII": "XVIII"
         }
-        
+
         # Get the canonical form
         target_legislature = legislature_mappings.get(normalized_sigla, normalized_sigla)
         logger.debug(f"Mapped '{legislatura_sigla}' to '{target_legislature}'")
-        
+
+        # Check cache first (if CacheMixin is available)
+        if hasattr(self, '_legislatura_cache') and target_legislature in self._legislatura_cache:
+            logger.debug(f"Cache hit for legislatura '{target_legislature}'")
+            return self._legislatura_cache[target_legislature]
+
         # Try to find existing legislatura by numero
         legislatura = self.session.query(Legislatura).filter_by(numero=target_legislature).first()
-        
+
         if legislatura:
             logger.debug(f"Found existing legislatura '{target_legislature}' (ID: {legislatura.id})")
+            # Cache for future lookups
+            if hasattr(self, '_legislatura_cache'):
+                self._legislatura_cache[target_legislature] = legislatura
             return legislatura
-        
+
         # Create new legislatura
         logger.debug(f"Creating new legislatura: '{target_legislature}'")
-        
+
         if target_legislature == "CONSTITUINTE":
             designacao = "Assembleia Constituinte"
         else:
             # Get numeric value for designacao
             leg_number = self.ROMAN_TO_NUMBER.get(target_legislature, 0)
             designacao = f"{leg_number}.ª Legislatura" if leg_number > 0 else target_legislature
-            
+
         legislatura = Legislatura(
             numero=target_legislature,
             designacao=designacao,
@@ -421,8 +544,17 @@ class LegislatureHandlerMixin:
         )
 
         self.session.add(legislatura)
-        self.session.flush()  # Get the ID
-        
+        # Force flush to get ID since Legislatura is typically needed immediately for foreign keys
+        # NOTE: Legislatura creation is rare (typically 17 records max), so force=True is acceptable
+        if hasattr(self, '_batch_flush'):
+            self._batch_flush(force=True)
+        else:
+            self.session.flush()
+
+        # Cache for future lookups
+        if hasattr(self, '_legislatura_cache'):
+            self._legislatura_cache[target_legislature] = legislatura
+
         logger.info(f"Created new legislatura: {target_legislature} (ID: {legislatura.id})")
         return legislatura
 
@@ -458,15 +590,17 @@ class LegislatureHandlerMixin:
 
     def _get_or_create_deputado(self, record_id: int, id_cadastro: int, nome: str, nome_completo: str = None, legislatura_id: int = None, xml_context: ET.Element = None) -> Deputado:
         """
-        Get or create deputy record with CORRECT primary key handling
-        
+        Get or create deputy record with CORRECT primary key handling (cached).
+
         CRITICAL FIX: The issue was that foreign key references in XML data point to deputado.id,
         not id_cadastro. This method uses record_id as the deputado.id (primary key) that other
         records will reference, while id_cadastro tracks the same person across legislatures.
-        
+
         IMPORTANT: LegDes from XML takes precedence over filename-based legislature extraction
         to handle cases where files contain data for multiple legislatures.
-        
+
+        Uses CacheMixin cache if available for performance optimization.
+
         Args:
             record_id: The ID from XML data that becomes deputado.id (primary key for foreign key references)
             id_cadastro: The cadastral ID for linking the same person across legislatures
@@ -474,13 +608,24 @@ class LegislatureHandlerMixin:
             nome_completo: Deputy's full name (optional)
             legislatura_id: Legislature ID (optional, can be derived from context)
             xml_context: XML element context to extract LegDes (takes precedence over filename)
-            
+
         Returns:
             Deputado record that can be referenced by its .id field (which equals record_id)
         """
         if not hasattr(self, "session"):
             raise AttributeError("Session not available - ensure DatabaseSessionMixin is used")
-        
+
+        # Check cache first (if CacheMixin is available)
+        cache_key = f"id_{record_id}"
+        if hasattr(self, '_deputado_cache') and cache_key in self._deputado_cache:
+            deputado = self._deputado_cache[cache_key]
+            # Update with any new information we have
+            if nome_completo and not deputado.nome_completo:
+                deputado.nome_completo = nome_completo
+            if nome and deputado.nome != nome:
+                deputado.nome = nome
+            return deputado
+
         # First, check if this specific record_id already exists as primary key
         deputado = self.session.query(Deputado).filter_by(id=record_id).first()
         if deputado:
@@ -489,13 +634,18 @@ class LegislatureHandlerMixin:
                 deputado.nome_completo = nome_completo
             if nome and deputado.nome != nome:
                 deputado.nome = nome
+            # Cache for future lookups
+            if hasattr(self, '_deputado_cache'):
+                self._deputado_cache[cache_key] = deputado
+                if id_cadastro:
+                    self._deputado_cache[f"cadastro_{id_cadastro}"] = deputado
             return deputado
-        
+
         # Check if this person (by id_cadastro) exists with a different record_id
         existing_person = self.session.query(Deputado).filter_by(id_cadastro=id_cadastro).first()
         if existing_person:
             logger.info(f"Deputy {nome} (cadastro {id_cadastro}) already exists with different record ID {existing_person.id}, creating new record with ID {record_id}")
-        
+
         # Get legislature ID if not provided - prioritize XML LegDes over filename
         if legislatura_id is None:
             # CRITICAL FIX: First try to extract from XML context (LegDes takes precedence)
@@ -512,7 +662,7 @@ class LegislatureHandlerMixin:
                             logger.info(f"Using legislature from XML LegDes '{leg_des}' -> '{legislatura_sigla}' (ID: {legislatura_id}) for deputy {nome}")
                     except Exception as e:
                         logger.warning(f"Failed to extract legislature from XML LegDes '{leg_des}' for deputy {nome}: {e}")
-            
+
             # Fallback to filename-based extraction if XML didn't provide legislature
             if legislatura_id is None:
                 if hasattr(self, 'file_info'):
@@ -521,7 +671,7 @@ class LegislatureHandlerMixin:
                 else:
                     # Last resort fallback
                     raise ValueError(f"Cannot determine legislature_id for deputy {nome} - no XML LegDes or file context available")
-        
+
         # Create new deputy record with specific record_id as primary key
         deputado = Deputado(
             id=record_id,  # CRITICAL: Use record_id as primary key for foreign key references
@@ -530,10 +680,22 @@ class LegislatureHandlerMixin:
             nome_completo=nome_completo,
             legislatura_id=legislatura_id
         )
-        
+
         self.session.add(deputado)
-        self.session.flush()  # Ensure the record gets the correct ID
-        
+        # Force flush to get ID since Deputado is referenced by foreign keys in other records
+        # NOTE: For bulk operations, child mappers should use _batch_flush() without force=True
+        # after processing groups of related records (e.g., mandates, interventions)
+        if hasattr(self, '_batch_flush'):
+            self._batch_flush(force=True)
+        else:
+            self.session.flush()
+
+        # Cache for future lookups
+        if hasattr(self, '_deputado_cache'):
+            self._deputado_cache[cache_key] = deputado
+            if id_cadastro:
+                self._deputado_cache[f"cadastro_{id_cadastro}"] = deputado
+
         logger.debug(f"Created deputy record: ID={deputado.id}, cadastro={id_cadastro}, name={nome}")
         return deputado
 
@@ -598,7 +760,18 @@ class XMLProcessingMixin:
         return None
 
     def _get_text(self, parent: ET.Element, tag: str) -> Optional[str]:
-        """Get text from XML element"""
+        """
+        Get text from XML element.
+
+        DEPRECATED: Use _get_text_value() instead for consistency across all mappers.
+        This method is kept for backward compatibility but will be removed in a future version.
+        """
+        import warnings
+        warnings.warn(
+            "_get_text() is deprecated, use _get_text_value() instead for consistency",
+            DeprecationWarning,
+            stacklevel=2
+        )
         if parent is None:
             return None
         element = parent.find(tag)
@@ -727,13 +900,31 @@ class XMLProcessingMixin:
 
 
 class EnhancedSchemaMapper(
-    DatabaseSessionMixin, LegislatureHandlerMixin, XMLProcessingMixin, CoalitionDetectionMixin, ABC
+    CacheMixin, DatabaseSessionMixin, LegislatureHandlerMixin, XMLProcessingMixin, CoalitionDetectionMixin, ABC
 ):
-    """Enhanced base class for all schema mappers with consolidated functionality"""
+    """
+    Enhanced base class for all schema mappers with consolidated functionality.
+
+    Provides:
+    - Entity caching (Legislatura, Deputado, Partido) via CacheMixin
+    - Batch processing with _batch_flush() for performance
+    - SQLAlchemy session management via DatabaseSessionMixin
+    - Legislature extraction and handling via LegislatureHandlerMixin
+    - XML processing utilities via XMLProcessingMixin
+    - Coalition detection via CoalitionDetectionMixin
+
+    Child classes can declare import order dependencies by overriding:
+        IMPORT_DEPENDENCIES = ['dependency1', 'dependency2']
+
+    Cache is session-scoped and automatically initialized. Call _clear_caches()
+    when switching between processing runs or legislatures.
+    """
 
     def __init__(self, session):
         DatabaseSessionMixin.__init__(self, session)
         CoalitionDetectionMixin.__init__(self)
+        # Initialize entity caches from CacheMixin
+        self._init_caches()
 
     @abstractmethod
     def get_expected_fields(self) -> Set[str]:

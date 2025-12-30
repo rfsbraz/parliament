@@ -145,7 +145,8 @@ class AgendaParlamentarMapper(SchemaMapper):
                 logger.error(f"Could not extract legislature from any source: {e}")
                 raise
         
-        legislatura_id = self._get_or_create_legislatura(legislatura_sigla)
+        legislatura = self._get_or_create_legislatura(legislatura_sigla)
+        legislatura_id = legislatura.id
         
         # Process each agenda item
         for agenda_item in xml_root.findall('.//AgendaParlamentar'):
@@ -388,35 +389,9 @@ class AgendaParlamentarMapper(SchemaMapper):
             logger.error(f"Error processing anexo eventos: {e}")
             return False
     
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> int:
-        """Get or create legislatura record using SQLAlchemy ORM"""
-        try:
-            # Check if legislatura exists
-            legislatura = self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
-            
-            if legislatura:
-                return legislatura.id
-            
-            # Create new legislatura if it doesn't exist
-            numero_int = self._convert_roman_to_int(legislatura_sigla)
-            
-            new_legislatura = Legislatura(
-                numero=legislatura_sigla,
-                designacao=f"{numero_int}.ª Legislatura"
-            )
-            
-            self.session.add(new_legislatura)
-            
-            return new_legislatura.id
-            
-        except Exception as e:
-            error_msg = f"Error creating legislatura: {e}"
-            logger.error(error_msg)
-            logger.error("Data integrity issue detected during legislatura creation")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
-            raise RuntimeError(f"Data integrity issue: {error_msg}")
-    
+    # NOTE: _get_or_create_legislatura is inherited from EnhancedSchemaMapper (with caching)
+    # Updated calling code at line 148-149 to use legislatura.id
+
     def __del__(self):
         """Cleanup SQLAlchemy session"""
         if hasattr(self, 'session'):
@@ -440,11 +415,5 @@ class AgendaParlamentarMapper(SchemaMapper):
                 return leg_text.upper()
         
         raise Exception("No legislature information found in XML content")
-    
-    def _convert_roman_to_int(self, roman: str) -> int:
-        """Convert Roman numeral to integer"""
-        roman_numerals = {
-            'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10,
-            'XI': 11, 'XII': 12, 'XIII': 13, 'XIV': 14, 'XV': 15, 'XVI': 16, 'XVII': 17, 'CONSTITUINTE': 0
-        }
-        return roman_numerals.get(roman, 17)
+
+    # NOTE: Roman numeral conversion uses ROMAN_TO_NUMBER from LegislatureHandlerMixin

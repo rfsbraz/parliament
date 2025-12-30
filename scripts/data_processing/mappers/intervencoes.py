@@ -562,34 +562,9 @@ class IntervencoesMapper(SchemaMapper):
             self.session.add(audiovisual)
             self.processed_audiovisual += 1
     
-    def _get_or_create_legislatura(self, sigla: str) -> Legislatura:
-        """Get or create legislatura from sigla"""
-        legislatura = self.session.query(Legislatura).filter_by(numero=sigla).first()
-        
-        if legislatura:
-            return legislatura
-        
-        # Create new legislatura if it doesn't exist
-        roman_to_num = {
-            'XVII': 17, 'XVI': 16, 'XV': 15, 'XIV': 14, 'XIII': 13,
-            'XII': 12, 'XI': 11, 'X': 10, 'IX': 9, 'VIII': 8,
-            'VII': 7, 'VI': 6, 'V': 5, 'IV': 4, 'III': 3,
-            'II': 2, 'I': 1, 'CONSTITUINTE': 0
-        }
-        
-        numero_int = roman_to_num.get(sigla, 17)
-        
-        legislatura = Legislatura(
-            numero=sigla,
-            designacao=f"{numero_int}.ª Legislatura"
-            # Note: 'ativa' is determined dynamically by data_fim IS NULL
-        )
-        
-        self.session.add(legislatura)
-        self.session.flush()  # Get the ID
-        return legislatura
-    
-    
+    # NOTE: _get_or_create_legislatura is inherited from EnhancedSchemaMapper (with caching)
+    # NOTE: Roman numeral conversion uses ROMAN_TO_NUMBER from LegislatureHandlerMixin
+
     def _parse_date(self, date_str: str) -> Optional[str]:
         """Parse date string to standard format"""
         if not date_str:

@@ -343,50 +343,8 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
 
         return None
 
-    def _get_or_create_legislatura(self, legislatura_sigla: str) -> Legislatura:
-        """Get or create legislatura record"""
-        legislatura = (
-            self.session.query(Legislatura).filter_by(numero=legislatura_sigla).first()
-        )
-
-        if legislatura:
-            return legislatura
-
-        # Create new legislatura if it doesn't exist
-        numero_int = self._convert_roman_to_int(legislatura_sigla)
-
-        legislatura = Legislatura(
-            numero=legislatura_sigla,
-            designacao=f"{numero_int}.ª Legislatura",
-        )
-
-        self.session.add(legislatura)
-        self.session.flush()  # Get the ID
-        return legislatura
-
-    def _convert_roman_to_int(self, roman: str) -> int:
-        """Convert Roman numeral to integer"""
-        roman_numerals = {
-            "I": 1,
-            "II": 2,
-            "III": 3,
-            "IV": 4,
-            "V": 5,
-            "VI": 6,
-            "VII": 7,
-            "VIII": 8,
-            "IX": 9,
-            "X": 10,
-            "XI": 11,
-            "XII": 12,
-            "XIII": 13,
-            "XIV": 14,
-            "XV": 15,
-            "XVI": 16,
-            "XVII": 17,
-            "CONSTITUINTE": 0,
-        }
-        return roman_numerals.get(roman, 17)
+    # NOTE: _get_or_create_legislatura is inherited from EnhancedSchemaMapper (with caching)
+    # NOTE: Roman numeral conversion uses ROMAN_TO_NUMBER from LegislatureHandlerMixin
 
     def _process_request_publications(
         self, request: ET.Element, pergunta_req: PerguntaRequerimento
