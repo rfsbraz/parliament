@@ -280,8 +280,13 @@ class DownloadManager:
                     # Apply file type filter
                     if self.allowed_file_types:
                         query = query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
-                    
-                    files_to_download = query.limit(10).all()
+
+                    # Deterministic ordering for reproducibility
+                    files_to_download = query.order_by(
+                        ImportStatus.category,
+                        ImportStatus.legislatura,
+                        ImportStatus.file_name
+                    ).limit(10).all()
                     
                     if not files_to_download:
                         time.sleep(1)
@@ -401,8 +406,13 @@ class ImportProcessor:
                         # Apply file type filter
                         if self.allowed_file_types:
                             query = query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
-                        
-                        pending_files = query.limit(1).all()
+
+                        # Deterministic ordering for reproducibility
+                        pending_files = query.order_by(
+                            ImportStatus.category,
+                            ImportStatus.legislatura,
+                            ImportStatus.file_name
+                        ).limit(1).all()
                         
                         if pending_files:
                             record_id = pending_files[0].id
@@ -542,8 +552,13 @@ class PipelineOrchestrator:
                 # Apply file type filter
                 if self.allowed_file_types:
                     query = query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
-                
-                pending_files = query.order_by(ImportStatus.discovered_at.desc()).limit(limit).all()
+
+                # Deterministic ordering for reproducibility
+                pending_files = query.order_by(
+                    ImportStatus.category,
+                    ImportStatus.legislatura,
+                    ImportStatus.file_name
+                ).limit(limit).all()
                 
                 return pending_files
         except Exception as e:

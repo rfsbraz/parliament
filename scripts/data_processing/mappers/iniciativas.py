@@ -32,11 +32,75 @@ Maps to comprehensive database schema with full relational structure.
 import xml.etree.ElementTree as ET
 import os
 import re
-from typing import Dict, Optional, Set, List
+from typing import Dict, Optional, Set, List, Tuple, Any
+from dataclasses import dataclass, field
 import logging
 from datetime import datetime
 
 from .enhanced_base_mapper import SchemaMapper, SchemaError
+
+
+@dataclass
+class ParsedIniciativa:
+    """Parsed initiative data before database insertion"""
+    xml_element: ET.Element
+    ini_id: Optional[int] = None
+    data: Dict[str, Any] = field(default_factory=dict)
+    db_obj: Any = None  # Will hold the database object after creation
+
+
+@dataclass
+class ParsedEvento:
+    """Parsed event data before database insertion"""
+    xml_element: ET.Element
+    iniciativa_ref: ParsedIniciativa = None
+    data: Dict[str, Any] = field(default_factory=dict)
+    db_obj: Any = None
+
+
+@dataclass
+class ParsedVotacao:
+    """Parsed voting data before database insertion"""
+    xml_element: ET.Element
+    evento_ref: ParsedEvento = None
+    data: Dict[str, Any] = field(default_factory=dict)
+    db_obj: Any = None
+
+
+@dataclass
+class ParsedComissao:
+    """Parsed committee data before database insertion"""
+    xml_element: ET.Element
+    evento_ref: ParsedEvento = None
+    data: Dict[str, Any] = field(default_factory=dict)
+    db_obj: Any = None
+
+
+@dataclass
+class ParsedIntervencao:
+    """Parsed intervention/debate data before database insertion"""
+    xml_element: ET.Element
+    evento_ref: ParsedEvento = None
+    data: Dict[str, Any] = field(default_factory=dict)
+    db_obj: Any = None
+
+
+@dataclass
+class ParsedOrador:
+    """Parsed speaker data before database insertion"""
+    xml_element: ET.Element
+    intervencao_ref: ParsedIntervencao = None
+    data: Dict[str, Any] = field(default_factory=dict)
+    db_obj: Any = None
+
+
+@dataclass
+class ParsedProposta:
+    """Parsed amendment proposal data before database insertion"""
+    xml_element: ET.Element
+    iniciativa_ref: ParsedIniciativa = None
+    data: Dict[str, Any] = field(default_factory=dict)
+    db_obj: Any = None
 
 # Import our models
 import sys
@@ -62,10 +126,22 @@ logger = logging.getLogger(__name__)
 
 class InitiativasMapper(SchemaMapper):
     """Comprehensive schema mapper for legislative initiatives files"""
-    
+
     def __init__(self, session):
         # Accept SQLAlchemy session directly (passed by unified importer)
         super().__init__(session)
+        # Initiative cache for get-or-create pattern
+        self._iniciativa_cache: Dict[int, IniciativaParlamentar] = {}
+
+    def _preload_iniciativas(self, legislatura_id: int) -> None:
+        """Preload existing initiatives for this legislature into cache"""
+        iniciativas = self.session.query(IniciativaParlamentar).filter_by(
+            legislatura_id=legislatura_id
+        ).all()
+        for ini in iniciativas:
+            if ini.ini_id:
+                self._iniciativa_cache[ini.ini_id] = ini
+        logger.info(f"Preloaded {len(self._iniciativa_cache)} initiatives into cache")
     
     def get_expected_fields(self) -> Set[str]:
         """
@@ -437,38 +513,191 @@ class InitiativasMapper(SchemaMapper):
     
 
     def validate_and_map(self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False) -> Dict:
-        """Map legislative initiatives with complete structure to database"""
+        """Map legislative initiatives with complete structure to database using batched processing.
+
+        Uses level-by-level batching to minimize database flushes:
+        - Phase 1: Parse all XML into memory structures
+        - Phase 2: Batch create initiatives (1 flush)
+        - Phase 3: Batch create eventos (1 flush)
+        - Phase 4: Batch create votacoes, comissoes, intervencoes, propostas (1 flush)
+        - Phase 5: Batch create oradores (1 flush)
+        - Phase 6: Create all leaf records (ausencias, publicacoes, etc.) (1 flush)
+
+        This reduces ~28K flushes to ~6 flushes for large files.
+        """
         results = {'records_processed': 0, 'records_imported': 0, 'errors': []}
-        
+
         try:
             # Validate schema coverage with strict mode support
             self.validate_schema_coverage(xml_root, file_info, strict_mode)
-            
+
             # Extract legislatura from filename
             filename = os.path.basename(file_info['file_path'])
             leg_match = re.search(r'Iniciativas(XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|CONSTITUINTE|X|V|I)\.xml', filename)
             legislatura_sigla = leg_match.group(1) if leg_match else 'XVII'
             legislatura = self._get_or_create_legislatura(legislatura_sigla)
-            
-            for iniciativa in xml_root.findall('.//Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut'):
+
+            # Preload existing initiatives for faster lookups
+            self._preload_iniciativas(legislatura.id)
+
+            # ============================================================
+            # PHASE 1: Parse all XML into memory structures
+            # ============================================================
+            logger.info("Phase 1: Parsing XML into memory structures...")
+            parsed_iniciativas: List[ParsedIniciativa] = []
+            parsed_eventos: List[ParsedEvento] = []
+            parsed_votacoes: List[ParsedVotacao] = []
+            parsed_comissoes: List[ParsedComissao] = []
+            parsed_intervencoes: List[ParsedIntervencao] = []
+            parsed_oradores: List[ParsedOrador] = []
+            parsed_propostas: List[ParsedProposta] = []
+
+            for iniciativa_xml in xml_root.findall('.//Pt_gov_ar_objectos_iniciativas_DetalhePesquisaIniciativasOut'):
                 try:
-                    success = self._process_iniciativa_complete(iniciativa, legislatura)
+                    parsed_ini = self._parse_iniciativa(iniciativa_xml, legislatura)
+                    parsed_iniciativas.append(parsed_ini)
+
+                    # Parse eventos for this initiative
+                    eventos_xml = iniciativa_xml.find('IniEventos')
+                    if eventos_xml is not None:
+                        for evento_xml in eventos_xml.findall('Pt_gov_ar_objectos_iniciativas_EventosOut'):
+                            parsed_evt = self._parse_evento(evento_xml, parsed_ini)
+                            parsed_eventos.append(parsed_evt)
+
+                            # Parse votacoes for this evento
+                            votacao_xml = evento_xml.find('Votacao')
+                            if votacao_xml is not None:
+                                for vot_xml in votacao_xml.findall('pt_gov_ar_objectos_VotacaoOut'):
+                                    parsed_vot = self._parse_votacao(vot_xml, parsed_evt)
+                                    parsed_votacoes.append(parsed_vot)
+
+                            # Parse comissoes for this evento
+                            comissao_xml = evento_xml.find('Comissao')
+                            if comissao_xml is not None:
+                                for com_xml in comissao_xml.findall('Pt_gov_ar_objectos_iniciativas_ComissoesIniOut'):
+                                    parsed_com = self._parse_comissao(com_xml, parsed_evt)
+                                    parsed_comissoes.append(parsed_com)
+
+                            # Parse intervencoes for this evento
+                            intervencoes_xml = evento_xml.find('Intervencoes')
+                            if intervencoes_xml is not None:
+                                for int_xml in intervencoes_xml.findall('pt_gov_ar_objectos_IntervencoesOut'):
+                                    parsed_int = self._parse_intervencao(int_xml, parsed_evt)
+                                    parsed_intervencoes.append(parsed_int)
+
+                                    # Parse oradores for this intervencao
+                                    oradores_xml = int_xml.find('Oradores')
+                                    if oradores_xml is not None:
+                                        for orador_xml in oradores_xml.findall('pt_gov_ar_objectos_peticoes_OradoresOut'):
+                                            parsed_orador = self._parse_orador(orador_xml, parsed_int)
+                                            parsed_oradores.append(parsed_orador)
+
+                    # Parse propostas alteracao for this initiative
+                    propostas_xml = iniciativa_xml.find('PropostasAlteracao')
+                    if propostas_xml is not None:
+                        for proposta_xml in propostas_xml.findall('pt_gov_ar_objectos_iniciativas_PropostasAlteracaoOut'):
+                            parsed_prop = self._parse_proposta(proposta_xml, parsed_ini)
+                            parsed_propostas.append(parsed_prop)
+
                     results['records_processed'] += 1
-                    if success:
-                        results['records_imported'] += 1
+
                 except Exception as e:
-                    error_msg = f"Initiative processing error: {str(e)}"
+                    error_msg = f"Initiative parsing error: {str(e)}"
                     logger.error(error_msg)
-                    logger.error("Data integrity issue detected during initiative processing")
                     import traceback
                     logger.error(f"Traceback: {traceback.format_exc()}")
                     results['errors'].append(error_msg)
                     results['records_processed'] += 1
                     raise RuntimeError(f"Data integrity issue: {error_msg}")
-            
-            # Commit all changes
+
+            logger.info(f"Parsed: {len(parsed_iniciativas)} initiatives, {len(parsed_eventos)} eventos, "
+                       f"{len(parsed_votacoes)} votacoes, {len(parsed_comissoes)} comissoes, "
+                       f"{len(parsed_intervencoes)} intervencoes, {len(parsed_oradores)} oradores, "
+                       f"{len(parsed_propostas)} propostas")
+
+            # ============================================================
+            # PHASE 2: Batch create initiatives
+            # ============================================================
+            logger.info("Phase 2: Creating initiatives...")
+            for parsed_ini in parsed_iniciativas:
+                self._create_iniciativa_record(parsed_ini, legislatura)
+            self._batch_flush(force=True)  # Single flush for all initiatives
+            logger.info(f"Created {len(parsed_iniciativas)} initiatives")
+
+            # ============================================================
+            # PHASE 3: Batch create eventos
+            # ============================================================
+            logger.info("Phase 3: Creating eventos...")
+            for parsed_evt in parsed_eventos:
+                self._create_evento_record(parsed_evt)
+            self._batch_flush(force=True)  # Single flush for all eventos
+            logger.info(f"Created {len(parsed_eventos)} eventos")
+
+            # ============================================================
+            # PHASE 4: Batch create votacoes, comissoes, intervencoes, propostas
+            # ============================================================
+            logger.info("Phase 4: Creating votacoes, comissoes, intervencoes, propostas...")
+            for parsed_vot in parsed_votacoes:
+                self._create_votacao_record(parsed_vot)
+            for parsed_com in parsed_comissoes:
+                self._create_comissao_record(parsed_com)
+            for parsed_int in parsed_intervencoes:
+                self._create_intervencao_record(parsed_int)
+            for parsed_prop in parsed_propostas:
+                self._create_proposta_record(parsed_prop)
+            self._batch_flush(force=True)  # Single flush for all level-3 records
+            logger.info(f"Created {len(parsed_votacoes)} votacoes, {len(parsed_comissoes)} comissoes, "
+                       f"{len(parsed_intervencoes)} intervencoes, {len(parsed_propostas)} propostas")
+
+            # ============================================================
+            # PHASE 5: Batch create oradores
+            # ============================================================
+            logger.info("Phase 5: Creating oradores...")
+            for parsed_orador in parsed_oradores:
+                self._create_orador_record(parsed_orador)
+            self._batch_flush(force=True)  # Single flush for all oradores
+            logger.info(f"Created {len(parsed_oradores)} oradores")
+
+            # ============================================================
+            # PHASE 6: Create all leaf records (no flush needed between these)
+            # ============================================================
+            logger.info("Phase 6: Creating leaf records...")
+
+            # Process initiative-level leaf records
+            for parsed_ini in parsed_iniciativas:
+                self._process_iniciativa_leaf_records(parsed_ini)
+
+            # Process evento-level leaf records (publications)
+            for parsed_evt in parsed_eventos:
+                self._process_evento_leaf_records(parsed_evt)
+
+            # Process votacao leaf records (ausencias, publications)
+            for parsed_vot in parsed_votacoes:
+                self._process_votacao_leaf_records(parsed_vot)
+
+            # Process comissao leaf records (publications, relatores, remessas, etc.)
+            for parsed_com in parsed_comissoes:
+                self._process_comissao_leaf_records(parsed_com)
+
+            # Process proposta leaf records (publications)
+            for parsed_prop in parsed_propostas:
+                self._process_proposta_leaf_records(parsed_prop)
+
+            # Process orador leaf records (publications, convidados, membros governo, video links)
+            for parsed_orador in parsed_oradores:
+                self._process_orador_leaf_records(parsed_orador)
+
+            self._batch_flush(force=True)  # Final flush for all leaf records
+            logger.info("Phase 6 complete: All leaf records created")
+
+            # Update results
+            results['records_imported'] = len(parsed_iniciativas)
+
+            # Clear cache after processing
+            self._iniciativa_cache.clear()
+
             return results
-            
+
         except Exception as e:
             error_msg = f"Critical error processing initiatives: {str(e)}"
             logger.error(error_msg)
@@ -497,11 +726,11 @@ class InitiativasMapper(SchemaMapper):
             ini_obs = self._get_text_value(iniciativa, 'IniObs')
             
             # No validation - let record creation fail naturally if ini_id or ini_titulo are actually required
-            
-            # Check if initiative already exists
+
+            # Check cache first, then database (cache was preloaded)
             existing = None
             if ini_id:
-                existing = self.session.query(IniciativaParlamentar).filter_by(ini_id=ini_id).first()
+                existing = self._iniciativa_cache.get(ini_id)
             
             if existing:
                 # Update existing initiative
@@ -538,8 +767,11 @@ class InitiativasMapper(SchemaMapper):
                     updated_at=datetime.now()
                 )
                 self.session.add(existing)
-                self.session.flush()  # Get the ID
-            
+                self._batch_flush(force=True)  # Need ID for child records
+                # Add to cache
+                if ini_id:
+                    self._iniciativa_cache[ini_id] = existing
+
             # Process all related structures
             self._process_autores_outros(iniciativa, existing)
             self._process_autores_deputados(iniciativa, existing)
@@ -568,8 +800,626 @@ class InitiativasMapper(SchemaMapper):
         except Exception as e:
             logger.error(f"Error processing initiative {ini_id}: {e}")
             return False
-    
-    
+
+    # ========================================================================
+    # BATCHED PROCESSING METHODS - Parse, Create, and Leaf Record Processing
+    # ========================================================================
+
+    def _parse_iniciativa(self, iniciativa: ET.Element, legislatura: 'Legislatura') -> ParsedIniciativa:
+        """Parse initiative XML into ParsedIniciativa structure"""
+        ini_id = self._get_int_value(iniciativa, 'IniId')
+        return ParsedIniciativa(
+            xml_element=iniciativa,
+            ini_id=ini_id,
+            data={
+                'ini_nr': self._get_int_value(iniciativa, 'IniNr'),
+                'ini_tipo': self._get_text_value(iniciativa, 'IniTipo'),
+                'ini_desc_tipo': self._get_text_value(iniciativa, 'IniDescTipo'),
+                'ini_leg': self._get_text_value(iniciativa, 'IniLeg'),
+                'ini_sel': self._get_int_value(iniciativa, 'IniSel'),
+                'data_inicio_leg': self._parse_date(self._get_text_value(iniciativa, 'DataInicioleg')),
+                'data_fim_leg': self._parse_date(self._get_text_value(iniciativa, 'DataFimleg')),
+                'ini_titulo': self._get_text_value(iniciativa, 'IniTitulo'),
+                'ini_texto_subst': self._get_text_value(iniciativa, 'IniTextoSubst'),
+                'ini_texto_subst_campo': self._get_text_value(iniciativa, 'IniTextoSubstCampo'),
+                'ini_link_texto': self._get_text_value(iniciativa, 'IniLinkTexto'),
+                'ini_obs': self._get_text_value(iniciativa, 'IniObs'),
+                'legislatura_id': legislatura.id,
+            }
+        )
+
+    def _parse_evento(self, evento: ET.Element, iniciativa_ref: ParsedIniciativa) -> ParsedEvento:
+        """Parse evento XML into ParsedEvento structure"""
+        return ParsedEvento(
+            xml_element=evento,
+            iniciativa_ref=iniciativa_ref,
+            data={
+                'oev_id': self._get_int_value(evento, 'OevId'),
+                'data_fase': self._parse_date(self._get_text_value(evento, 'DataFase')),
+                'fase': self._get_text_value(evento, 'Fase'),
+                'evt_id': self._get_int_value(evento, 'EvtId'),
+                'codigo_fase': self._get_int_value(evento, 'CodigoFase'),
+                'obs_fase': self._get_text_value(evento, 'ObsFase'),
+                'act_id': self._get_int_value(evento, 'ActId'),
+                'oev_text_id': self._get_int_value(evento, 'OevTextId'),
+                'textos_aprovados': self._get_text_value(evento, 'TextosAprovados'),
+            }
+        )
+
+    def _parse_votacao(self, vot: ET.Element, evento_ref: ParsedEvento) -> ParsedVotacao:
+        """Parse votacao XML into ParsedVotacao structure"""
+        return ParsedVotacao(
+            xml_element=vot,
+            evento_ref=evento_ref,
+            data={
+                'resultado': self._get_text_value(vot, 'resultado'),
+                'desc': self._get_text_value(vot, 'desc'),
+                'a_favor': self._get_text_value(vot, 'afavor'),
+                'contra': self._get_text_value(vot, 'contra'),
+                'abstencao': self._get_text_value(vot, 'abstencao'),
+                'tipo_reuniao': self._get_text_value(vot, 'tipoReuniao'),
+                'detalhe': self._get_text_value(vot, 'detalhe'),
+                'unanime': self._get_text_value(vot, 'unanime'),
+                'data_votacao': self._parse_date(self._get_text_value(vot, 'data')),
+                'descricao': self._get_text_value(vot, 'descricao'),
+            }
+        )
+
+    def _parse_comissao(self, com: ET.Element, evento_ref: ParsedEvento) -> ParsedComissao:
+        """Parse comissao XML into ParsedComissao structure"""
+        return ParsedComissao(
+            xml_element=com,
+            evento_ref=evento_ref,
+            data={
+                'com_id': self._get_int_value(com, 'comId'),
+                'com_nome': self._get_text_value(com, 'comNome'),
+                'com_competente': self._get_text_value(com, 'comCompetente'),
+                'data_baixa': self._parse_date(self._get_text_value(com, 'dataBaixa')),
+                'data_relatorio': self._parse_date(self._get_text_value(com, 'dataRelatorio')),
+                'data_parecer': self._parse_date(self._get_text_value(com, 'dataParecer')),
+                'obs': self._get_text_value(com, 'obs'),
+                'link_parecer': self._get_text_value(com, 'linkParecer'),
+            }
+        )
+
+    def _parse_intervencao(self, int_elem: ET.Element, evento_ref: ParsedEvento) -> ParsedIntervencao:
+        """Parse intervencao XML into ParsedIntervencao structure"""
+        return ParsedIntervencao(
+            xml_element=int_elem,
+            evento_ref=evento_ref,
+            data={
+                'data_reuniao_plenaria': self._parse_date(self._get_text_value(int_elem, 'dataReuniaoPlenaria')),
+            }
+        )
+
+    def _parse_orador(self, orador: ET.Element, intervencao_ref: ParsedIntervencao) -> ParsedOrador:
+        """Parse orador XML into ParsedOrador structure"""
+        return ParsedOrador(
+            xml_element=orador,
+            intervencao_ref=intervencao_ref,
+            data={
+                'nome': self._get_text_value(orador, 'nome'),
+                'gp': self._get_text_value(orador, 'GP'),
+                'cargo': self._get_text_value(orador, 'cargo'),
+                'tipo_intervencao': self._get_text_value(orador, 'tipoIntervencao'),
+                'hora_inicio': self._get_text_value(orador, 'horaInicio'),
+                'hora_termo': self._get_text_value(orador, 'horaTermo'),
+                'fase_sessao': self._get_text_value(orador, 'faseSessao'),
+                'sumario': self._get_text_value(orador, 'sumario'),
+            }
+        )
+
+    def _parse_proposta(self, proposta: ET.Element, iniciativa_ref: ParsedIniciativa) -> ParsedProposta:
+        """Parse proposta alteracao XML into ParsedProposta structure"""
+        return ParsedProposta(
+            xml_element=proposta,
+            iniciativa_ref=iniciativa_ref,
+            data={
+                'proposta_id': self._get_int_value(proposta, 'id'),
+                'tipo': self._get_text_value(proposta, 'tipo'),
+                'autor': self._get_text_value(proposta, 'autor'),
+            }
+        )
+
+    def _create_iniciativa_record(self, parsed: ParsedIniciativa, legislatura: 'Legislatura') -> None:
+        """Create or update initiative database record"""
+        ini_id = parsed.ini_id
+        data = parsed.data
+
+        # Check cache first
+        existing = self._iniciativa_cache.get(ini_id) if ini_id else None
+
+        if existing:
+            # Update existing initiative
+            existing.ini_nr = data['ini_nr']
+            existing.ini_tipo = data['ini_tipo']
+            existing.ini_desc_tipo = data['ini_desc_tipo']
+            existing.ini_leg = data['ini_leg']
+            existing.ini_sel = data['ini_sel']
+            existing.data_inicio_leg = data['data_inicio_leg']
+            existing.data_fim_leg = data['data_fim_leg']
+            existing.ini_titulo = data['ini_titulo']
+            existing.ini_texto_subst = data['ini_texto_subst']
+            existing.ini_link_texto = data['ini_link_texto']
+            existing.ini_obs = data['ini_obs']
+            existing.legislatura_id = data['legislatura_id']
+            existing.updated_at = datetime.now()
+            parsed.db_obj = existing
+        else:
+            # Create new initiative record
+            new_ini = IniciativaParlamentar(
+                ini_id=ini_id,
+                ini_nr=data['ini_nr'],
+                ini_tipo=data['ini_tipo'],
+                ini_desc_tipo=data['ini_desc_tipo'],
+                ini_leg=data['ini_leg'],
+                ini_sel=data['ini_sel'],
+                data_inicio_leg=data['data_inicio_leg'],
+                data_fim_leg=data['data_fim_leg'],
+                ini_titulo=data['ini_titulo'],
+                ini_texto_subst=data['ini_texto_subst'],
+                ini_texto_subst_campo=data['ini_texto_subst_campo'],
+                ini_link_texto=data['ini_link_texto'],
+                ini_obs=data['ini_obs'],
+                legislatura_id=data['legislatura_id'],
+                updated_at=datetime.now()
+            )
+            self.session.add(new_ini)
+            parsed.db_obj = new_ini
+            # Add to cache
+            if ini_id:
+                self._iniciativa_cache[ini_id] = new_ini
+
+    def _create_evento_record(self, parsed: ParsedEvento) -> None:
+        """Create evento database record"""
+        iniciativa_obj = parsed.iniciativa_ref.db_obj
+        data = parsed.data
+
+        evento_obj = IniciativaEvento(
+            iniciativa_id=iniciativa_obj.id,
+            oev_id=data['oev_id'],
+            data_fase=data['data_fase'],
+            fase=data['fase'],
+            evt_id=data['evt_id'],
+            codigo_fase=data['codigo_fase'],
+            obs_fase=data['obs_fase'],
+            act_id=data['act_id'],
+            oev_text_id=data['oev_text_id'],
+            textos_aprovados=data['textos_aprovados']
+        )
+        self.session.add(evento_obj)
+        parsed.db_obj = evento_obj
+
+    def _create_votacao_record(self, parsed: ParsedVotacao) -> None:
+        """Create votacao database record"""
+        evento_obj = parsed.evento_ref.db_obj
+        data = parsed.data
+
+        votacao_obj = IniciativaEventoVotacao(
+            evento_id=evento_obj.id,
+            resultado=data['resultado'],
+            desc=data['desc'],
+            a_favor=data['a_favor'],
+            contra=data['contra'],
+            abstencao=data['abstencao'],
+            tipo_reuniao=data['tipo_reuniao'],
+            detalhe=data['detalhe'],
+            unanime=data['unanime'],
+            data_votacao=data['data_votacao'],
+            descricao=data['descricao']
+        )
+        self.session.add(votacao_obj)
+        parsed.db_obj = votacao_obj
+
+    def _create_comissao_record(self, parsed: ParsedComissao) -> None:
+        """Create comissao database record"""
+        evento_obj = parsed.evento_ref.db_obj
+        data = parsed.data
+
+        comissao_obj = IniciativaEventoComissao(
+            evento_id=evento_obj.id,
+            com_id=data['com_id'],
+            com_nome=data['com_nome'],
+            com_competente=data['com_competente'],
+            data_baixa=data['data_baixa'],
+            data_relatorio=data['data_relatorio'],
+            data_parecer=data['data_parecer'],
+            obs=data['obs'],
+            link_parecer=data['link_parecer']
+        )
+        self.session.add(comissao_obj)
+        parsed.db_obj = comissao_obj
+
+    def _create_intervencao_record(self, parsed: ParsedIntervencao) -> None:
+        """Create intervencao database record"""
+        evento_obj = parsed.evento_ref.db_obj
+        data = parsed.data
+
+        intervencao_obj = IniciativaIntervencaoDebate(
+            evento_id=evento_obj.id,
+            data_reuniao_plenaria=data['data_reuniao_plenaria']
+        )
+        self.session.add(intervencao_obj)
+        parsed.db_obj = intervencao_obj
+
+    def _create_orador_record(self, parsed: ParsedOrador) -> None:
+        """Create orador database record"""
+        intervencao_obj = parsed.intervencao_ref.db_obj
+        data = parsed.data
+
+        orador_obj = IniciativaIntervencaoOrador(
+            intervencao_id=intervencao_obj.id,
+            nome=data['nome'],
+            gp=data['gp'],
+            cargo=data['cargo'],
+            tipo_intervencao=data['tipo_intervencao'],
+            hora_inicio=data['hora_inicio'],
+            hora_termo=data['hora_termo'],
+            fase_sessao=data['fase_sessao'],
+            sumario=data['sumario']
+        )
+        self.session.add(orador_obj)
+        parsed.db_obj = orador_obj
+
+    def _create_proposta_record(self, parsed: ParsedProposta) -> None:
+        """Create proposta alteracao database record"""
+        iniciativa_obj = parsed.iniciativa_ref.db_obj
+        data = parsed.data
+
+        proposta_obj = IniciativaPropostaAlteracao(
+            iniciativa_id=iniciativa_obj.id,
+            proposta_id=data['proposta_id'],
+            tipo=data['tipo'],
+            autor=data['autor']
+        )
+        self.session.add(proposta_obj)
+        parsed.db_obj = proposta_obj
+
+    def _process_iniciativa_leaf_records(self, parsed: ParsedIniciativa) -> None:
+        """Process leaf records for an initiative (autores, anexos, origem, etc.)"""
+        iniciativa_obj = parsed.db_obj
+        iniciativa_xml = parsed.xml_element
+
+        # Clear and recreate author records
+        self._process_autores_outros(iniciativa_xml, iniciativa_obj)
+        self._process_autores_deputados(iniciativa_xml, iniciativa_obj)
+        self._process_autores_grupos_parlamentares(iniciativa_xml, iniciativa_obj)
+        self._process_anexos(iniciativa_xml, iniciativa_obj)
+
+        # Process origin/originated initiatives
+        self._process_iniciativas_origem(iniciativa_xml, iniciativa_obj)
+        self._process_iniciativas_originadas(iniciativa_xml, iniciativa_obj)
+
+        # Process legislature-specific features
+        self._process_peticoes(iniciativa_xml, iniciativa_obj)
+        self._process_iniciativas_europeias_simples(iniciativa_xml, iniciativa_obj)
+        self._process_links(iniciativa_xml, iniciativa_obj)
+        self._process_iniciativas_europeias(iniciativa_xml, iniciativa_obj)
+        self._process_peticoes_assunto(iniciativa_xml, iniciativa_obj)
+
+    def _process_evento_leaf_records(self, parsed: ParsedEvento) -> None:
+        """Process leaf records for an evento (publications, recursos, conjuntas, anexos)"""
+        evento_obj = parsed.db_obj
+        evento_xml = parsed.xml_element
+
+        # Publications
+        publicacao_fase = evento_xml.find('PublicacaoFase')
+        if publicacao_fase is not None:
+            for pub in publicacao_fase.findall('pt_gov_ar_objectos_PublicacoesOut'):
+                self._insert_evento_publicacao(evento_obj, pub)
+
+        # Resource groups
+        recurso_gp = evento_xml.find('RecursoGP')
+        if recurso_gp is not None:
+            for string_elem in recurso_gp.findall('string'):
+                gp = string_elem.text
+                if gp:
+                    recurso_obj = IniciativaEventoRecursoGP(
+                        evento_id=evento_obj.id,
+                        grupo_parlamentar=gp
+                    )
+                    self.session.add(recurso_obj)
+
+        # Deputy resources
+        recurso_deputados = evento_xml.find('RecursoDeputados')
+        if recurso_deputados is not None:
+            for string_elem in recurso_deputados.findall('string'):
+                deputado_nome = string_elem.text
+                if deputado_nome:
+                    recurso_obj = IniciativaEventoRecursoDeputado(
+                        evento_id=evento_obj.id,
+                        deputado_nome=deputado_nome
+                    )
+                    self.session.add(recurso_obj)
+
+        # Joint initiatives
+        iniciativas_conjuntas = evento_xml.find('IniciativasConjuntas')
+        if iniciativas_conjuntas is not None:
+            for ini in iniciativas_conjuntas.findall('pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut'):
+                ini_id = self._get_int_value(ini, 'iniId')
+                ini_titulo = self._get_text_value(ini, 'iniTitulo')
+                ini_nr = self._get_text_value(ini, 'iniNr')
+                ini_tipo = self._get_text_value(ini, 'iniTipo')
+
+                conjunta_obj = IniciativaConjunta(
+                    evento_id=evento_obj.id,
+                    ini_id=ini_id,
+                    ini_titulo=ini_titulo,
+                    ini_nr=ini_nr,
+                    ini_tipo=ini_tipo
+                )
+                self.session.add(conjunta_obj)
+
+        # Phase attachments (IX Legislature)
+        anexos_fase = evento_xml.find('AnexosFase')
+        if anexos_fase is not None:
+            for anexo in anexos_fase.findall('pt_gov_ar_objectos_iniciativas_AnexosOut'):
+                anexo_id = self._get_int_value(anexo, 'id')
+                anexo_nome = self._get_text_value(anexo, 'anexoNome')
+                anexo_fich = self._get_text_value(anexo, 'anexoFich')
+                link = self._get_text_value(anexo, 'link')
+
+                anexo_obj = IniciativaAnexo(
+                    iniciativa_id=parsed.iniciativa_ref.db_obj.id,
+                    anexo_id=anexo_id,
+                    anexo_nome=anexo_nome,
+                    anexo_fich=anexo_fich,
+                    link=link,
+                    fase_evento_id=evento_obj.id
+                )
+                self.session.add(anexo_obj)
+
+        # Joint petitions (XII Legislature)
+        peticoes_conjuntas = evento_xml.find('PeticoesConjuntas')
+        if peticoes_conjuntas is not None:
+            for peticao in peticoes_conjuntas.findall('pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut'):
+                pet_id = self._get_int_value(peticao, 'iniId')
+                pet_titulo = self._get_text_value(peticao, 'iniTitulo')
+                pet_nr = self._get_text_value(peticao, 'iniNr')
+                pet_tipo = self._get_text_value(peticao, 'iniTipo')
+
+                peticao_obj = IniciativaEventoPeticaoConjunta(
+                    evento_id=evento_obj.id,
+                    peticao_id=pet_id,
+                    peticao_titulo=pet_titulo,
+                    peticao_nr=pet_nr,
+                    peticao_tipo=pet_tipo
+                )
+                self.session.add(peticao_obj)
+
+    def _process_votacao_leaf_records(self, parsed: ParsedVotacao) -> None:
+        """Process leaf records for a votacao (ausencias, publications)"""
+        votacao_obj = parsed.db_obj
+        vot_xml = parsed.xml_element
+
+        # Absences
+        ausencias = vot_xml.find('ausencias')
+        if ausencias is not None:
+            for string_elem in ausencias.findall('string'):
+                gp = string_elem.text
+                if gp:
+                    ausencia_obj = IniciativaVotacaoAusencia(
+                        votacao_id=votacao_obj.id,
+                        grupo_parlamentar=gp
+                    )
+                    self.session.add(ausencia_obj)
+
+        # Publications
+        publicacao = vot_xml.find('publicacao')
+        if publicacao is not None:
+            for pub in publicacao.findall('pt_gov_ar_objectos_PublicacoesOut'):
+                self._insert_votacao_publicacao(votacao_obj, pub)
+
+    def _process_comissao_leaf_records(self, parsed: ParsedComissao) -> None:
+        """Process leaf records for a comissao (publications, relatores, remessas, etc.)"""
+        comissao_obj = parsed.db_obj
+        com_xml = parsed.xml_element
+
+        # Publications
+        for pub_type in ['Publicacao', 'PublicacaoRelatorio']:
+            pub_elem = com_xml.find(pub_type)
+            if pub_elem is not None:
+                for pub in pub_elem.findall('pt_gov_ar_objectos_PublicacoesOut'):
+                    self._insert_comissao_publicacao(comissao_obj, pub, pub_type)
+
+        # Reporters
+        relatores = com_xml.find('Relatores')
+        if relatores is not None:
+            for relator in relatores.findall('pt_gov_ar_objectos_RelatoresOut'):
+                nome = self._get_text_value(relator, 'nome')
+                gp = self._get_text_value(relator, 'gp')
+                data_nomeacao = self._parse_date(self._get_text_value(relator, 'dataNomeacao'))
+                data_cessacao = self._parse_date(self._get_text_value(relator, 'dataCessacao'))
+
+                relator_obj = IniciativaComissaoRelator(
+                    comissao_id=comissao_obj.id,
+                    nome=nome,
+                    gp=gp,
+                    data_nomeacao=data_nomeacao,
+                    data_cessacao=data_cessacao
+                )
+                self.session.add(relator_obj)
+
+        # Dispatches/Referrals
+        remessas = com_xml.find('Remessas')
+        if remessas is not None:
+            for remessa in remessas.findall('pt_gov_ar_objectos_RemessasOut'):
+                numero_oficio = self._get_text_value(remessa, 'numeroOficio')
+                data_remessa = self._parse_date(self._get_text_value(remessa, 'dataRemessa'))
+                destinatario = self._get_text_value(remessa, 'destinatario')
+
+                remessa_obj = IniciativaComissaoRemessa(
+                    comissao_id=comissao_obj.id,
+                    numero_oficio=numero_oficio,
+                    data_remessa=data_remessa,
+                    destinatario=destinatario
+                )
+                self.session.add(remessa_obj)
+
+        # Subcommission distribution
+        distribuicao = com_xml.find('DistribuicaoSubcomissao')
+        if distribuicao is not None:
+            for subcom in distribuicao.findall('pt_gov_ar_objectos_ComissoesOut'):
+                subcom_id = self._get_int_value(subcom, 'comId')
+                subcom_nome = self._get_text_value(subcom, 'comNome')
+                data_baixa = self._parse_date(self._get_text_value(subcom, 'dataBaixa'))
+
+                subcom_obj = IniciativaComissaoDistribuicaoSubcomissao(
+                    comissao_id=comissao_obj.id,
+                    subcomissao_id=subcom_id,
+                    subcomissao_nome=subcom_nome,
+                    data_baixa=data_baixa
+                )
+                self.session.add(subcom_obj)
+
+        # Committee voting
+        votacao = com_xml.find('VotacaoComissao')
+        if votacao is not None:
+            for vot in votacao.findall('pt_gov_ar_objectos_VotacaoOut'):
+                resultado = self._get_text_value(vot, 'resultado')
+                a_favor = self._get_text_value(vot, 'afavor')
+                contra = self._get_text_value(vot, 'contra')
+                abstencao = self._get_text_value(vot, 'abstencao')
+
+                vot_obj = IniciativaEventoComissaoVotacao(
+                    comissao_id=comissao_obj.id,
+                    resultado=resultado,
+                    a_favor=a_favor,
+                    contra=contra,
+                    abstencao=abstencao
+                )
+                self.session.add(vot_obj)
+
+        # Hearings (Audiencias)
+        audiencias = com_xml.find('Audiencias')
+        if audiencias is not None:
+            for atividade in audiencias.findall('pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut'):
+                data_atividade = self._parse_date(self._get_text_value(atividade, 'dataActividade'))
+                descricao = self._get_text_value(atividade, 'descricao')
+
+                audiencia_obj = IniciativaComissaoAudiencia(
+                    comissao_id=comissao_obj.id,
+                    data_atividade=data_atividade,
+                    descricao=descricao
+                )
+                self.session.add(audiencia_obj)
+
+        # Hearings (Audicoes)
+        audicoes = com_xml.find('Audicoes')
+        if audicoes is not None:
+            for atividade in audicoes.findall('pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut'):
+                data_atividade = self._parse_date(self._get_text_value(atividade, 'dataActividade'))
+                descricao = self._get_text_value(atividade, 'descricao')
+
+                audicao_obj = IniciativaComissaoAudicao(
+                    comissao_id=comissao_obj.id,
+                    data_atividade=data_atividade,
+                    descricao=descricao
+                )
+                self.session.add(audicao_obj)
+
+        # Documents
+        documentos = com_xml.find('Documentos')
+        if documentos is not None:
+            for doc in documentos.findall('DocsOut'):
+                doc_nome = self._get_text_value(doc, 'docNome')
+                doc_link = self._get_text_value(doc, 'docLink')
+                doc_tipo = self._get_text_value(doc, 'docTipo')
+
+                doc_obj = IniciativaComissaoDocumento(
+                    comissao_id=comissao_obj.id,
+                    doc_nome=doc_nome,
+                    doc_link=doc_link,
+                    doc_tipo=doc_tipo
+                )
+                self.session.add(doc_obj)
+
+    def _process_proposta_leaf_records(self, parsed: ParsedProposta) -> None:
+        """Process leaf records for a proposta (publications)"""
+        proposta_obj = parsed.db_obj
+        proposta_xml = parsed.xml_element
+
+        # Publications
+        publicacao = proposta_xml.find('publicacao')
+        if publicacao is not None:
+            for pub in publicacao.findall('pt_gov_ar_objectos_PublicacoesOut'):
+                pub_nr = self._get_int_value(pub, 'pubNr')
+                pub_tipo = self._get_text_value(pub, 'pubTipo')
+                pub_tp = self._get_text_value(pub, 'pubTp')
+                pub_leg = self._get_text_value(pub, 'pubLeg')
+                pub_sl = self._get_int_value(pub, 'pubSL')
+                pub_dt = self._parse_date(self._get_text_value(pub, 'pubdt'))
+
+                pub_obj = IniciativaPropostaAlteracaoPublicacao(
+                    proposta_id=proposta_obj.id,
+                    pub_nr=pub_nr,
+                    pub_tipo=pub_tipo,
+                    pub_tp=pub_tp,
+                    pub_leg=pub_leg,
+                    pub_sl=pub_sl,
+                    pub_dt=pub_dt
+                )
+                self.session.add(pub_obj)
+
+    def _process_orador_leaf_records(self, parsed: ParsedOrador) -> None:
+        """Process leaf records for an orador (publications, convidados, membros governo, video links)"""
+        orador_obj = parsed.db_obj
+        orador_xml = parsed.xml_element
+
+        # Publications
+        publicacao = orador_xml.find('publicacao')
+        if publicacao is not None:
+            for pub in publicacao.findall('pt_gov_ar_objectos_PublicacoesOut'):
+                self._insert_orador_publicacao(orador_obj, pub)
+
+        # Guests (convidados)
+        convidados = orador_xml.find('convidados')
+        if convidados is not None:
+            for convidado in convidados.findall('pt_gov_ar_objectos_peticoes_OradoresOut'):
+                nome = self._get_text_value(convidado, 'nome')
+                cargo = self._get_text_value(convidado, 'cargo')
+
+                convidado_obj = IniciativaIntervencaoOradorConvidado(
+                    orador_id=orador_obj.id,
+                    nome=nome,
+                    cargo=cargo
+                )
+                self.session.add(convidado_obj)
+
+        # Government members (membrosGoverno)
+        membros_governo = orador_xml.find('membrosGoverno')
+        if membros_governo is not None:
+            for membro in membros_governo.findall('pt_gov_ar_objectos_peticoes_OradoresOut'):
+                nome = self._get_text_value(membro, 'nome')
+                cargo = self._get_text_value(membro, 'cargo')
+
+                membro_obj = IniciativaIntervencaoOradorMembroGoverno(
+                    orador_id=orador_obj.id,
+                    nome=nome,
+                    cargo=cargo
+                )
+                self.session.add(membro_obj)
+
+        # Video links
+        link_video = orador_xml.find('linkVideo')
+        if link_video is not None:
+            for video in link_video.findall('pt_gov_ar_objectos_peticoes_LinksVideos'):
+                link = self._get_text_value(video, 'link')
+                tipo = self._get_text_value(video, 'tipo')
+                duracao = self._get_text_value(video, 'duracao')
+
+                video_obj = IniciativaOradorVideoLink(
+                    orador_id=orador_obj.id,
+                    link=link,
+                    tipo=tipo,
+                    duracao=duracao
+                )
+                self.session.add(video_obj)
+
+    # ========================================================================
+    # ORIGINAL HELPER METHODS (still used by leaf record processing)
+    # ========================================================================
+
     def _process_autores_outros(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process IniAutorOutros - Other authors (Government, etc.)"""
         # Clear existing records
@@ -670,7 +1520,7 @@ class InitiativasMapper(SchemaMapper):
                     autor=autor
                 )
                 self.session.add(proposta_obj)
-                self.session.flush()  # Get the ID
+                self._batch_flush(force=True)  # Need ID for publications
                 
                 # Process publications for this proposal
                 publicacao = proposta.find('publicacao')
@@ -749,7 +1599,7 @@ class InitiativasMapper(SchemaMapper):
             textos_aprovados=textos_aprovados
         )
         self.session.add(evento_obj)
-        self.session.flush()  # Get the ID
+        self._batch_flush(force=True)  # Need ID for child records
         return evento_obj
     
     def _process_evento_details(self, evento: ET.Element, evento_obj: IniciativaEvento):
@@ -850,7 +1700,7 @@ class InitiativasMapper(SchemaMapper):
                     descricao=descricao
                 )
                 self.session.add(votacao_obj)
-                self.session.flush()  # Get the ID
+                self._batch_flush(force=True)  # Need ID for child records
                 
                 # Process absences
                 ausencias = vot.find('ausencias')
@@ -969,7 +1819,7 @@ class InitiativasMapper(SchemaMapper):
                     # data_fim_apreciacao_publica=data_fim_apreciacao
                 )
                 self.session.add(comissao_obj)
-                self.session.flush()  # Get the ID
+                self._batch_flush(force=True)  # Need ID for child records
                 
                 # Process committee publications
                 for pub_type in ['Publicacao', 'PublicacaoRelatorio']:
@@ -1071,7 +1921,7 @@ class InitiativasMapper(SchemaMapper):
                     data_reuniao_plenaria=data_reuniao
                 )
                 self.session.add(intervencao_debate_obj)
-                self.session.flush()  # Get the ID
+                self._batch_flush(force=True)  # Need ID for child records
                 
                 # Process speakers (oradores)
                 self._process_intervencao_oradores(int_elem, intervencao_debate_obj)
@@ -1200,7 +2050,7 @@ class InitiativasMapper(SchemaMapper):
                     sumario=sumario
                 )
                 self.session.add(orador_obj)
-                self.session.flush()  # Get the ID
+                self._batch_flush(force=True)  # Need ID for child records
                 
                 # Process speaker publications
                 publicacao = orador.find('publicacao')

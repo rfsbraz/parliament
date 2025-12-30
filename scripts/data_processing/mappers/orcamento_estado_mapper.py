@@ -27,8 +27,9 @@ import re
 # Import our models
 import sys
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .common_utilities import DataValidationUtils
 from .enhanced_base_mapper import SchemaError, SchemaMapper
@@ -57,6 +58,162 @@ from database.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Dataclasses for Level-by-Level Batched Processing
+# =============================================================================
+
+# Legacy Format Structures (OEPropostasAlteracao)
+@dataclass
+class ParsedLegacyAlinea:
+    """Parsed alinea within a numero (legacy format)"""
+    xml_element: ET.Element
+    numero_ref: Any = None  # Reference to parent ParsedLegacyNumero
+    data: Dict[str, Any] = field(default_factory=dict)
+    db_obj: Any = None
+
+
+@dataclass
+class ParsedLegacyNumero:
+    """Parsed numero within an artigo (legacy format)"""
+    xml_element: ET.Element
+    artigo_ref: Any = None  # Reference to parent ParsedLegacyArtigo
+    data: Dict[str, Any] = field(default_factory=dict)
+    alineas: List[ParsedLegacyAlinea] = field(default_factory=list)
+    db_obj: Any = None
+
+
+@dataclass
+class ParsedLegacyArtigo:
+    """Parsed artigo within a proposal (legacy format)"""
+    xml_element: ET.Element
+    proposal_ref: Any = None  # Reference to parent ParsedLegacyProposal
+    data: Dict[str, Any] = field(default_factory=dict)
+    numeros: List[ParsedLegacyNumero] = field(default_factory=list)
+    db_obj: Any = None
+
+
+@dataclass
+class ParsedLegacyProponente:
+    """Parsed proponente (leaf record)"""
+    xml_element: ET.Element
+    proposal_ref: Any = None
+    data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ParsedLegacyVotacao:
+    """Parsed votacao (leaf record)"""
+    xml_element: ET.Element
+    proposal_ref: Any = None
+    data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ParsedLegacyProposal:
+    """Parsed proposal (legacy format)"""
+    xml_element: ET.Element
+    proposal_id: Optional[int] = None
+    data: Dict[str, Any] = field(default_factory=dict)
+    proponentes: List[ParsedLegacyProponente] = field(default_factory=list)
+    votacoes: List[ParsedLegacyVotacao] = field(default_factory=list)
+    artigos: List[ParsedLegacyArtigo] = field(default_factory=list)
+    db_obj: Any = None
+
+
+# Current Format Structures (OE)
+@dataclass
+class ParsedCurrentDiplomaAlinea:
+    """Parsed diploma alinea (leaf record)"""
+    xml_element: ET.Element
+    numero_ref: Any = None  # Reference to parent ParsedCurrentDiplomaNumero
+    data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ParsedCurrentDiplomaNumero:
+    """Parsed diploma numero"""
+    xml_element: ET.Element
+    artigo_ref: Any = None  # Reference to parent ParsedCurrentDiplomaArtigo
+    data: Dict[str, Any] = field(default_factory=dict)
+    alineas: List[ParsedCurrentDiplomaAlinea] = field(default_factory=list)
+    db_obj: Any = None
+
+
+@dataclass
+class ParsedCurrentDiplomaArtigo:
+    """Parsed diploma artigo"""
+    xml_element: ET.Element
+    diploma_ref: Any = None  # Reference to parent ParsedCurrentDiploma
+    data: Dict[str, Any] = field(default_factory=dict)
+    numeros: List[ParsedCurrentDiplomaNumero] = field(default_factory=list)
+    db_obj: Any = None
+
+
+@dataclass
+class ParsedCurrentDiploma:
+    """Parsed diploma"""
+    xml_element: ET.Element
+    item_ref: Any = None  # Reference to parent ParsedCurrentItem
+    data: Dict[str, Any] = field(default_factory=dict)
+    artigos: List[ParsedCurrentDiplomaArtigo] = field(default_factory=list)
+    db_obj: Any = None
+
+
+@dataclass
+class ParsedCurrentArtigo:
+    """Parsed artigo within item (leaf record)"""
+    xml_element: ET.Element
+    item_ref: Any = None
+    data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ParsedCurrentProposta:
+    """Parsed proposta within item (leaf record)"""
+    xml_element: ET.Element
+    item_ref: Any = None
+    data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ParsedCurrentIniciativa:
+    """Parsed iniciativa mapa (leaf record)"""
+    xml_element: ET.Element
+    item_ref: Any = None
+    data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ParsedCurrentVotacao:
+    """Parsed votacao within item (leaf record)"""
+    xml_element: ET.Element
+    item_ref: Any = None
+    data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ParsedCurrentRequerimento:
+    """Parsed requerimento de avocacao (leaf record)"""
+    xml_element: ET.Element
+    item_ref: Any = None
+    data: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ParsedCurrentItem:
+    """Parsed item (current format)"""
+    xml_element: ET.Element
+    item_id: Optional[int] = None
+    data: Dict[str, Any] = field(default_factory=dict)
+    artigos: List[ParsedCurrentArtigo] = field(default_factory=list)
+    propostas: List[ParsedCurrentProposta] = field(default_factory=list)
+    diplomas: List[ParsedCurrentDiploma] = field(default_factory=list)
+    iniciativas: List[ParsedCurrentIniciativa] = field(default_factory=list)
+    votacoes: List[ParsedCurrentVotacao] = field(default_factory=list)
+    requerimentos: List[ParsedCurrentRequerimento] = field(default_factory=list)
+    db_obj: Any = None
 
 
 class OrcamentoEstadoMapper(SchemaMapper):
@@ -369,10 +526,28 @@ class OrcamentoEstadoMapper(SchemaMapper):
         self, xml_root: ET.Element, file_info: Dict, strict_mode: bool = False
     ) -> Dict:
         """
-        Map State Budget data to database with comprehensive field processing
+        Map State Budget data to database with level-by-level batched processing.
 
-        Supports both legacy OEPropostasAlteracao and current OE structures
-        with automatic format detection and appropriate processing.
+        Uses batched database operations to minimize flush calls:
+
+        Legacy Format (OEPropostasAlteracao):
+        - Phase 1: Parse all proposals into memory
+        - Phase 2: Batch create proposals (1 flush)
+        - Phase 3: Batch create proponentes, votacoes (leaf records)
+        - Phase 4: Batch create artigos (1 flush)
+        - Phase 5: Batch create numeros (1 flush)
+        - Phase 6: Batch create alineas (leaf)
+
+        Current Format (OE):
+        - Phase 1: Parse all items into memory
+        - Phase 2: Batch create items (1 flush)
+        - Phase 3: Batch create leaf records (artigos, propostas, iniciativas, votacoes, requerimentos)
+        - Phase 4: Batch create diplomas (1 flush)
+        - Phase 5: Batch create diploma_artigos (1 flush)
+        - Phase 6: Batch create diploma_numeros (1 flush)
+        - Phase 7: Batch create diploma_alineas (leaf)
+
+        This reduces potentially thousands of flushes to ~6-7 flushes per file.
 
         Args:
             xml_root: Root XML element
@@ -397,15 +572,15 @@ class OrcamentoEstadoMapper(SchemaMapper):
 
             # Extract legislatura - prioritize ImportStatus data, then path fallback
             legislatura = None
-            
+
             # First try: Use legislature data from ImportStatus (most reliable)
             if 'legislatura' in file_info and file_info['legislatura']:
                 legislatura_sigla = file_info['legislatura']
                 logger.debug(f"Using legislature from ImportStatus: {legislatura_sigla}")
-                
+
                 # Get or create legislatura using the enhanced base mapper method
                 legislatura = self._get_or_create_legislatura(legislatura_sigla)
-            
+
             # Fallback: Extract from filename or path (legacy behavior)
             if not legislatura:
                 logger.debug("No legislature in ImportStatus, falling back to path extraction")
@@ -416,61 +591,19 @@ class OrcamentoEstadoMapper(SchemaMapper):
             logger.info(f"Detected format type: {format_type} for file {filename}")
 
             if format_type == "legacy":
-                # Process legacy OEPropostasAlteracao format
-                proposal_elements = xml_root.findall(".//PropostaDeAlteracao")
-                logger.info(
-                    f"Found {len(proposal_elements)} amendment proposals in legacy format"
+                results = self._process_legacy_format_batched(
+                    xml_root, legislatura, filename, results, strict_mode
                 )
-
-                for proposta in proposal_elements:
-                    try:
-                        success = self._process_legacy_proposal(
-                            proposta, legislatura, filename
-                        )
-                        results["records_processed"] += 1
-                        if success:
-                            results["records_imported"] += 1
-                            self.processed_proposals += 1
-                    except Exception as e:
-                        error_msg = (
-                            f"Legacy proposal processing error in {filename}: {str(e)}"
-                        )
-                        logger.error(error_msg)
-                        results["errors"].append(error_msg)
-                        if strict_mode:
-                            raise
 
             elif format_type == "current":
-                # Process current OE format
-                item_elements = xml_root.findall(".//Item")
-                logger.info(
-                    f"Found {len(item_elements)} budget items in current format"
+                results = self._process_current_format_batched(
+                    xml_root, legislatura, filename, results, strict_mode
                 )
-
-                for item in item_elements:
-                    try:
-                        success = self._process_current_item(
-                            item, legislatura, filename
-                        )
-                        results["records_processed"] += 1
-                        if success:
-                            results["records_imported"] += 1
-                            self.processed_items += 1
-                    except Exception as e:
-                        error_msg = (
-                            f"Current item processing error in {filename}: {str(e)}"
-                        )
-                        logger.error(error_msg)
-                        results["errors"].append(error_msg)
-                        if strict_mode:
-                            raise
             else:
                 error_msg = f"Unknown format type detected for {filename}"
                 logger.error(error_msg)
                 results["errors"].append(error_msg)
                 return results
-
-            # Commit all changes
 
             logger.info(f"Successfully processed Orçamento do Estado file: {file_path}")
             logger.info(
@@ -489,6 +622,915 @@ class OrcamentoEstadoMapper(SchemaMapper):
             if strict_mode:
                 raise
             return results
+
+    # =========================================================================
+    # Legacy Format Batched Processing
+    # =========================================================================
+
+    def _process_legacy_format_batched(
+        self,
+        xml_root: ET.Element,
+        legislatura: Legislatura,
+        filename: str,
+        results: Dict,
+        strict_mode: bool,
+    ) -> Dict:
+        """
+        Process legacy OEPropostasAlteracao format with batched database operations.
+
+        Reduces flushes from O(proposals * artigos * numeros) to ~4 flushes total.
+        """
+        proposal_elements = xml_root.findall(".//PropostaDeAlteracao")
+        logger.info(f"Found {len(proposal_elements)} amendment proposals in legacy format")
+
+        # Phase 1: Parse all proposals into memory
+        parsed_proposals: List[ParsedLegacyProposal] = []
+        for proposta_elem in proposal_elements:
+            try:
+                parsed = self._parse_legacy_proposal(proposta_elem)
+                if parsed:
+                    parsed_proposals.append(parsed)
+                    results["records_processed"] += 1
+            except Exception as e:
+                error_msg = f"Legacy proposal parsing error in {filename}: {str(e)}"
+                logger.error(error_msg)
+                results["errors"].append(error_msg)
+                if strict_mode:
+                    raise
+
+        # Phase 2: Batch create proposals (1 flush)
+        for parsed in parsed_proposals:
+            self._create_legacy_proposal_record(parsed, legislatura)
+        self.session.flush()  # Single flush for all proposals
+        logger.debug(f"Created {len(parsed_proposals)} proposal records")
+
+        # Phase 3: Batch create proponentes and votacoes (leaf records, no flush needed)
+        for parsed in parsed_proposals:
+            self._create_legacy_proponentes(parsed)
+            self._create_legacy_votacoes(parsed)
+
+        # Phase 4: Batch create artigos (1 flush)
+        all_artigos: List[ParsedLegacyArtigo] = []
+        for parsed in parsed_proposals:
+            all_artigos.extend(parsed.artigos)
+
+        for artigo in all_artigos:
+            self._create_legacy_artigo_record(artigo)
+        if all_artigos:
+            self.session.flush()  # Single flush for all artigos
+            logger.debug(f"Created {len(all_artigos)} artigo records")
+
+        # Phase 5: Batch create numeros (1 flush)
+        all_numeros: List[ParsedLegacyNumero] = []
+        for artigo in all_artigos:
+            all_numeros.extend(artigo.numeros)
+
+        for numero in all_numeros:
+            self._create_legacy_numero_record(numero)
+        if all_numeros:
+            self.session.flush()  # Single flush for all numeros
+            logger.debug(f"Created {len(all_numeros)} numero records")
+
+        # Phase 6: Batch create alineas (leaf records, no flush needed)
+        all_alineas: List[ParsedLegacyAlinea] = []
+        for numero in all_numeros:
+            all_alineas.extend(numero.alineas)
+
+        for alinea in all_alineas:
+            self._create_legacy_alinea_record(alinea)
+        logger.debug(f"Created {len(all_alineas)} alinea records")
+
+        results["records_imported"] = len(parsed_proposals)
+        self.processed_proposals += len(parsed_proposals)
+
+        return results
+
+    def _parse_legacy_proposal(self, proposta: ET.Element) -> Optional[ParsedLegacyProposal]:
+        """Parse a legacy proposal element into memory structure."""
+        proposal_id = DataValidationUtils.safe_float_convert(
+            self._get_text_value(proposta, "ID")
+        )
+
+        if not proposal_id:
+            logger.warning("Legacy proposal missing ID, skipping")
+            return None
+
+        data_str = self._get_text_value(proposta, "Data")
+        data_proposta = None
+        if data_str:
+            data_proposta = DataValidationUtils.parse_date_flexible(data_str)
+
+        parsed = ParsedLegacyProposal(
+            xml_element=proposta,
+            proposal_id=int(proposal_id),
+            data={
+                "numero": self._get_text_value(proposta, "Numero"),
+                "data_proposta": data_proposta,
+                "titulo": self._get_text_value(proposta, "Titulo"),
+                "tema": self._get_text_value(proposta, "Tema"),
+                "apresentada": self._get_text_value(proposta, "Apresentada"),
+                "incide": self._get_text_value(proposta, "Incide"),
+                "tipo": self._get_text_value(proposta, "Tipo"),
+                "estado": self._get_text_value(proposta, "Estado"),
+                "numero_artigo_novo": self._get_text_value(proposta, "NumeroArtigoNovo"),
+                "conteudo": self._get_text_value(proposta, "Conteudo"),
+                "ficheiro": self._get_text_value(proposta, "Ficheiro"),
+                "grupo_parlamentar": self._get_text_value(proposta, "GrupoParlamentar_Partido"),
+            }
+        )
+
+        # Parse proponentes
+        proponentes_elem = proposta.find("Proponentes")
+        if proponentes_elem is not None:
+            for proponente_elem in proponentes_elem.findall("Proponente"):
+                gp_partido = self._get_text_value(proponente_elem, "GP_Partido")
+                deputado = self._get_text_value(proponente_elem, "Deputado")
+                if gp_partido or deputado:
+                    parsed.proponentes.append(ParsedLegacyProponente(
+                        xml_element=proponente_elem,
+                        proposal_ref=parsed,
+                        data={"gp_partido": gp_partido, "deputado": deputado}
+                    ))
+
+        # Parse votacoes
+        votacoes_elem = proposta.find("Votacoes")
+        if votacoes_elem is not None:
+            for votacao_elem in votacoes_elem.findall("Votacao"):
+                parsed.votacoes.append(self._parse_legacy_votacao(votacao_elem, parsed))
+
+        # Parse artigos
+        artigos_elem = proposta.find("Iniciativas_Artigos")
+        if artigos_elem is not None:
+            for artigo_elem in artigos_elem.findall("Iniciativa_Artigo"):
+                parsed.artigos.append(self._parse_legacy_artigo(artigo_elem, parsed))
+
+        return parsed
+
+    def _parse_legacy_votacao(
+        self, votacao_elem: ET.Element, proposal_ref: ParsedLegacyProposal
+    ) -> ParsedLegacyVotacao:
+        """Parse a legacy votacao element."""
+        data_str = self._get_text_value(votacao_elem, "Data")
+
+        # Process multiple Descricao elements within Descricoes
+        descricoes_list = []
+        descricoes_elem = votacao_elem.find("Descricoes")
+        if descricoes_elem is not None:
+            for desc_elem in descricoes_elem.findall("Descricao"):
+                desc_text = desc_elem.text
+                if desc_text and desc_text.strip():
+                    descricoes_list.append(desc_text.strip())
+
+        descricoes = "; ".join(descricoes_list) if descricoes_list else None
+
+        resultado = self._get_text_value(votacao_elem, "ResultadoCompleto")
+        if not resultado:
+            resultado = self._get_text_value(votacao_elem, "Resultado")
+
+        return ParsedLegacyVotacao(
+            xml_element=votacao_elem,
+            proposal_ref=proposal_ref,
+            data={
+                "data_votacao": DataValidationUtils.parse_date_flexible(data_str) if data_str else None,
+                "descricao": descricoes,
+                "sub_descricao": self._get_text_value(votacao_elem, "SubDescricao"),
+                "resultado": resultado,
+                "diplomas_terceiros": self._get_text_value(votacao_elem, "DiplomasTerceiros"),
+                "grupos_parlamentares": self._get_text_value(votacao_elem, "GruposParlamentares"),
+            }
+        )
+
+    def _parse_legacy_artigo(
+        self, artigo_elem: ET.Element, proposal_ref: ParsedLegacyProposal
+    ) -> ParsedLegacyArtigo:
+        """Parse a legacy artigo element with nested numeros."""
+        parsed = ParsedLegacyArtigo(
+            xml_element=artigo_elem,
+            proposal_ref=proposal_ref,
+            data={
+                "numero": self._get_text_value(artigo_elem, "Artigo"),
+                "titulo": self._get_text_value(artigo_elem, "Titulo"),
+                "texto": self._get_text_value(artigo_elem, "Texto"),
+                "estado": self._get_text_value(artigo_elem, "Estado"),
+            }
+        )
+
+        # Parse nested numeros
+        numeros_elem = artigo_elem.find("Numeros")
+        if numeros_elem is not None:
+            for numero_elem in numeros_elem.findall("Numero"):
+                parsed.numeros.append(self._parse_legacy_numero(numero_elem, parsed))
+
+        return parsed
+
+    def _parse_legacy_numero(
+        self, numero_elem: ET.Element, artigo_ref: ParsedLegacyArtigo
+    ) -> ParsedLegacyNumero:
+        """Parse a legacy numero element with nested alineas."""
+        parsed = ParsedLegacyNumero(
+            xml_element=numero_elem,
+            artigo_ref=artigo_ref,
+            data={
+                "numero": self._get_text_value(numero_elem, "Numero"),
+                "titulo": self._get_text_value(numero_elem, "Titulo"),
+                "texto": self._get_text_value(numero_elem, "Texto"),
+                "estado": self._get_text_value(numero_elem, "Estado"),
+            }
+        )
+
+        # Parse nested alineas
+        alineas_elem = numero_elem.find("Alineas")
+        if alineas_elem is not None:
+            for alinea_elem in alineas_elem.findall("Alinea"):
+                parsed.alineas.append(ParsedLegacyAlinea(
+                    xml_element=alinea_elem,
+                    numero_ref=parsed,  # Set reference to parent numero
+                    data={
+                        "alinea": self._get_text_value(alinea_elem, "Alinea"),
+                        "titulo": self._get_text_value(alinea_elem, "Titulo"),
+                        "texto": self._get_text_value(alinea_elem, "Texto"),
+                        "estado": self._get_text_value(alinea_elem, "Estado"),
+                    }
+                ))
+
+        return parsed
+
+    def _create_legacy_proposal_record(
+        self, parsed: ParsedLegacyProposal, legislatura: Legislatura
+    ):
+        """Create or update a proposal database record."""
+        existing = (
+            self.session.query(OrcamentoEstadoPropostaAlteracao)
+            .filter_by(proposta_id=parsed.proposal_id)
+            .first()
+        )
+
+        if existing:
+            existing.numero = parsed.data["numero"]
+            existing.data_proposta = parsed.data["data_proposta"]
+            existing.titulo = parsed.data["titulo"]
+            existing.tema = parsed.data["tema"]
+            existing.apresentada = parsed.data["apresentada"]
+            existing.incide = parsed.data["incide"]
+            existing.tipo = parsed.data["tipo"]
+            existing.estado = parsed.data["estado"]
+            existing.numero_artigo_novo = parsed.data["numero_artigo_novo"]
+            existing.conteudo = parsed.data["conteudo"]
+            existing.ficheiro_url = parsed.data["ficheiro"]
+            existing.grupo_parlamentar = parsed.data["grupo_parlamentar"]
+            existing.legislatura_id = legislatura.id
+            parsed.db_obj = existing
+        else:
+            proposal_obj = OrcamentoEstadoPropostaAlteracao(
+                proposta_id=parsed.proposal_id,
+                numero=parsed.data["numero"],
+                data_proposta=parsed.data["data_proposta"],
+                titulo=parsed.data["titulo"],
+                tema=parsed.data["tema"],
+                apresentada=parsed.data["apresentada"],
+                incide=parsed.data["incide"],
+                tipo=parsed.data["tipo"],
+                estado=parsed.data["estado"],
+                numero_artigo_novo=parsed.data["numero_artigo_novo"],
+                conteudo=parsed.data["conteudo"],
+                ficheiro_url=parsed.data["ficheiro"],
+                grupo_parlamentar=parsed.data["grupo_parlamentar"],
+                legislatura_id=legislatura.id,
+                format_type="legacy",
+            )
+            self.session.add(proposal_obj)
+            parsed.db_obj = proposal_obj
+
+    def _create_legacy_proponentes(self, parsed: ParsedLegacyProposal):
+        """Create proponente records for a proposal."""
+        for proponente in parsed.proponentes:
+            proponente_obj = OrcamentoEstadoProponente(
+                proposta_id=parsed.db_obj.id,
+                grupo_parlamentar=proponente.data["gp_partido"],
+                deputado_nome=proponente.data["deputado"],
+                tipo_proponente="deputado" if proponente.data["deputado"] else "grupo",
+            )
+            self.session.add(proponente_obj)
+            self.processed_proponents += 1
+
+    def _create_legacy_votacoes(self, parsed: ParsedLegacyProposal):
+        """Create votacao records for a proposal."""
+        for votacao in parsed.votacoes:
+            votacao_obj = OrcamentoEstadoVotacao(
+                proposta_id=parsed.db_obj.id,
+                data_votacao=votacao.data["data_votacao"],
+                descricao=votacao.data["descricao"],
+                sub_descricao=votacao.data["sub_descricao"],
+                resultado=votacao.data["resultado"],
+                diplomas_terceiros_texto=votacao.data["diplomas_terceiros"],
+                grupos_parlamentares_texto=votacao.data["grupos_parlamentares"],
+            )
+            self.session.add(votacao_obj)
+            self.processed_votes += 1
+
+    def _create_legacy_artigo_record(self, parsed: ParsedLegacyArtigo):
+        """Create an artigo database record."""
+        artigo_obj = OrcamentoEstadoArtigo(
+            proposta_id=parsed.proposal_ref.db_obj.id,
+            numero=parsed.data["numero"],
+            titulo=parsed.data["titulo"],
+            texto=parsed.data["texto"],
+            estado=parsed.data["estado"],
+        )
+        self.session.add(artigo_obj)
+        parsed.db_obj = artigo_obj
+        self.processed_articles += 1
+
+    def _create_legacy_numero_record(self, parsed: ParsedLegacyNumero):
+        """Create a numero database record."""
+        numero_obj = OrcamentoEstadoArtigoNumero(
+            artigo_id=parsed.artigo_ref.db_obj.id,
+            numero=parsed.data["numero"],
+            titulo=parsed.data["titulo"],
+            texto=parsed.data["texto"],
+            estado=parsed.data["estado"],
+        )
+        self.session.add(numero_obj)
+        parsed.db_obj = numero_obj
+
+    def _create_legacy_alinea_record(self, parsed: ParsedLegacyAlinea):
+        """Create an alinea database record."""
+        alinea_obj = OrcamentoEstadoArtigoAlinea(
+            numero_id=parsed.numero_ref.db_obj.id,
+            alinea=parsed.data["alinea"],
+            titulo=parsed.data["titulo"],
+            texto=parsed.data["texto"],
+            estado=parsed.data["estado"],
+        )
+        self.session.add(alinea_obj)
+
+    # =========================================================================
+    # Current Format Batched Processing
+    # =========================================================================
+
+    def _process_current_format_batched(
+        self,
+        xml_root: ET.Element,
+        legislatura: Legislatura,
+        filename: str,
+        results: Dict,
+        strict_mode: bool,
+    ) -> Dict:
+        """
+        Process current OE format with batched database operations.
+
+        Reduces flushes from O(items * diplomas * artigos * numeros) to ~5 flushes total.
+        """
+        item_elements = xml_root.findall(".//Item")
+        logger.info(f"Found {len(item_elements)} budget items in current format")
+
+        # Phase 1: Parse all items into memory
+        parsed_items: List[ParsedCurrentItem] = []
+        for item_elem in item_elements:
+            try:
+                parsed = self._parse_current_item(item_elem)
+                if parsed:
+                    parsed_items.append(parsed)
+                    results["records_processed"] += 1
+            except Exception as e:
+                error_msg = f"Current item parsing error in {filename}: {str(e)}"
+                logger.error(error_msg)
+                results["errors"].append(error_msg)
+                if strict_mode:
+                    raise
+
+        # Phase 2: Batch create items (1 flush)
+        for parsed in parsed_items:
+            self._create_current_item_record(parsed, legislatura)
+        self.session.flush()  # Single flush for all items
+        logger.debug(f"Created {len(parsed_items)} item records")
+
+        # Phase 3: Batch create leaf records (no flush needed)
+        for parsed in parsed_items:
+            self._create_current_artigos(parsed)
+            self._create_current_propostas(parsed, legislatura)
+            self._create_current_iniciativas(parsed)
+            self._create_current_votacoes(parsed)
+            self._create_current_requerimentos(parsed)
+
+        # Phase 4: Batch create diplomas (1 flush)
+        all_diplomas: List[ParsedCurrentDiploma] = []
+        for parsed in parsed_items:
+            all_diplomas.extend(parsed.diplomas)
+
+        for diploma in all_diplomas:
+            self._create_current_diploma_record(diploma)
+        if all_diplomas:
+            self.session.flush()  # Single flush for all diplomas
+            logger.debug(f"Created {len(all_diplomas)} diploma records")
+
+        # Phase 5: Batch create diploma_artigos (1 flush)
+        all_diploma_artigos: List[ParsedCurrentDiplomaArtigo] = []
+        for diploma in all_diplomas:
+            all_diploma_artigos.extend(diploma.artigos)
+
+        for artigo in all_diploma_artigos:
+            self._create_current_diploma_artigo_record(artigo)
+        if all_diploma_artigos:
+            self.session.flush()  # Single flush for all diploma artigos
+            logger.debug(f"Created {len(all_diploma_artigos)} diploma artigo records")
+
+        # Phase 6: Batch create diploma_numeros (1 flush)
+        all_diploma_numeros: List[ParsedCurrentDiplomaNumero] = []
+        for artigo in all_diploma_artigos:
+            all_diploma_numeros.extend(artigo.numeros)
+
+        for numero in all_diploma_numeros:
+            self._create_current_diploma_numero_record(numero)
+        if all_diploma_numeros:
+            self.session.flush()  # Single flush for all diploma numeros
+            logger.debug(f"Created {len(all_diploma_numeros)} diploma numero records")
+
+        # Phase 7: Batch create diploma_alineas (leaf records, no flush needed)
+        all_diploma_alineas: List[ParsedCurrentDiplomaAlinea] = []
+        for numero in all_diploma_numeros:
+            all_diploma_alineas.extend(numero.alineas)
+
+        for alinea in all_diploma_alineas:
+            self._create_current_diploma_alinea_record(alinea)
+        logger.debug(f"Created {len(all_diploma_alineas)} diploma alinea records")
+
+        results["records_imported"] = len(parsed_items)
+        self.processed_items += len(parsed_items)
+
+        return results
+
+    def _parse_current_item(self, item: ET.Element) -> Optional[ParsedCurrentItem]:
+        """Parse a current format item element into memory structure."""
+        item_id = DataValidationUtils.safe_float_convert(
+            self._get_text_value(item, "ID")
+        )
+
+        if not item_id:
+            logger.warning("Current item missing ID, skipping")
+            return None
+
+        id_pai = DataValidationUtils.safe_float_convert(
+            self._get_text_value(item, "ID_Pai")
+        )
+
+        parsed = ParsedCurrentItem(
+            xml_element=item,
+            item_id=int(item_id),
+            data={
+                "id_pai": int(id_pai) if id_pai else None,
+                "tipo": self._get_text_value(item, "Tipo"),
+                "numero": self._get_text_value(item, "Numero"),
+                "titulo": self._get_text_value(item, "Titulo"),
+                "texto": self._get_text_value(item, "Texto"),
+                "estado": self._get_text_value(item, "Estado"),
+            }
+        )
+
+        # Parse artigos (leaf records)
+        artigos_elem = item.find("Artigos")
+        if artigos_elem is not None:
+            for artigo_elem in artigos_elem.findall("Artigo"):
+                parsed.artigos.append(self._parse_current_artigo(artigo_elem, parsed))
+
+        # Parse propostas (leaf records)
+        propostas_elem = item.find("PropostasDeAlteracao")
+        if propostas_elem is not None:
+            for proposta_elem in propostas_elem.findall("Proposta"):
+                parsed.propostas.append(self._parse_current_proposta(proposta_elem, parsed))
+
+        # Parse diplomas (nested structure)
+        diplomas_elem = item.find("DiplomasaModificar")
+        if diplomas_elem is not None:
+            diploma_elements = diplomas_elem.findall("DiplomaModificar") + diplomas_elem.findall("DiplomaaModificar")
+            for diploma_elem in diploma_elements:
+                parsed.diplomas.append(self._parse_current_diploma(diploma_elem, parsed))
+
+        # Parse iniciativas (leaf records)
+        iniciativas_elem = item.find("IniciativasMapas")
+        if iniciativas_elem is not None:
+            for iniciativa_elem in iniciativas_elem.findall("IniciativaMapa"):
+                parsed.iniciativas.append(self._parse_current_iniciativa(iniciativa_elem, parsed))
+
+        # Parse votacoes (leaf records)
+        votacoes_elem = item.find("Votacoes")
+        if votacoes_elem is not None:
+            for votacao_elem in votacoes_elem.findall("Votacao"):
+                parsed.votacoes.append(self._parse_current_votacao(votacao_elem, parsed))
+
+        # Parse requerimentos (leaf records)
+        requerimentos_elem = item.find("RequerimentosDeAvocacao")
+        if requerimentos_elem is not None:
+            for requerimento_elem in requerimentos_elem.findall("RequerimentoDeAvocacao"):
+                parsed.requerimentos.append(self._parse_current_requerimento(requerimento_elem, parsed))
+
+        return parsed
+
+    def _parse_current_artigo(
+        self, artigo_elem: ET.Element, item_ref: ParsedCurrentItem
+    ) -> ParsedCurrentArtigo:
+        """Parse a current format artigo element (leaf record)."""
+        artigo_id = DataValidationUtils.safe_float_convert(
+            self._get_text_value(artigo_elem, "ID_Art")
+        )
+        id_pai = DataValidationUtils.safe_float_convert(
+            self._get_text_value(artigo_elem, "ID_Pai")
+        )
+
+        return ParsedCurrentArtigo(
+            xml_element=artigo_elem,
+            item_ref=item_ref,
+            data={
+                "artigo_id": int(artigo_id) if artigo_id else None,
+                "id_pai": int(id_pai) if id_pai else None,
+                "tipo": self._get_text_value(artigo_elem, "Tipo"),
+                "numero": self._get_text_value(artigo_elem, "Numero"),
+                "titulo": self._get_text_value(artigo_elem, "Titulo"),
+                "texto": self._get_text_value(artigo_elem, "Texto"),
+                "estado": self._get_text_value(artigo_elem, "Estado"),
+            }
+        )
+
+    def _parse_current_proposta(
+        self, proposta_elem: ET.Element, item_ref: ParsedCurrentItem
+    ) -> ParsedCurrentProposta:
+        """Parse a current format proposta element (leaf record)."""
+        proposta_id = DataValidationUtils.safe_float_convert(
+            self._get_text_value(proposta_elem, "ID_PA")
+        )
+        id_pai = DataValidationUtils.safe_float_convert(
+            self._get_text_value(proposta_elem, "ID_Pai")
+        )
+        data_str = self._get_text_value(proposta_elem, "Data")
+
+        return ParsedCurrentProposta(
+            xml_element=proposta_elem,
+            item_ref=item_ref,
+            data={
+                "proposta_id": int(proposta_id) if proposta_id else None,
+                "id_pai": int(id_pai) if id_pai else None,
+                "objeto": self._get_text_value(proposta_elem, "Objeto"),
+                "data_proposta": DataValidationUtils.parse_date_flexible(data_str) if data_str else None,
+                "apresentado": self._get_text_value(proposta_elem, "Apresentado"),
+                "incide": self._get_text_value(proposta_elem, "Incide"),
+                "tipo": self._get_text_value(proposta_elem, "Tipo"),
+                "estado": self._get_text_value(proposta_elem, "Estado"),
+                "ficheiro": self._get_text_value(proposta_elem, "Ficheiro"),
+            }
+        )
+
+    def _parse_current_diploma(
+        self, diploma_elem: ET.Element, item_ref: ParsedCurrentItem
+    ) -> ParsedCurrentDiploma:
+        """Parse a current format diploma element with nested artigos."""
+        diploma_id = DataValidationUtils.safe_float_convert(
+            self._get_text_value(diploma_elem, "ID_Dip")
+        )
+
+        parsed = ParsedCurrentDiploma(
+            xml_element=diploma_elem,
+            item_ref=item_ref,
+            data={
+                "diploma_id": int(diploma_id) if diploma_id else None,
+                "titulo": self._get_text_value(diploma_elem, "DiplomaTitulo"),
+                "sub_titulo": self._get_text_value(diploma_elem, "DiplomaSubTitulo"),
+                "artigos_texto": self._get_text_value(diploma_elem, "DiplomasArtigos"),
+                "texto_ou_estado": self._get_text_value(diploma_elem, "TextoOuEstado"),
+            }
+        )
+
+        # Parse nested diploma artigos
+        diplomas_artigos = diploma_elem.find("DiplomasArtigos")
+        if diplomas_artigos is not None:
+            for diploma_artigo_elem in diplomas_artigos.findall("DiplomaArtigo"):
+                parsed.artigos.append(self._parse_current_diploma_artigo(diploma_artigo_elem, parsed))
+
+        return parsed
+
+    def _parse_current_diploma_artigo(
+        self, diploma_artigo_elem: ET.Element, diploma_ref: ParsedCurrentDiploma
+    ) -> ParsedCurrentDiplomaArtigo:
+        """Parse a current format diploma artigo element with nested numeros."""
+        parsed = ParsedCurrentDiplomaArtigo(
+            xml_element=diploma_artigo_elem,
+            diploma_ref=diploma_ref,
+            data={
+                "artigo_id": self._get_int_value(diploma_artigo_elem, "ID_Art"),
+                "diploma_artigo_id_alt": self._get_int_value(diploma_artigo_elem, "DiplomaArtigoID"),
+                "numero": self._get_text_value(diploma_artigo_elem, "Numero"),
+                "titulo": self._get_text_value(diploma_artigo_elem, "Titulo"),
+                "diploma_artigo_titulo_alt": self._get_text_value(diploma_artigo_elem, "DiplomaArtigoTituto"),
+                "diploma_artigo_subtitulo": self._get_text_value(diploma_artigo_elem, "DiplomaArtigoSubTitulo"),
+                "texto": self._get_text_value(diploma_artigo_elem, "Texto"),
+                "diploma_artigo_texto": self._get_text_value(diploma_artigo_elem, "DiplomaArtigoTexto"),
+                "estado": self._get_text_value(diploma_artigo_elem, "Estado"),
+                "diploma_artigo_estado": self._get_text_value(diploma_artigo_elem, "DiplomaArtigoEstado"),
+            }
+        )
+
+        # Parse nested diploma numeros
+        diploma_numeros = diploma_artigo_elem.find("DiplomaNumeros")
+        if diploma_numeros is not None:
+            for diploma_numero_elem in diploma_numeros.findall("DiplomaNumero"):
+                parsed.numeros.append(self._parse_current_diploma_numero(diploma_numero_elem, parsed))
+
+        return parsed
+
+    def _parse_current_diploma_numero(
+        self, diploma_numero_elem: ET.Element, artigo_ref: ParsedCurrentDiplomaArtigo
+    ) -> ParsedCurrentDiplomaNumero:
+        """Parse a current format diploma numero element with nested alineas."""
+        parsed = ParsedCurrentDiplomaNumero(
+            xml_element=diploma_numero_elem,
+            artigo_ref=artigo_ref,
+            data={
+                "diploma_numero_id": self._get_int_value(diploma_numero_elem, "DiplomaNumeroID"),
+                "titulo": self._get_text_value(diploma_numero_elem, "DiplomaNumeroTitulo"),
+                "estado": self._get_text_value(diploma_numero_elem, "DiplomaNumeroEstado"),
+            }
+        )
+
+        # Parse nested diploma alineas
+        diploma_alineas = diploma_numero_elem.find("DiplomaAlineas")
+        if diploma_alineas is not None:
+            for diploma_alinea_elem in diploma_alineas.findall("DiplomaAlinea"):
+                parsed.alineas.append(ParsedCurrentDiplomaAlinea(
+                    xml_element=diploma_alinea_elem,
+                    numero_ref=parsed,
+                    data={
+                        "titulo": self._get_text_value(diploma_alinea_elem, "DiplomaAlineaTitulo"),
+                        "estado": self._get_text_value(diploma_alinea_elem, "DiplomaAlineaEstado"),
+                    }
+                ))
+
+        return parsed
+
+    def _parse_current_iniciativa(
+        self, iniciativa_elem: ET.Element, item_ref: ParsedCurrentItem
+    ) -> ParsedCurrentIniciativa:
+        """Parse a current format iniciativa mapa element (leaf record)."""
+        return ParsedCurrentIniciativa(
+            xml_element=iniciativa_elem,
+            item_ref=item_ref,
+            data={
+                "numero": self._get_text_value(iniciativa_elem, "MapasNumero"),
+                "titulo": self._get_text_value(iniciativa_elem, "MapasTitulo"),
+                "estado": self._get_text_value(iniciativa_elem, "MapasEstado"),
+                "link_url": self._get_text_value(iniciativa_elem, "MapasLink"),
+            }
+        )
+
+    def _parse_current_votacao(
+        self, votacao_elem: ET.Element, item_ref: ParsedCurrentItem
+    ) -> ParsedCurrentVotacao:
+        """Parse a current format votacao element (leaf record)."""
+        data_str = self._get_text_value(votacao_elem, "Data")
+        descricoes = self._get_text_value(votacao_elem, "Descricoes")
+
+        # Handle nested Descricoes.Descricao structure
+        if not descricoes:
+            descricoes_elem = votacao_elem.find("Descricoes")
+            if descricoes_elem is not None:
+                descricao_elem = descricoes_elem.find("Descricao")
+                if descricao_elem is not None and descricao_elem.text:
+                    descricoes = descricao_elem.text.strip()
+
+        diplomas_terceiros = self._get_text_value(votacao_elem, "DiplomasTerceiros")
+
+        # Handle DiplomasTerceirosouPropostasDeLeiMapas
+        diplomas_terceiros_alt = self._get_text_value(votacao_elem, "DiplomasTerceirosouPropostasDeLeiMapas")
+        if not diplomas_terceiros and diplomas_terceiros_alt:
+            diplomas_terceiros = diplomas_terceiros_alt
+        elif diplomas_terceiros_alt:
+            diplomas_elem = votacao_elem.find("DiplomasTerceirosouPropostasDeLeiMapas")
+            if diplomas_elem is not None:
+                diploma_elems = diplomas_elem.findall("Diploma")
+                if diploma_elems:
+                    diploma_texts = [d.text.strip() for d in diploma_elems if d.text]
+                    if diploma_texts:
+                        diplomas_terceiros = (diplomas_terceiros or "") + "; " + "; ".join(diploma_texts)
+
+        resultado = self._get_text_value(votacao_elem, "Resultado")
+        resultado_completo = self._get_text_value(votacao_elem, "ResultadoCompleto")
+        if not resultado and resultado_completo:
+            resultado = resultado_completo
+
+        # Handle GruposParlamentares structure
+        grupos_parlamentares = self._get_text_value(votacao_elem, "GruposParlamentares")
+        grupos_elem = votacao_elem.find("GruposParlamentares")
+        if grupos_elem is not None and not grupos_parlamentares:
+            grupo_texts = []
+            for grupo_elem in grupos_elem.findall("GrupoParlamentar"):
+                if grupo_elem.text:
+                    grupo_texts.append(grupo_elem.text.strip())
+            for voto_elem in grupos_elem.findall("Voto"):
+                if voto_elem.text:
+                    grupo_texts.append(f"Voto: {voto_elem.text.strip()}")
+            if grupo_texts:
+                grupos_parlamentares = "; ".join(grupo_texts)
+
+        return ParsedCurrentVotacao(
+            xml_element=votacao_elem,
+            item_ref=item_ref,
+            data={
+                "data_votacao": DataValidationUtils.parse_date_flexible(data_str) if data_str else None,
+                "descricao": descricoes,
+                "sub_descricao": self._get_text_value(votacao_elem, "SubDescricao"),
+                "resultado": resultado,
+                "diplomas_terceiros": diplomas_terceiros,
+                "grupos_parlamentares": grupos_parlamentares,
+            }
+        )
+
+    def _parse_current_requerimento(
+        self, requerimento_elem: ET.Element, item_ref: ParsedCurrentItem
+    ) -> ParsedCurrentRequerimento:
+        """Parse a current format requerimento de avocacao element (leaf record)."""
+        data_str = self._get_text_value(requerimento_elem, "AvocacaoData")
+
+        return ParsedCurrentRequerimento(
+            xml_element=requerimento_elem,
+            item_ref=item_ref,
+            data={
+                "descricao": self._get_text_value(requerimento_elem, "AvocacaoDescricao"),
+                "data_avocacao": DataValidationUtils.parse_date_flexible(data_str) if data_str else None,
+                "titulo": self._get_text_value(requerimento_elem, "AvocacaoTitulo"),
+                "estado": self._get_text_value(requerimento_elem, "AvocacaoEstado"),
+                "ficheiro_url": self._get_text_value(requerimento_elem, "AvocacaoFicheiro"),
+            }
+        )
+
+    def _create_current_item_record(
+        self, parsed: ParsedCurrentItem, legislatura: Legislatura
+    ):
+        """Create or update an item database record."""
+        existing = (
+            self.session.query(OrcamentoEstadoItem)
+            .filter_by(item_id=parsed.item_id)
+            .first()
+        )
+
+        if existing:
+            existing.id_pai = parsed.data["id_pai"]
+            existing.tipo = parsed.data["tipo"]
+            existing.numero = parsed.data["numero"]
+            existing.titulo = parsed.data["titulo"]
+            existing.texto = parsed.data["texto"]
+            existing.estado = parsed.data["estado"]
+            existing.legislatura_id = legislatura.id
+            parsed.db_obj = existing
+        else:
+            item_obj = OrcamentoEstadoItem(
+                item_id=parsed.item_id,
+                id_pai=parsed.data["id_pai"],
+                tipo=parsed.data["tipo"],
+                numero=parsed.data["numero"],
+                titulo=parsed.data["titulo"],
+                texto=parsed.data["texto"],
+                estado=parsed.data["estado"],
+                legislatura_id=legislatura.id,
+                format_type="current",
+            )
+            self.session.add(item_obj)
+            parsed.db_obj = item_obj
+
+    def _create_current_artigos(self, parsed: ParsedCurrentItem):
+        """Create artigo records for an item."""
+        for artigo in parsed.artigos:
+            artigo_obj = OrcamentoEstadoArtigo(
+                item_id=parsed.db_obj.id,
+                artigo_id=artigo.data["artigo_id"],
+                id_pai=artigo.data["id_pai"],
+                tipo=artigo.data["tipo"],
+                numero=artigo.data["numero"],
+                titulo=artigo.data["titulo"],
+                texto=artigo.data["texto"],
+                estado=artigo.data["estado"],
+            )
+            self.session.add(artigo_obj)
+            self.processed_articles += 1
+
+    def _create_current_propostas(self, parsed: ParsedCurrentItem, legislatura: Legislatura):
+        """Create proposta records for an item."""
+        for proposta in parsed.propostas:
+            if proposta.data["proposta_id"]:
+                proposta_obj = OrcamentoEstadoPropostaAlteracao(
+                    proposta_id=proposta.data["proposta_id"],
+                    id_pai=proposta.data["id_pai"],
+                    titulo=proposta.data["objeto"],
+                    data_proposta=proposta.data["data_proposta"],
+                    apresentado=proposta.data["apresentado"],
+                    incide=proposta.data["incide"],
+                    tipo=proposta.data["tipo"],
+                    estado=proposta.data["estado"],
+                    ficheiro_url=proposta.data["ficheiro"],
+                    legislatura_id=legislatura.id,
+                    format_type="current",
+                )
+                self.session.add(proposta_obj)
+                self.processed_proposals += 1
+
+    def _create_current_iniciativas(self, parsed: ParsedCurrentItem):
+        """Create iniciativa records for an item."""
+        for iniciativa in parsed.iniciativas:
+            iniciativa_obj = OrcamentoEstadoIniciativa(
+                item_id=parsed.db_obj.id,
+                numero=iniciativa.data["numero"],
+                titulo=iniciativa.data["titulo"],
+                estado=iniciativa.data["estado"],
+                link_url=iniciativa.data["link_url"],
+            )
+            self.session.add(iniciativa_obj)
+            self.processed_initiatives += 1
+
+    def _create_current_votacoes(self, parsed: ParsedCurrentItem):
+        """Create votacao records for an item."""
+        for votacao in parsed.votacoes:
+            votacao_obj = OrcamentoEstadoVotacao(
+                item_id=parsed.db_obj.id,
+                data_votacao=votacao.data["data_votacao"],
+                descricao=votacao.data["descricao"],
+                sub_descricao=votacao.data["sub_descricao"],
+                resultado=votacao.data["resultado"],
+                diplomas_terceiros_texto=votacao.data["diplomas_terceiros"],
+                grupos_parlamentares_texto=votacao.data["grupos_parlamentares"],
+            )
+            self.session.add(votacao_obj)
+            self.processed_votes += 1
+
+    def _create_current_requerimentos(self, parsed: ParsedCurrentItem):
+        """Create requerimento records for an item."""
+        for requerimento in parsed.requerimentos:
+            requerimento_obj = OrcamentoEstadoRequerimentoAvocacao(
+                item_id=parsed.db_obj.id,
+                descricao=requerimento.data["descricao"],
+                data_avocacao=requerimento.data["data_avocacao"],
+                titulo=requerimento.data["titulo"],
+                estado=requerimento.data["estado"],
+                ficheiro_url=requerimento.data["ficheiro_url"],
+            )
+            self.session.add(requerimento_obj)
+
+    def _create_current_diploma_record(self, parsed: ParsedCurrentDiploma):
+        """Create a diploma database record."""
+        artigos_texto = parsed.data["artigos_texto"]
+        texto_ou_estado = parsed.data["texto_ou_estado"]
+
+        # Handle TextoOuEstado field
+        if texto_ou_estado:
+            if not artigos_texto:
+                artigos_texto = texto_ou_estado
+            else:
+                artigos_texto += f" | {texto_ou_estado}"
+
+        diploma_obj = OrcamentoEstadoDiploma(
+            item_id=parsed.item_ref.db_obj.id,
+            diploma_id=parsed.data["diploma_id"],
+            titulo=parsed.data["titulo"],
+            sub_titulo=parsed.data["sub_titulo"],
+            artigos_texto=artigos_texto,
+        )
+        self.session.add(diploma_obj)
+        parsed.db_obj = diploma_obj
+        self.processed_diplomas += 1
+
+    def _create_current_diploma_artigo_record(self, parsed: ParsedCurrentDiplomaArtigo):
+        """Create a diploma artigo database record."""
+        diploma_artigo_obj = OrcamentoEstadoDiplomaArtigo(
+            diploma_id=parsed.diploma_ref.db_obj.id,
+            artigo_id=parsed.data["artigo_id"],
+            diploma_artigo_id_alt=parsed.data["diploma_artigo_id_alt"],
+            numero=parsed.data["numero"],
+            titulo=parsed.data["titulo"],
+            diploma_artigo_titulo_alt=parsed.data["diploma_artigo_titulo_alt"],
+            diploma_artigo_subtitulo=parsed.data["diploma_artigo_subtitulo"],
+            texto=parsed.data["texto"],
+            diploma_artigo_texto=parsed.data["diploma_artigo_texto"],
+            estado=parsed.data["estado"],
+            diploma_artigo_estado=parsed.data["diploma_artigo_estado"],
+        )
+        self.session.add(diploma_artigo_obj)
+        parsed.db_obj = diploma_artigo_obj
+
+    def _create_current_diploma_numero_record(self, parsed: ParsedCurrentDiplomaNumero):
+        """Create a diploma numero database record."""
+        diploma_numero_obj = OrcamentoEstadoDiplomaNumero(
+            diploma_artigo_id=parsed.artigo_ref.db_obj.id,
+            diploma_numero_id=parsed.data["diploma_numero_id"],
+            titulo=parsed.data["titulo"],
+            estado=parsed.data["estado"],
+        )
+        self.session.add(diploma_numero_obj)
+        parsed.db_obj = diploma_numero_obj
+
+    def _create_current_diploma_alinea_record(self, parsed: ParsedCurrentDiplomaAlinea):
+        """Create a diploma alinea database record."""
+        diploma_alinea_obj = OrcamentoEstadoDiplomaAlinea(
+            diploma_numero_id=parsed.numero_ref.db_obj.id,
+            titulo=parsed.data["titulo"],
+            estado=parsed.data["estado"],
+        )
+        self.session.add(diploma_alinea_obj)
 
     def _detect_format_type(self, xml_root: ET.Element, filename: str) -> str:
         """
@@ -581,665 +1623,6 @@ class OrcamentoEstadoMapper(SchemaMapper):
             self.session.flush()
 
         return legislatura
-
-    def _process_legacy_proposal(
-        self, proposta: ET.Element, legislatura: Legislatura, filename: str
-    ) -> bool:
-        """
-        Process individual amendment proposal (legacy format)
-
-        Args:
-            proposta: PropostaDeAlteracao XML element
-            legislatura: Legislatura instance
-            filename: Source filename
-
-        Returns:
-            Success boolean
-        """
-        try:
-            # Extract basic proposal fields
-            proposal_id = DataValidationUtils.safe_float_convert(
-                self._get_text_value(proposta, "ID")
-            )
-            numero = self._get_text_value(proposta, "Numero")
-            data_str = self._get_text_value(proposta, "Data")
-            titulo = self._get_text_value(proposta, "Titulo")
-            tema = self._get_text_value(proposta, "Tema")
-            apresentada = self._get_text_value(proposta, "Apresentada")
-            incide = self._get_text_value(proposta, "Incide")
-            tipo = self._get_text_value(proposta, "Tipo")
-            estado = self._get_text_value(proposta, "Estado")
-            numero_artigo_novo = self._get_text_value(proposta, "NumeroArtigoNovo")
-            conteudo = self._get_text_value(proposta, "Conteudo")
-            ficheiro = self._get_text_value(proposta, "Ficheiro")
-            grupo_parlamentar = self._get_text_value(
-                proposta, "GrupoParlamentar_Partido"
-            )
-
-            # Parse date
-            data_proposta = None
-            if data_str:
-                data_proposta = DataValidationUtils.parse_date_flexible(data_str)
-
-            if not proposal_id:
-                logger.warning("Legacy proposal missing ID, skipping")
-                return False
-
-            # Check if proposal already exists
-            existing = (
-                self.session.query(OrcamentoEstadoPropostaAlteracao)
-                .filter_by(proposta_id=int(proposal_id))
-                .first()
-            )
-
-            if existing:
-                # Update existing
-                existing.numero = numero
-                existing.data_proposta = data_proposta
-                existing.titulo = titulo
-                existing.tema = tema
-                existing.apresentada = apresentada
-                existing.incide = incide
-                existing.tipo = tipo
-                existing.estado = estado
-                existing.numero_artigo_novo = numero_artigo_novo
-                existing.conteudo = conteudo
-                existing.ficheiro_url = ficheiro
-                existing.grupo_parlamentar = grupo_parlamentar
-                existing.legislatura_id = legislatura.id
-                proposal_obj = existing
-            else:
-                # Create new
-                proposal_obj = OrcamentoEstadoPropostaAlteracao(
-                    proposta_id=int(proposal_id),
-                    numero=numero,
-                    data_proposta=data_proposta,
-                    titulo=titulo,
-                    tema=tema,
-                    apresentada=apresentada,
-                    incide=incide,
-                    tipo=tipo,
-                    estado=estado,
-                    numero_artigo_novo=numero_artigo_novo,
-                    conteudo=conteudo,
-                    ficheiro_url=ficheiro,
-                    grupo_parlamentar=grupo_parlamentar,
-                    legislatura_id=legislatura.id,
-                    format_type="legacy",
-                )
-                self.session.add(proposal_obj)
-                self.session.flush()
-
-            # Process nested data
-            self._process_legacy_nested_data(proposta, proposal_obj)
-
-            return True
-
-        except Exception as e:
-            logger.error(f"Error processing legacy proposal: {e}")
-            return False
-
-    def _process_current_item(
-        self, item: ET.Element, legislatura: Legislatura, filename: str
-    ) -> bool:
-        """
-        Process individual budget item (current format)
-
-        Args:
-            item: Item XML element
-            legislatura: Legislatura instance
-            filename: Source filename
-
-        Returns:
-            Success boolean
-        """
-        try:
-            # Extract basic item fields
-            item_id = DataValidationUtils.safe_float_convert(
-                self._get_text_value(item, "ID")
-            )
-            id_pai = DataValidationUtils.safe_float_convert(
-                self._get_text_value(item, "ID_Pai")
-            )
-            tipo = self._get_text_value(item, "Tipo")
-            numero = self._get_text_value(item, "Numero")
-            titulo = self._get_text_value(item, "Titulo")
-            texto = self._get_text_value(item, "Texto")
-            estado = self._get_text_value(item, "Estado")
-
-            if not item_id:
-                logger.warning("Current item missing ID, skipping")
-                return False
-
-            # Check if item already exists
-            existing = (
-                self.session.query(OrcamentoEstadoItem)
-                .filter_by(item_id=int(item_id))
-                .first()
-            )
-
-            if existing:
-                # Update existing
-                existing.id_pai = int(id_pai) if id_pai else None
-                existing.tipo = tipo
-                existing.numero = numero
-                existing.titulo = titulo
-                existing.texto = texto
-                existing.estado = estado
-                existing.legislatura_id = legislatura.id
-                item_obj = existing
-            else:
-                # Create new
-                item_obj = OrcamentoEstadoItem(
-                    item_id=int(item_id),
-                    id_pai=int(id_pai) if id_pai else None,
-                    tipo=tipo,
-                    numero=numero,
-                    titulo=titulo,
-                    texto=texto,
-                    estado=estado,
-                    legislatura_id=legislatura.id,
-                    format_type="current",
-                )
-                self.session.add(item_obj)
-                self.session.flush()
-
-            # Process nested data
-            self._process_current_nested_data(item, item_obj)
-
-            return True
-
-        except Exception as e:
-            logger.error(f"Error processing current item: {e}")
-            return False
-
-    def _process_legacy_nested_data(
-        self, proposta: ET.Element, proposal_obj: OrcamentoEstadoPropostaAlteracao
-    ):
-        """Process nested data for legacy format (proponents, votes, etc.)"""
-        try:
-            # Process Proponentes (Proponents)
-            proponentes_elem = proposta.find("Proponentes")
-            if proponentes_elem is not None:
-                for proponente_elem in proponentes_elem.findall("Proponente"):
-                    gp_partido = self._get_text_value(proponente_elem, "GP_Partido")
-                    deputado = self._get_text_value(proponente_elem, "Deputado")
-
-                    if gp_partido or deputado:
-                        proponente_obj = OrcamentoEstadoProponente(
-                            proposta_id=proposal_obj.id,
-                            grupo_parlamentar=gp_partido,
-                            deputado_nome=deputado,
-                            tipo_proponente="deputado" if deputado else "grupo",
-                        )
-                        self.session.add(proponente_obj)
-                        self.processed_proponents += 1
-
-            # Process Votacoes (Voting Records)
-            votacoes_elem = proposta.find("Votacoes")
-            if votacoes_elem is not None:
-                for votacao_elem in votacoes_elem.findall("Votacao"):
-                    data_str = self._get_text_value(votacao_elem, "Data")
-                    
-                    # Process multiple Descricao elements within Descricoes
-                    descricoes_list = []
-                    descricoes_elem = votacao_elem.find("Descricoes")
-                    if descricoes_elem is not None:
-                        for desc_elem in descricoes_elem.findall("Descricao"):
-                            desc_text = desc_elem.text
-                            if desc_text and desc_text.strip():
-                                descricoes_list.append(desc_text.strip())
-                    
-                    # Join multiple descriptions with separator
-                    descricoes = "; ".join(descricoes_list) if descricoes_list else None
-                    
-                    sub_descricao = self._get_text_value(votacao_elem, "SubDescricao")
-                    resultado = self._get_text_value(votacao_elem, "ResultadoCompleto")
-                    if not resultado:
-                        resultado = self._get_text_value(votacao_elem, "Resultado")
-                    diplomas_terceiros = self._get_text_value(
-                        votacao_elem, "DiplomasTerceiros"
-                    )
-                    grupos_parlamentares = self._get_text_value(
-                        votacao_elem, "GruposParlamentares"
-                    )
-
-                    data_votacao = None
-                    if data_str:
-                        data_votacao = DataValidationUtils.parse_date_flexible(data_str)
-
-                    votacao_obj = OrcamentoEstadoVotacao(
-                        proposta_id=proposal_obj.id,
-                        data_votacao=data_votacao,
-                        descricao=descricoes,
-                        sub_descricao=sub_descricao,
-                        resultado=resultado,
-                        diplomas_terceiros_texto=diplomas_terceiros,
-                        grupos_parlamentares_texto=grupos_parlamentares,
-                    )
-                    self.session.add(votacao_obj)
-                    self.processed_votes += 1
-
-            # Process Iniciativas_Artigos (Articles)
-            artigos_elem = proposta.find("Iniciativas_Artigos")
-            if artigos_elem is not None:
-                for artigo_elem in artigos_elem.findall("Iniciativa_Artigo"):
-                    numero = self._get_text_value(artigo_elem, "Artigo")
-                    titulo = self._get_text_value(artigo_elem, "Titulo")
-                    texto = self._get_text_value(artigo_elem, "Texto")
-                    estado = self._get_text_value(artigo_elem, "Estado")
-
-                    artigo_obj = OrcamentoEstadoArtigo(
-                        proposta_id=proposal_obj.id,
-                        numero=numero,
-                        titulo=titulo,
-                        texto=texto,
-                        estado=estado,
-                    )
-                    self.session.add(artigo_obj)
-                    self.session.flush()  # Ensure artigo_obj.id is available
-                    self.processed_articles += 1
-
-                    # Process nested Numeros within the article
-                    numeros_elem = artigo_elem.find("Numeros")
-                    if numeros_elem is not None:
-                        for numero_elem in numeros_elem.findall("Numero"):
-                            numero_num = self._get_text_value(numero_elem, "Numero")
-                            numero_titulo = self._get_text_value(numero_elem, "Titulo")
-                            numero_texto = self._get_text_value(numero_elem, "Texto")
-                            numero_estado = self._get_text_value(numero_elem, "Estado")
-
-                            numero_obj = OrcamentoEstadoArtigoNumero(
-                                artigo_id=artigo_obj.id,
-                                numero=numero_num,
-                                titulo=numero_titulo,
-                                texto=numero_texto,
-                                estado=numero_estado,
-                            )
-                            self.session.add(numero_obj)
-                            self.session.flush()  # Ensure numero_obj.id is available
-
-                            # Process nested Alineas within the numero
-                            alineas_elem = numero_elem.find("Alineas")
-                            if alineas_elem is not None:
-                                for alinea_elem in alineas_elem.findall("Alinea"):
-                                    alinea_text = self._get_text_value(alinea_elem, "Alinea")
-                                    alinea_titulo = self._get_text_value(alinea_elem, "Titulo")
-                                    alinea_texto = self._get_text_value(alinea_elem, "Texto")
-                                    alinea_estado = self._get_text_value(alinea_elem, "Estado")
-
-                                    alinea_obj = OrcamentoEstadoArtigoAlinea(
-                                        numero_id=numero_obj.id,
-                                        alinea=alinea_text,
-                                        titulo=alinea_titulo,
-                                        texto=alinea_texto,
-                                        estado=alinea_estado,
-                                    )
-                                    self.session.add(alinea_obj)
-
-            logger.debug(
-                f"Processed legacy nested data for proposal {proposal_obj.proposta_id}"
-            )
-
-        except Exception as e:
-            logger.error(f"Error processing legacy nested data: {e}")
-            raise
-
-    def _process_current_nested_data(
-        self, item: ET.Element, item_obj: OrcamentoEstadoItem
-    ):
-        """Process nested data for current format (articles, proposals, etc.)"""
-        try:
-            # Process Artigos (Articles)
-            artigos_elem = item.find("Artigos")
-            if artigos_elem is not None and len(artigos_elem) > 0:
-                for artigo_elem in artigos_elem.findall("Artigo"):
-                    artigo_id = DataValidationUtils.safe_float_convert(
-                        self._get_text_value(artigo_elem, "ID_Art")
-                    )
-                    id_pai = DataValidationUtils.safe_float_convert(
-                        self._get_text_value(artigo_elem, "ID_Pai")
-                    )
-                    tipo = self._get_text_value(artigo_elem, "Tipo")
-                    numero = self._get_text_value(artigo_elem, "Numero")
-                    titulo = self._get_text_value(artigo_elem, "Titulo")
-                    texto = self._get_text_value(artigo_elem, "Texto")
-                    estado = self._get_text_value(artigo_elem, "Estado")
-
-                    artigo_obj = OrcamentoEstadoArtigo(
-                        item_id=item_obj.id,
-                        artigo_id=int(artigo_id) if artigo_id else None,
-                        id_pai=int(id_pai) if id_pai else None,
-                        tipo=tipo,
-                        numero=numero,
-                        titulo=titulo,
-                        texto=texto,
-                        estado=estado,
-                    )
-                    self.session.add(artigo_obj)
-                    self.processed_articles += 1
-
-            # Process PropostasDeAlteracao (Amendment Proposals within items)
-            propostas_elem = item.find("PropostasDeAlteracao")
-            if propostas_elem is not None and len(propostas_elem) > 0:
-                for proposta_elem in propostas_elem.findall("Proposta"):
-                    proposta_id = DataValidationUtils.safe_float_convert(
-                        self._get_text_value(proposta_elem, "ID_PA")
-                    )
-                    id_pai = DataValidationUtils.safe_float_convert(
-                        self._get_text_value(proposta_elem, "ID_Pai")
-                    )
-                    objeto = self._get_text_value(proposta_elem, "Objeto")
-                    data_str = self._get_text_value(proposta_elem, "Data")
-                    apresentado = self._get_text_value(proposta_elem, "Apresentado")
-                    incide = self._get_text_value(proposta_elem, "Incide")
-                    tipo = self._get_text_value(proposta_elem, "Tipo")
-                    estado = self._get_text_value(proposta_elem, "Estado")
-                    ficheiro = self._get_text_value(proposta_elem, "Ficheiro")
-
-                    if proposta_id:
-                        data_proposta = None
-                        if data_str:
-                            data_proposta = DataValidationUtils.parse_date_flexible(
-                                data_str
-                            )
-
-                        proposta_obj = OrcamentoEstadoPropostaAlteracao(
-                            proposta_id=int(proposta_id),
-                            id_pai=int(id_pai) if id_pai else None,
-                            titulo=objeto,
-                            data_proposta=data_proposta,
-                            apresentado=apresentado,
-                            incide=incide,
-                            tipo=tipo,
-                            estado=estado,
-                            ficheiro_url=ficheiro,
-                            legislatura_id=item_obj.legislatura_id,
-                            format_type="current",
-                        )
-                        self.session.add(proposta_obj)
-                        self.processed_proposals += 1
-
-            # Process DiplomasaModificar (Diplomas to Modify)
-            diplomas_elem = item.find("DiplomasaModificar")
-            if diplomas_elem is not None and len(diplomas_elem) > 0:
-                # Check both variants: DiplomaModificar and DiplomaaModificar
-                diploma_elements = diplomas_elem.findall(
-                    "DiplomaModificar"
-                ) + diplomas_elem.findall("DiplomaaModificar")
-                for diploma_elem in diploma_elements:
-                    diploma_id = DataValidationUtils.safe_float_convert(
-                        self._get_text_value(diploma_elem, "ID_Dip")
-                    )
-                    titulo = self._get_text_value(diploma_elem, "DiplomaTitulo")
-                    sub_titulo = self._get_text_value(diploma_elem, "DiplomaSubTitulo")
-                    artigos_texto = self._get_text_value(
-                        diploma_elem, "DiplomasArtigos"
-                    )
-
-                    diploma_obj = OrcamentoEstadoDiploma(
-                        item_id=item_obj.id,
-                        diploma_id=int(diploma_id) if diploma_id else None,
-                        titulo=titulo,
-                        sub_titulo=sub_titulo,
-                        artigos_texto=artigos_texto,
-                    )
-                    self.session.add(diploma_obj)
-                    self.session.flush()  # Get the ID
-                    self.processed_diplomas += 1
-
-                    # Process TextoOuEstado field for DiplomaaModificar variants
-                    texto_ou_estado = self._get_text_value(
-                        diploma_elem, "TextoOuEstado"
-                    )
-                    if texto_ou_estado:
-                        # Store in appropriate field - could be additional text or state info
-                        if not diploma_obj.artigos_texto:
-                            diploma_obj.artigos_texto = texto_ou_estado
-                        else:
-                            diploma_obj.artigos_texto += f" | {texto_ou_estado}"
-
-                    # Process detailed diploma articles (DiplomasArtigos.DiplomaArtigo)
-                    diplomas_artigos = diploma_elem.find("DiplomasArtigos")
-                    if diplomas_artigos is not None:
-                        for diploma_artigo_elem in diplomas_artigos.findall(
-                            "DiplomaArtigo"
-                        ):
-                            artigo_id = self._get_int_value(
-                                diploma_artigo_elem, "ID_Art"
-                            )
-                            diploma_artigo_id_alt = self._get_int_value(
-                                diploma_artigo_elem, "DiplomaArtigoID"
-                            )
-                            artigo_numero = self._get_text_value(
-                                diploma_artigo_elem, "Numero"
-                            )
-                            artigo_titulo = self._get_text_value(
-                                diploma_artigo_elem, "Titulo"
-                            )
-                            diploma_artigo_titulo_alt = self._get_text_value(
-                                diploma_artigo_elem, "DiplomaArtigoTituto"
-                            )
-                            diploma_artigo_subtitulo = self._get_text_value(
-                                diploma_artigo_elem, "DiplomaArtigoSubTitulo"
-                            )
-                            artigo_texto = self._get_text_value(
-                                diploma_artigo_elem, "Texto"
-                            )
-                            diploma_artigo_texto = self._get_text_value(
-                                diploma_artigo_elem, "DiplomaArtigoTexto"
-                            )
-                            artigo_estado = self._get_text_value(
-                                diploma_artigo_elem, "Estado"
-                            )
-                            diploma_artigo_estado = self._get_text_value(
-                                diploma_artigo_elem, "DiplomaArtigoEstado"
-                            )
-
-                            diploma_artigo_obj = OrcamentoEstadoDiplomaArtigo(
-                                diploma_id=diploma_obj.id,
-                                artigo_id=artigo_id,
-                                diploma_artigo_id_alt=diploma_artigo_id_alt,
-                                numero=artigo_numero,
-                                titulo=artigo_titulo,
-                                diploma_artigo_titulo_alt=diploma_artigo_titulo_alt,
-                                diploma_artigo_subtitulo=diploma_artigo_subtitulo,
-                                texto=artigo_texto,
-                                diploma_artigo_texto=diploma_artigo_texto,
-                                estado=artigo_estado,
-                                diploma_artigo_estado=diploma_artigo_estado,
-                            )
-                            self.session.add(diploma_artigo_obj)
-                            self.session.flush()  # Get the ID
-
-                            # Process diploma numbers (DiplomaNumeros.DiplomaNumero)
-                            diploma_numeros = diploma_artigo_elem.find("DiplomaNumeros")
-                            if diploma_numeros is not None:
-                                for diploma_numero_elem in diploma_numeros.findall(
-                                    "DiplomaNumero"
-                                ):
-                                    diploma_numero_id = self._get_int_value(
-                                        diploma_numero_elem, "DiplomaNumeroID"
-                                    )
-                                    numero_titulo = self._get_text_value(
-                                        diploma_numero_elem, "DiplomaNumeroTitulo"
-                                    )
-                                    numero_estado = self._get_text_value(
-                                        diploma_numero_elem, "DiplomaNumeroEstado"
-                                    )
-
-                                    diploma_numero_obj = OrcamentoEstadoDiplomaNumero(
-                                        diploma_artigo_id=diploma_artigo_obj.id,
-                                        diploma_numero_id=diploma_numero_id,
-                                        titulo=numero_titulo,
-                                        estado=numero_estado,
-                                    )
-                                    self.session.add(diploma_numero_obj)
-                                    self.session.flush()  # Get the ID
-
-                                    # Process diploma alineas (DiplomaAlineas.DiplomaAlinea)
-                                    diploma_alineas = diploma_numero_elem.find(
-                                        "DiplomaAlineas"
-                                    )
-                                    if diploma_alineas is not None:
-                                        for (
-                                            diploma_alinea_elem
-                                        ) in diploma_alineas.findall("DiplomaAlinea"):
-                                            alinea_titulo = self._get_text_value(
-                                                diploma_alinea_elem,
-                                                "DiplomaAlineaTitulo",
-                                            )
-                                            alinea_estado = self._get_text_value(
-                                                diploma_alinea_elem,
-                                                "DiplomaAlineaEstado",
-                                            )
-
-                                            diploma_alinea_obj = OrcamentoEstadoDiplomaAlinea(
-                                                diploma_numero_id=diploma_numero_obj.id,
-                                                titulo=alinea_titulo,
-                                                estado=alinea_estado,
-                                            )
-                                            self.session.add(diploma_alinea_obj)
-
-            # Process IniciativasMapas (Initiative Maps)
-            iniciativas_elem = item.find("IniciativasMapas")
-            if iniciativas_elem is not None and len(iniciativas_elem) > 0:
-                for iniciativa_elem in iniciativas_elem.findall("IniciativaMapa"):
-                    numero = self._get_text_value(iniciativa_elem, "MapasNumero")
-                    titulo = self._get_text_value(iniciativa_elem, "MapasTitulo")
-                    estado = self._get_text_value(iniciativa_elem, "MapasEstado")
-                    link_url = self._get_text_value(iniciativa_elem, "MapasLink")
-
-                    iniciativa_obj = OrcamentoEstadoIniciativa(
-                        item_id=item_obj.id,
-                        numero=numero,
-                        titulo=titulo,
-                        estado=estado,
-                        link_url=link_url,
-                    )
-                    self.session.add(iniciativa_obj)
-                    self.processed_initiatives += 1
-
-            # Process Votacoes (Voting Records)
-            votacoes_elem = item.find("Votacoes")
-            if votacoes_elem is not None and len(votacoes_elem) > 0:
-                for votacao_elem in votacoes_elem.findall("Votacao"):
-                    data_str = self._get_text_value(votacao_elem, "Data")
-                    descricoes = self._get_text_value(votacao_elem, "Descricoes")
-
-                    # Handle nested Descricoes.Descricao structure
-                    if not descricoes:
-                        descricoes_elem = votacao_elem.find("Descricoes")
-                        if descricoes_elem is not None:
-                            descricao_elem = descricoes_elem.find("Descricao")
-                            if descricao_elem is not None and descricao_elem.text:
-                                descricoes = descricao_elem.text.strip()
-
-                    diplomas_terceiros = self._get_text_value(
-                        votacao_elem, "DiplomasTerceiros"
-                    )
-
-                    # Handle DiplomasTerceirosouPropostasDeLeiMapas
-                    diplomas_terceiros_alt = self._get_text_value(
-                        votacao_elem, "DiplomasTerceirosouPropostasDeLeiMapas"
-                    )
-                    if not diplomas_terceiros and diplomas_terceiros_alt:
-                        diplomas_terceiros = diplomas_terceiros_alt
-                    elif diplomas_terceiros_alt:
-                        # Handle nested Diploma structure
-                        diplomas_elem = votacao_elem.find(
-                            "DiplomasTerceirosouPropostasDeLeiMapas"
-                        )
-                        if diplomas_elem is not None:
-                            diploma_elems = diplomas_elem.findall("Diploma")
-                            if diploma_elems:
-                                diploma_texts = [
-                                    d.text.strip() for d in diploma_elems if d.text
-                                ]
-                                if diploma_texts:
-                                    diplomas_terceiros += "; " + "; ".join(
-                                        diploma_texts
-                                    )
-
-                    resultado = self._get_text_value(votacao_elem, "Resultado")
-                    resultado_completo = self._get_text_value(
-                        votacao_elem, "ResultadoCompleto"
-                    )
-                    if not resultado and resultado_completo:
-                        resultado = resultado_completo
-
-                    sub_descricao = self._get_text_value(votacao_elem, "SubDescricao")
-
-                    # Handle GruposParlamentares structure
-                    grupos_parlamentares = self._get_text_value(
-                        votacao_elem, "GruposParlamentares"
-                    )
-                    grupos_elem = votacao_elem.find("GruposParlamentares")
-                    if grupos_elem is not None and not grupos_parlamentares:
-                        # Process nested GrupoParlamentar and Voto elements
-                        grupo_texts = []
-                        for grupo_elem in grupos_elem.findall("GrupoParlamentar"):
-                            if grupo_elem.text:
-                                grupo_texts.append(grupo_elem.text.strip())
-                        for voto_elem in grupos_elem.findall("Voto"):
-                            if voto_elem.text:
-                                grupo_texts.append(f"Voto: {voto_elem.text.strip()}")
-                        if grupo_texts:
-                            grupos_parlamentares = "; ".join(grupo_texts)
-
-                    data_votacao = None
-                    if data_str:
-                        data_votacao = DataValidationUtils.parse_date_flexible(data_str)
-
-                    votacao_obj = OrcamentoEstadoVotacao(
-                        item_id=item_obj.id,
-                        data_votacao=data_votacao,
-                        descricao=descricoes,
-                        sub_descricao=sub_descricao,
-                        resultado=resultado,
-                        diplomas_terceiros_texto=diplomas_terceiros,
-                        grupos_parlamentares_texto=grupos_parlamentares,
-                    )
-                    self.session.add(votacao_obj)
-                    self.processed_votes += 1
-
-            # Process RequerimentosDeAvocacao (Avocation Requests)
-            requerimentos_elem = item.find("RequerimentosDeAvocacao")
-            if requerimentos_elem is not None and len(requerimentos_elem) > 0:
-                for requerimento_elem in requerimentos_elem.findall(
-                    "RequerimentoDeAvocacao"
-                ):
-                    descricao = self._get_text_value(
-                        requerimento_elem, "AvocacaoDescricao"
-                    )
-                    data_str = self._get_text_value(requerimento_elem, "AvocacaoData")
-                    titulo = self._get_text_value(requerimento_elem, "AvocacaoTitulo")
-                    estado = self._get_text_value(requerimento_elem, "AvocacaoEstado")
-                    ficheiro = self._get_text_value(
-                        requerimento_elem, "AvocacaoFicheiro"
-                    )
-
-                    data_requerimento = None
-                    if data_str:
-                        data_requerimento = DataValidationUtils.parse_date_flexible(
-                            data_str
-                        )
-
-                    requerimento_obj = OrcamentoEstadoRequerimentoAvocacao(
-                        item_id=item_obj.id,
-                        descricao=descricao,
-                        data_avocacao=data_requerimento,  # Model uses data_avocacao, not data_requerimento
-                        titulo=titulo,
-                        estado=estado,
-                        ficheiro_url=ficheiro,
-                    )
-                    self.session.add(requerimento_obj)
-
-            logger.debug(f"Processed current nested data for item {item_obj.item_id}")
-
-        except Exception as e:
-            logger.error(f"Error processing current nested data: {e}")
-            raise
 
     def _get_text_value(self, element: ET.Element, tag: str) -> Optional[str]:
         """Safely extract text value from XML element"""

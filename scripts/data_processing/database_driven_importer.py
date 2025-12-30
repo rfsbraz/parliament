@@ -919,14 +919,17 @@ class DatabaseDrivenImporter:
         return None
     
     def _sort_by_import_order(self, import_records: List[ImportStatus]) -> List[ImportStatus]:
-        """Sort import records by dependency order"""
-        def get_order_index(record):
+        """Sort import records by dependency order with deterministic secondary sorting"""
+        def get_sort_key(record):
             mapper_key = self._get_mapper_key(record.category, record.file_name)
             if mapper_key in self.IMPORT_ORDER:
-                return self.IMPORT_ORDER.index(mapper_key)
-            return len(self.IMPORT_ORDER)  # Put unknown types at the end
-        
-        return sorted(import_records, key=get_order_index)
+                order_index = self.IMPORT_ORDER.index(mapper_key)
+            else:
+                order_index = len(self.IMPORT_ORDER)  # Put unknown types at the end
+            # Secondary sort by category, legislatura, file_name for deterministic ordering
+            return (order_index, record.category or '', record.legislatura or '', record.file_name or '')
+
+        return sorted(import_records, key=get_sort_key)
 
     def cleanup_database(self):
         """Truncate all tables except ImportStatus and alembic_version, reset ImportStatus to 'discovered'"""
