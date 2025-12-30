@@ -257,7 +257,7 @@ class ReunioesNacionaisMapper(EnhancedSchemaMapper):
                     legislatura_id=legislatura.id
                 )
                 self.session.add(meeting_record)
-                self.session.flush()  # Get the ID
+                # No flush needed - UUID id is generated client-side
             
             # Process participants
             self._process_meeting_participants(reuniao, meeting_record)

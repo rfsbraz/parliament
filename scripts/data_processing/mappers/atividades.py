@@ -757,7 +757,7 @@ class AtividadesMapper(SchemaMapper):
 
                 atividade_obj = AtividadeParlamentar(**atividade_data)
                 self.session.add(atividade_obj)
-                self.session.flush()  # Get the ID
+                # No flush needed - UUID id is generated client-side
                 existing = atividade_obj
 
             # Process related data
@@ -970,7 +970,7 @@ class AtividadesMapper(SchemaMapper):
                 legislatura_id=legislatura.id,
             )
             self.session.add(relatorio_obj)
-            self.session.flush()  # Get the ID for related records
+            # No flush needed - UUID id is generated client-side for related records
 
             # Process XIII Legislature related structures
             self._process_relatorio_documentos(relatorio, relatorio_obj.id)
@@ -1598,7 +1598,7 @@ class AtividadesMapper(SchemaMapper):
                 nome=nome,
             )
             self.session.add(opiniao_obj)
-            self.session.flush()  # Get the ID
+            # No flush needed - UUID id is generated client-side
 
             # Process documents
             documentos = atividade_comissoes.find("Documentos")

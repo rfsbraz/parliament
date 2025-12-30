@@ -318,7 +318,7 @@ class IntervencoesMapper(SchemaMapper):
                         legislatura_id=legislatura.id
                     )
                     self.session.add(intervention)
-                    self.session.flush()  # Get the ID
+                    # No flush needed - UUID id is generated client-side
                     existing = intervention
                 
                 # Process related data

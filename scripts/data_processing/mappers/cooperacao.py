@@ -173,7 +173,7 @@ class CooperacaoMapper(SchemaMapper):
                     legislatura_id=legislatura.id
                 )
                 self.session.add(cooperacao)
-                self.session.flush()  # Get the ID
+                # No flush needed - UUID id is generated client-side
                 existing = cooperacao
             
             # Process programs and activities
@@ -290,7 +290,7 @@ class CooperacaoMapper(SchemaMapper):
                     descricao=descricao
                 )
                 self.session.add(atividade_record)
-                self.session.flush()  # Get the ID
+                # No flush needed - UUID id is generated client-side
                 
                 # Process participants
                 self._process_cooperation_participants(atividade, atividade_record)
@@ -365,7 +365,7 @@ class CooperacaoMapper(SchemaMapper):
                 local=local
             )
             self.session.add(atividade_record)
-            self.session.flush()  # Get the ID
+            # No flush needed - UUID id is generated client-side
             
             # Process participants
             self._process_cooperation_participants(atividade, atividade_record)

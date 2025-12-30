@@ -218,7 +218,7 @@ class DelegacaoPermanenteMapper(SchemaMapper):
                     legislatura_id=legislatura.id
                 )
                 self.session.add(delegacao)
-                self.session.flush()  # Get the ID
+                # No flush needed - UUID id is generated client-side
                 existing = delegacao
             
             # Process members
@@ -310,7 +310,7 @@ class DelegacaoPermanenteMapper(SchemaMapper):
                     subcomissoes=subcomissoes
                 )
                 self.session.add(comissao_record)
-                self.session.flush()  # Get the ID for nested members
+                # No flush needed - UUID id is generated client-side for nested members
             
             # Process nested commission members (XI Legislature)
             composicao_elem = self._get_namespaced_element(comissao, 'ap', 'composicao')

@@ -273,7 +273,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                     legislatura_id=legislatura.id,
                 )
                 self.session.add(pergunta_req)
-                self.session.flush()  # Get the ID
+                # No flush needed - UUID id is generated client-side
                 existing = pergunta_req
 
             # Process related data
@@ -427,7 +427,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                     data_envio=data_envio,
                 )
                 self.session.add(destinatario_record)
-                self.session.flush()  # Get the ID
+                # No flush needed - UUID id is generated client-side
 
                 # Process responses
                 respostas = dest.find("respostas")
@@ -462,7 +462,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                             ficheiro_tipo=ficheiro_tipo,
                         )
                         self.session.add(resposta_record)
-                        self.session.flush()  # Get the ID for publications
+                        # No flush needed - UUID id is generated client-side for publications
                         
                         # Process publications within this response (same logic as RespostasSPerguntas)
                         publicacao = resp.find("publicacao")
@@ -566,7 +566,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                 )
                 
                 self.session.add(resposta_record)
-                self.session.flush()  # Get the ID for publications
+                # No flush needed - UUID id is generated client-side for publications
                 
                 # Process publications within this response
                 publicacao = resp.find("publicacao")

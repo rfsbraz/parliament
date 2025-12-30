@@ -220,7 +220,7 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
                 )
                 self.session.add(grupo)
             
-            self.session.flush()  # Get the ID for relationships
+            # No flush needed - UUID id is generated client-side
             
             # Process members
             composicao = grupo_element.find('Composicao')
@@ -342,7 +342,7 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
             )
             
             self.session.add(reuniao)
-            self.session.flush()  # Get the ID for participants
+            # No flush needed - UUID id is generated client-side
             
             # Process participants
             participantes = reuniao_element.find('Participantes')

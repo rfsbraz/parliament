@@ -489,7 +489,7 @@ class PeticoesMapper(SchemaMapper):
                     updated_at=datetime.now()
                 )
                 self.session.add(existing)
-                self.session.flush()  # Get the ID
+                # No flush needed - UUID id is generated client-side
             
             # Process all related structures
             self._process_publicacoes(petition, existing)
@@ -609,7 +609,7 @@ class PeticoesMapper(SchemaMapper):
         )
         
         self.session.add(comissao_obj)
-        self.session.flush()  # Get the ID
+        # No flush needed - UUID id is generated client-side
         return comissao_obj
     
     def _process_comissao_details(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
@@ -702,7 +702,7 @@ class PeticoesMapper(SchemaMapper):
                     votacao_descricao=votacao_descricao
                 )
                 self.session.add(relatorio_obj)
-                self.session.flush()  # Get the ID
+                # No flush needed - UUID id is generated client-side
                 
                 # Process publicacao (IX Legislature)
                 publicacao = relatorio.find('publicacao')
@@ -856,7 +856,7 @@ class PeticoesMapper(SchemaMapper):
                         data_oficio=data_oficio
                     )
                     self.session.add(pedido_obj)
-                    self.session.flush()  # Get the ID
+                    # No flush needed - UUID id is generated client-side
                     
                     # Process pedidos de reiteracao
                     self._process_pedidos_reiteracao(pedido, pedido_obj)
@@ -931,7 +931,7 @@ class PeticoesMapper(SchemaMapper):
             data_reuniao_plenaria=data_reuniao_plenaria
         )
         self.session.add(intervencao_obj)
-        self.session.flush()  # Get the ID
+        # No flush needed - UUID id is generated client-side
         return intervencao_obj
     
     def _process_oradores(self, intervencao: ET.Element, intervencao_obj: PeticaoIntervencao):
@@ -998,7 +998,7 @@ class PeticoesMapper(SchemaMapper):
             link_video=link_video
         )
         self.session.add(orador_obj)
-        self.session.flush()  # Get the ID
+        # No flush needed - UUID id is generated client-side
         return orador_obj
     
     def _process_pedidos_esclarecimento(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):

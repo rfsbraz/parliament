@@ -10,6 +10,7 @@ XML processing, and error handling.
 import logging
 import os
 import re
+import uuid
 
 # Import models
 import sys
@@ -96,8 +97,9 @@ class CacheMixin:
                 legislatura_id=legislatura.id
             ).all()
             for deputy in deputies:
-                # Cache by multiple keys for flexible lookup
-                self._deputado_cache[f"id_{deputy.id}"] = deputy
+                # Cache by multiple keys for flexible lookup - use xml_source_id for FK resolution
+                if deputy.xml_source_id:
+                    self._deputado_cache[f"xml_source_id_{deputy.xml_source_id}"] = deputy
                 if deputy.id_cadastro:
                     self._deputado_cache[f"cadastro_{deputy.id_cadastro}"] = deputy
             logger.debug(f"Cached {len(deputies)} deputies for legislature {legislatura.numero}")
@@ -118,6 +120,18 @@ class CacheMixin:
         self._pending_count = 0
         logger.debug("Cleared all entity caches")
 
+    def _new_id(self) -> uuid.UUID:
+        """
+        Generate a new UUID for primary key.
+
+        With UUID primary keys, IDs are generated client-side before database insertion.
+        This eliminates the need for session.flush() to obtain IDs after session.add().
+
+        Returns:
+            A new UUID4 suitable for use as a primary key
+        """
+        return uuid.uuid4()
+
     def _get_cached_legislatura(self, numero: str) -> Optional['Legislatura']:
         """Get legislatura from cache if available"""
         return self._legislatura_cache.get(numero)
@@ -132,7 +146,8 @@ class CacheMixin:
 
     def _cache_deputado(self, deputado: 'Deputado') -> None:
         """Add deputado to cache with multiple lookup keys"""
-        self._deputado_cache[f"id_{deputado.id}"] = deputado
+        if deputado.xml_source_id:
+            self._deputado_cache[f"xml_source_id_{deputado.xml_source_id}"] = deputado
         if deputado.id_cadastro:
             self._deputado_cache[f"cadastro_{deputado.id_cadastro}"] = deputado
 
@@ -205,8 +220,8 @@ class CoalitionDetectionMixin:
             
             try:
                 self.session.add(coalition)
-                self.session.flush()  # Get ID without committing
-                
+                # No flush needed - UUID id is generated client-side before insert
+
                 # Create component party relationships
                 for component in coalition_info.get("component_parties", []):
                     relationship = ColigacaoPartido(
@@ -544,12 +559,7 @@ class LegislatureHandlerMixin:
         )
 
         self.session.add(legislatura)
-        # Force flush to get ID since Legislatura is typically needed immediately for foreign keys
-        # NOTE: Legislatura creation is rare (typically 17 records max), so force=True is acceptable
-        if hasattr(self, '_batch_flush'):
-            self._batch_flush(force=True)
-        else:
-            self.session.flush()
+        # No flush needed - UUID id is generated client-side before insert
 
         # Cache for future lookups
         if hasattr(self, '_legislatura_cache'):
@@ -590,11 +600,12 @@ class LegislatureHandlerMixin:
 
     def _get_or_create_deputado(self, record_id: int, id_cadastro: int, nome: str, nome_completo: str = None, legislatura_id: int = None, xml_context: ET.Element = None) -> Deputado:
         """
-        Get or create deputy record with CORRECT primary key handling (cached).
+        Get or create deputy record with UUID primary key handling (cached).
 
-        CRITICAL FIX: The issue was that foreign key references in XML data point to deputado.id,
-        not id_cadastro. This method uses record_id as the deputado.id (primary key) that other
-        records will reference, while id_cadastro tracks the same person across legislatures.
+        With UUID primary keys:
+        - xml_source_id stores the original XML DepId for foreign key reference resolution
+        - id is a UUID generated automatically (no flush needed)
+        - id_cadastro tracks the same person across legislatures
 
         IMPORTANT: LegDes from XML takes precedence over filename-based legislature extraction
         to handle cases where files contain data for multiple legislatures.
@@ -602,7 +613,7 @@ class LegislatureHandlerMixin:
         Uses CacheMixin cache if available for performance optimization.
 
         Args:
-            record_id: The ID from XML data that becomes deputado.id (primary key for foreign key references)
+            record_id: The original DepId from XML (stored in xml_source_id for FK resolution)
             id_cadastro: The cadastral ID for linking the same person across legislatures
             nome: Deputy's parliamentary name
             nome_completo: Deputy's full name (optional)
@@ -610,13 +621,13 @@ class LegislatureHandlerMixin:
             xml_context: XML element context to extract LegDes (takes precedence over filename)
 
         Returns:
-            Deputado record that can be referenced by its .id field (which equals record_id)
+            Deputado record with UUID id and xml_source_id set to record_id
         """
         if not hasattr(self, "session"):
             raise AttributeError("Session not available - ensure DatabaseSessionMixin is used")
 
-        # Check cache first (if CacheMixin is available)
-        cache_key = f"id_{record_id}"
+        # Check cache first (if CacheMixin is available) - use xml_source_id as cache key
+        cache_key = f"xml_source_id_{record_id}"
         if hasattr(self, '_deputado_cache') and cache_key in self._deputado_cache:
             deputado = self._deputado_cache[cache_key]
             # Update with any new information we have
@@ -626,8 +637,8 @@ class LegislatureHandlerMixin:
                 deputado.nome = nome
             return deputado
 
-        # First, check if this specific record_id already exists as primary key
-        deputado = self.session.query(Deputado).filter_by(id=record_id).first()
+        # First, check if this specific record_id already exists as xml_source_id
+        deputado = self.session.query(Deputado).filter_by(xml_source_id=record_id).first()
         if deputado:
             # Update with any new information we have
             if nome_completo and not deputado.nome_completo:
@@ -644,7 +655,7 @@ class LegislatureHandlerMixin:
         # Check if this person (by id_cadastro) exists with a different record_id
         existing_person = self.session.query(Deputado).filter_by(id_cadastro=id_cadastro).first()
         if existing_person:
-            logger.info(f"Deputy {nome} (cadastro {id_cadastro}) already exists with different record ID {existing_person.id}, creating new record with ID {record_id}")
+            logger.info(f"Deputy {nome} (cadastro {id_cadastro}) already exists with different xml_source_id {existing_person.xml_source_id}, creating new record with xml_source_id {record_id}")
 
         # Get legislature ID if not provided - prioritize XML LegDes over filename
         if legislatura_id is None:
@@ -672,9 +683,10 @@ class LegislatureHandlerMixin:
                     # Last resort fallback
                     raise ValueError(f"Cannot determine legislature_id for deputy {nome} - no XML LegDes or file context available")
 
-        # Create new deputy record with specific record_id as primary key
+        # Create new deputy record with UUID primary key and xml_source_id for FK resolution
         deputado = Deputado(
-            id=record_id,  # CRITICAL: Use record_id as primary key for foreign key references
+            # id is auto-generated as UUID by default=uuid.uuid4
+            xml_source_id=record_id,  # Store original XML DepId for FK resolution
             id_cadastro=id_cadastro,  # This tracks the same person across legislatures
             nome=nome,
             nome_completo=nome_completo,
@@ -682,13 +694,7 @@ class LegislatureHandlerMixin:
         )
 
         self.session.add(deputado)
-        # Force flush to get ID since Deputado is referenced by foreign keys in other records
-        # NOTE: For bulk operations, child mappers should use _batch_flush() without force=True
-        # after processing groups of related records (e.g., mandates, interventions)
-        if hasattr(self, '_batch_flush'):
-            self._batch_flush(force=True)
-        else:
-            self.session.flush()
+        # No flush needed - UUID id is generated client-side before insert
 
         # Cache for future lookups
         if hasattr(self, '_deputado_cache'):
@@ -696,7 +702,7 @@ class LegislatureHandlerMixin:
             if id_cadastro:
                 self._deputado_cache[f"cadastro_{id_cadastro}"] = deputado
 
-        logger.debug(f"Created deputy record: ID={deputado.id}, cadastro={id_cadastro}, name={nome}")
+        logger.debug(f"Created deputy record: ID={deputado.id}, xml_source_id={record_id}, cadastro={id_cadastro}, name={nome}")
         return deputado
 
 

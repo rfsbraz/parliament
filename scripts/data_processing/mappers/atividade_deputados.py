@@ -723,7 +723,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(atividade_deputado)
-            self.session.flush()  # Get the ID assigned
+            # No flush needed - UUID id is generated client-side
 
             return atividade_deputado.id
 
@@ -748,7 +748,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(atividade_list)
-            self.session.flush()  # Get the ID assigned
+            # No flush needed - UUID id is generated client-side
 
             return atividade_list.id
 
@@ -775,7 +775,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             )
 
             self.session.add(actividade_out)
-            self.session.flush()  # Get the ID assigned
+            # No flush needed - UUID id is generated client-side
 
             return actividade_out.id
 
@@ -831,6 +831,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 audiencia = ActividadeAudiencia(actividade_out_id=actividade_out_id)
 
                 self.session.add(audiencia)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process ActividadesComissaoOut within Audiencias
                 for comissao_out in audiencias_section.findall(
@@ -887,6 +888,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 audicao = ActividadeAudicao(actividade_out_id=actividade_out_id)
 
                 self.session.add(audicao)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process ActividadesComissaoOut within Audicoes
                 for comissao_out in audicoes_section.findall("ActividadesComissaoOut"):
@@ -1024,6 +1026,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(actividade_intervencao)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process each IntervencoesOut within Intev
                 for intervencao in intev_section.findall("IntervencoesOut"):
@@ -1092,6 +1095,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(deputado_situacao)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process each DadosSituacaoDeputado (regular format)
                 for situacao in dep_situacao.findall("DadosSituacaoDeputado"):
@@ -1163,6 +1167,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(atividades_parlamentares)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process each ActividadesParlamentaresOut
                 for atividade in actp_section.findall("ActividadesParlamentaresOut"):
@@ -1218,6 +1223,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(grupos_parlamentares_amizade)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process each GruposParlamentaresAmizadeOut
                 for grupo in gpa_section.findall("GruposParlamentaresAmizadeOut"):
@@ -1264,6 +1270,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(delegacoes_permanentes)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process each DelegacoesPermanentesOut
                 for delegacao in dlp_section.findall("DelegacoesPermanentesOut"):
@@ -1283,6 +1290,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     self.session.add(delegacao_out)
+                    # No flush needed - UUID id is generated client-side before creating child records
 
                     # Process meetings (DepReunioes.ReunioesDelegacoesPermanentes)
                     reunioes_section = delegacao.find("DepReunioes")
@@ -1329,6 +1337,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(delegacoes_eventuais)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process each DelegacoesEventuaisOut
                 for delegacao in dle_section.findall("DelegacoesEventuaisOut"):
@@ -1392,6 +1401,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(requerimentos_ativ_dep)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process each RequerimentosAtivDepOut
                 for requerimento in req_section.findall("RequerimentosAtivDepOut"):
@@ -1455,6 +1465,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(subcomissoes_grupos_trabalho)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process each SubComissoesGruposTrabalhoOut
                 for subcomissao in scgt_section.findall(
@@ -1507,6 +1518,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     self.session.add(relatores_peticoes)
+                    # No flush needed - UUID id is generated client-side before creating child records
 
                     # Process each RelatoresPeticoesOut
                     for relator in relatores_peticoes_section.findall(
@@ -1558,6 +1570,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     self.session.add(relatores_iniciativas)
+                    # No flush needed - UUID id is generated client-side before creating child records
 
                     # Process each RelatoresIniciativasOut
                     for relator in ini_section.findall("RelatoresIniciativasOut"):
@@ -1602,6 +1615,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 comissoes = Comissoes(actividade_out_id=actividade_out_id)
 
                 self.session.add(comissoes)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process each ComissoesOut
                 for comissao in cms_section.findall("ComissoesOut"):
@@ -1650,6 +1664,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     self.session.add(autores_pareceres_inc_imu)
+                    # No flush needed - UUID id is generated client-side before creating child records
 
                     # Process each AutoresPareceresIncImuOut
                     for autor in autores_section.findall("AutoresPareceresIncImuOut"):
@@ -1696,6 +1711,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     self.session.add(relatores_ini_europeias)
+                    # No flush needed - UUID id is generated client-side before creating child records
 
                     # Process each RelatoresIniEuropeiasOut
                     for relator in relatores_section.findall(
@@ -1744,6 +1760,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 )
 
                 self.session.add(parlamento_jovens)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process DadosDeputado
                 dados_deputado = pj_section.find("DadosDeputado")
@@ -1791,6 +1808,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 eventos = Eventos(actividade_out_id=actividade_out_id)
 
                 self.session.add(eventos)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process each ActividadesComissaoOut within Events
                 for actividade_comissao in eventos_section.findall(
@@ -1855,6 +1873,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 deslocacoes = Deslocacoes(actividade_out_id=actividade_out_id)
 
                 self.session.add(deslocacoes)
+                # No flush needed - UUID id is generated client-side before creating child records
 
                 # Process each ActividadesComissaoOut within Deslocacoes
                 for actividade_comissao in deslocacoes_section.findall(
@@ -1923,6 +1942,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         actividade_out_id=actividade_out_id
                     )
                     self.session.add(relatores_contas_publicas)
+                    # No flush needed - UUID id is generated client-side before creating child records
 
                     for relator in rcp_section.findall("RelatoresContasPublicasOut"):
                         act_id = self._safe_int(self._get_text_value(relator, "ActId"))
@@ -2014,7 +2034,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 # Create DepCargo record
                 dep_cargo = DepCargo(deputado_id=deputado_id)
                 self.session.add(dep_cargo)
-                self.session.flush()  # Get the ID
+                # No flush needed - UUID id is generated client-side
 
                 # Process DadosCargoDeputado elements
                 dados_cargo_elem = dep_cargo_elem.find(

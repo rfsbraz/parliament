@@ -3,11 +3,13 @@ SQLAlchemy Models for Portuguese Parliament Database
 ===================================================
 
 Comprehensive models for all parliamentary data with zero data loss.
-Uses MySQL database with proper foreign key constraints and relationships.
+Uses PostgreSQL database with UUID primary keys for efficient imports.
 
 Author: Claude
-Version: 3.0 - MySQL Implementation
+Version: 4.0 - UUID Primary Keys
 """
+
+import uuid
 
 from sqlalchemy import (
     Boolean,
@@ -27,6 +29,8 @@ from sqlalchemy.dialects import mysql
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
+from database.types import GUID
 
 Base = declarative_base()
 
@@ -54,7 +58,7 @@ class Legislatura(Base):
 
     __tablename__ = "legislaturas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     numero = Column(
         String(20),
         unique=True,
@@ -88,7 +92,7 @@ class Partido(Base):
 
     __tablename__ = "partidos"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     sigla = Column(
         String(10),
         unique=True,
@@ -113,7 +117,7 @@ class Partido(Base):
         comment="Entity type: 'partido' (individual party) or 'coligacao' (coalition)"
     )
     coligacao_pai_id = Column(
-        Integer, 
+        GUID(),
         ForeignKey("coligacoes.id"),
         comment="Parent coalition ID if this party is part of a coalition"
     )
@@ -162,7 +166,7 @@ class Coligacao(Base):
     
     __tablename__ = "coligacoes"
     
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     sigla = Column(
         String(50), 
         unique=True, 
@@ -267,8 +271,8 @@ class ColigacaoPartido(Base):
     
     __tablename__ = "coligacao_partidos"
     
-    id = Column(Integer, primary_key=True)
-    coligacao_id = Column(Integer, ForeignKey("coligacoes.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    coligacao_id = Column(GUID(), ForeignKey("coligacoes.id"), nullable=False)
     partido_sigla = Column(String(50), nullable=False, comment="Component party sigla")
     partido_nome = Column(String(200), comment="Component party name")
     
@@ -324,7 +328,7 @@ class CirculoEleitoral(Base):
 
     __tablename__ = "circulos_eleitorais"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     designacao = Column(
         String(100),
         unique=True,
@@ -414,7 +418,14 @@ class Deputado(Base):
     __tablename__ = "deputados"
 
     id = Column(
-        Integer, primary_key=True, comment="Legislature-specific deputy ID (XML: DepId)"
+        GUID(), primary_key=True, default=uuid.uuid4, comment="UUID primary key"
+    )
+    xml_source_id = Column(
+        Integer,
+        nullable=True,
+        index=True,
+        unique=False,
+        comment="Original DepId from XML (unique per legislature, used for FK resolution during import)"
     )
     id_cadastro = Column(
         Integer,
@@ -429,7 +440,7 @@ class Deputado(Base):
     nome_completo = Column(
         String(300), comment="Full deputy name (XML: DepNomeCompleto)"
     )
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
     sexo = Column(String(1))  # M/F - cadSexo field
     profissao = Column(String(200))
     data_nascimento = Column(Date)
@@ -529,7 +540,7 @@ class DeputyIdentityMapping(Base):
 
     __tablename__ = "deputy_identity_mappings"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     old_cad_id = Column(Integer, nullable=False, comment="Previous cadastral ID")
     new_cad_id = Column(Integer, nullable=False, comment="New cadastral ID")
     deputy_name = Column(
@@ -568,8 +579,8 @@ class DeputyIdentityMapping(Base):
 class DepCargo(Base):
     __tablename__ = "dep_cargos"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
     created_at = Column(DateTime, default=func.now())
 
     # Relationships
@@ -582,8 +593,8 @@ class DepCargo(Base):
 class DadosCargoDeputado(Base):
     __tablename__ = "dados_cargo_deputados"
 
-    id = Column(Integer, primary_key=True)
-    dep_cargo_id = Column(Integer, ForeignKey("dep_cargos.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    dep_cargo_id = Column(GUID(), ForeignKey("dep_cargos.id"), nullable=False)
     car_des = Column(String(200))  # carDes - Position description
     car_id = Column(Integer)  # carId - Position ID
     car_dt_inicio = Column(Date)  # carDtInicio - Position start date
@@ -609,9 +620,9 @@ class DadosCargoDeputado(Base):
 class DeputyInitiative(Base):
     __tablename__ = "deputy_initiatives"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     deputy_activity_id = Column(
-        Integer, ForeignKey("atividade_deputados.id"), nullable=False
+        GUID(), ForeignKey("atividade_deputados.id"), nullable=False
     )
     id_iniciativa = Column(Integer)
     numero = Column(String(50))
@@ -758,9 +769,9 @@ class DeputyGPSituation(Base):
 
     __tablename__ = "deputy_gp_situations"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
     gp_id = Column(Integer, comment="Parliamentary group ID (XML: gpId)")
     gp_sigla = Column(String(20), comment="Parliamentary group acronym (XML: gpSigla)")
     gp_dt_inicio = Column(Date, comment="GP membership start date (XML: gpDtInicio)")
@@ -780,9 +791,9 @@ class DeputySituation(Base):
 
     __tablename__ = "deputy_situations"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
     sio_des = Column(
         String(200)
     )  # Situation description (e.g., "Renunciou", "Efetivo", etc.)
@@ -804,7 +815,7 @@ class DeputySituation(Base):
 class TemasParliamentares(Base):
     __tablename__ = "temas_parlamentares"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     id_externo = Column(Integer)
     nome = Column(String(200), nullable=False)
     descricao = Column(Text)
@@ -817,7 +828,7 @@ class TemasParliamentares(Base):
 class SecoesParliamentares(Base):
     __tablename__ = "secoes_parlamentares"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     id_externo = Column(Integer)
     nome = Column(String(200), nullable=False)
     descricao = Column(Text)
@@ -873,11 +884,11 @@ class AgendaParlamentar(Base):
 
     __tablename__ = "agenda_parlamentar"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     id_externo = Column(
         Integer, comment="Unique meeting/event identifier (Id) - external system ID"
     )
-    legislatura_id = Column(Integer, nullable=False)
+    legislatura_id = Column(GUID(), nullable=False)
     secao_id = Column(
         Integer,
         comment="Section unique identifier (SectionId) - requires SectionType translator",
@@ -956,8 +967,8 @@ class AgendaParlamentar(Base):
 
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-    secao_parlamentar_id = Column(Integer, ForeignKey("secoes_parlamentares.id"))
-    tema_parlamentar_id = Column(Integer, ForeignKey("temas_parlamentares.id"))
+    secao_parlamentar_id = Column(GUID(), ForeignKey("secoes_parlamentares.id"))
+    tema_parlamentar_id = Column(GUID(), ForeignKey("temas_parlamentares.id"))
 
     # Relationships
     anexos = relationship(
@@ -1000,8 +1011,8 @@ class AgendaParlamentarAnexo(Base):
 
     __tablename__ = "agenda_parlamentar_anexos"
 
-    id = Column(Integer, primary_key=True)
-    agenda_id = Column(Integer, ForeignKey("agenda_parlamentar.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    agenda_id = Column(GUID(), ForeignKey("agenda_parlamentar.id"), nullable=False)
 
     # AnexoEventos fields from XV Legislature documentation
     id_field = Column(
@@ -1130,7 +1141,7 @@ class ParliamentaryOrganization(Base):
 
     __tablename__ = "parliamentary_organizations"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     legislatura_sigla = Column(String(20), nullable=False)  # Legislature designation
     xml_file_path = Column(String(500))  # Source XML file path
     created_at = Column(DateTime, default=func.now())
@@ -1186,9 +1197,9 @@ class AdministrativeCouncil(Base):
 
     __tablename__ = "administrative_councils"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     organization_id = Column(
-        Integer, ForeignKey("parliamentary_organizations.id"), nullable=False
+        GUID(), ForeignKey("parliamentary_organizations.id"), nullable=False
     )
     id_orgao = Column(Integer)  # Unique organ identifier from XML
     sigla_orgao = Column(String(50))  # Organ acronym/abbreviation
@@ -1217,9 +1228,9 @@ class LeaderConference(Base):
 
     __tablename__ = "leader_conferences"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     organization_id = Column(
-        Integer, ForeignKey("parliamentary_organizations.id"), nullable=False
+        GUID(), ForeignKey("parliamentary_organizations.id"), nullable=False
     )
     id_orgao = Column(Integer)  # Unique organ identifier from XML
     sigla_orgao = Column(String(50))  # Organ acronym/abbreviation
@@ -1248,9 +1259,9 @@ class CommissionPresidentConference(Base):
 
     __tablename__ = "commission_president_conferences"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     organization_id = Column(
-        Integer, ForeignKey("parliamentary_organizations.id"), nullable=False
+        GUID(), ForeignKey("parliamentary_organizations.id"), nullable=False
     )
     id_orgao = Column(Integer)  # Unique organ identifier from XML
     sigla_orgao = Column(String(50))  # Organ acronym/abbreviation
@@ -1272,9 +1283,9 @@ class CommissionPresidentConference(Base):
 class Plenary(Base):
     __tablename__ = "plenaries"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     organization_id = Column(
-        Integer, ForeignKey("parliamentary_organizations.id"), nullable=False
+        GUID(), ForeignKey("parliamentary_organizations.id"), nullable=False
     )
     id_orgao = Column(Integer)
     sigla_orgao = Column(String(50))
@@ -1292,9 +1303,9 @@ class Plenary(Base):
 class ARBoard(Base):
     __tablename__ = "ar_boards"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     organization_id = Column(
-        Integer, ForeignKey("parliamentary_organizations.id"), nullable=False
+        GUID(), ForeignKey("parliamentary_organizations.id"), nullable=False
     )
     id_orgao = Column(Integer)
     sigla_orgao = Column(String(50))
@@ -1314,9 +1325,9 @@ class ARBoard(Base):
 class Commission(Base):
     __tablename__ = "commissions"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     organization_id = Column(
-        Integer, ForeignKey("parliamentary_organizations.id"), nullable=False
+        GUID(), ForeignKey("parliamentary_organizations.id"), nullable=False
     )
     id_orgao = Column(Integer)
     sigla_orgao = Column(String(50))
@@ -1341,9 +1352,9 @@ class Commission(Base):
 class WorkGroup(Base):
     __tablename__ = "work_groups"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     organization_id = Column(
-        Integer, ForeignKey("parliamentary_organizations.id"), nullable=False
+        GUID(), ForeignKey("parliamentary_organizations.id"), nullable=False
     )
     id_orgao = Column(Integer)
     sigla_orgao = Column(String(50))
@@ -1368,9 +1379,9 @@ class WorkGroup(Base):
 class PermanentCommittee(Base):
     __tablename__ = "permanent_committees"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     organization_id = Column(
-        Integer, ForeignKey("parliamentary_organizations.id"), nullable=False
+        GUID(), ForeignKey("parliamentary_organizations.id"), nullable=False
     )
     id_orgao = Column(Integer)
     sigla_orgao = Column(String(50))
@@ -1397,9 +1408,9 @@ class PermanentCommittee(Base):
 class SubCommittee(Base):
     __tablename__ = "sub_committees"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     organization_id = Column(
-        Integer, ForeignKey("parliamentary_organizations.id"), nullable=False
+        GUID(), ForeignKey("parliamentary_organizations.id"), nullable=False
     )
     id_orgao = Column(Integer)
     sigla_orgao = Column(String(50))
@@ -1425,13 +1436,13 @@ class SubCommittee(Base):
 class OrganMeeting(Base):
     __tablename__ = "organ_meetings"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
 
     # Foreign keys to different organ types
-    commission_id = Column(Integer, ForeignKey("commissions.id"))
-    work_group_id = Column(Integer, ForeignKey("work_groups.id"))
-    permanent_committee_id = Column(Integer, ForeignKey("permanent_committees.id"))
-    sub_committee_id = Column(Integer, ForeignKey("sub_committees.id"))
+    commission_id = Column(GUID(), ForeignKey("commissions.id"))
+    work_group_id = Column(GUID(), ForeignKey("work_groups.id"))
+    permanent_committee_id = Column(GUID(), ForeignKey("permanent_committees.id"))
+    sub_committee_id = Column(GUID(), ForeignKey("sub_committees.id"))
 
     # Meeting data
     reu_tar_sigla = Column(
@@ -1469,8 +1480,8 @@ class MeetingAttendance(Base):
 
     __tablename__ = "meeting_attendances"
 
-    id = Column(Integer, primary_key=True)
-    meeting_id = Column(Integer, ForeignKey("organ_meetings.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    meeting_id = Column(GUID(), ForeignKey("organ_meetings.id"), nullable=False)
 
     # Deputy information
     dep_id = Column(Integer)
@@ -1500,7 +1511,7 @@ class DeputyVideo(Base):
 
     __tablename__ = "deputy_videos"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
 
     # Deputy information
     dep_id = Column(Integer)
@@ -1530,9 +1541,9 @@ class AdministrativeCouncilHistoricalComposition(Base):
 
     __tablename__ = "administrative_council_historical_compositions"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     council_id = Column(
-        Integer, ForeignKey("administrative_councils.id"), nullable=False
+        GUID(), ForeignKey("administrative_councils.id"), nullable=False
     )
     leg_des = Column(String(20))  # Legislature designation
     dep_id = Column(Integer)  # Deputy ID within legislature
@@ -1565,8 +1576,8 @@ class AdministrativeCouncilHistoricalComposition(Base):
 class LeaderConferenceHistoricalComposition(Base):
     __tablename__ = "leader_conference_historical_compositions"
 
-    id = Column(Integer, primary_key=True)
-    conference_id = Column(Integer, ForeignKey("leader_conferences.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    conference_id = Column(GUID(), ForeignKey("leader_conferences.id"), nullable=False)
     leg_des = Column(String(20))
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
@@ -1598,9 +1609,9 @@ class LeaderConferenceHistoricalComposition(Base):
 class CommissionPresidentConferenceHistoricalComposition(Base):
     __tablename__ = "commission_president_conference_historical_compositions"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     conference_id = Column(
-        Integer, ForeignKey("commission_president_conferences.id"), nullable=False
+        GUID(), ForeignKey("commission_president_conferences.id"), nullable=False
     )
     leg_des = Column(String(20))
     dep_id = Column(Integer)
@@ -1644,8 +1655,8 @@ class PlenaryComposition(Base):
 
     __tablename__ = "plenary_compositions"
 
-    id = Column(Integer, primary_key=True)
-    plenary_id = Column(Integer, ForeignKey("plenaries.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    plenary_id = Column(GUID(), ForeignKey("plenaries.id"), nullable=False)
     leg_des = Column(String(20))  # Legislature designation
     dep_id = Column(Integer)  # Deputy ID within legislature
     dep_cad_id = Column(Integer)  # Deputy cadastral ID (unique person identifier)
@@ -1675,8 +1686,8 @@ class PlenaryComposition(Base):
 class ARBoardHistoricalComposition(Base):
     __tablename__ = "ar_board_historical_compositions"
 
-    id = Column(Integer, primary_key=True)
-    board_id = Column(Integer, ForeignKey("ar_boards.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    board_id = Column(GUID(), ForeignKey("ar_boards.id"), nullable=False)
     leg_des = Column(String(20))
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
@@ -1706,8 +1717,8 @@ class ARBoardHistoricalComposition(Base):
 class CommissionHistoricalComposition(Base):
     __tablename__ = "commission_historical_compositions"
 
-    id = Column(Integer, primary_key=True)
-    commission_id = Column(Integer, ForeignKey("commissions.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    commission_id = Column(GUID(), ForeignKey("commissions.id"), nullable=False)
     leg_des = Column(String(20))
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
@@ -1737,8 +1748,8 @@ class CommissionHistoricalComposition(Base):
 class WorkGroupHistoricalComposition(Base):
     __tablename__ = "work_group_historical_compositions"
 
-    id = Column(Integer, primary_key=True)
-    work_group_id = Column(Integer, ForeignKey("work_groups.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    work_group_id = Column(GUID(), ForeignKey("work_groups.id"), nullable=False)
     leg_des = Column(String(20))
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
@@ -1768,9 +1779,9 @@ class WorkGroupHistoricalComposition(Base):
 class PermanentCommitteeHistoricalComposition(Base):
     __tablename__ = "permanent_committee_historical_compositions"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     permanent_committee_id = Column(
-        Integer, ForeignKey("permanent_committees.id"), nullable=False
+        GUID(), ForeignKey("permanent_committees.id"), nullable=False
     )
     leg_des = Column(String(20))
     dep_id = Column(Integer)
@@ -1803,8 +1814,8 @@ class PermanentCommitteeHistoricalComposition(Base):
 class SubCommitteeHistoricalComposition(Base):
     __tablename__ = "sub_committee_historical_compositions"
 
-    id = Column(Integer, primary_key=True)
-    sub_committee_id = Column(Integer, ForeignKey("sub_committees.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    sub_committee_id = Column(GUID(), ForeignKey("sub_committees.id"), nullable=False)
     leg_des = Column(String(20))
     dep_id = Column(Integer)
     dep_cad_id = Column(Integer)
@@ -1837,32 +1848,32 @@ class SubCommitteeHistoricalComposition(Base):
 class OrganCompositionGPSituation(Base):
     __tablename__ = "organ_composition_gp_situations"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     admin_council_composition_id = Column(
-        Integer, ForeignKey("administrative_council_historical_compositions.id")
+        GUID(), ForeignKey("administrative_council_historical_compositions.id")
     )
     leader_conference_composition_id = Column(
-        Integer, ForeignKey("leader_conference_historical_compositions.id")
+        GUID(), ForeignKey("leader_conference_historical_compositions.id")
     )
     cpc_composition_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("commission_president_conference_historical_compositions.id"),
     )
-    plenary_composition_id = Column(Integer, ForeignKey("plenary_compositions.id"))
+    plenary_composition_id = Column(GUID(), ForeignKey("plenary_compositions.id"))
     ar_board_composition_id = Column(
-        Integer, ForeignKey("ar_board_historical_compositions.id")
+        GUID(), ForeignKey("ar_board_historical_compositions.id")
     )
     commission_composition_id = Column(
-        Integer, ForeignKey("commission_historical_compositions.id")
+        GUID(), ForeignKey("commission_historical_compositions.id")
     )
     work_group_composition_id = Column(
-        Integer, ForeignKey("work_group_historical_compositions.id")
+        GUID(), ForeignKey("work_group_historical_compositions.id")
     )
     permanent_committee_composition_id = Column(
-        Integer, ForeignKey("permanent_committee_historical_compositions.id")
+        GUID(), ForeignKey("permanent_committee_historical_compositions.id")
     )
     sub_committee_composition_id = Column(
-        Integer, ForeignKey("sub_committee_historical_compositions.id")
+        GUID(), ForeignKey("sub_committee_historical_compositions.id")
     )
     gp_id = Column(Integer)
     gp_sigla = Column(String(20))
@@ -1903,32 +1914,32 @@ class OrganCompositionGPSituation(Base):
 class OrganCompositionDeputyPosition(Base):
     __tablename__ = "organ_composition_deputy_positions"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     admin_council_composition_id = Column(
-        Integer, ForeignKey("administrative_council_historical_compositions.id")
+        GUID(), ForeignKey("administrative_council_historical_compositions.id")
     )
     leader_conference_composition_id = Column(
-        Integer, ForeignKey("leader_conference_historical_compositions.id")
+        GUID(), ForeignKey("leader_conference_historical_compositions.id")
     )
     cpc_composition_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("commission_president_conference_historical_compositions.id"),
     )
-    plenary_composition_id = Column(Integer, ForeignKey("plenary_compositions.id"))
+    plenary_composition_id = Column(GUID(), ForeignKey("plenary_compositions.id"))
     ar_board_composition_id = Column(
-        Integer, ForeignKey("ar_board_historical_compositions.id")
+        GUID(), ForeignKey("ar_board_historical_compositions.id")
     )
     commission_composition_id = Column(
-        Integer, ForeignKey("commission_historical_compositions.id")
+        GUID(), ForeignKey("commission_historical_compositions.id")
     )
     work_group_composition_id = Column(
-        Integer, ForeignKey("work_group_historical_compositions.id")
+        GUID(), ForeignKey("work_group_historical_compositions.id")
     )
     permanent_committee_composition_id = Column(
-        Integer, ForeignKey("permanent_committee_historical_compositions.id")
+        GUID(), ForeignKey("permanent_committee_historical_compositions.id")
     )
     sub_committee_composition_id = Column(
-        Integer, ForeignKey("sub_committee_historical_compositions.id")
+        GUID(), ForeignKey("sub_committee_historical_compositions.id")
     )
     car_id = Column(Integer)
     car_des = Column(String(200))
@@ -1969,32 +1980,32 @@ class OrganCompositionDeputyPosition(Base):
 class OrganCompositionDeputySituation(Base):
     __tablename__ = "organ_composition_deputy_situations"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     admin_council_composition_id = Column(
-        Integer, ForeignKey("administrative_council_historical_compositions.id")
+        GUID(), ForeignKey("administrative_council_historical_compositions.id")
     )
     leader_conference_composition_id = Column(
-        Integer, ForeignKey("leader_conference_historical_compositions.id")
+        GUID(), ForeignKey("leader_conference_historical_compositions.id")
     )
     cpc_composition_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("commission_president_conference_historical_compositions.id"),
     )
-    plenary_composition_id = Column(Integer, ForeignKey("plenary_compositions.id"))
+    plenary_composition_id = Column(GUID(), ForeignKey("plenary_compositions.id"))
     ar_board_composition_id = Column(
-        Integer, ForeignKey("ar_board_historical_compositions.id")
+        GUID(), ForeignKey("ar_board_historical_compositions.id")
     )
     commission_composition_id = Column(
-        Integer, ForeignKey("commission_historical_compositions.id")
+        GUID(), ForeignKey("commission_historical_compositions.id")
     )
     work_group_composition_id = Column(
-        Integer, ForeignKey("work_group_historical_compositions.id")
+        GUID(), ForeignKey("work_group_historical_compositions.id")
     )
     permanent_committee_composition_id = Column(
-        Integer, ForeignKey("permanent_committee_historical_compositions.id")
+        GUID(), ForeignKey("permanent_committee_historical_compositions.id")
     )
     sub_committee_composition_id = Column(
-        Integer, ForeignKey("sub_committee_historical_compositions.id")
+        GUID(), ForeignKey("sub_committee_historical_compositions.id")
     )
     sio_des = Column(String(200))
     sio_tip_mem = Column(String(100))
@@ -2036,9 +2047,9 @@ class OrganCompositionDeputySituation(Base):
 class PresidencyOrgan(Base):
     __tablename__ = "presidency_organs"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     cpc_composition_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("commission_president_conference_historical_compositions.id"),
         nullable=False,
     )
@@ -2062,9 +2073,9 @@ class PresidencyOrgan(Base):
 class CommissionPresidency(Base):
     __tablename__ = "commission_presidencies"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     presidency_organ_id = Column(
-        Integer, ForeignKey("presidency_organs.id"), nullable=False
+        GUID(), ForeignKey("presidency_organs.id"), nullable=False
     )
     pec_id = Column(Integer)
     pec_tia_des = Column(String(200))
@@ -2085,7 +2096,7 @@ class CommissionPresidency(Base):
 class ImportStatus(Base):
     __tablename__ = "import_status"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     file_url = Column(String(1000), nullable=False)
     file_path = Column(String(500))
     file_name = Column(String(200), nullable=False)
@@ -2170,11 +2181,11 @@ class AtividadeDeputado(Base):
 
     __tablename__ = "atividade_deputados"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
 
     # Core deputy reference
     deputado_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("deputados.id"),
         nullable=False,
         comment="Reference to the deputy this activity record belongs to",
@@ -2259,11 +2270,11 @@ class AtividadeDeputadoList(Base):
 
     __tablename__ = "atividade_deputado_lists"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
 
     # Parent reference
     atividade_deputado_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("atividade_deputados.id"),
         nullable=False,
         comment="Reference to parent AtividadeDeputado record",
@@ -2292,9 +2303,9 @@ class AtividadeDeputadoList(Base):
 class ActividadeOut(Base):
     __tablename__ = "actividade_outs"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     atividade_list_id = Column(
-        Integer, ForeignKey("atividade_deputado_lists.id"), nullable=False
+        GUID(), ForeignKey("atividade_deputado_lists.id"), nullable=False
     )
     rel = Column(Text)  # Rel field - appears to be empty in the XML
     created_at = Column(DateTime, default=func.now())
@@ -2392,9 +2403,9 @@ class ActividadeOut(Base):
 class DadosLegisDeputado(Base):
     __tablename__ = "dados_legis_deputados"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     nome = Column(String(200))  # Nome field
     dpl_grpar = Column(String(100))  # Dpl_grpar field
@@ -2425,9 +2436,9 @@ class ActividadeAudiencia(Base):
 
     __tablename__ = "actividade_audiencias"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("actividade_outs.id"),
         nullable=False,
         comment="Reference to general activity record",
@@ -2463,9 +2474,9 @@ class ActividadeAudicao(Base):
 
     __tablename__ = "actividade_audicoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("actividade_outs.id"),
         nullable=False,
         comment="Reference to general activity record",
@@ -2481,16 +2492,16 @@ class ActividadeAudicao(Base):
 class ActividadesComissaoOut(Base):
     __tablename__ = "actividades_comissao_outs"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     audiencia_id = Column(
-        Integer, ForeignKey("actividade_audiencias.id"), nullable=True
+        GUID(), ForeignKey("actividade_audiencias.id"), nullable=True
     )
-    audicao_id = Column(Integer, ForeignKey("actividade_audicoes.id"), nullable=True)
+    audicao_id = Column(GUID(), ForeignKey("actividade_audicoes.id"), nullable=True)
     evento_id = Column(
-        Integer, ForeignKey("eventos.id"), nullable=True
+        GUID(), ForeignKey("eventos.id"), nullable=True
     )  # I Legislature Events
     deslocacao_id = Column(
-        Integer, ForeignKey("deslocacoes.id"), nullable=True
+        GUID(), ForeignKey("deslocacoes.id"), nullable=True
     )  # I Legislature Displacements
 
     # IX Legislature additional fields
@@ -2530,9 +2541,9 @@ class ActividadesComissaoOut(Base):
 class ActividadeIntervencao(Base):
     __tablename__ = "actividade_intervencoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -2547,9 +2558,9 @@ class ActividadeIntervencao(Base):
 class ActividadeIntervencaoOut(Base):
     __tablename__ = "actividade_intervencoes_out"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_intervencao_id = Column(
-        Integer, ForeignKey("actividade_intervencoes.id"), nullable=False
+        GUID(), ForeignKey("actividade_intervencoes.id"), nullable=False
     )
 
     # IntervencoesOut fields from XML
@@ -2574,9 +2585,9 @@ class ActividadeIntervencaoOut(Base):
 class DeputadoSituacao(Base):
     __tablename__ = "deputado_situacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     atividade_deputado_id = Column(
-        Integer, ForeignKey("atividade_deputados.id"), nullable=False
+        GUID(), ForeignKey("atividade_deputados.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -2608,9 +2619,9 @@ class DadosSituacaoDeputado(Base):
 
     __tablename__ = "dados_situacao_deputados"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     deputado_situacao_id = Column(
-        Integer, ForeignKey("deputado_situacoes.id"), nullable=False
+        GUID(), ForeignKey("deputado_situacoes.id"), nullable=False
     )
     sio_des = Column(String(100), comment="Situation description (XML: sioDes)")
     sio_dt_inicio = Column(Date, comment="Situation start date (XML: sioDtInicio)")
@@ -2626,8 +2637,8 @@ class DadosSituacaoDeputado(Base):
 class DiplomaAprovado(Base):
     __tablename__ = "diplomas_aprovados"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # Core diploma fields
     diploma_id = Column(Integer, unique=True)  # External ID
@@ -2665,8 +2676,8 @@ class DiplomaOrcamContasGerencia(Base):
 
     __tablename__ = "diploma_orcam_contas_gerencia"
 
-    id = Column(Integer, primary_key=True)
-    diploma_id = Column(Integer, ForeignKey("diplomas_aprovados.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    diploma_id = Column(GUID(), ForeignKey("diplomas_aprovados.id"), nullable=False)
     orcam_id = Column(Integer)  # id from OrcamentoContasGerenciaOut
     leg = Column(String(50))  # leg field
     tp = Column(String(50))  # tp field
@@ -2680,8 +2691,8 @@ class DiplomaOrcamContasGerencia(Base):
 class DiplomaPublicacao(Base):
     __tablename__ = "diploma_publicacoes"
 
-    id = Column(Integer, primary_key=True)
-    diploma_id = Column(Integer, ForeignKey("diplomas_aprovados.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    diploma_id = Column(GUID(), ForeignKey("diplomas_aprovados.id"), nullable=False)
 
     pub_nr = Column(Integer)
     pub_tipo = Column(String(50))
@@ -2704,8 +2715,8 @@ class DiplomaPublicacao(Base):
 class DiplomaIniciativa(Base):
     __tablename__ = "diploma_iniciativas"
 
-    id = Column(Integer, primary_key=True)
-    diploma_id = Column(Integer, ForeignKey("diplomas_aprovados.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    diploma_id = Column(GUID(), ForeignKey("diplomas_aprovados.id"), nullable=False)
 
     ini_nr = Column(Integer)
     ini_tipo = Column(String(100))
@@ -2750,8 +2761,8 @@ class PerguntaRequerimento(Base):
 
     __tablename__ = "perguntas_requerimentos"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # Core fields from XML mapping
     requerimento_id = Column(
@@ -2829,9 +2840,9 @@ class PerguntaRequerimentoPublicacao(Base):
 
     __tablename__ = "pergunta_requerimento_publicacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     pergunta_requerimento_id = Column(
-        Integer, ForeignKey("perguntas_requerimentos.id"), nullable=False
+        GUID(), ForeignKey("perguntas_requerimentos.id"), nullable=False
     )
 
     # Publications fields from XML mapping
@@ -2891,9 +2902,9 @@ class PerguntaRequerimentoDestinatario(Base):
 
     __tablename__ = "pergunta_requerimento_destinatarios"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     pergunta_requerimento_id = Column(
-        Integer, ForeignKey("perguntas_requerimentos.id"), nullable=False
+        GUID(), ForeignKey("perguntas_requerimentos.id"), nullable=False
     )
 
     # Recipient fields from XML mapping
@@ -2957,9 +2968,9 @@ class PerguntaRequerimentoResposta(Base):
 
     __tablename__ = "pergunta_requerimento_respostas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     destinatario_id = Column(
-        Integer, ForeignKey("pergunta_requerimento_destinatarios.id"), nullable=True,
+        GUID(), ForeignKey("pergunta_requerimento_destinatarios.id"), nullable=True,
         comment="Recipient ID (NULL for direct responses like RespostasSPerguntas)"
     )
 
@@ -3007,11 +3018,11 @@ class PerguntaRequerimentoAutor(Base):
 
     __tablename__ = "pergunta_requerimento_autores"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     pergunta_requerimento_id = Column(
-        Integer, ForeignKey("perguntas_requerimentos.id"), nullable=False
+        GUID(), ForeignKey("perguntas_requerimentos.id"), nullable=False
     )
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=True)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=True)
 
     # Author fields from XML mapping
     id_cadastro = Column(
@@ -3032,8 +3043,8 @@ class PerguntaRequerimentoAutor(Base):
 class CooperacaoParlamentar(Base):
     __tablename__ = "cooperacao_parlamentar"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # Core fields
     cooperacao_id = Column(Integer, unique=True)  # External ID
@@ -3058,9 +3069,9 @@ class CooperacaoParlamentar(Base):
 class CooperacaoPrograma(Base):
     __tablename__ = "cooperacao_programas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     cooperacao_id = Column(
-        Integer, ForeignKey("cooperacao_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("cooperacao_parlamentar.id"), nullable=False
     )
 
     nome = Column(Text)
@@ -3074,9 +3085,9 @@ class CooperacaoPrograma(Base):
 class CooperacaoAtividade(Base):
     __tablename__ = "cooperacao_atividades"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     cooperacao_id = Column(
-        Integer, ForeignKey("cooperacao_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("cooperacao_parlamentar.id"), nullable=False
     )
     atividade_id = Column(Integer)  # External activity ID from XML
 
@@ -3100,9 +3111,9 @@ class CooperacaoAtividade(Base):
 class CooperacaoParticipante(Base):
     __tablename__ = "cooperacao_participantes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     atividade_id = Column(
-        Integer, ForeignKey("cooperacao_atividades.id"), nullable=False
+        GUID(), ForeignKey("cooperacao_atividades.id"), nullable=False
     )
     participante_id = Column(Integer)  # External participant ID from XML
 
@@ -3129,8 +3140,8 @@ class DelegacaoEventual(Base):
 
     __tablename__ = "delegacao_eventual"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # Core meeting fields from official documentation
     delegacao_id = Column(
@@ -3171,9 +3182,9 @@ class DelegacaoEventualParticipante(Base):
 
     __tablename__ = "delegacao_eventual_participantes"
 
-    id = Column(Integer, primary_key=True)
-    delegacao_id = Column(Integer, ForeignKey("delegacao_eventual.id"), nullable=False)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    delegacao_id = Column(GUID(), ForeignKey("delegacao_eventual.id"), nullable=False)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=True)
     participante_id = Column(
         Integer
     )  # External participant ID from XML (IX Legislature)
@@ -3220,9 +3231,9 @@ class DelegacaoPermanente(Base):
 
     __tablename__ = "delegacao_permanente"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     legislatura_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("legislaturas.id"),
         nullable=False,
         comment="Legislature identifier (Legislatura)",
@@ -3267,11 +3278,11 @@ class DelegacaoPermanenteMembro(Base):
 
     __tablename__ = "delegacao_permanente_membros"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     delegacao_id = Column(
-        Integer, ForeignKey("delegacao_permanente.id"), nullable=False
+        GUID(), ForeignKey("delegacao_permanente.id"), nullable=False
     )
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=True)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=True)
 
     membro_id = Column(Integer, comment="Deputy identifier (Id)")
     nome = Column(String(200), comment="Deputy participant name (Nome)")
@@ -3303,9 +3314,9 @@ class DelegacaoPermanenteComissao(Base):
 
     __tablename__ = "delegacao_permanente_comissoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     delegacao_id = Column(
-        Integer, ForeignKey("delegacao_permanente.id"), nullable=False
+        GUID(), ForeignKey("delegacao_permanente.id"), nullable=False
     )
 
     # Commission fields from official documentation
@@ -3329,9 +3340,9 @@ class DelegacaoPermanenteComissaoMembro(Base):
 
     __tablename__ = "delegacao_permanente_comissao_membros"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_id = Column(
-        Integer, ForeignKey("delegacao_permanente_comissoes.id"), nullable=False
+        GUID(), ForeignKey("delegacao_permanente_comissoes.id"), nullable=False
     )
 
     # Member fields with XML namespace support
@@ -3381,8 +3392,8 @@ class AtividadeParlamentar(Base):
 
     __tablename__ = "atividade_parlamentar"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # Core fields from AtividadesGerais structure
     atividade_id = Column(
@@ -3470,9 +3481,9 @@ class AtividadeParlamentar(Base):
 class AtividadeParlamentarPublicacao(Base):
     __tablename__ = "atividade_parlamentar_publicacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     atividade_id = Column(
-        Integer, ForeignKey("atividade_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("atividade_parlamentar.id"), nullable=False
     )
 
     pub_nr = Column(Integer)
@@ -3496,9 +3507,9 @@ class AtividadeParlamentarPublicacao(Base):
 class AtividadeParlamentarVotacao(Base):
     __tablename__ = "atividade_parlamentar_votacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     atividade_id = Column(
-        Integer, ForeignKey("atividade_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("atividade_parlamentar.id"), nullable=False
     )
 
     votacao_id = Column(Integer)
@@ -3519,9 +3530,9 @@ class AtividadeParlamentarVotacao(Base):
 class AtividadeParlamentarEleito(Base):
     __tablename__ = "atividade_parlamentar_eleitos"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     atividade_id = Column(
-        Integer, ForeignKey("atividade_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("atividade_parlamentar.id"), nullable=False
     )
 
     nome = Column(String(200))
@@ -3535,9 +3546,9 @@ class AtividadeParlamentarEleito(Base):
 class AtividadeParlamentarConvidado(Base):
     __tablename__ = "atividade_parlamentar_convidados"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     atividade_id = Column(
-        Integer, ForeignKey("atividade_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("atividade_parlamentar.id"), nullable=False
     )
 
     nome = Column(String(200))
@@ -3552,8 +3563,8 @@ class AtividadeParlamentarConvidado(Base):
 class DebateParlamentar(Base):
     __tablename__ = "debate_parlamentar"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # Core fields
     debate_id = Column(Integer, unique=True)  # External ID
@@ -3584,8 +3595,8 @@ class DebateParlamentar(Base):
 class DebateParlamentarPublicacao(Base):
     __tablename__ = "debate_parlamentar_publicacoes"
 
-    id = Column(Integer, primary_key=True)
-    debate_id = Column(Integer, ForeignKey("debate_parlamentar.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    debate_id = Column(GUID(), ForeignKey("debate_parlamentar.id"), nullable=False)
 
     pub_nr = Column(Integer)
     pub_tipo = Column(String(100))
@@ -3608,8 +3619,8 @@ class DebateParlamentarPublicacao(Base):
 class RelatorioParlamentar(Base):
     __tablename__ = "relatorio_parlamentar"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # Core fields
     relatorio_id = Column(Integer, unique=True)  # External ID if available
@@ -3669,9 +3680,9 @@ class RelatorioParlamentar(Base):
 class RelatorioParlamentarPublicacao(Base):
     __tablename__ = "relatorio_parlamentar_publicacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     relatorio_id = Column(
-        Integer, ForeignKey("relatorio_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("relatorio_parlamentar.id"), nullable=False
     )
 
     pub_nr = Column(Integer)
@@ -3695,9 +3706,9 @@ class RelatorioParlamentarPublicacao(Base):
 class RelatorioParlamentarVotacao(Base):
     __tablename__ = "relatorio_parlamentar_votacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     relatorio_id = Column(
-        Integer, ForeignKey("relatorio_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("relatorio_parlamentar.id"), nullable=False
     )
 
     votacao_id = Column(Integer)
@@ -3721,9 +3732,9 @@ class RelatorioParlamentarVotacao(Base):
 class RelatorioParlamentarVotacaoPublicacao(Base):
     __tablename__ = "relatorio_parlamentar_votacao_publicacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     votacao_id = Column(
-        Integer, ForeignKey("relatorio_parlamentar_votacoes.id"), nullable=False
+        GUID(), ForeignKey("relatorio_parlamentar_votacoes.id"), nullable=False
     )
 
     pub_nr = Column(Integer)
@@ -3746,9 +3757,9 @@ class RelatorioParlamentarVotacaoPublicacao(Base):
 class RelatorioParlamentarRelator(Base):
     __tablename__ = "relatorio_parlamentar_relatores"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     relatorio_id = Column(
-        Integer, ForeignKey("relatorio_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("relatorio_parlamentar.id"), nullable=False
     )
 
     relator_id = Column(Integer)  # Relatores.pt_gov_ar_objectos_RelatoresOut.id
@@ -3763,9 +3774,9 @@ class RelatorioParlamentarRelator(Base):
 class RelatorioParlamentarDocumento(Base):
     __tablename__ = "relatorio_parlamentar_documentos"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     relatorio_id = Column(
-        Integer, ForeignKey("relatorio_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("relatorio_parlamentar.id"), nullable=False
     )
 
     # Document fields from Documentos.DocsOut
@@ -3783,9 +3794,9 @@ class RelatorioParlamentarDocumento(Base):
 class RelatorioParlamentarLink(Base):
     __tablename__ = "relatorio_parlamentar_links"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     relatorio_id = Column(
-        Integer, ForeignKey("relatorio_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("relatorio_parlamentar.id"), nullable=False
     )
 
     # Link fields from Links.DocsOut
@@ -3825,8 +3836,8 @@ class EventoParlamentar(Base):
 
     __tablename__ = "eventos_parlamentares"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # Event fields from DadosEventosComissaoOut structure
     id_evento = Column(
@@ -3891,8 +3902,8 @@ class DeslocacaoParlamentar(Base):
 
     __tablename__ = "deslocacoes_parlamentares"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # Displacement fields from DadosDeslocacoesComissaoOut structure
     id_deslocacao = Column(
@@ -3930,9 +3941,9 @@ class DeslocacaoParlamentar(Base):
 class RelatorioParlamentarComissaoOpiniao(Base):
     __tablename__ = "relatorio_parlamentar_comissoes_opinioes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     relatorio_parlamentar_id = Column(
-        Integer, ForeignKey("relatorio_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("relatorio_parlamentar.id"), nullable=False
     )
 
     # Commission Opinion fields from ParecerComissao.AtividadeComissoesOut
@@ -3958,9 +3969,9 @@ class RelatorioParlamentarComissaoOpiniao(Base):
 class RelatorioParlamentarComissaoDocumento(Base):
     __tablename__ = "relatorio_parlamentar_comissao_documentos"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_opiniao_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("relatorio_parlamentar_comissoes_opinioes.id"),
         nullable=False,
     )
@@ -3983,9 +3994,9 @@ class RelatorioParlamentarComissaoDocumento(Base):
 class RelatorioParlamentarComissaoRelator(Base):
     __tablename__ = "relatorio_parlamentar_comissao_relatores"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_opiniao_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("relatorio_parlamentar_comissoes_opinioes.id"),
         nullable=False,
     )
@@ -4006,9 +4017,9 @@ class RelatorioParlamentarComissaoRelator(Base):
 class RelatorioParlamentarIniciativaConjunta(Base):
     __tablename__ = "relatorio_parlamentar_iniciativas_conjuntas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     relatorio_id = Column(
-        Integer, ForeignKey("relatorio_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("relatorio_parlamentar.id"), nullable=False
     )
 
     # Joint Initiative fields from IniciativasConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut
@@ -4025,8 +4036,8 @@ class RelatorioParlamentarIniciativaConjunta(Base):
 class AudicoesParlamentares(Base):
     __tablename__ = "audicoes_parlamentares"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"))
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"))
 
     id_audicao = Column(Integer)  # IDAudicao
     numero_audicao = Column(String(100))  # NumeroAudicao field
@@ -4073,8 +4084,8 @@ class AudienciasParlamentares(Base):
 
     __tablename__ = "audiencias_parlamentares"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"))
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"))
 
     id_audiencia = Column(
         Integer,
@@ -4140,8 +4151,8 @@ class AudicaoParlamentar(Base):
 
     __tablename__ = "audicao_parlamentar"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     id_audicao = Column(Integer, comment="Audition identifier (IDAudicao)")
     numero_audicao = Column(String(100), comment="Audition number (NumeroAudicao)")
@@ -4183,8 +4194,8 @@ class AudienciaParlamentar(Base):
 
     __tablename__ = "audiencia_parlamentar"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     id_audiencia = Column(Integer, comment="Audience identifier (IDAudiencia)")
     numero_audiencia = Column(String(100), comment="Audience number (NumeroAudiencia)")
@@ -4251,7 +4262,7 @@ class IniciativaParlamentar(Base):
 
     __tablename__ = "iniciativas_detalhadas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     ini_id = Column(
         Integer,
         unique=True,
@@ -4281,7 +4292,7 @@ class IniciativaParlamentar(Base):
         Text, comment="Link para o texto da iniciativa (XML: iniLinkTexto)"
     )
     ini_obs = Column(Text, comment="Observações associadas (XML: iniObs)")
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
     updated_at = Column(DateTime, default=func.now, onupdate=func.now)
 
     # Relationships
@@ -4320,9 +4331,9 @@ class IniciativaParlamentar(Base):
 class IniciativaAutorOutro(Base):
     __tablename__ = "iniciativas_autores_outros"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     iniciativa_id = Column(
-        Integer, ForeignKey("iniciativas_detalhadas.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_detalhadas.id"), nullable=False
     )
     sigla = Column(Text)
     nome = Column(Text)
@@ -4334,9 +4345,9 @@ class IniciativaAutorOutro(Base):
 class IniciativaAutorDeputado(Base):
     __tablename__ = "iniciativas_autores_deputados"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     iniciativa_id = Column(
-        Integer, ForeignKey("iniciativas_detalhadas.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_detalhadas.id"), nullable=False
     )
     id_cadastro = Column(Integer)
     nome = Column(Text)
@@ -4351,9 +4362,9 @@ class IniciativaAutorDeputado(Base):
 class IniciativaAutorGrupoParlamentar(Base):
     __tablename__ = "iniciativas_autores_grupos_parlamentares"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     iniciativa_id = Column(
-        Integer, ForeignKey("iniciativas_detalhadas.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_detalhadas.id"), nullable=False
     )
     gp = Column(Text)
 
@@ -4364,9 +4375,9 @@ class IniciativaAutorGrupoParlamentar(Base):
 class IniciativaPropostaAlteracao(Base):
     __tablename__ = "iniciativas_propostas_alteracao"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     iniciativa_id = Column(
-        Integer, ForeignKey("iniciativas_detalhadas.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_detalhadas.id"), nullable=False
     )
     proposta_id = Column(Integer)
     tipo = Column(Text)
@@ -4386,9 +4397,9 @@ class IniciativaPropostaAlteracao(Base):
 class IniciativaPropostaAlteracaoPublicacao(Base):
     __tablename__ = "iniciativas_propostas_alteracao_publicacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     proposta_id = Column(
-        Integer, ForeignKey("iniciativas_propostas_alteracao.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_propostas_alteracao.id"), nullable=False
     )
     pub_nr = Column(Integer)
     pub_tipo = Column(Text)
@@ -4407,9 +4418,9 @@ class IniciativaPropostaAlteracaoPublicacao(Base):
 class IniciativaEvento(Base):
     __tablename__ = "iniciativas_eventos"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     iniciativa_id = Column(
-        Integer, ForeignKey("iniciativas_detalhadas.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_detalhadas.id"), nullable=False
     )
     oev_id = Column(Integer)
     data_fase = Column(Date)
@@ -4496,8 +4507,8 @@ class IniciativaEventoPublicacao(Base):
 
     __tablename__ = "iniciativas_eventos_publicacoes"
 
-    id = Column(Integer, primary_key=True)
-    evento_id = Column(Integer, ForeignKey("iniciativas_eventos.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    evento_id = Column(GUID(), ForeignKey("iniciativas_eventos.id"), nullable=False)
     pub_nr = Column(Integer, comment="Número da Publicação (XML: pubNr)")
     pub_tipo = Column(Text, comment="Descrição do Tipo de Publicação (XML: pubTipo)")
     pub_tp = Column(Text, comment="Abreviatura do Tipo de Publicação (XML: pubTp)")
@@ -4523,8 +4534,8 @@ class IniciativaEventoPublicacao(Base):
 class IniciativaEventoVotacao(Base):
     __tablename__ = "iniciativas_eventos_votacoes"
 
-    id = Column(Integer, primary_key=True)
-    evento_id = Column(Integer, ForeignKey("iniciativas_eventos.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    evento_id = Column(GUID(), ForeignKey("iniciativas_eventos.id"), nullable=False)
     id_votacao = Column(Integer)
     resultado = Column(Text)
     reuniao = Column(Integer)
@@ -4557,9 +4568,9 @@ class IniciativaEventoVotacao(Base):
 class IniciativaVotacaoAusencia(Base):
     __tablename__ = "iniciativas_votacoes_ausencias"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     votacao_id = Column(
-        Integer, ForeignKey("iniciativas_eventos_votacoes.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_eventos_votacoes.id"), nullable=False
     )
     grupo_parlamentar = Column(Text)
 
@@ -4572,9 +4583,9 @@ class IniciativaVotacaoPublicacao(Base):
 
     __tablename__ = "iniciativas_votacoes_publicacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     votacao_id = Column(
-        Integer, ForeignKey("iniciativas_eventos_votacoes.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_eventos_votacoes.id"), nullable=False
     )
 
     # Publication fields from publicacao.pt_gov_ar_objectos_PublicacoesOut
@@ -4595,8 +4606,8 @@ class IniciativaVotacaoPublicacao(Base):
 class IniciativaEventoComissao(Base):
     __tablename__ = "iniciativas_eventos_comissoes"
 
-    id = Column(Integer, primary_key=True)
-    evento_id = Column(Integer, ForeignKey("iniciativas_eventos.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    evento_id = Column(GUID(), ForeignKey("iniciativas_eventos.id"), nullable=False)
     acc_id = Column(Integer)
     numero = Column(Integer)
     id_comissao = Column(Integer)
@@ -4630,9 +4641,9 @@ class IniciativaEventoComissao(Base):
 class IniciativaComissaoPublicacao(Base):
     __tablename__ = "iniciativas_comissoes_publicacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_id = Column(
-        Integer, ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
     )
     tipo = Column(Text)  # Publication type (e.g., "Publicacao", "PublicacaoRelatorio")
     pub_nr = Column(Integer)
@@ -4656,9 +4667,9 @@ class IniciativaComissaoRelator(Base):
 
     __tablename__ = "iniciativas_comissoes_relatores"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_id = Column(
-        Integer, ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
     )
 
     # Reporter fields from Relatores.pt_gov_ar_objectos_RelatoresOut
@@ -4677,9 +4688,9 @@ class IniciativaComissaoRemessa(Base):
 
     __tablename__ = "iniciativas_comissoes_remessas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_id = Column(
-        Integer, ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
     )
 
     # Dispatch fields from Remessas.pt_gov_ar_objectos_RemessasOut
@@ -4696,9 +4707,9 @@ class IniciativaIntervencaoOrador(Base):
 
     __tablename__ = "iniciativas_intervencoes_oradores"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     intervencao_id = Column(
-        Integer, ForeignKey("iniciativas_intervencoes_debates.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_intervencoes_debates.id"), nullable=False
     )
 
     # Speaker timing and session details from pt_gov_ar_objectos_peticoes_OradoresOut
@@ -4731,9 +4742,9 @@ class IniciativaIntervencaoOradorPublicacao(Base):
 
     __tablename__ = "iniciativas_intervencoes_oradores_publicacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     orador_id = Column(
-        Integer, ForeignKey("iniciativas_intervencoes_oradores.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_intervencoes_oradores.id"), nullable=False
     )
 
     # Publication fields from nested publicacao.pt_gov_ar_objectos_PublicacoesOut
@@ -4757,9 +4768,9 @@ class IniciativaIntervencaoOradorConvidado(Base):
 
     __tablename__ = "iniciativas_intervencoes_oradores_convidados"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     orador_id = Column(
-        Integer, ForeignKey("iniciativas_intervencoes_oradores.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_intervencoes_oradores.id"), nullable=False
     )
 
     # Guest details from convidados structure
@@ -4776,9 +4787,9 @@ class IniciativaIntervencaoOradorMembroGoverno(Base):
 
     __tablename__ = "iniciativas_intervencoes_oradores_membros_governo"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     orador_id = Column(
-        Integer, ForeignKey("iniciativas_intervencoes_oradores.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_intervencoes_oradores.id"), nullable=False
     )
 
     # Government member details from membrosGoverno structure
@@ -4795,8 +4806,8 @@ class IniciativaIntervencaoOradorMembroGoverno(Base):
 class IniciativaEventoRecursoGP(Base):
     __tablename__ = "iniciativas_eventos_recursos_gp"
 
-    id = Column(Integer, primary_key=True)
-    evento_id = Column(Integer, ForeignKey("iniciativas_eventos.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    evento_id = Column(GUID(), ForeignKey("iniciativas_eventos.id"), nullable=False)
     grupo_parlamentar = Column(Text)
 
     # Relationships
@@ -4806,8 +4817,8 @@ class IniciativaEventoRecursoGP(Base):
 class IniciativaEventoRecursoDeputado(Base):
     __tablename__ = "iniciativas_eventos_recursos_deputados"
 
-    id = Column(Integer, primary_key=True)
-    evento_id = Column(Integer, ForeignKey("iniciativas_eventos.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    evento_id = Column(GUID(), ForeignKey("iniciativas_eventos.id"), nullable=False)
     deputado_info = Column(Text)  # String information about deputy
 
     # Relationships
@@ -4819,8 +4830,8 @@ class IniciativaEventoAnexo(Base):
 
     __tablename__ = "iniciativas_eventos_anexos"
 
-    id = Column(Integer, primary_key=True)
-    evento_id = Column(Integer, ForeignKey("iniciativas_eventos.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    evento_id = Column(GUID(), ForeignKey("iniciativas_eventos.id"), nullable=False)
 
     # Attachment fields from AnexosFase.pt_gov_ar_objectos_iniciativas_AnexosOut
     anexo_id = Column(Integer)  # Internal attachment ID
@@ -4835,8 +4846,8 @@ class IniciativaEventoAnexo(Base):
 class IniciativaConjunta(Base):
     __tablename__ = "iniciativas_conjuntas"
 
-    id = Column(Integer, primary_key=True)
-    evento_id = Column(Integer, ForeignKey("iniciativas_eventos.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    evento_id = Column(GUID(), ForeignKey("iniciativas_eventos.id"), nullable=False)
     nr = Column(Integer)
     tipo = Column(Text)
     desc_tipo = Column(Text)
@@ -4852,8 +4863,8 @@ class IniciativaConjunta(Base):
 class IniciativaIntervencaoDebate(Base):
     __tablename__ = "iniciativas_intervencoes_debates"
 
-    id = Column(Integer, primary_key=True)
-    evento_id = Column(Integer, ForeignKey("iniciativas_eventos.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    evento_id = Column(GUID(), ForeignKey("iniciativas_eventos.id"), nullable=False)
     data_reuniao_plenaria = Column(Date)
 
     # Relationships
@@ -4870,9 +4881,9 @@ class IniciativaAnexo(Base):
 
     __tablename__ = "iniciativas_anexos"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     iniciativa_id = Column(
-        Integer, ForeignKey("iniciativas_detalhadas.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_detalhadas.id"), nullable=False
     )
 
     # Attachment fields from IniAnexos.pt_gov_ar_objectos_iniciativas_AnexosOut
@@ -4890,9 +4901,9 @@ class IniciativaOradorVideoLink(Base):
 
     __tablename__ = "iniciativas_oradores_video_links"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     orador_id = Column(
-        Integer, ForeignKey("iniciativas_intervencoes_oradores.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_intervencoes_oradores.id"), nullable=False
     )
 
     # Video link fields from linkVideo.pt_gov_ar_objectos_peticoes_LinksVideos
@@ -4908,9 +4919,9 @@ class IniciativaComissaoDistribuicaoSubcomissao(Base):
 
     __tablename__ = "iniciativas_comissoes_distribuicao_subcomissao"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_id = Column(
-        Integer, ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
     )
 
     # Subcommission distribution fields from DistribuicaoSubcomissao.pt_gov_ar_objectos_ComissoesOut
@@ -4930,9 +4941,9 @@ class IniciativaEventoComissaoVotacao(Base):
 
     __tablename__ = "iniciativas_eventos_comissoes_votacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_id = Column(
-        Integer, ForeignKey("iniciativas_eventos_comissoes.id"), nullable=True
+        GUID(), ForeignKey("iniciativas_eventos_comissoes.id"), nullable=True
     )
 
     # Committee voting fields from Comissao.Votacao.pt_gov_ar_objectos_VotacaoOut
@@ -4955,9 +4966,9 @@ class IniciativaComissaoDocumento(Base):
 
     __tablename__ = "iniciativas_comissoes_documentos"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_id = Column(
-        Integer, ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
     )
 
     # Document fields from Documentos.DocsOut
@@ -4973,9 +4984,9 @@ class IniciativaComissaoAudiencia(Base):
 
     __tablename__ = "iniciativas_comissoes_audiencias"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_id = Column(
-        Integer, ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
     )
 
     # Hearing fields from Audiencias.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut
@@ -4991,9 +5002,9 @@ class IniciativaComissaoAudicao(Base):
 
     __tablename__ = "iniciativas_comissoes_audicoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_id = Column(
-        Integer, ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_eventos_comissoes.id"), nullable=False
     )
 
     # Audition fields from Audicoes.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut
@@ -5008,8 +5019,8 @@ class IniciativaEventoPeticaoConjunta(Base):
 
     __tablename__ = "iniciativas_eventos_peticoes_conjuntas"
 
-    id = Column(Integer, primary_key=True)
-    evento_id = Column(Integer, ForeignKey("iniciativas_eventos.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    evento_id = Column(GUID(), ForeignKey("iniciativas_eventos.id"), nullable=False)
 
     # Joint petition fields from PeticoesConjuntas.pt_gov_ar_objectos_iniciativas_DiscussaoConjuntaOut
     leg = Column(Text)  # Legislature
@@ -5025,9 +5036,9 @@ class IniciativaPeticao(Base):
 
     __tablename__ = "iniciativas_peticoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     iniciativa_id = Column(
-        Integer, ForeignKey("iniciativas_detalhadas.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_detalhadas.id"), nullable=False
     )
 
     # Petition fields from Peticoes.pt_gov_ar_objectos_iniciativas_DadosGeraisOut
@@ -5042,9 +5053,9 @@ class IniciativaEuropeia(Base):
 
     __tablename__ = "iniciativas_europeias_simples"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     iniciativa_id = Column(
-        Integer, ForeignKey("iniciativas_detalhadas.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_detalhadas.id"), nullable=False
     )
 
     # European initiative as string from IniciativasEuropeias.string
@@ -5061,9 +5072,9 @@ class IniciativaLink(Base):
 
     __tablename__ = "iniciativas_links"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     iniciativa_id = Column(
-        Integer, ForeignKey("iniciativas_detalhadas.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_detalhadas.id"), nullable=False
     )
 
     # Document link fields from Links.DocsOut
@@ -5121,7 +5132,7 @@ class PeticaoParlamentar(Base):
         # Index('idx_peticao_situacao', text('pet_situacao(20)')),
     )
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     pet_id = Column(
         Integer, unique=True, nullable=False, comment="Petition identifier (XML: petId)"
     )
@@ -5156,7 +5167,7 @@ class PeticaoParlamentar(Base):
         comment="Originated initiatives - XIII Legislature (XML: iniciativasOriginadas)",
     )
     legislatura_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("legislaturas.id"),
         nullable=False,
         comment="Legislature foreign key reference",
@@ -5192,8 +5203,8 @@ class PeticaoLink(Base):
 
     __tablename__ = "peticoes_links"
 
-    id = Column(Integer, primary_key=True)
-    peticao_id = Column(Integer, ForeignKey("peticoes_detalhadas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    peticao_id = Column(GUID(), ForeignKey("peticoes_detalhadas.id"), nullable=False)
     tipo_documento = Column(Text)  # TipoDocumento from PeticaoDocsOut
     titulo_documento = Column(Text)  # TituloDocumento from PeticaoDocsOut
     data_documento = Column(Date)  # DataDocumento from PeticaoDocsOut
@@ -5231,9 +5242,9 @@ class PeticaoPublicacao(Base):
 
     __tablename__ = "peticoes_publicacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     peticao_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("peticoes_detalhadas.id"),
         nullable=False,
         comment="Petition foreign key reference",
@@ -5304,9 +5315,9 @@ class PeticaoComissao(Base):
         # Index('idx_peticao_comissao_legislatura', text('legislatura(10)')),
     )
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     peticao_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("peticoes_detalhadas.id"),
         nullable=False,
         comment="Petition foreign key reference",
@@ -5356,9 +5367,9 @@ class PeticaoComissao(Base):
 class PeticaoRelator(Base):
     __tablename__ = "peticoes_relatores"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_peticao_id = Column(
-        Integer, ForeignKey("peticoes_comissoes.id"), nullable=False
+        GUID(), ForeignKey("peticoes_comissoes.id"), nullable=False
     )
     relator_id = Column(Integer)
     nome = Column(Text)
@@ -5374,9 +5385,9 @@ class PeticaoRelator(Base):
 class PeticaoRelatorioFinal(Base):
     __tablename__ = "peticoes_relatorios_finais"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_peticao_id = Column(
-        Integer, ForeignKey("peticoes_comissoes.id"), nullable=False
+        GUID(), ForeignKey("peticoes_comissoes.id"), nullable=False
     )
     data_relatorio = Column(Date)
     votacao = Column(Text)
@@ -5411,9 +5422,9 @@ class PeticaoRelatorioFinalPublicacao(Base):
 
     __tablename__ = "peticoes_relatorios_finais_publicacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     relatorio_final_id = Column(
-        Integer, ForeignKey("peticoes_relatorios_finais.id"), nullable=False
+        GUID(), ForeignKey("peticoes_relatorios_finais.id"), nullable=False
     )
     pub_nr = Column(Integer)
     pub_tipo = Column(Text)
@@ -5435,10 +5446,10 @@ class PeticaoRelatorioFinalPublicacao(Base):
 class PeticaoDocumento(Base):
     __tablename__ = "peticoes_documentos"
 
-    id = Column(Integer, primary_key=True)
-    peticao_id = Column(Integer, ForeignKey("peticoes_detalhadas.id"), nullable=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    peticao_id = Column(GUID(), ForeignKey("peticoes_detalhadas.id"), nullable=True)
     comissao_peticao_id = Column(
-        Integer, ForeignKey("peticoes_comissoes.id"), nullable=True
+        GUID(), ForeignKey("peticoes_comissoes.id"), nullable=True
     )
     tipo_documento_categoria = Column(Text)
     titulo_documento = Column(Text)
@@ -5454,8 +5465,8 @@ class PeticaoDocumento(Base):
 class PeticaoIntervencao(Base):
     __tablename__ = "peticoes_intervencoes"
 
-    id = Column(Integer, primary_key=True)
-    peticao_id = Column(Integer, ForeignKey("peticoes_detalhadas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    peticao_id = Column(GUID(), ForeignKey("peticoes_detalhadas.id"), nullable=False)
     data_reuniao_plenaria = Column(Date)
 
     # Relationships
@@ -5468,9 +5479,9 @@ class PeticaoIntervencao(Base):
 class PeticaoOrador(Base):
     __tablename__ = "peticoes_oradores"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     intervencao_id = Column(
-        Integer, ForeignKey("peticoes_intervencoes.id"), nullable=False
+        GUID(), ForeignKey("peticoes_intervencoes.id"), nullable=False
     )
     fase_sessao = Column(Text)
     sumario = Column(Text)
@@ -5495,8 +5506,8 @@ class PeticaoOrador(Base):
 class PeticaoOradorPublicacao(Base):
     __tablename__ = "peticoes_oradores_publicacoes"
 
-    id = Column(Integer, primary_key=True)
-    orador_id = Column(Integer, ForeignKey("peticoes_oradores.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    orador_id = Column(GUID(), ForeignKey("peticoes_oradores.id"), nullable=False)
     pub_nr = Column(Integer)
     pub_tipo = Column(Text)
     pub_tp = Column(Text)
@@ -5517,9 +5528,9 @@ class PeticaoAudiencia(Base):
 
     __tablename__ = "peticoes_audiencias"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_peticao_id = Column(
-        Integer, ForeignKey("peticoes_comissoes.id"), nullable=False
+        GUID(), ForeignKey("peticoes_comissoes.id"), nullable=False
     )
     audiencia_id = Column(
         Integer
@@ -5543,9 +5554,9 @@ class PeticaoPedidoInformacao(Base):
 
     __tablename__ = "peticoes_pedidos_informacao"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     comissao_peticao_id = Column(
-        Integer, ForeignKey("peticoes_comissoes.id"), nullable=False
+        GUID(), ForeignKey("peticoes_comissoes.id"), nullable=False
     )
     nr_oficio = Column(
         Text
@@ -5571,8 +5582,8 @@ class PeticaoPedidoEsclarecimento(Base):
 
     __tablename__ = "peticoes_pedidos_esclarecimento"
 
-    id = Column(Integer, primary_key=True)
-    peticao_id = Column(Integer, ForeignKey("peticoes_detalhadas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    peticao_id = Column(GUID(), ForeignKey("peticoes_detalhadas.id"), nullable=False)
     nr_oficio = Column(
         Text
     )  # nrOficio from pt_gov_ar_objectos_peticoes_PedidosEsclarecimentoOut.nrOficio
@@ -5591,9 +5602,9 @@ class PeticaoPedidoReiteracao(Base):
 
     __tablename__ = "peticoes_pedidos_reiteracao"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     pedido_informacao_id = Column(
-        Integer, ForeignKey("peticoes_pedidos_informacao.id"), nullable=False
+        GUID(), ForeignKey("peticoes_pedidos_informacao.id"), nullable=False
     )
     data = Column(
         Date
@@ -5640,9 +5651,9 @@ class IntervencaoParlamentar(Base):
 
     __tablename__ = "intervencao_parlamentar"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     legislatura_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("legislaturas.id"),
         nullable=False,
         comment="Reference to legislature",
@@ -5742,9 +5753,9 @@ class IntervencaoParlamentar(Base):
 class IntervencaoPublicacao(Base):
     __tablename__ = "intervencao_publicacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     intervencao_id = Column(
-        Integer, ForeignKey("intervencao_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("intervencao_parlamentar.id"), nullable=False
     )
 
     pub_nr = Column(Integer)
@@ -5765,11 +5776,11 @@ class IntervencaoPublicacao(Base):
 class IntervencaoDeputado(Base):
     __tablename__ = "intervencao_deputados"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     intervencao_id = Column(
-        Integer, ForeignKey("intervencao_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("intervencao_parlamentar.id"), nullable=False
     )
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=True)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=True)
 
     id_cadastro = Column(Integer)
     nome = Column(String(200))
@@ -5784,9 +5795,9 @@ class IntervencaoDeputado(Base):
 class IntervencaoMembroGoverno(Base):
     __tablename__ = "intervencao_membros_governo"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     intervencao_id = Column(
-        Integer, ForeignKey("intervencao_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("intervencao_parlamentar.id"), nullable=False
     )
 
     nome = Column(String(200))
@@ -5803,9 +5814,9 @@ class IntervencaoMembroGoverno(Base):
 class IntervencaoConvidado(Base):
     __tablename__ = "intervencao_convidados"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     intervencao_id = Column(
-        Integer, ForeignKey("intervencao_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("intervencao_parlamentar.id"), nullable=False
     )
 
     nome = Column(String(200))
@@ -5819,9 +5830,9 @@ class IntervencaoConvidado(Base):
 class IntervencaoAtividadeRelacionada(Base):
     __tablename__ = "intervencao_atividades_relacionadas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     intervencao_id = Column(
-        Integer, ForeignKey("intervencao_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("intervencao_parlamentar.id"), nullable=False
     )
 
     atividade_id = Column(Integer)
@@ -5837,9 +5848,9 @@ class IntervencaoAtividadeRelacionada(Base):
 class IntervencaoIniciativa(Base):
     __tablename__ = "intervencao_iniciativas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     intervencao_id = Column(
-        Integer, ForeignKey("intervencao_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("intervencao_parlamentar.id"), nullable=False
     )
 
     iniciativa_id = Column(Integer)
@@ -5855,9 +5866,9 @@ class IntervencaoIniciativa(Base):
 class IntervencaoAudiovisual(Base):
     __tablename__ = "intervencao_audiovisuais"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     intervencao_id = Column(
-        Integer, ForeignKey("intervencao_parlamentar.id"), nullable=False
+        GUID(), ForeignKey("intervencao_parlamentar.id"), nullable=False
     )
 
     duracao = Column(String(50))
@@ -5879,9 +5890,9 @@ class IntervencaoAudiovisual(Base):
 class OrcamentoContasGerencia(Base):
     __tablename__ = "orcamento_contas_gerencia"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     entry_id = Column(Integer, nullable=False)  # id field from XML
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # Core fields
     tipo = Column(
@@ -5926,9 +5937,9 @@ class ActividadesParlamentares(Base):
 
     __tablename__ = "atividades_parlamentares"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -5946,9 +5957,9 @@ class ActividadesParlamentaresOut(Base):
 
     __tablename__ = "atividades_parlamentares_out"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     atividades_parlamentares_id = Column(
-        Integer, ForeignKey("atividades_parlamentares.id"), nullable=False
+        GUID(), ForeignKey("atividades_parlamentares.id"), nullable=False
     )
 
     # Core fields from XML
@@ -5988,9 +5999,9 @@ class GruposParlamentaresAmizade(Base):
 
     __tablename__ = "grupos_parlamentares_amizade"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6008,9 +6019,9 @@ class GruposParlamentaresAmizadeOut(Base):
 
     __tablename__ = "grupos_parlamentares_amizade_out"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     grupos_parlamentares_amizade_id = Column(
-        Integer, ForeignKey("grupos_parlamentares_amizade.id"), nullable=False
+        GUID(), ForeignKey("grupos_parlamentares_amizade.id"), nullable=False
     )
 
     # Core fields from XML
@@ -6034,9 +6045,9 @@ class DelegacoesPermanentes(Base):
 
     __tablename__ = "delegacoes_permanentes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6054,9 +6065,9 @@ class DelegacoesPermanentesOut(Base):
 
     __tablename__ = "delegacoes_permanentes_out"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     delegacoes_permanentes_id = Column(
-        Integer, ForeignKey("delegacoes_permanentes.id"), nullable=False
+        GUID(), ForeignKey("delegacoes_permanentes.id"), nullable=False
     )
 
     # Core fields from XML
@@ -6084,9 +6095,9 @@ class DelegacoesEventuais(Base):
 
     __tablename__ = "delegacoes_eventuais"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6104,9 +6115,9 @@ class DelegacoesEventuaisOut(Base):
 
     __tablename__ = "delegacoes_eventuais_out"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     delegacoes_eventuais_id = Column(
-        Integer, ForeignKey("delegacoes_eventuais.id"), nullable=False
+        GUID(), ForeignKey("delegacoes_eventuais.id"), nullable=False
     )
 
     # Core fields from XML
@@ -6132,9 +6143,9 @@ class RequerimentosAtivDep(Base):
 
     __tablename__ = "requerimentos_ativ_dep"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6152,9 +6163,9 @@ class RequerimentosAtivDepOut(Base):
 
     __tablename__ = "requerimentos_ativ_dep_out"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     requerimentos_ativ_dep_id = Column(
-        Integer, ForeignKey("requerimentos_ativ_dep.id"), nullable=False
+        GUID(), ForeignKey("requerimentos_ativ_dep.id"), nullable=False
     )
 
     # Core fields from XML
@@ -6180,9 +6191,9 @@ class SubComissoesGruposTrabalho(Base):
 
     __tablename__ = "subcomissoes_grupos_trabalho"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6200,9 +6211,9 @@ class SubComissoesGruposTrabalhoOut(Base):
 
     __tablename__ = "subcomissoes_grupos_trabalho_out"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     subcomissoes_grupos_trabalho_id = Column(
-        Integer, ForeignKey("subcomissoes_grupos_trabalho.id"), nullable=False
+        GUID(), ForeignKey("subcomissoes_grupos_trabalho.id"), nullable=False
     )
 
     # Core fields from XML
@@ -6228,9 +6239,9 @@ class RelatoresPeticoes(Base):
 
     __tablename__ = "relatores_peticoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6248,9 +6259,9 @@ class RelatoresPeticoesOut(Base):
 
     __tablename__ = "relatores_peticoes_out"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     relatores_peticoes_id = Column(
-        Integer, ForeignKey("relatores_peticoes.id"), nullable=False
+        GUID(), ForeignKey("relatores_peticoes.id"), nullable=False
     )
 
     # Core fields from XML
@@ -6274,9 +6285,9 @@ class Comissoes(Base):
 
     __tablename__ = "comissoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6292,8 +6303,8 @@ class ComissoesOut(Base):
 
     __tablename__ = "comissoes_out"
 
-    id = Column(Integer, primary_key=True)
-    comissoes_id = Column(Integer, ForeignKey("comissoes.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    comissoes_id = Column(GUID(), ForeignKey("comissoes.id"), nullable=False)
 
     # Core fields from XML
     cms_no = Column(String(500))  # CmsNo - committee name
@@ -6316,9 +6327,9 @@ class RelatoresIniciativas(Base):
 
     __tablename__ = "relatores_iniciativas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6336,9 +6347,9 @@ class RelatoresIniciativasOut(Base):
 
     __tablename__ = "relatores_iniciativas_out"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     relatores_iniciativas_id = Column(
-        Integer, ForeignKey("relatores_iniciativas.id"), nullable=False
+        GUID(), ForeignKey("relatores_iniciativas.id"), nullable=False
     )
 
     # Core fields from XML
@@ -6363,9 +6374,9 @@ class ReunioesDelegacoesPermanentes(Base):
 
     __tablename__ = "reunioes_delegacoes_permanentes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     delegacoes_permanentes_out_id = Column(
-        Integer, ForeignKey("delegacoes_permanentes_out.id"), nullable=False
+        GUID(), ForeignKey("delegacoes_permanentes_out.id"), nullable=False
     )
 
     # Core fields from XML
@@ -6392,9 +6403,9 @@ class AutoresPareceresIncImu(Base):
 
     __tablename__ = "autores_pareceres_inc_imu"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6412,9 +6423,9 @@ class AutoresPareceresIncImuOut(Base):
 
     __tablename__ = "autores_pareceres_inc_imu_out"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     autores_pareceres_inc_imu_id = Column(
-        Integer, ForeignKey("autores_pareceres_inc_imu.id"), nullable=False
+        GUID(), ForeignKey("autores_pareceres_inc_imu.id"), nullable=False
     )
 
     # Core fields from XML
@@ -6436,9 +6447,9 @@ class RelatoresIniEuropeias(Base):
 
     __tablename__ = "relatores_ini_europeias"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6456,9 +6467,9 @@ class RelatoresIniEuropeiasOut(Base):
 
     __tablename__ = "relatores_ini_europeias_out"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     relatores_ini_europeias_id = Column(
-        Integer, ForeignKey("relatores_ini_europeias.id"), nullable=False
+        GUID(), ForeignKey("relatores_ini_europeias.id"), nullable=False
     )
 
     # Core fields from XML
@@ -6481,9 +6492,9 @@ class ParlamentoJovens(Base):
 
     __tablename__ = "parlamento_jovens"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6501,9 +6512,9 @@ class DadosDeputadoParlamentoJovens(Base):
 
     __tablename__ = "dados_deputado_parlamento_jovens"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     parlamento_jovens_id = Column(
-        Integer, ForeignKey("parlamento_jovens.id"), nullable=False
+        GUID(), ForeignKey("parlamento_jovens.id"), nullable=False
     )
 
     # Core fields from XML
@@ -6527,9 +6538,9 @@ class Eventos(Base):
 
     __tablename__ = "eventos"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6545,9 +6556,9 @@ class Deslocacoes(Base):
 
     __tablename__ = "deslocacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6565,9 +6576,9 @@ class RelatoresContasPublicas(Base):
 
     __tablename__ = "relatores_contas_publicas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     actividade_out_id = Column(
-        Integer, ForeignKey("actividade_outs.id"), nullable=False
+        GUID(), ForeignKey("actividade_outs.id"), nullable=False
     )
     created_at = Column(DateTime, default=func.now())
 
@@ -6585,9 +6596,9 @@ class RelatoresContasPublicasOut(Base):
 
     __tablename__ = "relatores_contas_publicas_out"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     relatores_contas_publicas_id = Column(
-        Integer, ForeignKey("relatores_contas_publicas.id"), nullable=False
+        GUID(), ForeignKey("relatores_contas_publicas.id"), nullable=False
     )
 
     # Core fields from XML - based on similar structure to other rapporteur models
@@ -6642,8 +6653,8 @@ class DeputadoHabilitacao(Base):
 
     __tablename__ = "deputado_habilitacoes"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
     hab_id = Column(Integer, comment="Qualification unique identifier (XML: habId)")
     hab_des = Column(
         String(500), comment="Complete qualification description (XML: habDes)"
@@ -6695,8 +6706,8 @@ class DeputadoCargoFuncao(Base):
 
     __tablename__ = "deputado_cargos_funcoes"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
     fun_id = Column(Integer, comment="Function unique identifier (XML: funId)")
     fun_des = Column(
         Text, comment="Complete function/position description (XML: funDes)"
@@ -6742,8 +6753,8 @@ class DeputadoTitulo(Base):
 
     __tablename__ = "deputado_titulos"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
     tit_id = Column(Integer, comment="Title unique identifier (XML: titId)")
     tit_des = Column(Text, comment="Complete title description (XML: titDes)")
     tit_ordem = Column(
@@ -6790,8 +6801,8 @@ class DeputadoCondecoracao(Base):
 
     __tablename__ = "deputado_condecoracoes"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
     cod_id = Column(Integer, comment="Decoration unique identifier (XML: codId)")
     cod_des = Column(Text, comment="Complete decoration description (XML: codDes)")
     cod_ordem = Column(
@@ -6840,8 +6851,8 @@ class DeputadoObraPublicada(Base):
 
     __tablename__ = "deputado_obras_publicadas"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
     pub_id = Column(Integer, comment="Publication unique identifier (XML: pubId)")
     pub_des = Column(
         Text,
@@ -6903,8 +6914,8 @@ class DeputadoAtividadeOrgao(Base):
 
     __tablename__ = "deputado_atividades_orgaos"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
 
     # Activity type - 'actividadeCom' or 'actividadeGT'
     tipo_atividade = Column(
@@ -6981,8 +6992,8 @@ class DeputadoMandatoLegislativo(Base):
 
     __tablename__ = "deputado_mandatos_legislativos"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
 
     # Core mandate data
     dep_nome_parlamentar = Column(
@@ -7025,7 +7036,7 @@ class DeputadoMandatoLegislativo(Base):
         comment="Type of political entity: 'partido' (individual party) or 'coligacao' (coalition)"
     )
     coligacao_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("coligacoes.id"),
         comment="Coalition ID if this mandate was under a coalition"
     )
@@ -7067,9 +7078,9 @@ class IniciativaOrigem(Base):
 
     __tablename__ = "iniciativas_origem"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     iniciativa_id = Column(
-        Integer, ForeignKey("iniciativas_detalhadas.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_detalhadas.id"), nullable=False
     )
 
     # Fields from pt_gov_ar_objectos_iniciativas_DadosGeraisOut
@@ -7095,9 +7106,9 @@ class IniciativaOriginada(Base):
 
     __tablename__ = "iniciativas_originadas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     iniciativa_id = Column(
-        Integer, ForeignKey("iniciativas_detalhadas.id"), nullable=False
+        GUID(), ForeignKey("iniciativas_detalhadas.id"), nullable=False
     )
 
     # Fields from pt_gov_ar_objectos_iniciativas_DadosGeraisOut
@@ -7136,9 +7147,9 @@ class RegistoInteressesUnified(Base):
 
     __tablename__ = "registo_interesses_unified"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # Core identification fields
     cad_id = Column(Integer)  # V1/V2 cadastral ID
@@ -7224,9 +7235,9 @@ class RegistoInteressesFactoDeclaracao(Base):
     
     __tablename__ = "registo_interesses_facto_declaracao"
     
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     registo_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("registo_interesses_unified.id", ondelete="CASCADE"),
         nullable=False,
         unique=True  # One-to-one relationship
@@ -7263,9 +7274,9 @@ class RegistoInteressesAtividadeUnified(Base):
 
     __tablename__ = "registo_interesses_activities_unified"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     registo_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("registo_interesses_unified.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -7306,9 +7317,9 @@ class RegistoInteressesSociedadeUnified(Base):
 
     __tablename__ = "registo_interesses_societies_unified"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     registo_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("registo_interesses_unified.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -7338,9 +7349,9 @@ class RegistoInteressesSocialPositionUnified(Base):
 
     __tablename__ = "registo_interesses_social_positions_unified"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     registo_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("registo_interesses_unified.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -7375,9 +7386,9 @@ class RegistoInteressesApoioUnified(Base):
 
     __tablename__ = "registo_interesses_benefits_unified"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     registo_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("registo_interesses_unified.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -7414,9 +7425,9 @@ class DeputyAnalytics(Base):
         ),
     )
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"))
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"))
 
     # Activity Scoring (0-100 scale) - calculated by stored procedures
     activity_score = Column(Integer, default=0)
@@ -7475,9 +7486,9 @@ class AttendanceAnalytics(Base):
 
     __tablename__ = "attendance_analytics"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"))
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"))
     year = Column(Integer, nullable=False)
     month = Column(Integer, nullable=False)
 
@@ -7521,9 +7532,9 @@ class InitiativeAnalytics(Base):
 
     __tablename__ = "initiative_analytics"
 
-    id = Column(Integer, primary_key=True)
-    deputado_id = Column(Integer, ForeignKey("deputados.id"), nullable=False)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"))
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    deputado_id = Column(GUID(), ForeignKey("deputados.id"), nullable=False)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"))
 
     # Authorship Metrics
     total_initiatives_authored = Column(Integer, default=0)
@@ -7593,7 +7604,7 @@ class DeputyTimeline(Base):
 
     __tablename__ = "deputy_timeline"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     id_cadastro = Column(
         Integer, nullable=False, unique=True
     )  # Person's unique ID across all legislatures
@@ -7649,7 +7660,7 @@ class DataQualityMetrics(Base):
 
     __tablename__ = "data_quality_metrics"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     table_name = Column(String(100), nullable=False)
     metric_date = Column(Date, nullable=False)
 
@@ -7715,7 +7726,7 @@ class GrupoAmizadeStandalone(Base):
 
     __tablename__ = "grupos_amizade_standalone"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
 
     # Core identification (from GrupoDeAmizadeOut)
     group_id = Column(Integer, nullable=False, index=True)  # XML: Id
@@ -7755,9 +7766,9 @@ class GrupoAmizadeMembro(Base):
 
     __tablename__ = "grupos_amizade_membros"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     grupo_amizade_id = Column(
-        Integer, ForeignKey("grupos_amizade_standalone.id"), nullable=False
+        GUID(), ForeignKey("grupos_amizade_standalone.id"), nullable=False
     )
 
     # Member information (from DelegacaoPermanenteMembroOut)
@@ -7798,9 +7809,9 @@ class GrupoAmizadeReuniao(Base):
 
     __tablename__ = "grupos_amizade_reunioes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     grupo_amizade_id = Column(
-        Integer, ForeignKey("grupos_amizade_standalone.id"), nullable=False
+        GUID(), ForeignKey("grupos_amizade_standalone.id"), nullable=False
     )
 
     # Meeting information (from GrupoDeAmizadeReuniao)
@@ -7846,9 +7857,9 @@ class GrupoAmizadeParticipante(Base):
 
     __tablename__ = "grupos_amizade_participantes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     reuniao_id = Column(
-        Integer, ForeignKey("grupos_amizade_reunioes.id"), nullable=False
+        GUID(), ForeignKey("grupos_amizade_reunioes.id"), nullable=False
     )
 
     # Participant information (from RelacoesExternasParticipantes)
@@ -7892,8 +7903,8 @@ class OrcamentoEstado(Base):
 
     __tablename__ = "orcamento_estado"
 
-    id = Column(Integer, primary_key=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # File metadata
     file_path = Column(String(500), nullable=False)
@@ -7944,11 +7955,11 @@ class OrcamentoEstadoPropostaAlteracao(Base):
 
     __tablename__ = "orcamento_estado_propostas_alteracao"
 
-    id = Column(Integer, primary_key=True)
-    orcamento_id = Column(Integer, ForeignKey("orcamento_estado.id"), nullable=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    orcamento_id = Column(GUID(), ForeignKey("orcamento_estado.id"), nullable=True)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
     item_id = Column(
-        Integer, ForeignKey("orcamento_estado_items.id"), nullable=True
+        GUID(), ForeignKey("orcamento_estado_items.id"), nullable=True
     )  # Link to budget items
 
     # Core proposal identification
@@ -8029,9 +8040,9 @@ class OrcamentoEstadoItem(Base):
 
     __tablename__ = "orcamento_estado_items"
 
-    id = Column(Integer, primary_key=True)
-    orcamento_id = Column(Integer, ForeignKey("orcamento_estado.id"), nullable=True)
-    legislatura_id = Column(Integer, ForeignKey("legislaturas.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    orcamento_id = Column(GUID(), ForeignKey("orcamento_estado.id"), nullable=True)
+    legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
 
     # Core item identification
     item_id = Column(Integer, nullable=False, index=True)  # XML: ID
@@ -8095,9 +8106,9 @@ class OrcamentoEstadoProponente(Base):
 
     __tablename__ = "orcamento_estado_proponentes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     proposta_id = Column(
-        Integer, ForeignKey("orcamento_estado_propostas_alteracao.id"), nullable=False
+        GUID(), ForeignKey("orcamento_estado_propostas_alteracao.id"), nullable=False
     )
 
     # Proponent information
@@ -8139,11 +8150,11 @@ class OrcamentoEstadoVotacao(Base):
 
     __tablename__ = "orcamento_estado_votacoes"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     proposta_id = Column(
-        Integer, ForeignKey("orcamento_estado_propostas_alteracao.id"), nullable=True
+        GUID(), ForeignKey("orcamento_estado_propostas_alteracao.id"), nullable=True
     )
-    item_id = Column(Integer, ForeignKey("orcamento_estado_items.id"), nullable=True)
+    item_id = Column(GUID(), ForeignKey("orcamento_estado_items.id"), nullable=True)
 
     # Voting information
     data_votacao = Column(Date)  # XML: Data
@@ -8207,11 +8218,11 @@ class OrcamentoEstadoArtigo(Base):
 
     __tablename__ = "orcamento_estado_artigos"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     proposta_id = Column(
-        Integer, ForeignKey("orcamento_estado_propostas_alteracao.id"), nullable=True
+        GUID(), ForeignKey("orcamento_estado_propostas_alteracao.id"), nullable=True
     )
-    item_id = Column(Integer, ForeignKey("orcamento_estado_items.id"), nullable=True)
+    item_id = Column(GUID(), ForeignKey("orcamento_estado_items.id"), nullable=True)
 
     # Article identification
     artigo_id = Column(Integer)  # XML: ID_Art (current format)
@@ -8265,8 +8276,8 @@ class OrcamentoEstadoDiploma(Base):
 
     __tablename__ = "orcamento_estado_diplomas"
 
-    id = Column(Integer, primary_key=True)
-    item_id = Column(Integer, ForeignKey("orcamento_estado_items.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    item_id = Column(GUID(), ForeignKey("orcamento_estado_items.id"), nullable=False)
 
     # Diploma identification
     diploma_id = Column(Integer)  # XML: ID_Dip
@@ -8310,8 +8321,8 @@ class OrcamentoEstadoIniciativa(Base):
 
     __tablename__ = "orcamento_estado_iniciativas"
 
-    id = Column(Integer, primary_key=True)
-    item_id = Column(Integer, ForeignKey("orcamento_estado_items.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    item_id = Column(GUID(), ForeignKey("orcamento_estado_items.id"), nullable=False)
 
     # Initiative/Map information
     numero = Column(String(50))  # XML: MapasNumero
@@ -8347,9 +8358,9 @@ class OrcamentoEstadoDiplomaArtigo(Base):
 
     __tablename__ = "orcamento_estado_diploma_artigos"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     diploma_id = Column(
-        Integer, ForeignKey("orcamento_estado_diplomas.id"), nullable=False
+        GUID(), ForeignKey("orcamento_estado_diplomas.id"), nullable=False
     )
 
     # Article identification
@@ -8401,9 +8412,9 @@ class OrcamentoEstadoDiplomaNumero(Base):
 
     __tablename__ = "orcamento_estado_diploma_numeros"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     diploma_artigo_id = Column(
-        Integer, ForeignKey("orcamento_estado_diploma_artigos.id"), nullable=False
+        GUID(), ForeignKey("orcamento_estado_diploma_artigos.id"), nullable=False
     )
 
     # Number information
@@ -8437,9 +8448,9 @@ class OrcamentoEstadoDiplomaAlinea(Base):
 
     __tablename__ = "orcamento_estado_diploma_alineas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     diploma_numero_id = Column(
-        Integer, ForeignKey("orcamento_estado_diploma_numeros.id"), nullable=False
+        GUID(), ForeignKey("orcamento_estado_diploma_numeros.id"), nullable=False
     )
 
     # Alinea information
@@ -8473,8 +8484,8 @@ class OrcamentoEstadoRequerimentoAvocacao(Base):
 
     __tablename__ = "orcamento_estado_requerimentos_avocacao"
 
-    id = Column(Integer, primary_key=True)
-    item_id = Column(Integer, ForeignKey("orcamento_estado_items.id"), nullable=False)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
+    item_id = Column(GUID(), ForeignKey("orcamento_estado_items.id"), nullable=False)
 
     # Avocation request information
     descricao = Column(Text, comment="Request description (AvocacaoDescricao)")
@@ -8514,9 +8525,9 @@ class OrcamentoEstadoGrupoParlamentarVoto(Base):
 
     __tablename__ = "orcamento_estado_grupos_parlamentares_votos"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     votacao_id = Column(
-        Integer, ForeignKey("orcamento_estado_votacoes.id"), nullable=False
+        GUID(), ForeignKey("orcamento_estado_votacoes.id"), nullable=False
     )
 
     # Parliamentary group and vote information
@@ -8553,9 +8564,9 @@ class OrcamentoEstadoArtigoNumero(Base):
 
     __tablename__ = "orcamento_estado_artigo_numeros"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     artigo_id = Column(
-        Integer, ForeignKey("orcamento_estado_artigos.id"), nullable=False
+        GUID(), ForeignKey("orcamento_estado_artigos.id"), nullable=False
     )
 
     # Number information
@@ -8595,9 +8606,9 @@ class OrcamentoEstadoArtigoAlinea(Base):
 
     __tablename__ = "orcamento_estado_artigo_alineas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     numero_id = Column(
-        Integer, ForeignKey("orcamento_estado_artigo_numeros.id"), nullable=False
+        GUID(), ForeignKey("orcamento_estado_artigo_numeros.id"), nullable=False
     )
 
     # Alinea information
@@ -8629,9 +8640,9 @@ class OrcamentoEstadoDiplomaTerceiro(Base):
 
     __tablename__ = "orcamento_estado_diplomas_terceiros"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     votacao_id = Column(
-        Integer, ForeignKey("orcamento_estado_votacoes.id"), nullable=False
+        GUID(), ForeignKey("orcamento_estado_votacoes.id"), nullable=False
     )
 
     # Diploma reference information
@@ -8663,9 +8674,9 @@ class OrcamentoEstadoDiplomaMedida(Base):
 
     __tablename__ = "orcamento_estado_diploma_medidas"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     proposta_id = Column(
-        Integer, ForeignKey("orcamento_estado_propostas_alteracao.id"), nullable=False
+        GUID(), ForeignKey("orcamento_estado_propostas_alteracao.id"), nullable=False
     )
 
     # Diploma measure information
@@ -8702,9 +8713,9 @@ class OrcamentoEstadoDiplomaMedidaNumero(Base):
 
     __tablename__ = "orcamento_estado_diploma_medida_numeros"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     diploma_medida_id = Column(
-        Integer, ForeignKey("orcamento_estado_diploma_medidas.id"), nullable=False
+        GUID(), ForeignKey("orcamento_estado_diploma_medidas.id"), nullable=False
     )
 
     # Measure number information
@@ -8767,7 +8778,7 @@ class ReuniaoNacional(Base):
         Index("idx_reuniao_nacional_data", "data_inicio"),
     )
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     reuniao_id = Column(
         Integer,
         unique=True,
@@ -8778,7 +8789,7 @@ class ReuniaoNacional(Base):
     tipo = Column(String(10), comment="Meeting type: RNI/RNN/VEE (XML: Tipo)")
     local = Column(Text, comment="Meeting location (XML: Local)")
     legislatura_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("legislaturas.id"),
         nullable=False,
         comment="Legislature identifier (XML: Legislatura)",
@@ -8842,9 +8853,9 @@ class ParticipanteReuniaoNacional(Base):
         Index("idx_participante_reuniao_nacional_gp", "grupo_parlamentar"),
     )
 
-    id = Column(Integer, primary_key=True)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     reuniao_id = Column(
-        Integer,
+        GUID(),
         ForeignKey("reunioes_nacionais.id"),
         nullable=False,
         comment="Meeting foreign key reference",

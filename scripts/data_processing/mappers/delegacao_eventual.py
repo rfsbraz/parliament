@@ -190,7 +190,7 @@ class DelegacaoEventualMapper(SchemaMapper):
                     legislatura_id=legislatura.id
                 )
                 self.session.add(delegacao)
-                self.session.flush()  # Get the ID
+                # No flush needed - UUID id is generated client-side
                 existing = delegacao
             
             # Process participants

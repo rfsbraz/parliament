@@ -267,7 +267,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                     legislatura_id=legislatura.id
                 )
                 self.session.add(diploma_record)
-                self.session.flush()  # Get the ID
+                # No flush needed - UUID id is generated client-side
                 existing = diploma_record
             
             # Process publications

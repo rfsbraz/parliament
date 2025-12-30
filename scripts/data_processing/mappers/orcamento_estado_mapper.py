@@ -661,7 +661,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         # Phase 2: Batch create proposals (1 flush)
         for parsed in parsed_proposals:
             self._create_legacy_proposal_record(parsed, legislatura)
-        self.session.flush()  # Single flush for all proposals
+        # No flush needed - UUID ids are generated client-side
         logger.debug(f"Created {len(parsed_proposals)} proposal records")
 
         # Phase 3: Batch create proponentes and votacoes (leaf records, no flush needed)
@@ -677,7 +677,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         for artigo in all_artigos:
             self._create_legacy_artigo_record(artigo)
         if all_artigos:
-            self.session.flush()  # Single flush for all artigos
+            # No flush needed - UUID ids are generated client-side
             logger.debug(f"Created {len(all_artigos)} artigo records")
 
         # Phase 5: Batch create numeros (1 flush)
@@ -688,7 +688,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         for numero in all_numeros:
             self._create_legacy_numero_record(numero)
         if all_numeros:
-            self.session.flush()  # Single flush for all numeros
+            # No flush needed - UUID ids are generated client-side
             logger.debug(f"Created {len(all_numeros)} numero records")
 
         # Phase 6: Batch create alineas (leaf records, no flush needed)
@@ -1002,7 +1002,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         # Phase 2: Batch create items (1 flush)
         for parsed in parsed_items:
             self._create_current_item_record(parsed, legislatura)
-        self.session.flush()  # Single flush for all items
+        # No flush needed - UUID ids are generated client-side
         logger.debug(f"Created {len(parsed_items)} item records")
 
         # Phase 3: Batch create leaf records (no flush needed)
@@ -1021,7 +1021,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         for diploma in all_diplomas:
             self._create_current_diploma_record(diploma)
         if all_diplomas:
-            self.session.flush()  # Single flush for all diplomas
+            # No flush needed - UUID ids are generated client-side
             logger.debug(f"Created {len(all_diplomas)} diploma records")
 
         # Phase 5: Batch create diploma_artigos (1 flush)
@@ -1032,7 +1032,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         for artigo in all_diploma_artigos:
             self._create_current_diploma_artigo_record(artigo)
         if all_diploma_artigos:
-            self.session.flush()  # Single flush for all diploma artigos
+            # No flush needed - UUID ids are generated client-side
             logger.debug(f"Created {len(all_diploma_artigos)} diploma artigo records")
 
         # Phase 6: Batch create diploma_numeros (1 flush)
@@ -1043,7 +1043,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         for numero in all_diploma_numeros:
             self._create_current_diploma_numero_record(numero)
         if all_diploma_numeros:
-            self.session.flush()  # Single flush for all diploma numeros
+            # No flush needed - UUID ids are generated client-side
             logger.debug(f"Created {len(all_diploma_numeros)} diploma numero records")
 
         # Phase 7: Batch create diploma_alineas (leaf records, no flush needed)
@@ -1620,7 +1620,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
                 
             )
             self.session.add(legislatura)
-            self.session.flush()
+            # No flush needed - UUID id is generated client-side
 
         return legislatura
 

@@ -304,7 +304,7 @@ class InformacaoBaseMapper(SchemaMapper):
                 
             logger.info(f"Using legislature {legislatura.numero} (ID: {legislatura.id}) for sigla '{sigla}'")
 
-            self.session.flush()  # Get the ID
+            # No flush needed - UUID id is generated client-side
             self.processed_legislatures += 1
 
             logger.debug(f"Processed legislature: {sigla} ({data_inicio} - {data_fim})")
@@ -556,7 +556,7 @@ class InformacaoBaseMapper(SchemaMapper):
                 )
                 self.processed_deputies += 1
 
-            self.session.flush()  # Get the ID
+            # No flush needed - UUID id is generated client-side
 
             # Process parliamentary group situations
             dep_gp = deputado_element.find("DepGP")
@@ -665,7 +665,7 @@ class InformacaoBaseMapper(SchemaMapper):
                 )
                 self.processed_deputies += 1
 
-            self.session.flush()  # Get the ID
+            # No flush needed - UUID id is generated client-side
 
             logger.debug(
                 f"Processed I_Legislatura deputy: {dep_nome_parlamentar} (ID: {dep_cad_id})"

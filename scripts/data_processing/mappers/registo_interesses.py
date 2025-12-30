@@ -662,7 +662,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     schema_version="V3",
                 )
                 self.session.add(registo)
-                self.session.flush()  # Get ID for related records
+                # No flush needed - UUID id is generated client-side
 
             # Process V3 RecordInterests structure
             record_interests = registo_v3_elem.find("RecordInterests")
@@ -939,7 +939,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     dgf_number=dgf_number,
                 )
                 self.session.add(registo)
-                self.session.flush()  # Get the ID for nested records
+                # No flush needed - UUID id is generated client-side
 
             # Process detailed nested data from cadRgi using unified extension tables
             rgi_elem = registo_v2_elem.find(
@@ -1013,7 +1013,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     schema_version="V1",
                 )
                 self.session.add(registo)
-                self.session.flush()  # Get ID for related records
+                # No flush needed - UUID id is generated client-side
 
             # Process V1 detailed structures from cadRgi
             cad_rgi = registo_v1_elem.find(
@@ -1750,7 +1750,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     schema_version="V5",
                 )
                 self.session.add(registo)
-                self.session.flush()  # Get ID for related records
+                # No flush needed - UUID id is generated client-side
 
             # Store FactoDeclaracao data if provided
             if any(
