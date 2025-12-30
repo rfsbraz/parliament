@@ -2112,7 +2112,7 @@ class ImportStatus(Base):
     
     status = Column(
         String(50), nullable=False, default="pending"
-    )  # 'discovered', 'download_pending', 'downloading', 'pending', 'processing', 'completed', 'failed', 'recrawl', 'import_error', 'schema_mismatch'
+    )  # 'discovered', 'download_pending', 'downloading', 'pending', 'processing', 'completed', 'failed', 'recrawl', 'import_error', 'schema_mismatch', 'skipped'
     schema_issues = Column(Text)  # JSON array of schema validation issues
     processing_started_at = Column(DateTime)
     processing_completed_at = Column(DateTime)

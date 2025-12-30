@@ -72,6 +72,7 @@ class PipelineStats:
     import_queue_size: int = 0
     import_completed: int = 0
     import_failed: int = 0
+    import_skipped: int = 0  # Files permanently skipped due to corrupted source data
     total_records_imported: int = 0
     start_time: Optional[datetime] = None
     recent_messages: List[str] = None
@@ -648,9 +649,10 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
             "Downloads",
             f"OK: {self.stats.download_completed} | ERR: {self.stats.download_failed} | PENDING: {self.stats.download_queue_size}"
         )
+        skipped_display = f" | SKIP: {self.stats.import_skipped}" if self.stats.import_skipped > 0 else ""
         stats_table.add_row(
-            "Imports", 
-            f"OK: {self.stats.import_completed} | ERR: {self.stats.import_failed} | PENDING: {self.stats.import_queue_size}"
+            "Imports",
+            f"OK: {self.stats.import_completed} | ERR: {self.stats.import_failed}{skipped_display} | PENDING: {self.stats.import_queue_size}"
         )
         stats_table.add_row(
             "Records",
@@ -760,7 +762,9 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
                     status_display = "[orange]recrawl[/orange]"
                 elif file_record.status == 'import_error':
                     status_display = "[red]error[/red]"
-                
+                elif file_record.status == 'skipped':
+                    status_display = "[dim]skipped[/dim]"
+
                 pending_table.add_row(
                     status_display,
                     file_display,
@@ -968,7 +972,12 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
                         self.stats.import_failed = base_query.filter(
                             ImportStatus.status.in_(['import_error', 'schema_mismatch'])
                         ).count()
-                        
+
+                        # Import skipped: files permanently skipped (corrupted source data)
+                        self.stats.import_skipped = base_query.filter(
+                            ImportStatus.status == 'skipped'
+                        ).count()
+
                         # Update total records imported
                         completed_records = base_query.filter(
                             ImportStatus.status == 'completed',
@@ -981,9 +990,9 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
                         # Update discovery count
                         self.stats.discovery_completed = base_query.filter(
                             ImportStatus.status.in_([
-                                'discovered', 'download_pending', 'downloading', 
-                                'pending', 'processing', 'completed', 'failed', 
-                                'import_error', 'schema_mismatch', 'recrawl'
+                                'discovered', 'download_pending', 'downloading',
+                                'pending', 'processing', 'completed', 'failed',
+                                'import_error', 'schema_mismatch', 'recrawl', 'skipped'
                             ])
                         ).count()
                     

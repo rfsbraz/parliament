@@ -260,18 +260,20 @@ class DatabaseDrivenImporter:
             # Count by status
             completed = query.filter(ImportStatus.status == 'completed').count()
             failed = query.filter(ImportStatus.status.in_(['import_error', 'failed'])).count()
+            skipped = query.filter(ImportStatus.status == 'skipped').count()
             pending = query.filter(ImportStatus.status.in_(['pending', 'discovered', 'download_pending'])).count()
-            
+
             # Sum total records imported
             total_records = (
                 query.filter(ImportStatus.status == 'completed')
                 .with_entities(func.coalesce(func.sum(ImportStatus.records_imported), 0))
                 .scalar() or 0
             )
-            
+
             return {
                 'completed': completed,
                 'failed': failed,
+                'skipped': skipped,
                 'pending': pending,
                 'total_records': total_records
             }
@@ -290,7 +292,39 @@ class DatabaseDrivenImporter:
         delay_seconds = delay_seconds * (1 + jitter)
         
         return datetime.now() + timedelta(seconds=int(delay_seconds))
-    
+
+    def _is_permanent_error(self, error_msg: str) -> bool:
+        """
+        Check if an error is permanent (unrecoverable) and should skip the file.
+
+        Permanent errors are those where retrying won't help because the source
+        data itself is corrupted or malformed.
+        """
+        error_lower = error_msg.lower()
+
+        # XML parsing errors indicating corrupted source data
+        permanent_patterns = [
+            'not well-formed',
+            'invalid token',
+            'syntax error',
+            'encoding declaration',
+            'undefined entity',
+            'mismatched tag',
+            'unclosed token',
+            'junk after document element',
+            'xml declaration not at start',
+            'duplicate attribute',
+            # Binary/encoding corruption indicators
+            'codec can\'t decode',
+            'invalid continuation byte',
+            'invalid start byte',
+            # Source data issues
+            'corrupted',
+            'binary data',
+        ]
+
+        return any(pattern in error_lower for pattern in permanent_patterns)
+
     def _setup_signal_handlers(self):
         """Setup signal handlers for graceful shutdown"""
         def signal_handler(signum, frame):
@@ -545,13 +579,22 @@ class DatabaseDrivenImporter:
             except Exception as e:
                 error_msg = f"XML parsing error: {str(e)}"
                 logger.error(f"XML parsing error for {import_record.file_name}: {error_msg}")
-                import_record.status = 'import_error'
-                import_record.error_message = error_msg
-                import_record.error_count = (import_record.error_count or 0) + 1
-                import_record.retry_at = self._calculate_retry_time(import_record.error_count)
+
+                # Check if this is a permanent error (corrupted source data)
+                if self._is_permanent_error(str(e)):
+                    import_record.status = 'skipped'
+                    import_record.error_message = f"Permanently skipped - corrupted source data: {str(e)}"
+                    self._print(f"        SKIPPED: Corrupted source data (will not retry)")
+                    logger.warning(f"Permanently skipping {import_record.file_name} - corrupted source data")
+                else:
+                    import_record.status = 'import_error'
+                    import_record.error_message = error_msg
+                    import_record.error_count = (import_record.error_count or 0) + 1
+                    import_record.retry_at = self._calculate_retry_time(import_record.error_count)
+
                 import_record.processing_completed_at = datetime.now()
                 return False
-            
+
             # Process with mapper using the same session for transaction-per-file
             try:
                 mapper_class = self.schema_mappers[mapper_key]
