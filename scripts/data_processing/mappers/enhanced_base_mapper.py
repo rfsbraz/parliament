@@ -206,8 +206,9 @@ class CoalitionDetectionMixin:
         coalition = self.session.query(Coligacao).filter_by(sigla=sigla).first()
         
         if not coalition:
-            # Create new coalition
+            # Create new coalition with explicit UUID
             coalition = Coligacao(
+                id=uuid.uuid4(),  # Generate UUID client-side for immediate availability
                 sigla=sigla,
                 nome=coalition_info.get("coalition_name", f"Coligação {sigla}"),
                 nome_eleitoral=coalition_info.get("coalition_name"),
@@ -217,14 +218,15 @@ class CoalitionDetectionMixin:
                 confianca_detecao=coalition_info.get("confidence", 0.0)
                 # Note: ativo is now a calculated property based on current legislature XVII deputies
             )
-            
+
             try:
                 self.session.add(coalition)
-                # No flush needed - UUID id is generated client-side before insert
+                # UUID id was generated client-side, no flush needed
 
                 # Create component party relationships
                 for component in coalition_info.get("component_parties", []):
                     relationship = ColigacaoPartido(
+                        id=uuid.uuid4(),  # Generate UUID client-side
                         coligacao_id=coalition.id,
                         partido_sigla=component["sigla"],
                         partido_nome=component["nome"],
@@ -552,6 +554,7 @@ class LegislatureHandlerMixin:
             designacao = f"{leg_number}.ª Legislatura" if leg_number > 0 else target_legislature
 
         legislatura = Legislatura(
+            id=self._new_id(),  # Generate UUID client-side for immediate availability
             numero=target_legislature,
             designacao=designacao,
             data_inicio=None,  # Will be set from XML data
@@ -559,7 +562,10 @@ class LegislatureHandlerMixin:
         )
 
         self.session.add(legislatura)
-        # No flush needed - UUID id is generated client-side before insert
+        # Flush is required here because PostgreSQL checks FK constraints immediately.
+        # Child records (agenda items, atividades, etc.) will reference this legislatura_id,
+        # and the parent row must exist in the DB before INSERT of children.
+        self.session.flush()
 
         # Cache for future lookups
         if hasattr(self, '_legislatura_cache'):
@@ -685,7 +691,7 @@ class LegislatureHandlerMixin:
 
         # Create new deputy record with UUID primary key and xml_source_id for FK resolution
         deputado = Deputado(
-            # id is auto-generated as UUID by default=uuid.uuid4
+            id=self._new_id(),  # Generate UUID client-side for immediate availability
             xml_source_id=record_id,  # Store original XML DepId for FK resolution
             id_cadastro=id_cadastro,  # This tracks the same person across legislatures
             nome=nome,
@@ -694,7 +700,10 @@ class LegislatureHandlerMixin:
         )
 
         self.session.add(deputado)
-        # No flush needed - UUID id is generated client-side before insert
+        # Flush is required here because PostgreSQL checks FK constraints immediately.
+        # Child records (atividades, intervencoes, etc.) will reference this deputado_id,
+        # and the parent row must exist in the DB before INSERT of children.
+        self.session.flush()
 
         # Cache for future lookups
         if hasattr(self, '_deputado_cache'):

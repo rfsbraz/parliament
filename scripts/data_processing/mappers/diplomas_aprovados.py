@@ -24,6 +24,7 @@ Regimentos da AR, Resoluções e Resoluções da AR.
 import xml.etree.ElementTree as ET
 import os
 import re
+import uuid
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
@@ -252,6 +253,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
             else:
                 # Create new diploma record
                 diploma_record = DiplomaAprovado(
+                    id=uuid.uuid4(),
                     diploma_id=diploma_id,
                     numero=numero,
                     numero2=numero2,
@@ -267,7 +269,6 @@ class DiplomasAprovadosMapper(SchemaMapper):
                     legislatura_id=legislatura.id
                 )
                 self.session.add(diploma_record)
-                # No flush needed - UUID id is generated client-side
                 existing = diploma_record
             
             # Process publications
@@ -360,6 +361,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                         pag_text = ', '.join([s.text for s in string_elems if s.text])
                 
                 publicacao_record = DiplomaPublicacao(
+                    id=uuid.uuid4(),
                     diploma_id=diploma_record.id,
                     pub_nr=pub_nr,
                     pub_tipo=pub_tipo,
@@ -412,6 +414,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                 ini_texto_subst_campo = self._get_text_value(ini, 'iniTextoSubstCampo')  # Texto de substituição
                 
                 iniciativa_record = DiplomaIniciativa(
+                    id=uuid.uuid4(),
                     diploma_id=diploma_record.id,
                     ini_nr=ini_nr,
                     ini_tipo=ini_tipo,
@@ -434,6 +437,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                 # Create record if there's meaningful data
                 if any([orcam_id, leg, tp, titulo, tipo]):
                     orcam_record = DiplomaOrcamContasGerencia(
+                        id=uuid.uuid4(),
                         diploma_id=diploma_record.id,
                         orcam_id=orcam_id,
                         leg=leg,

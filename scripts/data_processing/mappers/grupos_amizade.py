@@ -25,6 +25,7 @@ Key differences from deputy activity GPA data:
 import xml.etree.ElementTree as ET
 import os
 import logging
+import uuid
 from datetime import datetime
 from typing import Dict, Optional, Set, List, Tuple
 
@@ -212,6 +213,7 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
             else:
                 # Create new friendship group
                 grupo = GrupoAmizadeStandalone(
+                    id=uuid.uuid4(),
                     group_id=group_id,
                     nome=nome,
                     legislatura=legislatura,
@@ -219,8 +221,6 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
                     data_criacao=data_criacao
                 )
                 self.session.add(grupo)
-            
-            # No flush needed - UUID id is generated client-side
             
             # Process members
             composicao = grupo_element.find('Composicao')
@@ -280,6 +280,7 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
             
             # Create member record
             membro = GrupoAmizadeMembro(
+                id=uuid.uuid4(),
                 grupo_amizade_id=grupo_id,
                 nome=nome,
                 grupo_parlamentar=grupo_parlamentar,
@@ -287,7 +288,7 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
                 data_inicio=data_inicio,
                 data_fim=data_fim
             )
-            
+
             self.session.add(membro)
             self.processed_members += 1
             
@@ -331,6 +332,7 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
             
             # Create meeting record
             reuniao = GrupoAmizadeReuniao(
+                id=uuid.uuid4(),
                 grupo_amizade_id=grupo_id,
                 meeting_id=meeting_id,
                 nome=nome,
@@ -340,9 +342,8 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
                 data_fim=data_fim,
                 event_source=event_source
             )
-            
+
             self.session.add(reuniao)
-            # No flush needed - UUID id is generated client-side
             
             # Process participants
             participantes = reuniao_element.find('Participantes')
@@ -382,6 +383,7 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
             
             # Create participant record
             participante = GrupoAmizadeParticipante(
+                id=uuid.uuid4(),
                 reuniao_id=reuniao_id,
                 participant_id=participant_id,
                 nome=nome,
@@ -389,7 +391,7 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
                 grupo_parlamentar=grupo_parlamentar,
                 legislatura=legislatura
             )
-            
+
             self.session.add(participante)
             self.processed_participants += 1
             

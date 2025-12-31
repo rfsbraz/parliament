@@ -26,6 +26,7 @@ import re
 import requests
 import sys
 import os
+import uuid
 # Add parent directory to Python path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from http_retry_utils import safe_request_get
@@ -302,6 +303,7 @@ class IntervencoesMapper(SchemaMapper):
                 else:
                     # Create new intervention record
                     intervention = IntervencaoParlamentar(
+                        id=uuid.uuid4(),
                         intervencao_id=intervencao_id,
                         legislatura_numero=legislatura_elem.text if legislatura_elem is not None else None,
                         sessao_numero=sessao_elem.text if sessao_elem is not None else None,
@@ -318,7 +320,6 @@ class IntervencoesMapper(SchemaMapper):
                         legislatura_id=legislatura.id
                     )
                     self.session.add(intervention)
-                    # No flush needed - UUID id is generated client-side
                     existing = intervention
                 
                 # Process related data
@@ -380,6 +381,7 @@ class IntervencoesMapper(SchemaMapper):
                     pub_tipo_desc = self.translator.publication_type(pub_tp_code)
                 
                 publicacao = IntervencaoPublicacao(
+                    id=uuid.uuid4(),
                     intervencao_id=intervention.id,
                     pub_nr=pub_numero.text if pub_numero is not None else None,
                     pub_tipo=pub_tipo_desc,
@@ -412,6 +414,7 @@ class IntervencoesMapper(SchemaMapper):
             # Only create record if there's actual deputy data
             if (id_cadastro_elem is not None and id_cadastro_elem.text) or (nome_elem is not None and nome_elem.text):
                 deputado = IntervencaoDeputado(
+                    id=uuid.uuid4(),
                     intervencao_id=intervention.id,
                     id_cadastro=DataValidationUtils.safe_float_convert(id_cadastro_elem.text) if id_cadastro_elem is not None else None,
                     nome=nome_elem.text if nome_elem is not None else None,
@@ -437,6 +440,7 @@ class IntervencoesMapper(SchemaMapper):
             
             if (nome_elem is not None and nome_elem.text) or (cargo_elem is not None and cargo_elem.text):
                 membro_governo = IntervencaoMembroGoverno(
+                    id=uuid.uuid4(),
                     intervencao_id=intervention.id,
                     nome=nome_elem.text if nome_elem is not None else None,
                     cargo=cargo_elem.text if cargo_elem is not None else None,
@@ -454,6 +458,7 @@ class IntervencoesMapper(SchemaMapper):
             
             if (nome_elem is not None and nome_elem.text) or (cargo_elem is not None and cargo_elem.text):
                 convidado = IntervencaoConvidado(
+                    id=uuid.uuid4(),
                     intervencao_id=intervention.id,
                     nome=nome_elem.text if nome_elem is not None else None,
                     cargo=cargo_elem.text if cargo_elem is not None else None
@@ -470,6 +475,7 @@ class IntervencoesMapper(SchemaMapper):
             
             if (id_elem is not None and id_elem.text) or (tipo_elem is not None and tipo_elem.text):
                 atividade = IntervencaoAtividadeRelacionada(
+                    id=uuid.uuid4(),
                     intervencao_id=intervention.id,
                     atividade_id=DataValidationUtils.safe_float_convert(id_elem.text) if id_elem is not None else None,
                     tipo=tipo_elem.text if tipo_elem is not None else None
@@ -489,6 +495,7 @@ class IntervencoesMapper(SchemaMapper):
                 
                 if (id_elem is not None and id_elem.text) or (tipo_elem is not None and tipo_elem.text):
                     iniciativa = IntervencaoIniciativa(
+                        id=uuid.uuid4(),
                         intervencao_id=intervention.id,
                         iniciativa_id=DataValidationUtils.safe_float_convert(id_elem.text) if id_elem is not None else None,
                         tipo=tipo_elem.text if tipo_elem is not None else None,
@@ -553,6 +560,7 @@ class IntervencoesMapper(SchemaMapper):
         # Store audiovisual data
         if video_url or duracao or assunto or tipo_intervencao:
             audiovisual = IntervencaoAudiovisual(
+                id=uuid.uuid4(),
                 intervencao_id=intervention.id,
                 video_url=video_url,
                 duracao=duracao,

@@ -45,6 +45,7 @@ All field mappings preserve official XML structure and naming conventions.
 import xml.etree.ElementTree as ET
 import os
 import re
+import uuid
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
@@ -181,6 +182,7 @@ class DelegacaoEventualMapper(SchemaMapper):
             else:
                 # Create new delegation record
                 delegacao = DelegacaoEventual(
+                    id=uuid.uuid4(),
                     delegacao_id=id_externo,
                     nome=nome,
                     local=local,
@@ -190,7 +192,6 @@ class DelegacaoEventualMapper(SchemaMapper):
                     legislatura_id=legislatura.id
                 )
                 self.session.add(delegacao)
-                # No flush needed - UUID id is generated client-side
                 existing = delegacao
             
             # Process participants
@@ -247,6 +248,7 @@ class DelegacaoEventualMapper(SchemaMapper):
                 
                 if nome:
                     participante_record = DelegacaoEventualParticipante(
+                        id=uuid.uuid4(),
                         delegacao_id=delegacao.id,
                         nome=nome,
                         gp=gp,
@@ -268,8 +270,9 @@ class DelegacaoEventualMapper(SchemaMapper):
                 if nome or participante_id:
                     if not tipo:
                         raise ValueError("Missing required participant type. Data integrity violation - cannot generate artificial participant types")
-                    
+
                     participante_record = DelegacaoEventualParticipante(
+                        id=uuid.uuid4(),
                         delegacao_id=delegacao.id,
                         participante_id=participante_id,
                         nome=nome,

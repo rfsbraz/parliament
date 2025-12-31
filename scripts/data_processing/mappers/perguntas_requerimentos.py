@@ -22,6 +22,7 @@ XML Structure: Requerimentos_DetalheRequerimentosOut containing:
 import logging
 import os
 import re
+import uuid
 
 # Import our models
 import sys
@@ -259,6 +260,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
             else:
                 # Create new record
                 pergunta_req = PerguntaRequerimento(
+                    id=uuid.uuid4(),
                     requerimento_id=req_id,
                     tipo=tipo,
                     nr=nr,
@@ -273,7 +275,6 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                     legislatura_id=legislatura.id,
                 )
                 self.session.add(pergunta_req)
-                # No flush needed - UUID id is generated client-side
                 existing = pergunta_req
 
             # Process related data
@@ -415,6 +416,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                 data_envio = self._parse_date(self._get_text_value(dest, "dataEnvio"))
 
                 destinatario_record = PerguntaRequerimentoDestinatario(
+                    id=uuid.uuid4(),
                     pergunta_requerimento_id=pergunta_req.id,
                     nome_entidade=nome_entidade,
                     data_prorrogacao=data_prorrogacao,
@@ -427,7 +429,6 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                     data_envio=data_envio,
                 )
                 self.session.add(destinatario_record)
-                # No flush needed - UUID id is generated client-side
 
                 # Process responses
                 respostas = dest.find("respostas")
@@ -453,6 +454,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                                 ficheiro_tipo = self._get_text_value(ficheiro_resposta, "tipo")
 
                         resposta_record = PerguntaRequerimentoResposta(
+                            id=uuid.uuid4(),
                             destinatario_id=destinatario_record.id,
                             entidade=entidade,
                             data_resposta=data_resposta,
@@ -462,7 +464,6 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                             ficheiro_tipo=ficheiro_tipo,
                         )
                         self.session.add(resposta_record)
-                        # No flush needed - UUID id is generated client-side for publications
                         
                         # Process publications within this response (same logic as RespostasSPerguntas)
                         publicacao = resp.find("publicacao")
@@ -558,15 +559,15 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                 
                 # Create response record (direct response to question, no destinatario)
                 resposta_record = PerguntaRequerimentoResposta(
+                    id=uuid.uuid4(),
                     destinatario_id=None,  # Direct response, not through a recipient
                     entidade=entidade,
                     data_resposta=data_resposta,
                     ficheiro=ficheiro,
                     doc_remetida=doc_remetida
                 )
-                
+
                 self.session.add(resposta_record)
-                # No flush needed - UUID id is generated client-side for publications
                 
                 # Process publications within this response
                 publicacao = resp.find("publicacao")

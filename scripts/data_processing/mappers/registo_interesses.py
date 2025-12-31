@@ -9,6 +9,7 @@ Handles conflict of interest declarations including marital status, exclusivity,
 import logging
 import os
 import re
+import uuid
 
 # Import our models
 import sys
@@ -651,6 +652,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             else:
                 # Create new record
                 registo = RegistoInteressesUnified(
+                    id=uuid.uuid4(),
                     deputado_id=deputado.id,
                     legislatura_id=legislatura.id,
                     full_name=full_name,
@@ -662,7 +664,6 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     schema_version="V3",
                 )
                 self.session.add(registo)
-                # No flush needed - UUID id is generated client-side
 
             # Process V3 RecordInterests structure
             record_interests = registo_v3_elem.find("RecordInterests")
@@ -925,6 +926,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             else:
                 # Create new unified record with V2 schema
                 registo = RegistoInteressesUnified(
+                    id=uuid.uuid4(),
                     deputado_id=deputado.id,
                     legislatura_id=legislatura.id,
                     cad_id=deputado.id_cadastro,
@@ -939,7 +941,6 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     dgf_number=dgf_number,
                 )
                 self.session.add(registo)
-                # No flush needed - UUID id is generated client-side
 
             # Process detailed nested data from cadRgi using unified extension tables
             rgi_elem = registo_v2_elem.find(
@@ -1003,6 +1004,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             else:
                 # Create new unified record
                 registo = RegistoInteressesUnified(
+                    id=uuid.uuid4(),
                     deputado_id=deputado.id,
                     legislatura_id=legislatura.id,
                     cad_id=deputado.id_cadastro,  # Store the cadastral ID, not the primary key
@@ -1013,7 +1015,6 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     schema_version="V1",
                 )
                 self.session.add(registo)
-                # No flush needed - UUID id is generated client-side
 
             # Process V1 detailed structures from cadRgi
             cad_rgi = registo_v1_elem.find(
@@ -1738,6 +1739,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             else:
                 # Create new unified record
                 registo = RegistoInteressesUnified(
+                    id=uuid.uuid4(),
                     deputado_id=deputado.id,
                     legislatura_id=legislatura.id,
                     full_name=display_name,
@@ -1750,7 +1752,6 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     schema_version="V5",
                 )
                 self.session.add(registo)
-                # No flush needed - UUID id is generated client-side
 
             # Store FactoDeclaracao data if provided
             if any(

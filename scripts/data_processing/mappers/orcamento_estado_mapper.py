@@ -23,6 +23,7 @@ Key Features:
 import logging
 import os
 import re
+import uuid
 
 # Import our models
 import sys
@@ -882,6 +883,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
             parsed.db_obj = existing
         else:
             proposal_obj = OrcamentoEstadoPropostaAlteracao(
+                id=uuid.uuid4(),
                 proposta_id=parsed.proposal_id,
                 numero=parsed.data["numero"],
                 data_proposta=parsed.data["data_proposta"],
@@ -905,6 +907,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         """Create proponente records for a proposal."""
         for proponente in parsed.proponentes:
             proponente_obj = OrcamentoEstadoProponente(
+                id=uuid.uuid4(),
                 proposta_id=parsed.db_obj.id,
                 grupo_parlamentar=proponente.data["gp_partido"],
                 deputado_nome=proponente.data["deputado"],
@@ -917,6 +920,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         """Create votacao records for a proposal."""
         for votacao in parsed.votacoes:
             votacao_obj = OrcamentoEstadoVotacao(
+                id=uuid.uuid4(),
                 proposta_id=parsed.db_obj.id,
                 data_votacao=votacao.data["data_votacao"],
                 descricao=votacao.data["descricao"],
@@ -931,6 +935,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
     def _create_legacy_artigo_record(self, parsed: ParsedLegacyArtigo):
         """Create an artigo database record."""
         artigo_obj = OrcamentoEstadoArtigo(
+            id=uuid.uuid4(),
             proposta_id=parsed.proposal_ref.db_obj.id,
             numero=parsed.data["numero"],
             titulo=parsed.data["titulo"],
@@ -944,6 +949,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
     def _create_legacy_numero_record(self, parsed: ParsedLegacyNumero):
         """Create a numero database record."""
         numero_obj = OrcamentoEstadoArtigoNumero(
+            id=uuid.uuid4(),
             artigo_id=parsed.artigo_ref.db_obj.id,
             numero=parsed.data["numero"],
             titulo=parsed.data["titulo"],
@@ -956,6 +962,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
     def _create_legacy_alinea_record(self, parsed: ParsedLegacyAlinea):
         """Create an alinea database record."""
         alinea_obj = OrcamentoEstadoArtigoAlinea(
+            id=uuid.uuid4(),
             numero_id=parsed.numero_ref.db_obj.id,
             alinea=parsed.data["alinea"],
             titulo=parsed.data["titulo"],
@@ -1381,6 +1388,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
             parsed.db_obj = existing
         else:
             item_obj = OrcamentoEstadoItem(
+                id=uuid.uuid4(),
                 item_id=parsed.item_id,
                 id_pai=parsed.data["id_pai"],
                 tipo=parsed.data["tipo"],
@@ -1398,6 +1406,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         """Create artigo records for an item."""
         for artigo in parsed.artigos:
             artigo_obj = OrcamentoEstadoArtigo(
+                id=uuid.uuid4(),
                 item_id=parsed.db_obj.id,
                 artigo_id=artigo.data["artigo_id"],
                 id_pai=artigo.data["id_pai"],
@@ -1415,6 +1424,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         for proposta in parsed.propostas:
             if proposta.data["proposta_id"]:
                 proposta_obj = OrcamentoEstadoPropostaAlteracao(
+                    id=uuid.uuid4(),
                     proposta_id=proposta.data["proposta_id"],
                     id_pai=proposta.data["id_pai"],
                     titulo=proposta.data["objeto"],
@@ -1434,6 +1444,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         """Create iniciativa records for an item."""
         for iniciativa in parsed.iniciativas:
             iniciativa_obj = OrcamentoEstadoIniciativa(
+                id=uuid.uuid4(),
                 item_id=parsed.db_obj.id,
                 numero=iniciativa.data["numero"],
                 titulo=iniciativa.data["titulo"],
@@ -1447,6 +1458,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         """Create votacao records for an item."""
         for votacao in parsed.votacoes:
             votacao_obj = OrcamentoEstadoVotacao(
+                id=uuid.uuid4(),
                 item_id=parsed.db_obj.id,
                 data_votacao=votacao.data["data_votacao"],
                 descricao=votacao.data["descricao"],
@@ -1462,6 +1474,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
         """Create requerimento records for an item."""
         for requerimento in parsed.requerimentos:
             requerimento_obj = OrcamentoEstadoRequerimentoAvocacao(
+                id=uuid.uuid4(),
                 item_id=parsed.db_obj.id,
                 descricao=requerimento.data["descricao"],
                 data_avocacao=requerimento.data["data_avocacao"],
@@ -1484,6 +1497,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
                 artigos_texto += f" | {texto_ou_estado}"
 
         diploma_obj = OrcamentoEstadoDiploma(
+            id=uuid.uuid4(),
             item_id=parsed.item_ref.db_obj.id,
             diploma_id=parsed.data["diploma_id"],
             titulo=parsed.data["titulo"],
@@ -1497,6 +1511,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
     def _create_current_diploma_artigo_record(self, parsed: ParsedCurrentDiplomaArtigo):
         """Create a diploma artigo database record."""
         diploma_artigo_obj = OrcamentoEstadoDiplomaArtigo(
+            id=uuid.uuid4(),
             diploma_id=parsed.diploma_ref.db_obj.id,
             artigo_id=parsed.data["artigo_id"],
             diploma_artigo_id_alt=parsed.data["diploma_artigo_id_alt"],
@@ -1515,6 +1530,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
     def _create_current_diploma_numero_record(self, parsed: ParsedCurrentDiplomaNumero):
         """Create a diploma numero database record."""
         diploma_numero_obj = OrcamentoEstadoDiplomaNumero(
+            id=uuid.uuid4(),
             diploma_artigo_id=parsed.artigo_ref.db_obj.id,
             diploma_numero_id=parsed.data["diploma_numero_id"],
             titulo=parsed.data["titulo"],
@@ -1526,6 +1542,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
     def _create_current_diploma_alinea_record(self, parsed: ParsedCurrentDiplomaAlinea):
         """Create a diploma alinea database record."""
         diploma_alinea_obj = OrcamentoEstadoDiplomaAlinea(
+            id=uuid.uuid4(),
             diploma_numero_id=parsed.numero_ref.db_obj.id,
             titulo=parsed.data["titulo"],
             estado=parsed.data["estado"],
@@ -1615,12 +1632,11 @@ class OrcamentoEstadoMapper(SchemaMapper):
         )
         if not legislatura:
             legislatura = Legislatura(
+                id=uuid.uuid4(),
                 numero=legislatura_num,
                 designacao=f"Legislatura {legislatura_num}",
-                
             )
             self.session.add(legislatura)
-            # No flush needed - UUID id is generated client-side
 
         return legislatura
 

@@ -40,6 +40,7 @@ Version: 6.13 - Thirteen Legislature Documentation Validation (Constituinte, I, 
 import logging
 import os
 import re
+import uuid
 
 # Import our models
 import sys
@@ -719,11 +720,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             leg_des = self._get_text_value(deputado_elem, "LegDes")
 
             atividade_deputado = AtividadeDeputado(
+                id=uuid.uuid4(),
                 deputado_id=deputado_id, dep_cad_id=dep_cad_id, leg_des=leg_des
             )
 
             self.session.add(atividade_deputado)
-            # No flush needed - UUID id is generated client-side
+            # UUID id is generated client-side for immediate availability
 
             return atividade_deputado.id
 
@@ -744,11 +746,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
         """Create AtividadeDeputadoList record using SQLAlchemy ORM"""
         try:
             atividade_list = AtividadeDeputadoList(
+                id=uuid.uuid4(),
                 atividade_deputado_id=atividade_deputado_id
             )
 
             self.session.add(atividade_list)
-            # No flush needed - UUID id is generated client-side
+            # UUID id is generated client-side for immediate availability
 
             return atividade_list.id
 
@@ -771,11 +774,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             rel_text = self._get_text_value(actividade_out_elem, "Rel")
 
             actividade_out = ActividadeOut(
+                id=uuid.uuid4(),
                 atividade_list_id=atividade_list_id, rel=rel_text
             )
 
             self.session.add(actividade_out)
-            # No flush needed - UUID id is generated client-side
+            # UUID id is generated client-side for immediate availability
 
             return actividade_out.id
 
@@ -828,10 +832,13 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             audiencias_section = actividade_out.find("Audiencias")
             if audiencias_section is not None:
                 # Create audiencia record
-                audiencia = ActividadeAudiencia(actividade_out_id=actividade_out_id)
+                audiencia = ActividadeAudiencia(
+                    id=uuid.uuid4(),
+                    actividade_out_id=actividade_out_id
+                )
 
                 self.session.add(audiencia)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process ActividadesComissaoOut within Audiencias
                 for comissao_out in audiencias_section.findall(
@@ -853,6 +860,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     cms_ab = self._get_text_value(comissao_out, "CmsAb")
 
                     comissao_out_obj = ActividadesComissaoOut(
+                        id=uuid.uuid4(),
                         audiencia_id=audiencia.id,
                         act_id=act_id,
                         act_as=act_as,
@@ -885,10 +893,13 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             audicoes_section = actividade_out.find("Audicoes")
             if audicoes_section is not None:
                 # Create audicao record
-                audicao = ActividadeAudicao(actividade_out_id=actividade_out_id)
+                audicao = ActividadeAudicao(
+                    id=uuid.uuid4(),
+                    actividade_out_id=actividade_out_id
+                )
 
                 self.session.add(audicao)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process ActividadesComissaoOut within Audicoes
                 for comissao_out in audicoes_section.findall("ActividadesComissaoOut"):
@@ -906,6 +917,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     cms_no = self._get_text_value(comissao_out, "CmsNo")
 
                     comissao_out_obj = ActividadesComissaoOut(
+                        id=uuid.uuid4(),
                         audicao_id=audicao.id,
                         act_id=act_id,
                         act_as=act_as,
@@ -975,6 +987,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     # Create DeputyInitiative record
                     initiative = DeputyInitiative(
+                        id=uuid.uuid4(),
                         deputy_activity_id=atividade_deputado_id,
                         id_iniciativa=ini_id,
                         numero=ini_nr,
@@ -1022,11 +1035,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             if intev_section is not None:
                 # Create ActividadeIntervencao record
                 actividade_intervencao = ActividadeIntervencao(
+                    id=uuid.uuid4(),
                     actividade_out_id=actividade_out_id
                 )
 
                 self.session.add(actividade_intervencao)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process each IntervencoesOut within Intev
                 for intervencao in intev_section.findall("IntervencoesOut"):
@@ -1047,6 +1061,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
                     # Create ActividadeIntervencaoOut record
                     intervencao_out = ActividadeIntervencaoOut(
+                        id=uuid.uuid4(),
                         actividade_intervencao_id=actividade_intervencao.id,
                         int_id=int_id,
                         int_su=int_su,
@@ -1091,11 +1106,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             if dep_situacao is not None:
                 # Create deputado_situacao record
                 deputado_situacao = DeputadoSituacao(
+                    id=uuid.uuid4(),
                     atividade_deputado_id=atividade_deputado_id
                 )
 
                 self.session.add(deputado_situacao)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process each DadosSituacaoDeputado (regular format)
                 for situacao in dep_situacao.findall("DadosSituacaoDeputado"):
@@ -1108,6 +1124,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     dados_situacao = DadosSituacaoDeputado(
+                        id=uuid.uuid4(),
                         deputado_situacao_id=deputado_situacao.id,
                         sio_des=sio_des,
                         sio_dt_inicio=sio_dt_inicio,
@@ -1131,6 +1148,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     dados_situacao = DadosSituacaoDeputado(
+                        id=uuid.uuid4(),
                         deputado_situacao_id=deputado_situacao.id,
                         sio_des=sio_des,
                         sio_dt_inicio=sio_dt_inicio,
@@ -1163,11 +1181,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             if actp_section is not None:
                 # Create parliamentary activities record
                 atividades_parlamentares = ActividadesParlamentares(
+                    id=uuid.uuid4(),
                     actividade_out_id=actividade_out_id
                 )
 
                 self.session.add(atividades_parlamentares)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process each ActividadesParlamentaresOut
                 for atividade in actp_section.findall("ActividadesParlamentaresOut"):
@@ -1185,6 +1204,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     act_as = self._get_text_value(atividade, "ActAs")
 
                     atividade_out_obj = ActividadesParlamentaresOut(
+                        id=uuid.uuid4(),
                         atividades_parlamentares_id=atividades_parlamentares.id,
                         act_id=act_id,
                         act_nr=act_nr,
@@ -1219,11 +1239,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             if gpa_section is not None:
                 # Create friendship groups record
                 grupos_parlamentares_amizade = GruposParlamentaresAmizade(
+                    id=uuid.uuid4(),
                     actividade_out_id=actividade_out_id
                 )
 
                 self.session.add(grupos_parlamentares_amizade)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process each GruposParlamentaresAmizadeOut
                 for grupo in gpa_section.findall("GruposParlamentaresAmizadeOut"):
@@ -1235,6 +1256,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     cga_dtfim = self._get_text_value(grupo, "CgaDtfim")
 
                     grupo_out = GruposParlamentaresAmizadeOut(
+                        id=uuid.uuid4(),
                         grupos_parlamentares_amizade_id=grupos_parlamentares_amizade.id,
                         gpl_id=gpl_id,
                         gpl_no=gpl_no,
@@ -1266,11 +1288,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             if dlp_section is not None:
                 # Create permanent delegations record
                 delegacoes_permanentes = DelegacoesPermanentes(
+                    id=uuid.uuid4(),
                     actividade_out_id=actividade_out_id
                 )
 
                 self.session.add(delegacoes_permanentes)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process each DelegacoesPermanentesOut
                 for delegacao in dlp_section.findall("DelegacoesPermanentesOut"):
@@ -1281,6 +1304,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     cde_crg = self._get_text_value(delegacao, "CdeCrg")
 
                     delegacao_out = DelegacoesPermanentesOut(
+                        id=uuid.uuid4(),
                         delegacoes_permanentes_id=delegacoes_permanentes.id,
                         dep_id=dep_id,
                         dep_no=dep_no,
@@ -1290,7 +1314,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     self.session.add(delegacao_out)
-                    # No flush needed - UUID id is generated client-side before creating child records
+                    # UUID id is generated client-side for immediate availability
 
                     # Process meetings (DepReunioes.ReunioesDelegacoesPermanentes)
                     reunioes_section = delegacao.find("DepReunioes")
@@ -1304,6 +1328,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                             ren_ti = self._get_text_value(reuniao, "RenTi")
 
                             reuniao_obj = ReunioesDelegacoesPermanentes(
+                                id=uuid.uuid4(),
                                 delegacoes_permanentes_out_id=delegacao_out.id,
                                 ren_dt_ini=ren_dt_ini,
                                 ren_loc=ren_loc,
@@ -1333,11 +1358,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             if dle_section is not None:
                 # Create occasional delegations record
                 delegacoes_eventuais = DelegacoesEventuais(
+                    id=uuid.uuid4(),
                     actividade_out_id=actividade_out_id
                 )
 
                 self.session.add(delegacoes_eventuais)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process each DelegacoesEventuaisOut
                 for delegacao in dle_section.findall("DelegacoesEventuaisOut"):
@@ -1353,6 +1379,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     dev_loc = self._get_text_value(delegacao, "DevLoc")
 
                     delegacao_out = DelegacoesEventuaisOut(
+                        id=uuid.uuid4(),
                         delegacoes_eventuais_id=delegacoes_eventuais.id,
                         dev_id=dev_id,
                         dev_no=dev_no,
@@ -1397,11 +1424,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             if req_section is not None:
                 # Create requirements record
                 requerimentos_ativ_dep = RequerimentosAtivDep(
+                    id=uuid.uuid4(),
                     actividade_out_id=actividade_out_id
                 )
 
                 self.session.add(requerimentos_ativ_dep)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process each RequerimentosAtivDepOut
                 for requerimento in req_section.findall("RequerimentosAtivDepOut"):
@@ -1416,6 +1444,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     req_per_tp = self._get_text_value(requerimento, "ReqPerTp")
 
                     requerimento_out = RequerimentosAtivDepOut(
+                        id=uuid.uuid4(),
                         requerimentos_ativ_dep_id=requerimentos_ativ_dep.id,
                         req_id=req_id,
                         req_nr=req_nr,
@@ -1461,11 +1490,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             if scgt_section is not None:
                 # Create sub-committees/working groups record
                 subcomissoes_grupos_trabalho = SubComissoesGruposTrabalho(
+                    id=uuid.uuid4(),
                     actividade_out_id=actividade_out_id
                 )
 
                 self.session.add(subcomissoes_grupos_trabalho)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process each SubComissoesGruposTrabalhoOut
                 for subcomissao in scgt_section.findall(
@@ -1481,6 +1511,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     scm_com_lg = self._get_text_value(subcomissao, "ScmComLg")
 
                     subcomissao_out = SubComissoesGruposTrabalhoOut(
+                        id=uuid.uuid4(),
                         subcomissoes_grupos_trabalho_id=subcomissoes_grupos_trabalho.id,
                         scm_cd=scm_cd,
                         scm_com_cd=scm_com_cd,
@@ -1514,11 +1545,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 if relatores_peticoes_section is not None:
                     # Create petition rapporteurs record
                     relatores_peticoes = RelatoresPeticoes(
+                        id=uuid.uuid4(),
                         actividade_out_id=actividade_out_id
                     )
 
                     self.session.add(relatores_peticoes)
-                    # No flush needed - UUID id is generated client-side before creating child records
+                    # UUID id is generated client-side for immediate availability
 
                     # Process each RelatoresPeticoesOut
                     for relator in relatores_peticoes_section.findall(
@@ -1532,6 +1564,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         pet_sel_nr_pk = self._get_text_value(relator, "PetSelNrPk")
 
                         relator_out = RelatoresPeticoesOut(
+                            id=uuid.uuid4(),
                             relatores_peticoes_id=relatores_peticoes.id,
                             pec_dtrelf=pec_dtrelf,
                             pet_id=pet_id,
@@ -1566,11 +1599,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 if ini_section is not None:
                     # Create initiative rapporteurs record
                     relatores_iniciativas = RelatoresIniciativas(
+                        id=uuid.uuid4(),
                         actividade_out_id=actividade_out_id
                     )
 
                     self.session.add(relatores_iniciativas)
-                    # No flush needed - UUID id is generated client-side before creating child records
+                    # UUID id is generated client-side for immediate availability
 
                     # Process each RelatoresIniciativasOut
                     for relator in ini_section.findall("RelatoresIniciativasOut"):
@@ -1583,6 +1617,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         ini_ti = self._get_text_value(relator, "IniTi")
 
                         relator_out = RelatoresIniciativasOut(
+                            id=uuid.uuid4(),
                             relatores_iniciativas_id=relatores_iniciativas.id,
                             ini_id=ini_id,
                             ini_nr=ini_nr,
@@ -1612,10 +1647,13 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             cms_section = actividade_out.find("Cms")
             if cms_section is not None:
                 # Create committees record
-                comissoes = Comissoes(actividade_out_id=actividade_out_id)
+                comissoes = Comissoes(
+                    id=uuid.uuid4(),
+                    actividade_out_id=actividade_out_id
+                )
 
                 self.session.add(comissoes)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process each ComissoesOut
                 for comissao in cms_section.findall("ComissoesOut"):
@@ -1627,6 +1665,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     cms_situacao = self._get_text_value(comissao, "CmsSituacao")
 
                     comissao_out = ComissoesOut(
+                        id=uuid.uuid4(),
                         comissoes_id=comissoes.id,
                         cms_no=cms_no,
                         cms_cd=cms_cd,
@@ -1660,11 +1699,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 if autores_section is not None:
                     # Create authors record
                     autores_pareceres_inc_imu = AutoresPareceresIncImu(
+                        id=uuid.uuid4(),
                         actividade_out_id=actividade_out_id
                     )
 
                     self.session.add(autores_pareceres_inc_imu)
-                    # No flush needed - UUID id is generated client-side before creating child records
+                    # UUID id is generated client-side for immediate availability
 
                     # Process each AutoresPareceresIncImuOut
                     for autor in autores_section.findall("AutoresPareceresIncImuOut"):
@@ -1674,6 +1714,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         act_tp_desc = self._get_text_value(autor, "ActTpDesc")
 
                         autor_out = AutoresPareceresIncImuOut(
+                            id=uuid.uuid4(),
                             autores_pareceres_inc_imu_id=autores_pareceres_inc_imu.id,
                             act_id=act_id,
                             act_as=act_as,
@@ -1707,11 +1748,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 if relatores_section is not None:
                     # Create European initiative rapporteurs record
                     relatores_ini_europeias = RelatoresIniEuropeias(
+                        id=uuid.uuid4(),
                         actividade_out_id=actividade_out_id
                     )
 
                     self.session.add(relatores_ini_europeias)
-                    # No flush needed - UUID id is generated client-side before creating child records
+                    # UUID id is generated client-side for immediate availability
 
                     # Process each RelatoresIniEuropeiasOut
                     for relator in relatores_section.findall(
@@ -1726,6 +1768,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         leg = self._get_text_value(relator, "Leg")
 
                         relator_out = RelatoresIniEuropeiasOut(
+                            id=uuid.uuid4(),
                             relatores_ini_europeias_id=relatores_ini_europeias.id,
                             ine_id=ine_id,
                             ine_data_relatorio=ine_data_relatorio,
@@ -1756,11 +1799,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             if pj_section is not None:
                 # Create youth parliament record
                 parlamento_jovens = ParlamentoJovens(
+                    id=uuid.uuid4(),
                     actividade_out_id=actividade_out_id
                 )
 
                 self.session.add(parlamento_jovens)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process DadosDeputado
                 dados_deputado = pj_section.find("DadosDeputado")
@@ -1777,6 +1821,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     dados_out = DadosDeputadoParlamentoJovens(
+                        id=uuid.uuid4(),
                         parlamento_jovens_id=parlamento_jovens.id,
                         tipo_reuniao=tipo_reuniao,
                         circulo_eleitoral=circulo_eleitoral,
@@ -1805,10 +1850,13 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             eventos_section = actividade_out.find("Eventos")
             if eventos_section is not None:
                 # Create events record
-                eventos = Eventos(actividade_out_id=actividade_out_id)
+                eventos = Eventos(
+                    id=uuid.uuid4(),
+                    actividade_out_id=actividade_out_id
+                )
 
                 self.session.add(eventos)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process each ActividadesComissaoOut within Events
                 for actividade_comissao in eventos_section.findall(
@@ -1834,6 +1882,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     act_lg = self._get_text_value(actividade_comissao, "ActLg")
 
                     actividade_out = ActividadesComissaoOut(
+                        id=uuid.uuid4(),
                         evento_id=eventos.id,
                         act_id=act_id,
                         act_as=act_as,
@@ -1870,10 +1919,13 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             deslocacoes_section = actividade_out.find("Deslocacoes")
             if deslocacoes_section is not None:
                 # Create displacements record
-                deslocacoes = Deslocacoes(actividade_out_id=actividade_out_id)
+                deslocacoes = Deslocacoes(
+                    id=uuid.uuid4(),
+                    actividade_out_id=actividade_out_id
+                )
 
                 self.session.add(deslocacoes)
-                # No flush needed - UUID id is generated client-side before creating child records
+                # UUID id is generated client-side for immediate availability
 
                 # Process each ActividadesComissaoOut within Deslocacoes
                 for actividade_comissao in deslocacoes_section.findall(
@@ -1899,6 +1951,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     act_lg = self._get_text_value(actividade_comissao, "ActLg")
 
                     actividade_out = ActividadesComissaoOut(
+                        id=uuid.uuid4(),
                         deslocacao_id=deslocacoes.id,
                         act_id=act_id,
                         act_as=act_as,
@@ -1939,10 +1992,11 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 rcp_section = rel_section.find("RelatoresContasPublicas")
                 if rcp_section is not None:
                     relatores_contas_publicas = RelatoresContasPublicas(
+                        id=uuid.uuid4(),
                         actividade_out_id=actividade_out_id
                     )
                     self.session.add(relatores_contas_publicas)
-                    # No flush needed - UUID id is generated client-side before creating child records
+                    # UUID id is generated client-side for immediate availability
 
                     for relator in rcp_section.findall("RelatoresContasPublicasOut"):
                         act_id = self._safe_int(self._get_text_value(relator, "ActId"))
@@ -1952,6 +2006,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         cta_no = self._get_text_value(relator, "CtaNo")
 
                         relator_out = RelatoresContasPublicasOut(
+                            id=uuid.uuid4(),
                             relatores_contas_publicas_id=relatores_contas_publicas.id,
                             act_id=act_id,
                             act_as=act_as,
@@ -2032,9 +2087,12 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
             dep_cargo_elem = deputado_elem.find("DepCargo")
             if dep_cargo_elem is not None:
                 # Create DepCargo record
-                dep_cargo = DepCargo(deputado_id=deputado_id)
+                dep_cargo = DepCargo(
+                    id=uuid.uuid4(),
+                    deputado_id=deputado_id
+                )
                 self.session.add(dep_cargo)
-                # No flush needed - UUID id is generated client-side
+                # UUID id is generated client-side for immediate availability
 
                 # Process DadosCargoDeputado elements
                 dados_cargo_elem = dep_cargo_elem.find(
@@ -2055,6 +2113,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     )
 
                     dados_cargo = DadosCargoDeputado(
+                        id=uuid.uuid4(),
                         dep_cargo_id=dep_cargo.id,
                         car_des=car_des,
                         car_id=car_id,

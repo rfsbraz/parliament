@@ -47,6 +47,7 @@ All field mappings follow official XML structure documented December 2017.
 import xml.etree.ElementTree as ET
 import os
 import re
+import uuid
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
@@ -245,6 +246,7 @@ class ReunioesNacionaisMapper(EnhancedSchemaMapper):
             else:
                 # Create new meeting record
                 meeting_record = ReuniaoNacional(
+                    id=uuid.uuid4(),
                     reuniao_id=reuniao_id,
                     nome=nome,
                     tipo=tipo,
@@ -257,7 +259,6 @@ class ReunioesNacionaisMapper(EnhancedSchemaMapper):
                     legislatura_id=legislatura.id
                 )
                 self.session.add(meeting_record)
-                # No flush needed - UUID id is generated client-side
             
             # Process participants
             self._process_meeting_participants(reuniao, meeting_record)
@@ -312,13 +313,14 @@ class ReunioesNacionaisMapper(EnhancedSchemaMapper):
             
             # Create participant record
             participant_record = ParticipanteReuniaoNacional(
+                id=uuid.uuid4(),
                 reuniao_id=meeting_record.id,
                 tipo=tipo,
                 nome=nome,
                 grupo_parlamentar=gp,
                 deputado_id=deputado.id if deputado else None
             )
-            
+
             self.session.add(participant_record)
             
         except Exception as e:

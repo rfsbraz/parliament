@@ -47,6 +47,7 @@ Uses SQLAlchemy ORM models for clean, type-safe database operations.
 import xml.etree.ElementTree as ET
 import os
 import re
+import uuid
 from datetime import datetime, date
 from typing import Dict, Optional, Set
 import logging
@@ -238,8 +239,9 @@ class AgendaParlamentarMapper(SchemaMapper):
                 existing_agenda.link_externo = link_externo
                 existing_agenda.pos_plenario = pos_plenario
             else:
-                # Create new record
+                # Create new record - explicit UUID for immediate availability
                 new_agenda = AgendaParlamentar(
+                    id=uuid.uuid4(),
                     id_externo=id_externo,
                     legislatura_id=legislatura_id,
                     secao_id=secao_id,
@@ -371,8 +373,9 @@ class AgendaParlamentarMapper(SchemaMapper):
                     existing_anexo.titulo_field = titulo
                     existing_anexo.url_field = url
                 else:
-                    # Create new attachment record
+                    # Create new attachment record - explicit UUID for immediate availability
                     anexo_record = AgendaParlamentarAnexo(
+                        id=uuid.uuid4(),
                         agenda_id=agenda_id,
                         id_field=id_field,
                         tipo_documento_field=tipo_documento,

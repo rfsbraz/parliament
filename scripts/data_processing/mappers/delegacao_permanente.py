@@ -74,6 +74,7 @@ VERIFICATION COMPLETED:
 import xml.etree.ElementTree as ET
 import os
 import re
+import uuid
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
@@ -211,6 +212,7 @@ class DelegacaoPermanenteMapper(SchemaMapper):
             else:
                 # Create new delegation record
                 delegacao = DelegacaoPermanente(
+                    id=uuid.uuid4(),
                     delegacao_id=id_externo,
                     nome=nome,
                     sessao=sessao,
@@ -218,7 +220,6 @@ class DelegacaoPermanenteMapper(SchemaMapper):
                     legislatura_id=legislatura.id
                 )
                 self.session.add(delegacao)
-                # No flush needed - UUID id is generated client-side
                 existing = delegacao
             
             # Process members
@@ -276,6 +277,7 @@ class DelegacaoPermanenteMapper(SchemaMapper):
             else:
                 # Create new member record
                 membro = DelegacaoPermanenteMembro(
+                    id=uuid.uuid4(),
                     delegacao_id=delegacao.id,
                     membro_id=member_id,
                     nome=nome,
@@ -304,13 +306,13 @@ class DelegacaoPermanenteMapper(SchemaMapper):
             comissao_record = None
             if any([nome, composicao, subcomissoes]):
                 comissao_record = DelegacaoPermanenteComissao(
+                    id=uuid.uuid4(),
                     delegacao_id=delegacao.id,
                     nome=nome,
                     composicao=composicao,
                     subcomissoes=subcomissoes
                 )
                 self.session.add(comissao_record)
-                # No flush needed - UUID id is generated client-side for nested members
             
             # Process nested commission members (XI Legislature)
             composicao_elem = self._get_namespaced_element(comissao, 'ap', 'composicao')
@@ -341,6 +343,7 @@ class DelegacaoPermanenteMapper(SchemaMapper):
             # Create member record if there's meaningful data
             if any([nome, gp, cargo, data_inicio, data_fim]):
                 membro_record = DelegacaoPermanenteComissaoMembro(
+                    id=uuid.uuid4(),
                     comissao_id=comissao.id,
                     nome=nome,
                     gp=gp,

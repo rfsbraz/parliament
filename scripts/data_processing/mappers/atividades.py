@@ -55,6 +55,7 @@ Translation Support:
 import logging
 import os
 import re
+import uuid
 
 # Import our models
 import sys
@@ -734,6 +735,7 @@ class AtividadesMapper(SchemaMapper):
             else:
                 # Create new activity record with backward compatibility
                 atividade_data = {
+                    "id": uuid.uuid4(),
                     "atividade_id": id_externo,
                     "tipo": tipo,
                     "desc_tipo": desc_tipo,
@@ -757,7 +759,6 @@ class AtividadesMapper(SchemaMapper):
 
                 atividade_obj = AtividadeParlamentar(**atividade_data)
                 self.session.add(atividade_obj)
-                # No flush needed - UUID id is generated client-side
                 existing = atividade_obj
 
             # Process related data
@@ -860,6 +861,7 @@ class AtividadesMapper(SchemaMapper):
 
                 # Create debate object with backward compatibility
                 debate_data = {
+                    "id": uuid.uuid4(),
                     "debate_id": debate_id_int,
                     "tipo_debate_desig": tipo_debate_desig,
                     "data_debate": data_debate,
@@ -958,6 +960,7 @@ class AtividadesMapper(SchemaMapper):
 
             # Create new report record (no external ID available, so always create new)
             relatorio_obj = RelatorioParlamentar(
+                id=uuid.uuid4(),
                 tipo=tipo,
                 assunto=assunto,
                 data_entrada=data_entrada,
@@ -970,7 +973,6 @@ class AtividadesMapper(SchemaMapper):
                 legislatura_id=legislatura.id,
             )
             self.session.add(relatorio_obj)
-            # No flush needed - UUID id is generated client-side for related records
 
             # Process XIII Legislature related structures
             self._process_relatorio_documentos(relatorio, relatorio_obj.id)
@@ -1069,6 +1071,7 @@ class AtividadesMapper(SchemaMapper):
                         pag_text = ", ".join([s.text for s in string_elems if s.text])
 
                 publicacao_record = AtividadeParlamentarPublicacao(
+                    id=uuid.uuid4(),
                     atividade_id=atividade_obj.id,
                     pub_nr=pub_nr,
                     pub_tipo=pub_tipo,
@@ -1097,6 +1100,7 @@ class AtividadesMapper(SchemaMapper):
                 data = self._parse_date(self._get_text_value(votacao, "data"))
 
                 votacao_record = AtividadeParlamentarVotacao(
+                    id=uuid.uuid4(),
                     atividade_id=atividade_obj.id,
                     votacao_id=votacao_id,
                     resultado=resultado,
@@ -1118,6 +1122,7 @@ class AtividadesMapper(SchemaMapper):
 
                 if nome:
                     eleito_record = AtividadeParlamentarEleito(
+                        id=uuid.uuid4(),
                         atividade_id=atividade_obj.id, nome=nome, cargo=cargo
                     )
                     self.session.add(eleito_record)
@@ -1135,6 +1140,7 @@ class AtividadesMapper(SchemaMapper):
 
                 if nome:
                     convidado_record = AtividadeParlamentarConvidado(
+                        id=uuid.uuid4(),
                         atividade_id=atividade_obj.id, nome=nome, pais=pais, honra=honra
                     )
                     self.session.add(convidado_record)
@@ -1194,6 +1200,7 @@ class AtividadesMapper(SchemaMapper):
 
             # Create new budget/account record
             orcamento_obj = OrcamentoContasGerencia(
+                id=uuid.uuid4(),
                 entry_id=entry_id,
                 tipo=tipo,
                 tp=tp,
@@ -1593,12 +1600,12 @@ class AtividadesMapper(SchemaMapper):
 
             # Create commission opinion
             opiniao_obj = RelatorioParlamentarComissaoOpiniao(
+                id=uuid.uuid4(),
                 relatorio_parlamentar_id=relatorio_parlamentar_id,
                 sigla=sigla,
                 nome=nome,
             )
             self.session.add(opiniao_obj)
-            # No flush needed - UUID id is generated client-side
 
             # Process documents
             documentos = atividade_comissoes.find("Documentos")

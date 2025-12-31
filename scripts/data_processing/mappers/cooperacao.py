@@ -10,6 +10,7 @@ and activities between Portuguese Parliament and other institutions.
 import xml.etree.ElementTree as ET
 import os
 import re
+import uuid
 from datetime import datetime
 from typing import Dict, Optional, Set, List
 import logging
@@ -164,6 +165,7 @@ class CooperacaoMapper(SchemaMapper):
             else:
                 # Create new record
                 cooperacao = CooperacaoParlamentar(
+                    id=uuid.uuid4(),
                     cooperacao_id=id_externo,
                     tipo=tipo,
                     nome=nome,
@@ -173,7 +175,6 @@ class CooperacaoMapper(SchemaMapper):
                     legislatura_id=legislatura.id
                 )
                 self.session.add(cooperacao)
-                # No flush needed - UUID id is generated client-side
                 existing = cooperacao
             
             # Process programs and activities
@@ -256,6 +257,7 @@ class CooperacaoMapper(SchemaMapper):
                 
                 if nome:
                     programa_record = CooperacaoPrograma(
+                        id=uuid.uuid4(),
                         cooperacao_id=cooperacao.id,
                         nome=nome,
                         descricao=descricao
@@ -280,6 +282,7 @@ class CooperacaoMapper(SchemaMapper):
                 tipo_final = tipo_atividade if tipo_atividade else tipo
                 
                 atividade_record = CooperacaoAtividade(
+                    id=uuid.uuid4(),
                     cooperacao_id=cooperacao.id,
                     atividade_id=atividade_id,
                     nome=nome,
@@ -290,7 +293,6 @@ class CooperacaoMapper(SchemaMapper):
                     descricao=descricao
                 )
                 self.session.add(atividade_record)
-                # No flush needed - UUID id is generated client-side
                 
                 # Process participants
                 self._process_cooperation_participants(atividade, atividade_record)
@@ -308,6 +310,7 @@ class CooperacaoMapper(SchemaMapper):
                     nome = self._get_text_value(externo, 'Nome')
                     if nome:
                         participante_record = CooperacaoParticipante(
+                            id=uuid.uuid4(),
                             atividade_id=atividade_record.id,
                             participante_id=participante_id,
                             nome=nome,
@@ -320,6 +323,7 @@ class CooperacaoMapper(SchemaMapper):
                     nome = participante.text if participante.text else participante.tag
                     if nome:
                         participante_record = CooperacaoParticipante(
+                            id=uuid.uuid4(),
                             atividade_id=atividade_record.id,
                             nome=nome,
                             tipo_participante='interno'
@@ -334,13 +338,14 @@ class CooperacaoMapper(SchemaMapper):
                 nome = self._get_text_value(externo, 'Nome')
                 if nome:
                     participante_record = CooperacaoParticipante(
+                        id=uuid.uuid4(),
                         atividade_id=atividade_record.id,
                         participante_id=participante_id,
                         nome=nome,
                         tipo_participante='externo'
                     )
                     self.session.add(participante_record)
-    
+
     def _process_cooperacao_atividade(self, atividade: ET.Element, cooperacao: CooperacaoParlamentar):
         """Process individual cooperation activity directly nested under main cooperation item"""
         atividade_id = self._get_int_value(atividade, 'Id')
@@ -356,6 +361,7 @@ class CooperacaoMapper(SchemaMapper):
         
         if tipo_final or nome:
             atividade_record = CooperacaoAtividade(
+                id=uuid.uuid4(),
                 cooperacao_id=cooperacao.id,
                 atividade_id=atividade_id,
                 nome=nome,
@@ -365,7 +371,6 @@ class CooperacaoMapper(SchemaMapper):
                 local=local
             )
             self.session.add(atividade_record)
-            # No flush needed - UUID id is generated client-side
             
             # Process participants
             self._process_cooperation_participants(atividade, atividade_record)
