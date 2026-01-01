@@ -628,8 +628,9 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 return False
 
             # Create AtividadeDeputado record using our new models
+            # Pass the Deputado's UUID (deputado_record.id), not the XML integer ID (dep_id)
             atividade_deputado_id = self._create_atividade_deputado(
-                dep_id, dep_cad_id, legislatura_sigla, deputado
+                deputado_record.id, dep_cad_id, legislatura_sigla, deputado
             )
 
             if not atividade_deputado_id:
@@ -710,11 +711,11 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
 
     def _create_atividade_deputado(
         self,
-        deputado_id: int,
+        deputado_id,  # UUID from Deputado record
         dep_cad_id: int,
         legislatura_sigla: str,
         deputado_elem: ET.Element,
-    ) -> Optional[int]:
+    ):
         """Create AtividadeDeputado record using SQLAlchemy ORM"""
         try:
             leg_des = self._get_text_value(deputado_elem, "LegDes")

@@ -101,6 +101,16 @@ class AtividadesMapper(SchemaMapper):
     def __init__(self, session):
         # Accept SQLAlchemy session directly (passed by unified importer)
         super().__init__(session)
+        # In-memory caches to track records created in this batch (avoid flush round-trips)
+        self._atividade_cache = {}  # (atividade_id, legislatura_id) -> AtividadeParlamentar
+        self._debate_cache = {}  # (debate_id, legislatura_id) -> DebateParlamentar
+        self._orcamento_cache = {}  # (entry_id, legislatura_id) -> OrcamentoContasGerencia
+        self._evento_cache = {}  # (id_evento, legislatura_id) -> EventoParlamentar
+        self._deslocacao_cache = {}  # (id_deslocacao, legislatura_id) -> DeslocacaoParlamentar
+        self._audicao_cache = {}  # (id_audicao, legislatura_id) -> AudicaoParlamentar
+        self._audiencia_cache = {}  # (id_audiencia, legislatura_id) -> AudienciaParlamentar
+        self._iniciativa_conjunta_cache = {}  # (relatorio_id, iniciativa_id) -> object
+        self._opiniao_cache = {}  # (relatorio_id, sigla) -> object
 
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -707,14 +717,22 @@ class AtividadesMapper(SchemaMapper):
                 except ValueError:
                     pass
 
-            # Check if activity already exists
+            # Check if activity already exists (unique per legislature)
+            # Use cache-first pattern to avoid flush round-trips
             existing = None
-            if id_externo:
-                existing = (
-                    self.session.query(AtividadeParlamentar)
-                    .filter_by(atividade_id=id_externo)
-                    .first()
-                )
+            cache_key = (id_externo, legislatura.id) if id_externo else None
+
+            if cache_key:
+                # Check in-memory cache first (records created in this batch)
+                existing = self._atividade_cache.get(cache_key)
+
+                if not existing:
+                    # Check database (records from previous imports)
+                    existing = (
+                        self.session.query(AtividadeParlamentar)
+                        .filter_by(atividade_id=id_externo, legislatura_id=legislatura.id)
+                        .first()
+                    )
 
             if existing:
                 # Update existing record
@@ -759,6 +777,9 @@ class AtividadesMapper(SchemaMapper):
 
                 atividade_obj = AtividadeParlamentar(**atividade_data)
                 self.session.add(atividade_obj)
+                # Add to cache for deduplication within this batch (no flush needed)
+                if cache_key:
+                    self._atividade_cache[cache_key] = atividade_obj
                 existing = atividade_obj
 
             # Process related data
@@ -824,13 +845,16 @@ class AtividadesMapper(SchemaMapper):
             data_debate = self._parse_date(data_debate_str)
 
             debate_id_int = int(debate_id)
+            cache_key = debate_id_int
 
-            # Check if debate already exists
-            existing = (
-                self.session.query(DebateParlamentar)
-                .filter_by(debate_id=debate_id_int)
-                .first()
-            )
+            # Check if debate already exists (cache-first pattern)
+            existing = self._debate_cache.get(cache_key)
+            if not existing:
+                existing = (
+                    self.session.query(DebateParlamentar)
+                    .filter_by(debate_id=debate_id_int)
+                    .first()
+                )
 
             if existing:
                 # Update existing debate
@@ -881,6 +905,8 @@ class AtividadesMapper(SchemaMapper):
 
                 debate_obj = DebateParlamentar(**debate_data)
                 self.session.add(debate_obj)
+                # Add to cache for deduplication within this batch (no flush needed)
+                self._debate_cache[cache_key] = debate_obj
 
             return True
 
@@ -973,6 +999,7 @@ class AtividadesMapper(SchemaMapper):
                 legislatura_id=legislatura.id,
             )
             self.session.add(relatorio_obj)
+            # No flush needed - child records use relatorio_obj.id which is already a UUID
 
             # Process XIII Legislature related structures
             self._process_relatorio_documentos(relatorio, relatorio_obj.id)
@@ -1185,12 +1212,15 @@ class AtividadesMapper(SchemaMapper):
                 self._parse_date(dt_agendamento_str) if dt_agendamento_str else None
             )
 
-            # Check if record already exists
-            existing = (
-                self.session.query(OrcamentoContasGerencia)
-                .filter_by(entry_id=entry_id, legislatura_id=legislatura.id)
-                .first()
-            )
+            # Check if record already exists (cache-first pattern)
+            cache_key = (entry_id, legislatura.id)
+            existing = self._orcamento_cache.get(cache_key)
+            if not existing:
+                existing = (
+                    self.session.query(OrcamentoContasGerencia)
+                    .filter_by(entry_id=entry_id, legislatura_id=legislatura.id)
+                    .first()
+                )
 
             if existing:
                 logger.debug(
@@ -1213,6 +1243,8 @@ class AtividadesMapper(SchemaMapper):
                 legislatura_id=legislatura.id,
             )
             self.session.add(orcamento_obj)
+            # Add to cache for deduplication within this batch (no flush needed)
+            self._orcamento_cache[cache_key] = orcamento_obj
 
             logger.debug(
                 f"Processed budget/account entry: {entry_id} - {titulo[:50]}..."
@@ -1339,12 +1371,15 @@ class AtividadesMapper(SchemaMapper):
 
                 data = self._parse_date(data_str) if data_str else None
 
-                # Check if event already exists
-                existing = (
-                    self.session.query(EventoParlamentar)
-                    .filter_by(id_evento=id_evento, legislatura_id=legislatura.id)
-                    .first()
-                )
+                # Check if event already exists (cache-first pattern)
+                cache_key = (id_evento, legislatura.id)
+                existing = self._evento_cache.get(cache_key)
+                if not existing:
+                    existing = (
+                        self.session.query(EventoParlamentar)
+                        .filter_by(id_evento=id_evento, legislatura_id=legislatura.id)
+                        .first()
+                    )
 
                 if existing:
                     continue
@@ -1359,6 +1394,8 @@ class AtividadesMapper(SchemaMapper):
                     legislatura_id=legislatura.id,
                 )
                 self.session.add(evento_obj)
+                # Add to cache for deduplication within this batch (no flush needed)
+                self._evento_cache[cache_key] = evento_obj
 
             return True
         except Exception as e:
@@ -1391,14 +1428,17 @@ class AtividadesMapper(SchemaMapper):
                 data_ini = self._parse_date(data_ini_str) if data_ini_str else None
                 data_fim = self._parse_date(data_fim_str) if data_fim_str else None
 
-                # Check if displacement already exists
-                existing = (
-                    self.session.query(DeslocacaoParlamentar)
-                    .filter_by(
-                        id_deslocacao=id_deslocacao, legislatura_id=legislatura.id
+                # Check if displacement already exists (cache-first pattern)
+                cache_key = (id_deslocacao, legislatura.id)
+                existing = self._deslocacao_cache.get(cache_key)
+                if not existing:
+                    existing = (
+                        self.session.query(DeslocacaoParlamentar)
+                        .filter_by(
+                            id_deslocacao=id_deslocacao, legislatura_id=legislatura.id
+                        )
+                        .first()
                     )
-                    .first()
-                )
 
                 if existing:
                     continue
@@ -1414,6 +1454,8 @@ class AtividadesMapper(SchemaMapper):
                     legislatura_id=legislatura.id,
                 )
                 self.session.add(deslocacao_obj)
+                # Add to cache for deduplication within this batch (no flush needed)
+                self._deslocacao_cache[cache_key] = deslocacao_obj
 
             return True
         except Exception as e:
@@ -1442,12 +1484,15 @@ class AtividadesMapper(SchemaMapper):
 
                 data_audicao = self._parse_date(data_str) if data_str else None
 
-                # Check if audition already exists
-                existing = (
-                    self.session.query(AudicaoParlamentar)
-                    .filter_by(id_audicao=id_audicao, legislatura_id=legislatura.id)
-                    .first()
-                )
+                # Check if audition already exists (cache-first pattern)
+                cache_key = (id_audicao, legislatura.id)
+                existing = self._audicao_cache.get(cache_key)
+                if not existing:
+                    existing = (
+                        self.session.query(AudicaoParlamentar)
+                        .filter_by(id_audicao=id_audicao, legislatura_id=legislatura.id)
+                        .first()
+                    )
 
                 if existing:
                     continue
@@ -1462,6 +1507,8 @@ class AtividadesMapper(SchemaMapper):
                     legislatura_id=legislatura.id,
                 )
                 self.session.add(audicao_obj)
+                # Add to cache for deduplication within this batch (no flush needed)
+                self._audicao_cache[cache_key] = audicao_obj
 
             return True
         except Exception as e:
@@ -1491,12 +1538,15 @@ class AtividadesMapper(SchemaMapper):
 
                 data_audiencia = self._parse_date(data_str) if data_str else None
 
-                # Check if audience already exists
-                existing = (
-                    self.session.query(AudienciaParlamentar)
-                    .filter_by(id_audiencia=id_audiencia, legislatura_id=legislatura.id)
-                    .first()
-                )
+                # Check if audience already exists (cache-first pattern)
+                cache_key = (id_audiencia, legislatura.id)
+                existing = self._audiencia_cache.get(cache_key)
+                if not existing:
+                    existing = (
+                        self.session.query(AudienciaParlamentar)
+                        .filter_by(id_audiencia=id_audiencia, legislatura_id=legislatura.id)
+                        .first()
+                    )
 
                 if existing:
                     continue
@@ -1512,6 +1562,8 @@ class AtividadesMapper(SchemaMapper):
                     legislatura_id=legislatura.id,
                 )
                 self.session.add(audiencia_obj)
+                # Add to cache for deduplication within this batch (no flush needed)
+                self._audiencia_cache[cache_key] = audiencia_obj
 
             return True
         except Exception as e:
@@ -1539,15 +1591,18 @@ class AtividadesMapper(SchemaMapper):
                 if not iniciativa_id:
                     continue
 
-                # Check if joint initiative already exists
-                existing = (
-                    self.session.query(RelatorioParlamentarIniciativaConjunta)
-                    .filter_by(
-                        relatorio_id=relatorio_parlamentar_id,
-                        iniciativa_id=iniciativa_id,
+                # Check if joint initiative already exists (cache-first pattern)
+                cache_key = (relatorio_parlamentar_id, iniciativa_id)
+                existing = self._iniciativa_conjunta_cache.get(cache_key)
+                if not existing:
+                    existing = (
+                        self.session.query(RelatorioParlamentarIniciativaConjunta)
+                        .filter_by(
+                            relatorio_id=relatorio_parlamentar_id,
+                            iniciativa_id=iniciativa_id,
+                        )
+                        .first()
                     )
-                    .first()
-                )
 
                 if existing:
                     continue
@@ -1559,6 +1614,8 @@ class AtividadesMapper(SchemaMapper):
                     desc_tipo=desc_tipo,
                 )
                 self.session.add(iniciativa_obj)
+                # Add to cache for deduplication within this batch (no flush needed)
+                self._iniciativa_conjunta_cache[cache_key] = iniciativa_obj
 
             return True
         except Exception as e:
@@ -1586,14 +1643,17 @@ class AtividadesMapper(SchemaMapper):
             if not sigla:
                 return True
 
-            # Check if opinion already exists
-            existing_opiniao = (
-                self.session.query(RelatorioParlamentarComissaoOpiniao)
-                .filter_by(
-                    relatorio_parlamentar_id=relatorio_parlamentar_id, sigla=sigla
+            # Check if opinion already exists (cache-first pattern)
+            cache_key = (relatorio_parlamentar_id, sigla)
+            existing_opiniao = self._opiniao_cache.get(cache_key)
+            if not existing_opiniao:
+                existing_opiniao = (
+                    self.session.query(RelatorioParlamentarComissaoOpiniao)
+                    .filter_by(
+                        relatorio_parlamentar_id=relatorio_parlamentar_id, sigla=sigla
+                    )
+                    .first()
                 )
-                .first()
-            )
 
             if existing_opiniao:
                 return True
@@ -1606,6 +1666,8 @@ class AtividadesMapper(SchemaMapper):
                 nome=nome,
             )
             self.session.add(opiniao_obj)
+            # Add to cache for deduplication within this batch (no flush needed)
+            self._opiniao_cache[cache_key] = opiniao_obj
 
             # Process documents
             documentos = atividade_comissoes.find("Documentos")

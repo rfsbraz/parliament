@@ -3398,8 +3398,11 @@ class AtividadeParlamentar(Base):
     # Core fields from AtividadesGerais structure
     atividade_id = Column(
         Integer,
-        unique=True,
-        comment="Activity identifier (IDAtividade) - unique registry ID",
+        comment="Activity identifier (IDAtividade) - unique per legislature",
+    )
+
+    __table_args__ = (
+        UniqueConstraint('atividade_id', 'legislatura_id', name='uq_atividade_legislatura'),
     )
     tipo = Column(
         String(100),
@@ -4538,12 +4541,16 @@ class IniciativaEventoVotacao(Base):
     evento_id = Column(GUID(), ForeignKey("iniciativas_eventos.id"), nullable=False)
     id_votacao = Column(Integer)
     resultado = Column(Text)
+    desc = Column(Text)  # Voting description (desc field from XML)
+    a_favor = Column(Integer)  # Votes in favor
+    contra = Column(Integer)  # Votes against
+    abstencao = Column(Integer)  # Abstentions
     reuniao = Column(Integer)
     tipo_reuniao = Column(Text)
     detalhe = Column(Text)
     unanime = Column(Text)
     data_votacao = Column(Date)
-    descricao = Column(Text)  # Voting description
+    descricao = Column(Text)  # Voting description (descricao field from XML)
 
     # Relationships
     evento = relationship("IniciativaEvento", back_populates="votacoes")

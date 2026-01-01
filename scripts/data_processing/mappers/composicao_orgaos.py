@@ -193,6 +193,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         self._perm_committee_cache = {} # (id_orgao, org_id) -> PermanentCommittee
         self._leader_conf_cache = {}   # (id_orgao, org_id) -> LeaderConference
         self._comm_pres_conf_cache = {} # (id_orgao, org_id) -> CommissionPresidentConference
+        # Name-based deputy lookup cache to avoid repeated expensive ilike queries
+        self._deputy_name_cache = {}   # (nome, sigla_grupo, leg_id) -> (dep_id, dep_cad_id)
 
     def _preload_caches(self, legislatura: Legislatura) -> None:
         """
@@ -272,6 +274,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         self._perm_committee_cache.clear()
         self._leader_conf_cache.clear()
         self._comm_pres_conf_cache.clear()
+        self._deputy_name_cache.clear()
 
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -1287,7 +1290,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 dep_cad_id=self._safe_int(dep_cad_id),
                 dep_nome_parlamentar=dep_nome,
                 dep_nome_completo=dep_nome_completo,
-                org_id=plenary.id,  # Using plenary ID as org_id
+                org_id=plenary.id_orgao,  # Using plenary's XML ID as org_id (Integer)
             )
 
             self.session.add(plenary_composition)
@@ -1298,11 +1301,11 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             if videos is not None:
                 self._process_deputy_videos(
                     videos,
-                    deputado.id,
+                    deputado.xml_source_id,  # Use Integer XML source ID, not UUID
                     self._safe_int(dep_cad_id),
                     dep_nome,
                     "Plenario",
-                    plenary.id,
+                    plenary.id_orgao,  # Use Integer organ ID, not UUID
                     plenary.sigla_legislatura,
                 )
 
@@ -1553,7 +1556,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 dep_cad_id=self._safe_int(dep_cad_id) if dep_cad_id else None,
                 dep_nome_parlamentar=dep_nome_parlamentar,
                 dep_nome_completo=dep_nome_completo,
-                org_id=plenary.id,  # Using plenary ID as org_id for I Legislature
+                org_id=plenary.id_orgao,  # Using plenary's XML ID as org_id (Integer)
             )
 
             self.session.add(composition)
@@ -2762,18 +2765,32 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
         1. (Deputado.nome OR Deputado.nome_completo) + group + date
         2. (Deputado.nome OR Deputado.nome_completo) only (legislature context)
 
+        Results are cached to avoid repeated expensive ilike queries for the same deputy.
+
         Returns:
             tuple: (dep_id, dep_cad_id) if found, (None, None) otherwise
         """
         if not nome_parlamentar:
             return None, None
 
+        # Check cache first - use (nome, grupo, leg_id) as key
+        # We cache by name+group+legislature, ignoring specific date for efficiency
+        cache_key = (nome_parlamentar.lower(), sigla_grupo, legislatura.id)
+        if cache_key in self._deputy_name_cache:
+            return self._deputy_name_cache[cache_key]
+
+        # Also check name-only cache key for fallback matches
+        cache_key_name_only = (nome_parlamentar.lower(), None, legislatura.id)
+        if cache_key_name_only in self._deputy_name_cache:
+            return self._deputy_name_cache[cache_key_name_only]
+
         try:
             # First tier: exact match with parliamentary group and date using nome OR nome_completo
             if sigla_grupo and dt_reuniao:
                 # Query deputy through parliamentary group membership for the given period
+                # Use xml_source_id (Integer) not id (UUID) since MeetingAttendance.dep_id expects Integer
                 query = (
-                    self.session.query(Deputado.id, Deputado.id_cadastro)
+                    self.session.query(Deputado.xml_source_id, Deputado.id_cadastro)
                     .join(
                         DeputyGPSituation, DeputyGPSituation.deputado_id == Deputado.id
                     )
@@ -2803,13 +2820,16 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 result = query.first()
                 if result:
                     logger.debug(
-                        f"Deputy matched via name+group+date: '{nome_parlamentar}' -> {result.id}"
+                        f"Deputy matched via name+group+date: '{nome_parlamentar}' -> {result.xml_source_id}"
                     )
-                    return result.id, result.id_cadastro
+                    # Cache the result for future lookups
+                    self._deputy_name_cache[cache_key] = (result.xml_source_id, result.id_cadastro)
+                    return result.xml_source_id, result.id_cadastro
 
             # Second tier: match by name only (nome OR nome_completo) in the same legislature
+            # Use xml_source_id (Integer) not id (UUID) since MeetingAttendance.dep_id expects Integer
             query = (
-                self.session.query(Deputado.id, Deputado.id_cadastro)
+                self.session.query(Deputado.xml_source_id, Deputado.id_cadastro)
                 .join(DeputyGPSituation, DeputyGPSituation.deputado_id == Deputado.id)
                 .filter(
                     or_(
@@ -2823,15 +2843,21 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             result = query.first()
             if result:
                 logger.debug(
-                    f"Deputy matched via name only: '{nome_parlamentar}' -> {result.id}"
+                    f"Deputy matched via name only: '{nome_parlamentar}' -> {result.xml_source_id}"
                 )
-                return result.id, result.id_cadastro
+                # Cache with name-only key for future lookups
+                self._deputy_name_cache[cache_key_name_only] = (result.xml_source_id, result.id_cadastro)
+                # Also cache with the original key so exact matches are found first
+                self._deputy_name_cache[cache_key] = (result.xml_source_id, result.id_cadastro)
+                return result.xml_source_id, result.id_cadastro
 
         except Exception as e:
             logger.warning(
                 f"Error matching deputy '{nome_parlamentar}' with group '{sigla_grupo}': {e}"
             )
 
+        # Cache negative result to avoid repeated failed lookups
+        self._deputy_name_cache[cache_key] = (None, None)
         return None, None
 
     def _process_meeting_attendance(

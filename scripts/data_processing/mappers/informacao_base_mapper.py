@@ -513,28 +513,56 @@ class InformacaoBaseMapper(SchemaMapper):
             if dep_cad_id is not None:
                 dep_cad_id = int(dep_cad_id)
 
-            # Check if deputy already exists (by id_cadastro across all legislatures first)
-            existing_deputy_global = (
-                self.session.query(Deputado).filter_by(id_cadastro=dep_cad_id).first()
-            )
-
-            if existing_deputy_global:
-                # Check if this specific legislature combination exists
-                existing_deputy_leg = (
-                    self.session.query(Deputado)
-                    .filter_by(id_cadastro=dep_cad_id, legislatura_id=legislatura.id)
-                    .first()
+            # Check cache first for this legislature-specific deputy
+            cache_key_leg = f"cadastro_{dep_cad_id}_leg_{legislatura.id}"
+            cached_deputy = self._deputado_cache.get(cache_key_leg)
+            if cached_deputy:
+                logger.debug(
+                    f"Deputy {dep_nome_parlamentar} found in cache for legislature {legislatura.numero}"
+                )
+                deputado = cached_deputy
+                deputado.nome = dep_nome_parlamentar
+                deputado.nome_completo = dep_nome_completo or dep_nome_parlamentar
+            else:
+                # Check if deputy already exists (by id_cadastro across all legislatures first)
+                existing_deputy_global = (
+                    self.session.query(Deputado).filter_by(id_cadastro=dep_cad_id).first()
                 )
 
-                if existing_deputy_leg:
-                    logger.debug(
-                        f"Deputy {dep_nome_parlamentar} already exists for legislature {legislatura.numero}"
+                if existing_deputy_global:
+                    # Check if this specific legislature combination exists
+                    existing_deputy_leg = (
+                        self.session.query(Deputado)
+                        .filter_by(id_cadastro=dep_cad_id, legislatura_id=legislatura.id)
+                        .first()
                     )
-                    deputado = existing_deputy_leg
-                    deputado.nome = dep_nome_parlamentar
-                    deputado.nome_completo = dep_nome_completo or dep_nome_parlamentar
+
+                    if existing_deputy_leg:
+                        logger.debug(
+                            f"Deputy {dep_nome_parlamentar} already exists for legislature {legislatura.numero}"
+                        )
+                        deputado = existing_deputy_leg
+                        deputado.nome = dep_nome_parlamentar
+                        deputado.nome_completo = dep_nome_completo or dep_nome_parlamentar
+                        # Cache for future lookups
+                        self._deputado_cache[cache_key_leg] = deputado
+                        self._cache_deputado(deputado)
+                    else:
+                        # Same deputy but different legislature - use enhanced method with XML context
+                        deputado = self._get_or_create_deputado(
+                            record_id=dep_id,
+                            id_cadastro=dep_cad_id,
+                            nome=dep_nome_parlamentar,
+                            nome_completo=dep_nome_completo or dep_nome_parlamentar,
+                            legislatura_id=None,  # Let the method determine from XML LegDes
+                            xml_context=deputado_element  # CRITICAL: Pass XML context for LegDes extraction
+                        )
+                        self.processed_deputies += 1
+                        # Cache for future lookups
+                        self._deputado_cache[cache_key_leg] = deputado
+                        self._cache_deputado(deputado)
                 else:
-                    # Same deputy but different legislature - use enhanced method with XML context
+                    # Completely new deputy - use enhanced method with XML context
                     deputado = self._get_or_create_deputado(
                         record_id=dep_id,
                         id_cadastro=dep_cad_id,
@@ -544,17 +572,9 @@ class InformacaoBaseMapper(SchemaMapper):
                         xml_context=deputado_element  # CRITICAL: Pass XML context for LegDes extraction
                     )
                     self.processed_deputies += 1
-            else:
-                # Completely new deputy - use enhanced method with XML context
-                deputado = self._get_or_create_deputado(
-                    record_id=dep_id,
-                    id_cadastro=dep_cad_id,
-                    nome=dep_nome_parlamentar,
-                    nome_completo=dep_nome_completo or dep_nome_parlamentar,
-                    legislatura_id=None,  # Let the method determine from XML LegDes
-                    xml_context=deputado_element  # CRITICAL: Pass XML context for LegDes extraction
-                )
-                self.processed_deputies += 1
+                    # Cache for future lookups
+                    self._deputado_cache[cache_key_leg] = deputado
+                    self._cache_deputado(deputado)
 
             # No flush needed - UUID id is generated client-side
 
@@ -622,28 +642,56 @@ class InformacaoBaseMapper(SchemaMapper):
             if dep_cad_id is not None:
                 dep_cad_id = int(dep_cad_id)
 
-            # Check if deputy already exists (by id_cadastro across all legislatures first)
-            existing_deputy_global = (
-                self.session.query(Deputado).filter_by(id_cadastro=dep_cad_id).first()
-            )
-
-            if existing_deputy_global:
-                # Check if this specific legislature combination exists
-                existing_deputy_leg = (
-                    self.session.query(Deputado)
-                    .filter_by(id_cadastro=dep_cad_id, legislatura_id=legislatura.id)
-                    .first()
+            # Check cache first for this legislature-specific deputy
+            cache_key_leg = f"cadastro_{dep_cad_id}_leg_{legislatura.id}"
+            cached_deputy = self._deputado_cache.get(cache_key_leg)
+            if cached_deputy:
+                logger.debug(
+                    f"I_Legislatura deputy {dep_nome_parlamentar} found in cache for legislature {legislatura.numero}"
+                )
+                deputado = cached_deputy
+                deputado.nome = dep_nome_parlamentar
+                deputado.nome_completo = dep_nome_completo or dep_nome_parlamentar
+            else:
+                # Check if deputy already exists (by id_cadastro across all legislatures first)
+                existing_deputy_global = (
+                    self.session.query(Deputado).filter_by(id_cadastro=dep_cad_id).first()
                 )
 
-                if existing_deputy_leg:
-                    logger.debug(
-                        f"I_Legislatura deputy {dep_nome_parlamentar} already exists for legislature {legislatura.numero}"
+                if existing_deputy_global:
+                    # Check if this specific legislature combination exists
+                    existing_deputy_leg = (
+                        self.session.query(Deputado)
+                        .filter_by(id_cadastro=dep_cad_id, legislatura_id=legislatura.id)
+                        .first()
                     )
-                    deputado = existing_deputy_leg
-                    deputado.nome = dep_nome_parlamentar
-                    deputado.nome_completo = dep_nome_completo or dep_nome_parlamentar
+
+                    if existing_deputy_leg:
+                        logger.debug(
+                            f"I_Legislatura deputy {dep_nome_parlamentar} already exists for legislature {legislatura.numero}"
+                        )
+                        deputado = existing_deputy_leg
+                        deputado.nome = dep_nome_parlamentar
+                        deputado.nome_completo = dep_nome_completo or dep_nome_parlamentar
+                        # Cache for future lookups
+                        self._deputado_cache[cache_key_leg] = deputado
+                        self._cache_deputado(deputado)
+                    else:
+                        # Same deputy but different legislature - use enhanced method with XML context
+                        deputado = self._get_or_create_deputado(
+                            record_id=dep_id,
+                            id_cadastro=dep_cad_id,
+                            nome=dep_nome_parlamentar,
+                            nome_completo=dep_nome_completo or dep_nome_parlamentar,
+                            legislatura_id=None,  # Let the method determine from XML LegDes
+                            xml_context=deputado_element  # CRITICAL: Pass XML context for LegDes extraction
+                        )
+                        self.processed_deputies += 1
+                        # Cache for future lookups
+                        self._deputado_cache[cache_key_leg] = deputado
+                        self._cache_deputado(deputado)
                 else:
-                    # Same deputy but different legislature - use enhanced method with XML context
+                    # Completely new deputy - use enhanced method with XML context
                     deputado = self._get_or_create_deputado(
                         record_id=dep_id,
                         id_cadastro=dep_cad_id,
@@ -653,17 +701,9 @@ class InformacaoBaseMapper(SchemaMapper):
                         xml_context=deputado_element  # CRITICAL: Pass XML context for LegDes extraction
                     )
                     self.processed_deputies += 1
-            else:
-                # Completely new deputy - use enhanced method with XML context
-                deputado = self._get_or_create_deputado(
-                    record_id=dep_id,
-                    id_cadastro=dep_cad_id,
-                    nome=dep_nome_parlamentar,
-                    nome_completo=dep_nome_completo or dep_nome_parlamentar,
-                    legislatura_id=None,  # Let the method determine from XML LegDes
-                    xml_context=deputado_element  # CRITICAL: Pass XML context for LegDes extraction
-                )
-                self.processed_deputies += 1
+                    # Cache for future lookups
+                    self._deputado_cache[cache_key_leg] = deputado
+                    self._cache_deputado(deputado)
 
             # No flush needed - UUID id is generated client-side
 

@@ -399,9 +399,10 @@ class ImportProcessor:
                         record_id = download_queue.get(timeout=0.5)
                         from_queue = True
                     except Empty:
-                        # If no files in download queue, check for any pending files (filtered by file type)
+                        # If no files in download queue, check for any pending or errored files (filtered by file type)
+                        # Include import_error so errored files get reprocessed in the predefined order
                         query = db_session.query(ImportStatus).filter(
-                            ImportStatus.status == 'pending'
+                            ImportStatus.status.in_(['pending', 'import_error'])
                         )
                         
                         # Apply file type filter
@@ -448,6 +449,13 @@ class ImportProcessor:
                         if success:
                             stats.add_message(f"SUCCESS: {import_record.file_name} ({import_record.records_imported or 0} records)", priority='success')
                             # Commit successful import to database
+                            db_session.commit()
+                        elif import_record.status == 'skipped':
+                            # Permanently skipped files (corrupted source) - not a real error
+                            error_msg = import_record.error_message or "Corrupted source data"
+                            stats.add_message(f"SKIPPED: {import_record.file_name}", priority='warning')
+                            stats.add_message(f"  Reason: {error_msg}", priority='warning')
+                            # Commit skipped status to database (don't set error_occurred)
                             db_session.commit()
                         else:
                             error_msg = import_record.error_message or "Unknown error"
@@ -949,7 +957,7 @@ The service respects rate limits and uses exponential backoff to avoid overwhelm
                         ).count()
                         
                         self.stats.import_queue_size = base_query.filter(
-                            ImportStatus.status == 'pending'
+                            ImportStatus.status.in_(['pending', 'import_error'])
                         ).count()
                         
                         # Update completion statistics

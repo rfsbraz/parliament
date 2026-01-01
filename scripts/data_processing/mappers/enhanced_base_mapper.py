@@ -1031,7 +1031,7 @@ class EnhancedSchemaMapper(
         self, cad_id: int, nome_completo: str = None, nome_parlamentar: str = None, legislatura_id: int = None
     ) -> Deputado:
         """
-        Robust deputy matching with cadastral ID change tracking.
+        Robust deputy matching with cadastral ID change tracking and caching.
 
         This method handles cases where deputy cadastral IDs change over time by implementing
         a multi-level matching strategy and tracking identity mappings.
@@ -1048,15 +1048,27 @@ class EnhancedSchemaMapper(
         Raises:
             ValueError: If no deputy can be matched using any strategy
         """
+        # Step 0: Check cache first - avoid database queries for known deputies
+        cache_key = f"cadastro_{cad_id}"
+        if legislatura_id is not None:
+            cache_key = f"cadastro_{cad_id}_leg_{legislatura_id}"
+
+        cached = self._deputado_cache.get(cache_key)
+        if cached:
+            return cached
+
         # Step 1: Try direct cadastral ID lookup within the current legislature
         query = self.session.query(Deputado).filter(Deputado.id_cadastro == cad_id)
-        
+
         # CRITICAL FIX: Scope to specific legislature if provided
         if legislatura_id is not None:
             query = query.filter(Deputado.legislatura_id == legislatura_id)
-        
+
         deputy = query.first()
         if deputy:
+            # Cache for future lookups
+            self._deputado_cache[cache_key] = deputy
+            self._cache_deputado(deputy)
             return deputy
 
         # Step 2: Check if this cadastral ID is mapped to another ID
@@ -1069,21 +1081,32 @@ class EnhancedSchemaMapper(
         if identity_mapping:
             # Try to find deputy with the new cadastral ID within the current legislature
             query = self.session.query(Deputado).filter(Deputado.id_cadastro == identity_mapping.new_cad_id)
-            
+
             if legislatura_id is not None:
                 query = query.filter(Deputado.legislatura_id == legislatura_id)
-                
+
             deputy = query.first()
             if deputy:
                 logger.info(
                     f"Found deputy via identity mapping: old_cad_id={cad_id} -> new_cad_id={identity_mapping.new_cad_id}"
                 )
+                # Cache for future lookups (both old and new cad_id)
+                self._deputado_cache[cache_key] = deputy
+                self._cache_deputado(deputy)
                 return deputy
 
         # Step 3: Fallback to name-based matching if names are provided
         if nome_completo or nome_parlamentar:
+            # Check name-based cache first
+            name_cache_key = None
+            if nome_completo:
+                name_cache_key = f"nome_{nome_completo.lower()}_leg_{legislatura_id}"
+                cached = self._deputado_cache.get(name_cache_key)
+                if cached:
+                    return cached
+
             query = self.session.query(Deputado)
-            
+
             # Scope to current legislature if provided
             if legislatura_id is not None:
                 query = query.filter(Deputado.legislatura_id == legislatura_id)
@@ -1102,10 +1125,20 @@ class EnhancedSchemaMapper(
                     logger.info(
                         f"Deputy found by full name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_completo})"
                     )
+                    # Cache for future lookups
+                    self._deputado_cache[cache_key] = deputy
+                    if name_cache_key:
+                        self._deputado_cache[name_cache_key] = deputy
+                    self._cache_deputado(deputy)
                     return deputy
 
             # Try parliamentary name match
             if nome_parlamentar:
+                parl_name_cache_key = f"nome_parl_{nome_parlamentar.lower()}_leg_{legislatura_id}"
+                cached = self._deputado_cache.get(parl_name_cache_key)
+                if cached:
+                    return cached
+
                 deputy = query.filter(
                     Deputado.nome.ilike(f"%{nome_parlamentar}%")
                 ).first()
@@ -1118,6 +1151,10 @@ class EnhancedSchemaMapper(
                     logger.info(
                         f"Deputy found by parliamentary name match - recording identity mapping: old_cad_id={deputy.id_cadastro} -> new_cad_id={cad_id} ({nome_parlamentar})"
                     )
+                    # Cache for future lookups
+                    self._deputado_cache[cache_key] = deputy
+                    self._deputado_cache[parl_name_cache_key] = deputy
+                    self._cache_deputado(deputy)
                     return deputy
 
         # Step 4: No match found using any strategy
@@ -1127,7 +1164,7 @@ class EnhancedSchemaMapper(
         if nome_parlamentar:
             names.append(f"nome_parlamentar='{nome_parlamentar}'")
         name_info = " (" + ", ".join(names) + ")" if names else ""
-        
+
         legislature_info = f" in legislature {legislatura_id}" if legislatura_id else ""
 
         raise ValueError(
