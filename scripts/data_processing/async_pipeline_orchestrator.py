@@ -644,41 +644,21 @@ class AsyncPipelineOrchestrator:
                 await asyncio.sleep(1)
 
     async def _import_worker(self):
-        """Background worker for parallel imports"""
-        while self._running and not self._error_paused:
-            try:
-                # Get files to import
-                with DatabaseSession() as db_session:
-                    query = db_session.query(ImportStatus).filter(
-                        ImportStatus.status.in_(['pending', 'import_error'])
-                    )
-                    if self.allowed_file_types:
-                        query = query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
+        """Coordinator that spawns individual import workers with a shared queue"""
+        # Create a queue for files to import
+        import_queue = asyncio.Queue()
 
-                    files_to_import = query.order_by(
-                        ImportStatus.category,
-                        ImportStatus.legislatura,
-                        ImportStatus.file_name
-                    ).limit(self.max_concurrent_imports).all()
-
-                    if not files_to_import:
-                        await asyncio.sleep(1)
+        async def single_worker(worker_num: int):
+            """Individual worker that continuously processes files from queue"""
+            while self._running and not self._error_paused:
+                try:
+                    # Get next file from queue (with timeout to check running status)
+                    try:
+                        file_info = await asyncio.wait_for(import_queue.get(), timeout=1.0)
+                    except asyncio.TimeoutError:
                         continue
 
-                    # Mark files as processing and store info
-                    file_infos = []
-                    for record in files_to_import:
-                        record.status = 'processing'
-                        file_infos.append({
-                            'status_id': record.id,
-                            'file_path': record.file_path,
-                            'file_name': record.file_name,
-                            'category': record.category or ""
-                        })
-                    db_session.commit()
-
-                # Process imports with worker tracking
-                async def import_with_tracking(file_info):
+                    # Process the file
                     worker_id = self.stats.start_import(file_info['file_name'], file_info['category'])
                     try:
                         result = await self._import_processor.process_file(
@@ -687,41 +667,90 @@ class AsyncPipelineOrchestrator:
                             file_info['file_name'],
                             file_info['category']
                         )
-                        return result
+
+                        # Update stats immediately
+                        if result.success:
+                            self.stats.import_completed += 1
+                            self.stats.total_records_imported += result.records_imported
+                            self.stats.add_message(f"SUCCESS: {result.file_name} ({result.records_imported} records)", priority='success')
+                        elif result.was_skipped:
+                            self.stats.import_skipped += 1
+                        else:
+                            self.stats.import_failed += 1
+                            err_msg = result.error_message or "Unknown error"
+                            self.stats.add_message(f"FAILED: {result.file_name} - {err_msg}", priority='error')
+                            self.stats.error_occurred = True
+
+                    except Exception as e:
+                        self.stats.import_failed += 1
+                        self.stats.add_message(f"Import exception: {str(e)}", priority='error')
+                        self.stats.error_occurred = True
                     finally:
                         self.stats.end_import(worker_id)
+                        import_queue.task_done()
 
-                # Process all concurrently
-                tasks = [import_with_tracking(f) for f in file_infos]
-                results = await asyncio.gather(*tasks, return_exceptions=True)
+                except asyncio.CancelledError:
+                    break
+                except Exception as e:
+                    self.stats.add_message(f"Worker {worker_num} error: {str(e)}", priority='error')
+                    await asyncio.sleep(0.5)
 
-                # Update stats
-                for result in results:
-                    if isinstance(result, Exception):
-                        self.stats.import_failed += 1
-                        self.stats.add_message(f"Import exception: {str(result)}", priority='error')
-                        self.stats.error_occurred = True
-                        continue
+        async def queue_feeder():
+            """Feeds files into the queue as workers become available"""
+            while self._running and not self._error_paused:
+                try:
+                    # Only fetch more if queue is getting low
+                    if import_queue.qsize() < self.max_concurrent_imports:
+                        # Calculate how many to fetch
+                        fetch_count = self.max_concurrent_imports - import_queue.qsize()
 
-                    if result.success:
-                        self.stats.import_completed += 1
-                        self.stats.total_records_imported += result.records_imported
-                        self.stats.add_message(f"SUCCESS: {result.file_name} ({result.records_imported} records)", priority='success')
-                    elif result.was_skipped:
-                        self.stats.import_skipped += 1
-                    else:
-                        self.stats.import_failed += 1
-                        err_msg = result.error_message or "Unknown error"
-                        # Pass full error message - UI will handle wrapping
-                        self.stats.add_message(f"FAILED: {result.file_name} - {err_msg}", priority='error')
-                        self.stats.error_occurred = True
+                        with DatabaseSession() as db_session:
+                            query = db_session.query(ImportStatus).filter(
+                                ImportStatus.status.in_(['pending', 'import_error'])
+                            )
+                            if self.allowed_file_types:
+                                query = query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
 
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                self.stats.add_message(f"Import worker error: {str(e)}", priority='error')
-                self.stats.error_occurred = True
-                await asyncio.sleep(1)
+                            files_to_import = query.order_by(
+                                ImportStatus.category,
+                                ImportStatus.legislatura,
+                                ImportStatus.file_name
+                            ).limit(fetch_count).all()
+
+                            if files_to_import:
+                                # Mark files as processing and queue them
+                                for record in files_to_import:
+                                    record.status = 'processing'
+                                    await import_queue.put({
+                                        'status_id': record.id,
+                                        'file_path': record.file_path,
+                                        'file_name': record.file_name,
+                                        'category': record.category or ""
+                                    })
+                                db_session.commit()
+
+                    await asyncio.sleep(0.5)  # Check for more work periodically
+
+                except asyncio.CancelledError:
+                    break
+                except Exception as e:
+                    self.stats.add_message(f"Queue feeder error: {str(e)}", priority='error')
+                    await asyncio.sleep(1)
+
+        # Start worker tasks and feeder
+        workers = [asyncio.create_task(single_worker(i)) for i in range(self.max_concurrent_imports)]
+        feeder = asyncio.create_task(queue_feeder())
+
+        try:
+            # Wait for all tasks (they run until cancelled)
+            await asyncio.gather(feeder, *workers, return_exceptions=True)
+        except asyncio.CancelledError:
+            pass
+        finally:
+            # Cancel all tasks on shutdown
+            feeder.cancel()
+            for w in workers:
+                w.cancel()
 
     async def _stats_updater(self):
         """Background task to update statistics from database"""
