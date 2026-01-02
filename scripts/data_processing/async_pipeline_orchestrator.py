@@ -345,10 +345,10 @@ class AsyncPipelineOrchestrator:
             Layout(name="workers", ratio=1)
         )
 
-        # Right: pending + activity
+        # Right: pending + activity (activity gets more space for error details)
         layout["right"].split_column(
             Layout(name="pending", ratio=1),
-            Layout(name="activity", ratio=1)
+            Layout(name="activity", ratio=2)  # More space for error messages
         )
 
         return layout
@@ -493,25 +493,28 @@ class AsyncPipelineOrchestrator:
         # Show last full error at the top if available
         if self.stats.last_full_error:
             activity_lines.append("[bold red]LAST ERROR:[/bold red]")
-            # Word-wrap long error messages (max ~90 chars per line)
+            # Word-wrap long error messages (max ~120 chars per line for wider terminals)
             error_text = self.stats.last_full_error
-            while len(error_text) > 90:
+            max_error_lines = 8  # Show up to 8 lines of error detail
+            lines_added = 0
+            while len(error_text) > 120 and lines_added < max_error_lines:
                 # Find a good break point
-                break_point = error_text.rfind(' ', 0, 90)
+                break_point = error_text.rfind(' ', 0, 120)
                 if break_point == -1:
-                    break_point = 90
+                    break_point = 120
                 activity_lines.append(f"[red]{error_text[:break_point]}[/red]")
                 error_text = error_text[break_point:].lstrip()
-            if error_text:
+                lines_added += 1
+            if error_text and lines_added < max_error_lines:
                 activity_lines.append(f"[red]{error_text}[/red]")
+            elif error_text:
+                activity_lines.append(f"[red]... (truncated)[/red]")
             activity_lines.append("")
 
         if self.stats.recent_messages:
-            max_recent = 6 if self.stats.last_full_error else 10
+            max_recent = 5 if self.stats.last_full_error else 10
             for msg in self.stats.recent_messages[-max_recent:]:
-                # Increase limit for better visibility
-                if len(msg) > 120:
-                    msg = msg[:117] + "..."
+                # Show full message without truncation for better debugging
                 activity_lines.append(msg)
         elif not self.stats.last_full_error:
             activity_lines.append("[dim]Waiting for activity...[/dim]")
