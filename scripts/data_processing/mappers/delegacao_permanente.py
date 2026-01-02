@@ -94,10 +94,12 @@ logger = logging.getLogger(__name__)
 
 class DelegacaoPermanenteMapper(SchemaMapper):
     """Schema mapper for parliamentary permanent delegation files"""
-    
+
     def __init__(self, session):
         # Accept SQLAlchemy session directly (passed by unified importer)
         super().__init__(session)
+        # Cache for delegation records to avoid duplicate inserts within same file
+        self._delegacao_cache = {}  # delegacao_id -> DelegacaoPermanente
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -188,21 +190,29 @@ class DelegacaoPermanenteMapper(SchemaMapper):
             nome = self._get_text_value(delegation, 'Nome')
             sessao = self._get_text_value(delegation, 'Sessao')
             data_eleicao_str = self._get_text_value(delegation, 'DataEleicao')
-            
+
             if not nome:
                 logger.debug("Missing Nome field - importing with placeholder")
                 nome = "DELEGACAO_SEM_NOME"
-            
+
             # Parse election date
             data_eleicao = self._parse_date(data_eleicao_str)
-            
-            # Check if delegation already exists
+
+            # Check cache first, then database, use upsert for parallel safety
             existing = None
             if id_externo:
-                existing = self.session.query(DelegacaoPermanente).filter_by(
-                    delegacao_id=id_externo
-                ).first()
-            
+                # Check in-memory cache first (for records added in this session)
+                if id_externo in self._delegacao_cache:
+                    existing = self._delegacao_cache[id_externo]
+                else:
+                    # Check database
+                    existing = self.session.query(DelegacaoPermanente).filter_by(
+                        delegacao_id=id_externo
+                    ).first()
+                    if existing:
+                        # Add to cache for future lookups
+                        self._delegacao_cache[id_externo] = existing
+
             if existing:
                 # Update existing record
                 existing.nome = nome
@@ -210,32 +220,53 @@ class DelegacaoPermanenteMapper(SchemaMapper):
                 existing.data_eleicao = data_eleicao
                 existing.legislatura_id = legislatura.id
             else:
-                # Create new delegation record
-                delegacao = DelegacaoPermanente(
-                    id=uuid.uuid4(),
+                # Use upsert for parallel-safe insert (handles race conditions)
+                from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+                new_id = uuid.uuid4()
+                stmt = pg_insert(DelegacaoPermanente).values(
+                    id=new_id,
                     delegacao_id=id_externo,
                     nome=nome,
                     sessao=sessao,
                     data_eleicao=data_eleicao,
                     legislatura_id=legislatura.id
-                )
-                self.session.add(delegacao)
-                existing = delegacao
-            
+                ).on_conflict_do_update(
+                    index_elements=['delegacao_id'],
+                    set_={
+                        'nome': nome,
+                        'sessao': sessao,
+                        'data_eleicao': data_eleicao,
+                        'legislatura_id': legislatura.id
+                    }
+                ).returning(DelegacaoPermanente.id)
+
+                result = self.session.execute(stmt)
+                returned_id = result.scalar()
+
+                # Fetch the record (either newly inserted or existing)
+                existing = self.session.query(DelegacaoPermanente).filter_by(
+                    delegacao_id=id_externo
+                ).first()
+
+                # Add to cache
+                if id_externo and existing:
+                    self._delegacao_cache[id_externo] = existing
+
             # Process members
             composicao = delegation.find('Composicao')
             if composicao is not None:
                 for member in composicao.findall('DelegacaoPermanenteMembroOut'):
                     self._process_delegation_member(member, existing)
-            
+
             # Process commissions (XIII Legislature)
             comissoes = delegation.find('Comissoes')
             if comissoes is not None:
                 for comissao in comissoes.findall('Comissao'):
                     self._process_delegation_commission(comissao, existing)
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Error processing permanent delegation: {e}")
             return False

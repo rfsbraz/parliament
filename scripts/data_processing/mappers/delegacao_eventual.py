@@ -65,18 +65,20 @@ logger = logging.getLogger(__name__)
 class DelegacaoEventualMapper(SchemaMapper):
     """
     Schema mapper for parliamentary eventual delegation files (DelegacaoEventual*.xml)
-    
+
     Processes ArrayOfReuniao XML structure containing sporadic delegation meetings:
     - Meeting/delegation event records with dates, locations, and legislative session info
     - Participant lists with deputy identification and parliamentary group affiliation
     - Maps to comprehensive SQLAlchemy ORM models for zero data loss
-    
+
     Based on official Parliament documentation identical across IX-XIII legislatures.
     """
-    
+
     def __init__(self, session):
         # Accept SQLAlchemy session directly (passed by unified importer)
         super().__init__(session)
+        # Cache for delegation records to avoid duplicate inserts within same file
+        self._delegacao_cache = {}  # delegacao_id -> DelegacaoEventual
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -155,22 +157,30 @@ class DelegacaoEventualMapper(SchemaMapper):
             sessao = self._get_int_value(delegation_event, 'Sessao')
             data_inicio_str = self._get_text_value(delegation_event, 'DataInicio')
             data_fim_str = self._get_text_value(delegation_event, 'DataFim')
-            
+
             if not nome:
                 logger.debug("Missing Nome field - importing with placeholder")
                 nome = "DELEGACAO_EVENTUAL_SEM_NOME"
-            
+
             # Parse dates
             data_inicio = self._parse_date(data_inicio_str)
             data_fim = self._parse_date(data_fim_str)
-            
-            # Check if delegation already exists
+
+            # Check cache first, then database, use upsert for parallel safety
             existing = None
             if id_externo:
-                existing = self.session.query(DelegacaoEventual).filter_by(
-                    delegacao_id=id_externo
-                ).first()
-            
+                # Check in-memory cache first (for records added in this session)
+                if id_externo in self._delegacao_cache:
+                    existing = self._delegacao_cache[id_externo]
+                else:
+                    # Check database
+                    existing = self.session.query(DelegacaoEventual).filter_by(
+                        delegacao_id=id_externo
+                    ).first()
+                    if existing:
+                        # Add to cache for future lookups
+                        self._delegacao_cache[id_externo] = existing
+
             if existing:
                 # Update existing record
                 existing.nome = nome
@@ -180,9 +190,12 @@ class DelegacaoEventualMapper(SchemaMapper):
                 existing.data_fim = data_fim
                 existing.legislatura_id = legislatura.id
             else:
-                # Create new delegation record
-                delegacao = DelegacaoEventual(
-                    id=uuid.uuid4(),
+                # Use upsert for parallel-safe insert (handles race conditions)
+                from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+                new_id = uuid.uuid4()
+                stmt = pg_insert(DelegacaoEventual).values(
+                    id=new_id,
                     delegacao_id=id_externo,
                     nome=nome,
                     local=local,
@@ -190,15 +203,35 @@ class DelegacaoEventualMapper(SchemaMapper):
                     data_inicio=data_inicio,
                     data_fim=data_fim,
                     legislatura_id=legislatura.id
-                )
-                self.session.add(delegacao)
-                existing = delegacao
-            
+                ).on_conflict_do_update(
+                    index_elements=['delegacao_id'],
+                    set_={
+                        'nome': nome,
+                        'local': local,
+                        'sessao': sessao,
+                        'data_inicio': data_inicio,
+                        'data_fim': data_fim,
+                        'legislatura_id': legislatura.id
+                    }
+                ).returning(DelegacaoEventual.id)
+
+                result = self.session.execute(stmt)
+                returned_id = result.scalar()
+
+                # Fetch the record (either newly inserted or existing)
+                existing = self.session.query(DelegacaoEventual).filter_by(
+                    delegacao_id=id_externo
+                ).first()
+
+                # Add to cache
+                if id_externo and existing:
+                    self._delegacao_cache[id_externo] = existing
+
             # Process participants
             self._process_delegation_participants(delegation_event, existing)
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Error processing delegation event: {e}")
             return False

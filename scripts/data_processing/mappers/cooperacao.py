@@ -30,10 +30,12 @@ logger = logging.getLogger(__name__)
 
 class CooperacaoMapper(SchemaMapper):
     """Schema mapper for parliamentary cooperation files"""
-    
+
     def __init__(self, session):
         # Accept SQLAlchemy session directly (passed by unified importer)
         super().__init__(session)
+        # Cache for cooperacao records to avoid duplicate inserts within same file
+        self._cooperacao_cache = {}  # cooperacao_id -> CooperacaoParlamentar
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -139,21 +141,29 @@ class CooperacaoMapper(SchemaMapper):
             sessao = self._get_int_value(cooperacao_item, 'Sessao')
             data_str = self._get_text_value(cooperacao_item, 'Data')
             local = self._get_text_value(cooperacao_item, 'Local')
-            
+
             if not nome:
                 logger.debug("Missing Nome field - importing with placeholder")
                 nome = "COOPERACAO_SEM_NOME"
-            
+
             # Parse date
             data = self._parse_date(data_str)
-            
-            # Check if record already exists
+
+            # Check cache first, then database, use upsert for parallel safety
             existing = None
             if id_externo:
-                existing = self.session.query(CooperacaoParlamentar).filter_by(
-                    cooperacao_id=id_externo
-                ).first()
-            
+                # Check in-memory cache first (for records added in this session)
+                if id_externo in self._cooperacao_cache:
+                    existing = self._cooperacao_cache[id_externo]
+                else:
+                    # Check database
+                    existing = self.session.query(CooperacaoParlamentar).filter_by(
+                        cooperacao_id=id_externo
+                    ).first()
+                    if existing:
+                        # Add to cache for future lookups
+                        self._cooperacao_cache[id_externo] = existing
+
             if existing:
                 # Update existing record
                 existing.tipo = tipo
@@ -163,9 +173,12 @@ class CooperacaoMapper(SchemaMapper):
                 existing.local = local
                 existing.legislatura_id = legislatura.id
             else:
-                # Create new record
-                cooperacao = CooperacaoParlamentar(
-                    id=uuid.uuid4(),
+                # Use upsert for parallel-safe insert (handles race conditions)
+                from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+                new_id = uuid.uuid4()
+                stmt = pg_insert(CooperacaoParlamentar).values(
+                    id=new_id,
                     cooperacao_id=id_externo,
                     tipo=tipo,
                     nome=nome,
@@ -173,28 +186,48 @@ class CooperacaoMapper(SchemaMapper):
                     data=data,
                     local=local,
                     legislatura_id=legislatura.id
-                )
-                self.session.add(cooperacao)
-                existing = cooperacao
-            
+                ).on_conflict_do_update(
+                    index_elements=['cooperacao_id'],
+                    set_={
+                        'tipo': tipo,
+                        'nome': nome,
+                        'sessao': sessao,
+                        'data': data,
+                        'local': local,
+                        'legislatura_id': legislatura.id
+                    }
+                ).returning(CooperacaoParlamentar.id)
+
+                result = self.session.execute(stmt)
+                returned_id = result.scalar()
+
+                # Fetch the record (either newly inserted or existing)
+                existing = self.session.query(CooperacaoParlamentar).filter_by(
+                    cooperacao_id=id_externo
+                ).first()
+
+                # Add to cache
+                if id_externo and existing:
+                    self._cooperacao_cache[id_externo] = existing
+
             # Process programs and activities
             self._process_cooperation_programs(cooperacao_item, existing)
             self._process_cooperation_activities(cooperacao_item, existing)
-            
+
             # Process nested programs
             programas = cooperacao_item.find('Programas')
             if programas is not None:
                 for programa in programas.findall('CooperacaoOut'):
                     self._process_cooperacao_item(programa, legislatura)
-            
-            # Process nested activities  
+
+            # Process nested activities
             atividades = cooperacao_item.find('Atividades')
             if atividades is not None:
                 for atividade in atividades.findall('CooperacaoAtividade'):
                     self._process_cooperacao_atividade(atividade, existing)
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Error processing cooperation item: {e}")
             return False

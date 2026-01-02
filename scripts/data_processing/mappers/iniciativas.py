@@ -1018,10 +1018,10 @@ class InitiativasMapper(SchemaMapper):
 
         comissao_obj = IniciativaEventoComissao(
             evento_id=evento_obj.id,
-            com_id=data['com_id'],
-            com_nome=data['com_nome'],
-            com_competente=data['com_competente'],
-            data_baixa=data['data_baixa'],
+            id_comissao=data['com_id'],
+            nome=data['com_nome'],
+            competente=data['com_competente'],
+            data_distribuicao=data['data_baixa'],
             data_relatorio=data['data_relatorio'],
             data_parecer=data['data_parecer'],
             obs=data['obs'],
@@ -1124,11 +1124,11 @@ class InitiativasMapper(SchemaMapper):
         recurso_deputados = evento_xml.find('RecursoDeputados')
         if recurso_deputados is not None:
             for string_elem in recurso_deputados.findall('string'):
-                deputado_nome = string_elem.text
-                if deputado_nome:
+                deputado_info = string_elem.text
+                if deputado_info:
                     recurso_obj = IniciativaEventoRecursoDeputado(
                         evento_id=evento_obj.id,
-                        deputado_nome=deputado_nome
+                        deputado_info=deputado_info
                     )
                     self.session.add(recurso_obj)
 
@@ -1144,9 +1144,9 @@ class InitiativasMapper(SchemaMapper):
                 conjunta_obj = IniciativaConjunta(
                     evento_id=evento_obj.id,
                     ini_id=ini_id,
-                    ini_titulo=ini_titulo,
-                    ini_nr=ini_nr,
-                    ini_tipo=ini_tipo
+                    titulo=ini_titulo,
+                    nr=ini_nr,
+                    tipo=ini_tipo
                 )
                 self.session.add(conjunta_obj)
 
@@ -1267,8 +1267,8 @@ class InitiativasMapper(SchemaMapper):
                 subcom_obj = IniciativaComissaoDistribuicaoSubcomissao(
                     comissao_id=comissao_obj.id,
                     subcomissao_id=subcom_id,
-                    subcomissao_nome=subcom_nome,
-                    data_baixa=data_baixa
+                    nome=subcom_nome,
+                    data_distribuicao=data_baixa
                 )
                 self.session.add(subcom_obj)
 
@@ -1299,7 +1299,7 @@ class InitiativasMapper(SchemaMapper):
 
                 audiencia_obj = IniciativaComissaoAudiencia(
                     comissao_id=comissao_obj.id,
-                    data_atividade=data_atividade,
+                    data=data_atividade,
                     descricao=descricao
                 )
                 self.session.add(audiencia_obj)
@@ -1313,7 +1313,7 @@ class InitiativasMapper(SchemaMapper):
 
                 audicao_obj = IniciativaComissaoAudicao(
                     comissao_id=comissao_obj.id,
-                    data_atividade=data_atividade,
+                    data=data_atividade,
                     descricao=descricao
                 )
                 self.session.add(audicao_obj)
@@ -1328,9 +1328,9 @@ class InitiativasMapper(SchemaMapper):
 
                 doc_obj = IniciativaComissaoDocumento(
                     comissao_id=comissao_obj.id,
-                    doc_nome=doc_nome,
+                    titulo_documento=doc_nome,
                     doc_link=doc_link,
-                    doc_tipo=doc_tipo
+                    tipo_documento=doc_tipo
                 )
                 self.session.add(doc_obj)
 

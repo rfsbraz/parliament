@@ -183,12 +183,13 @@ def create_database_engine(echo: bool = False):
     """Create and return a PostgreSQL database engine with connection pooling."""
     url = get_database_url()
     
-    # PostgreSQL-only configuration - Balanced pooling for 30 connection limit
+    # PostgreSQL-only configuration - Increased pooling for async pipeline
+    # Supports concurrent downloads (5) + parallel imports (8) + overhead
     engine_kwargs = {
         'echo': echo,
         'pool_pre_ping': True,  # Verify connections before use
-        'pool_size': 5,  # Base connection pool size
-        'max_overflow': 10,  # Allow overflow connections when needed
+        'pool_size': 8,  # Increased for parallel processing
+        'max_overflow': 12,  # Allow overflow connections (20 total)
         'pool_timeout': 30,  # Increased timeout for spot instances
         'pool_recycle': 300,  # Recycle connections every 5 minutes
         'pool_reset_on_return': 'commit',  # Reset connections more aggressively

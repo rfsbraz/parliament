@@ -4625,6 +4625,11 @@ class IniciativaEventoComissao(Base):
     data_agendamento_plenario = Column(Text)
     data_motivo_nao_parecer = Column(Date)  # XII Legislature - DataMotivoNaoParecer
     motivo_nao_parecer = Column(Text)  # XII Legislature - MotivoNaoParecer
+    # Additional fields from XML
+    data_relatorio = Column(Date)  # dataRelatorio from XML
+    data_parecer = Column(Date)  # dataParecer from XML
+    obs = Column(Text)  # obs from XML
+    link_parecer = Column(Text)  # linkParecer from XML
 
     # Relationships
     evento = relationship("IniciativaEvento", back_populates="comissoes")
@@ -4899,8 +4904,12 @@ class IniciativaAnexo(Base):
     anexo_fich = Column(Text)  # File path/name
     link = Column(Text)  # Link to attachment
 
+    # Optional link to event phase (AnexosFase - IX Legislature feature)
+    fase_evento_id = Column(GUID(), ForeignKey("iniciativas_eventos.id"), nullable=True)
+
     # Relationships
     iniciativa = relationship("IniciativaParlamentar", backref="anexos")
+    fase_evento = relationship("IniciativaEvento", backref="iniciativa_anexos_fase")
 
 
 class IniciativaOradorVideoLink(Base):
@@ -4979,8 +4988,9 @@ class IniciativaComissaoDocumento(Base):
     )
 
     # Document fields from Documentos.DocsOut
-    titulo_documento = Column(Text)  # Document title
-    tipo_documento = Column(Text)  # Document type
+    titulo_documento = Column(Text)  # Document title (docNome)
+    tipo_documento = Column(Text)  # Document type (docTipo)
+    doc_link = Column(Text)  # Link to document
 
     # Relationships
     comissao = relationship("IniciativaEventoComissao", backref="documentos")
@@ -4998,7 +5008,8 @@ class IniciativaComissaoAudiencia(Base):
 
     # Hearing fields from Audiencias.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut
     audiencia_id = Column(Integer)  # Hearing ID
-    data = Column(Date)  # Hearing date
+    data = Column(Date)  # Hearing date (dataActividade)
+    descricao = Column(Text)  # Description of the hearing
 
     # Relationships
     comissao = relationship("IniciativaEventoComissao", backref="audiencias")
@@ -5015,7 +5026,8 @@ class IniciativaComissaoAudicao(Base):
     )
 
     # Audition fields from Audicoes.pt_gov_ar_objectos_iniciativas_ActividadesRelacionadasOut
-    data = Column(Date)  # Audition date
+    data = Column(Date)  # Audition date (dataActividade)
+    descricao = Column(Text)  # Description of the audition
 
     # Relationships
     comissao = relationship("IniciativaEventoComissao", backref="audicoes")
@@ -5033,6 +5045,12 @@ class IniciativaEventoPeticaoConjunta(Base):
     leg = Column(Text)  # Legislature
     nr = Column(Integer)  # Petition number
     titulo = Column(Text)  # Petition title
+
+    # Additional fields from IX Legislature format
+    peticao_id = Column(Integer)  # iniId - Internal petition ID
+    peticao_titulo = Column(Text)  # iniTitulo - Petition title (alternative field)
+    peticao_nr = Column(Text)  # iniNr - Petition number as text
+    peticao_tipo = Column(Text)  # iniTipo - Petition type
 
     # Relationships
     evento = relationship("IniciativaEvento", backref="peticoes_conjuntas")

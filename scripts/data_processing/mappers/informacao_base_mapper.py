@@ -46,6 +46,7 @@ from database.models import (
     Legislatura,
     Partido,
 )
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,9 @@ class InformacaoBaseMapper(SchemaMapper):
         self.processed_deputies = 0
         self.processed_gp_situations = 0
         self.processed_deputy_situations = 0
+        # Caches for parallel-safe processing
+        self._partido_cache = {}  # sigla -> Partido
+        self._circulo_cache = {}  # designacao -> CirculoEleitoral
 
     def get_expected_fields(self) -> Set[str]:
         """Define expected XML fields for validation"""
@@ -389,10 +393,19 @@ class InformacaoBaseMapper(SchemaMapper):
                         logger.warning(f"Failed to process coalition: {sigla} ({nome})")
                         
                 else:
-                    # Process as individual party
-                    existing_party = (
-                        self.session.query(Partido).filter_by(sigla=sigla).first()
-                    )
+                    # Process as individual party with cache and upsert for parallel safety
+                    existing_party = None
+
+                    # Check in-memory cache first
+                    if sigla in self._partido_cache:
+                        existing_party = self._partido_cache[sigla]
+                    else:
+                        # Check database
+                        existing_party = (
+                            self.session.query(Partido).filter_by(sigla=sigla).first()
+                        )
+                        if existing_party:
+                            self._partido_cache[sigla] = existing_party
 
                     if existing_party:
                         logger.debug(
@@ -402,13 +415,29 @@ class InformacaoBaseMapper(SchemaMapper):
                         # Ensure it's marked as individual party
                         existing_party.tipo_entidade = "partido"
                     else:
-                        # Create new individual party
-                        party = Partido(
-                            sigla=sigla, 
+                        # Use upsert for parallel-safe insert
+                        import uuid
+                        new_id = uuid.uuid4()
+                        stmt = pg_insert(Partido).values(
+                            id=new_id,
+                            sigla=sigla,
                             nome=nome,
                             tipo_entidade="partido"
-                        )
-                        self.session.add(party)
+                        ).on_conflict_do_update(
+                            index_elements=['sigla'],
+                            set_={
+                                'nome': nome,
+                                'tipo_entidade': "partido"
+                            }
+                        ).returning(Partido.id)
+
+                        result = self.session.execute(stmt)
+                        returned_id = result.scalar()
+
+                        # Fetch and cache the record
+                        existing_party = self.session.query(Partido).filter_by(sigla=sigla).first()
+                        if existing_party:
+                            self._partido_cache[sigla] = existing_party
                         self.processed_parties += 1
 
                         logger.debug(f"Processed parliamentary group: {sigla} ({nome})")
@@ -442,12 +471,21 @@ class InformacaoBaseMapper(SchemaMapper):
                 if cp_id is not None:
                     cp_id = str(int(cp_id))  # Remove .0 suffix
 
-                # Check if electoral circle already exists
-                existing_circle = (
-                    self.session.query(CirculoEleitoral)
-                    .filter_by(designacao=cp_des)
-                    .first()
-                )
+                # Check cache first, then database, with upsert for parallel safety
+                existing_circle = None
+
+                # Check in-memory cache first
+                if cp_des in self._circulo_cache:
+                    existing_circle = self._circulo_cache[cp_des]
+                else:
+                    # Check database
+                    existing_circle = (
+                        self.session.query(CirculoEleitoral)
+                        .filter_by(designacao=cp_des)
+                        .first()
+                    )
+                    if existing_circle:
+                        self._circulo_cache[cp_des] = existing_circle
 
                 if existing_circle:
                     logger.debug(
@@ -455,9 +493,27 @@ class InformacaoBaseMapper(SchemaMapper):
                     )
                     existing_circle.codigo = cp_id
                 else:
-                    # Create new electoral circle
-                    circle = CirculoEleitoral(designacao=cp_des, codigo=cp_id)
-                    self.session.add(circle)
+                    # Use upsert for parallel-safe insert
+                    import uuid
+                    new_id = uuid.uuid4()
+                    stmt = pg_insert(CirculoEleitoral).values(
+                        id=new_id,
+                        designacao=cp_des,
+                        codigo=cp_id
+                    ).on_conflict_do_update(
+                        index_elements=['designacao'],
+                        set_={
+                            'codigo': cp_id
+                        }
+                    ).returning(CirculoEleitoral.id)
+
+                    result = self.session.execute(stmt)
+                    returned_id = result.scalar()
+
+                    # Fetch and cache the record
+                    existing_circle = self.session.query(CirculoEleitoral).filter_by(designacao=cp_des).first()
+                    if existing_circle:
+                        self._circulo_cache[cp_des] = existing_circle
                     self.processed_electoral_circles += 1
 
                     logger.debug(f"Processed electoral circle: {cp_id} ({cp_des})")
