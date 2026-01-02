@@ -32,6 +32,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+
 from .common_utilities import DataValidationUtils
 from .enhanced_base_mapper import SchemaError, SchemaMapper
 
@@ -240,6 +242,10 @@ class OrcamentoEstadoMapper(SchemaMapper):
         self.processed_articles = 0
         self.processed_diplomas = 0
         self.processed_initiatives = 0
+
+        # Caches for upsert pattern - avoid duplicate database queries
+        self._proposal_cache = {}  # proposta_id -> OrcamentoEstadoPropostaAlteracao
+        self._item_cache = {}  # item_id -> OrcamentoEstadoItem
 
     def get_expected_fields(self) -> Set[str]:
         """
@@ -660,9 +666,10 @@ class OrcamentoEstadoMapper(SchemaMapper):
                     raise
 
         # Phase 2: Batch create proposals (1 flush)
+        # Flush session first to ensure legislatura is in database for raw SQL upsert
+        self.session.flush()
         for parsed in parsed_proposals:
             self._create_legacy_proposal_record(parsed, legislatura)
-        # No flush needed - UUID ids are generated client-side
         logger.debug(f"Created {len(parsed_proposals)} proposal records")
 
         # Phase 3: Batch create proponentes and votacoes (leaf records, no flush needed)
@@ -859,12 +866,19 @@ class OrcamentoEstadoMapper(SchemaMapper):
     def _create_legacy_proposal_record(
         self, parsed: ParsedLegacyProposal, legislatura: Legislatura
     ):
-        """Create or update a proposal database record."""
-        existing = (
-            self.session.query(OrcamentoEstadoPropostaAlteracao)
-            .filter_by(proposta_id=parsed.proposal_id)
-            .first()
-        )
+        """Create or update a proposal database record using upsert for parallel safety."""
+        # Check cache first
+        existing = self._proposal_cache.get(parsed.proposal_id)
+
+        if not existing:
+            # Check database
+            existing = (
+                self.session.query(OrcamentoEstadoPropostaAlteracao)
+                .filter_by(proposta_id=parsed.proposal_id)
+                .first()
+            )
+            if existing:
+                self._proposal_cache[parsed.proposal_id] = existing
 
         if existing:
             existing.numero = parsed.data["numero"]
@@ -882,8 +896,10 @@ class OrcamentoEstadoMapper(SchemaMapper):
             existing.legislatura_id = legislatura.id
             parsed.db_obj = existing
         else:
-            proposal_obj = OrcamentoEstadoPropostaAlteracao(
-                id=uuid.uuid4(),
+            # Use upsert for parallel-safe insert (handles race conditions)
+            new_id = uuid.uuid4()
+            stmt = pg_insert(OrcamentoEstadoPropostaAlteracao).values(
+                id=new_id,
                 proposta_id=parsed.proposal_id,
                 numero=parsed.data["numero"],
                 data_proposta=parsed.data["data_proposta"],
@@ -899,9 +915,40 @@ class OrcamentoEstadoMapper(SchemaMapper):
                 grupo_parlamentar=parsed.data["grupo_parlamentar"],
                 legislatura_id=legislatura.id,
                 format_type="legacy",
-            )
-            self.session.add(proposal_obj)
+            ).on_conflict_do_update(
+                index_elements=['proposta_id'],
+                set_={
+                    'numero': parsed.data["numero"],
+                    'data_proposta': parsed.data["data_proposta"],
+                    'titulo': parsed.data["titulo"],
+                    'tema': parsed.data["tema"],
+                    'apresentada': parsed.data["apresentada"],
+                    'incide': parsed.data["incide"],
+                    'tipo': parsed.data["tipo"],
+                    'estado': parsed.data["estado"],
+                    'numero_artigo_novo': parsed.data["numero_artigo_novo"],
+                    'conteudo': parsed.data["conteudo"],
+                    'ficheiro_url': parsed.data["ficheiro"],
+                    'grupo_parlamentar': parsed.data["grupo_parlamentar"],
+                    'legislatura_id': legislatura.id,
+                }
+            ).returning(OrcamentoEstadoPropostaAlteracao.id)
+
+            result = self.session.execute(stmt)
+            returned_id = result.scalar()
+
+            # Get the inserted/updated record for relationships
+            proposal_obj = self.session.query(OrcamentoEstadoPropostaAlteracao).filter_by(
+                id=returned_id if returned_id else new_id
+            ).first()
+            if not proposal_obj:
+                # Fallback to proposta_id lookup
+                proposal_obj = self.session.query(OrcamentoEstadoPropostaAlteracao).filter_by(
+                    proposta_id=parsed.proposal_id
+                ).first()
+
             parsed.db_obj = proposal_obj
+            self._proposal_cache[parsed.proposal_id] = proposal_obj
 
     def _create_legacy_proponentes(self, parsed: ParsedLegacyProposal):
         """Create proponente records for a proposal."""
@@ -1007,9 +1054,10 @@ class OrcamentoEstadoMapper(SchemaMapper):
                     raise
 
         # Phase 2: Batch create items (1 flush)
+        # Flush session first to ensure legislatura is in database for raw SQL upsert
+        self.session.flush()
         for parsed in parsed_items:
             self._create_current_item_record(parsed, legislatura)
-        # No flush needed - UUID ids are generated client-side
         logger.debug(f"Created {len(parsed_items)} item records")
 
         # Phase 3: Batch create leaf records (no flush needed)
@@ -1370,12 +1418,19 @@ class OrcamentoEstadoMapper(SchemaMapper):
     def _create_current_item_record(
         self, parsed: ParsedCurrentItem, legislatura: Legislatura
     ):
-        """Create or update an item database record."""
-        existing = (
-            self.session.query(OrcamentoEstadoItem)
-            .filter_by(item_id=parsed.item_id)
-            .first()
-        )
+        """Create or update an item database record using upsert for parallel safety."""
+        # Check cache first
+        existing = self._item_cache.get(parsed.item_id)
+
+        if not existing:
+            # Check database
+            existing = (
+                self.session.query(OrcamentoEstadoItem)
+                .filter_by(item_id=parsed.item_id)
+                .first()
+            )
+            if existing:
+                self._item_cache[parsed.item_id] = existing
 
         if existing:
             existing.id_pai = parsed.data["id_pai"]
@@ -1387,8 +1442,10 @@ class OrcamentoEstadoMapper(SchemaMapper):
             existing.legislatura_id = legislatura.id
             parsed.db_obj = existing
         else:
-            item_obj = OrcamentoEstadoItem(
-                id=uuid.uuid4(),
+            # Use upsert for parallel-safe insert (handles race conditions)
+            new_id = uuid.uuid4()
+            stmt = pg_insert(OrcamentoEstadoItem).values(
+                id=new_id,
                 item_id=parsed.item_id,
                 id_pai=parsed.data["id_pai"],
                 tipo=parsed.data["tipo"],
@@ -1398,9 +1455,34 @@ class OrcamentoEstadoMapper(SchemaMapper):
                 estado=parsed.data["estado"],
                 legislatura_id=legislatura.id,
                 format_type="current",
-            )
-            self.session.add(item_obj)
+            ).on_conflict_do_update(
+                index_elements=['item_id'],
+                set_={
+                    'id_pai': parsed.data["id_pai"],
+                    'tipo': parsed.data["tipo"],
+                    'numero': parsed.data["numero"],
+                    'titulo': parsed.data["titulo"],
+                    'texto': parsed.data["texto"],
+                    'estado': parsed.data["estado"],
+                    'legislatura_id': legislatura.id,
+                }
+            ).returning(OrcamentoEstadoItem.id)
+
+            result = self.session.execute(stmt)
+            returned_id = result.scalar()
+
+            # Get the inserted/updated record for relationships
+            item_obj = self.session.query(OrcamentoEstadoItem).filter_by(
+                id=returned_id if returned_id else new_id
+            ).first()
+            if not item_obj:
+                # Fallback to item_id lookup
+                item_obj = self.session.query(OrcamentoEstadoItem).filter_by(
+                    item_id=parsed.item_id
+                ).first()
+
             parsed.db_obj = item_obj
+            self._item_cache[parsed.item_id] = item_obj
 
     def _create_current_artigos(self, parsed: ParsedCurrentItem):
         """Create artigo records for an item."""
@@ -1420,24 +1502,65 @@ class OrcamentoEstadoMapper(SchemaMapper):
             self.processed_articles += 1
 
     def _create_current_propostas(self, parsed: ParsedCurrentItem, legislatura: Legislatura):
-        """Create proposta records for an item."""
+        """Create proposta records for an item using upsert for parallel safety."""
         for proposta in parsed.propostas:
             if proposta.data["proposta_id"]:
-                proposta_obj = OrcamentoEstadoPropostaAlteracao(
-                    id=uuid.uuid4(),
-                    proposta_id=proposta.data["proposta_id"],
-                    id_pai=proposta.data["id_pai"],
-                    titulo=proposta.data["objeto"],
-                    data_proposta=proposta.data["data_proposta"],
-                    apresentado=proposta.data["apresentado"],
-                    incide=proposta.data["incide"],
-                    tipo=proposta.data["tipo"],
-                    estado=proposta.data["estado"],
-                    ficheiro_url=proposta.data["ficheiro"],
-                    legislatura_id=legislatura.id,
-                    format_type="current",
-                )
-                self.session.add(proposta_obj)
+                # Check cache first
+                existing = self._proposal_cache.get(proposta.data["proposta_id"])
+
+                if not existing:
+                    # Check database
+                    existing = (
+                        self.session.query(OrcamentoEstadoPropostaAlteracao)
+                        .filter_by(proposta_id=proposta.data["proposta_id"])
+                        .first()
+                    )
+                    if existing:
+                        self._proposal_cache[proposta.data["proposta_id"]] = existing
+
+                if existing:
+                    # Update existing record
+                    existing.id_pai = proposta.data["id_pai"]
+                    existing.titulo = proposta.data["objeto"]
+                    existing.data_proposta = proposta.data["data_proposta"]
+                    existing.apresentado = proposta.data["apresentado"]
+                    existing.incide = proposta.data["incide"]
+                    existing.tipo = proposta.data["tipo"]
+                    existing.estado = proposta.data["estado"]
+                    existing.ficheiro_url = proposta.data["ficheiro"]
+                    existing.legislatura_id = legislatura.id
+                else:
+                    # Use upsert for parallel-safe insert
+                    new_id = uuid.uuid4()
+                    stmt = pg_insert(OrcamentoEstadoPropostaAlteracao).values(
+                        id=new_id,
+                        proposta_id=proposta.data["proposta_id"],
+                        id_pai=proposta.data["id_pai"],
+                        titulo=proposta.data["objeto"],
+                        data_proposta=proposta.data["data_proposta"],
+                        apresentado=proposta.data["apresentado"],
+                        incide=proposta.data["incide"],
+                        tipo=proposta.data["tipo"],
+                        estado=proposta.data["estado"],
+                        ficheiro_url=proposta.data["ficheiro"],
+                        legislatura_id=legislatura.id,
+                        format_type="current",
+                    ).on_conflict_do_update(
+                        index_elements=['proposta_id'],
+                        set_={
+                            'id_pai': proposta.data["id_pai"],
+                            'titulo': proposta.data["objeto"],
+                            'data_proposta': proposta.data["data_proposta"],
+                            'apresentado': proposta.data["apresentado"],
+                            'incide': proposta.data["incide"],
+                            'tipo': proposta.data["tipo"],
+                            'estado': proposta.data["estado"],
+                            'ficheiro_url': proposta.data["ficheiro"],
+                            'legislatura_id': legislatura.id,
+                        }
+                    )
+                    self.session.execute(stmt)
+                    self._proposal_cache[proposta.data["proposta_id"]] = None  # Mark as processed
                 self.processed_proposals += 1
 
     def _create_current_iniciativas(self, parsed: ParsedCurrentItem):
@@ -1580,7 +1703,10 @@ class OrcamentoEstadoMapper(SchemaMapper):
 
     def _extract_legislatura_from_path(self, file_path: str) -> Optional[Legislatura]:
         """
-        Extract and get/create legislatura from file path
+        Extract and get/create legislatura from file path.
+
+        Maps OE budget years to their corresponding legislature Roman numerals.
+        Uses the parent class's _get_or_create_legislatura which has upsert pattern.
 
         Args:
             file_path: Full file path
@@ -1588,57 +1714,57 @@ class OrcamentoEstadoMapper(SchemaMapper):
         Returns:
             Legislatura instance or None
         """
+        # Map budget years to legislaturas (approximate - budgets span legislature terms)
+        # Each legislature term is ~4 years, budget years roughly correspond to:
+        year_to_legislatura = {
+            "2026": "XVII", "2025": "XVI", "2024": "XV", "2023": "XV",
+            "2022": "XV", "2021": "XIV", "2020": "XIV", "2019": "XIV",
+            "2018": "XIII", "2017": "XIII", "2016": "XIII", "2015": "XIII",
+            "2014": "XII", "2013": "XII", "2012": "XII", "2011": "XII",
+            "2010": "XI", "2009": "XI", "2008": "XI", "2007": "X",
+            "2006": "X", "2005": "X", "2004": "IX", "2003": "IX",
+            "2002": "IX", "2001": "VIII", "2000": "VIII", "1999": "VIII",
+        }
+
         # Extract legislatura from path patterns
         patterns = [
-            r"[/\\]([XVII]+)_Legislatura[/\\]",
-            r"[/\\](\d+)_Legislatura[/\\]",
-            r"OE(\d+)",
-            r"OEPropostasAlteracao(\d+)",
+            r"[/\\]([XVII]+)_Legislatura[/\\]",  # Direct Roman numeral in path
+            r"[/\\](\d+)_Legislatura[/\\]",       # Numeric in path
+            r"OEPropostasAlteracao(\d{4})",       # Year from proposal filename
+            r"OE(\d{4})",                          # Year from OE filename
         ]
+
+        legislatura_sigla = None
 
         for pattern in patterns:
             match = re.search(pattern, file_path)
             if match:
                 leg_str = match.group(1)
-                # Convert roman to numeric if needed
-                roman_map = {
-                    "XVII": "17",
-                    "XVI": "16",
-                    "XV": "15",
-                    "XIV": "14",
-                    "XIII": "13",
-                    "XII": "12",
-                    "XI": "11",
-                    "X": "10",
-                    "IX": "9",
-                    "VIII": "8",
-                    "VII": "7",
-                    "VI": "6",
-                    "V": "5",
-                    "IV": "4",
-                    "III": "3",
-                    "II": "2",
-                    "I": "1",
-                }
-                legislatura_num = roman_map.get(leg_str, leg_str)
-                break
-        else:
-            logger.warning(f"Could not extract legislatura from path: {file_path}")
-            legislatura_num = "17"  # Default
 
-        # Get or create legislatura
-        legislatura = (
-            self.session.query(Legislatura).filter_by(numero=legislatura_num).first()
-        )
-        if not legislatura:
-            legislatura = Legislatura(
-                id=uuid.uuid4(),
-                numero=legislatura_num,
-                designacao=f"Legislatura {legislatura_num}",
-            )
-            self.session.add(legislatura)
+                # If it's already a Roman numeral, use it directly
+                if leg_str in self.ROMAN_TO_NUMBER:
+                    legislatura_sigla = leg_str
+                    break
 
-        return legislatura
+                # If it's a year, map it to legislatura
+                if leg_str in year_to_legislatura:
+                    legislatura_sigla = year_to_legislatura[leg_str]
+                    logger.debug(f"Mapped budget year {leg_str} to legislature {legislatura_sigla}")
+                    break
+
+                # If it's a numeric legislatura number, convert to Roman
+                if leg_str.isdigit() and int(leg_str) <= 20:
+                    num = int(leg_str)
+                    legislatura_sigla = self.NUMBER_TO_ROMAN.get(num)
+                    if legislatura_sigla:
+                        break
+
+        if not legislatura_sigla:
+            logger.warning(f"Could not extract legislatura from path: {file_path}, defaulting to XVII")
+            legislatura_sigla = "XVII"
+
+        # Use the parent's _get_or_create_legislatura which has upsert pattern
+        return self._get_or_create_legislatura(legislatura_sigla)
 
     def _get_text_value(self, element: ET.Element, tag: str) -> Optional[str]:
         """Safely extract text value from XML element"""

@@ -19,6 +19,7 @@ import xml.etree.ElementTree as ET
 # SQLAlchemy session handling (sessions passed from unified importer)
 from abc import ABC, abstractmethod
 from datetime import datetime
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from .common_utilities import DataValidationUtils
 from typing import Any, Dict, List, Optional, Set
 
@@ -533,45 +534,48 @@ class LegislatureHandlerMixin:
             logger.debug(f"Cache hit for legislatura '{target_legislature}'")
             return self._legislatura_cache[target_legislature]
 
-        # Try to find existing legislatura by numero
-        legislatura = self.session.query(Legislatura).filter_by(numero=target_legislature).first()
-
-        if legislatura:
-            logger.debug(f"Found existing legislatura '{target_legislature}' (ID: {legislatura.id})")
-            # Cache for future lookups
-            if hasattr(self, '_legislatura_cache'):
-                self._legislatura_cache[target_legislature] = legislatura
-            return legislatura
-
-        # Create new legislatura
-        logger.debug(f"Creating new legislatura: '{target_legislature}'")
-
+        # Build designacao for potential insert
         if target_legislature == "CONSTITUINTE":
             designacao = "Assembleia Constituinte"
         else:
-            # Get numeric value for designacao
             leg_number = self.ROMAN_TO_NUMBER.get(target_legislature, 0)
             designacao = f"{leg_number}.ª Legislatura" if leg_number > 0 else target_legislature
 
-        legislatura = Legislatura(
-            id=self._new_id(),  # Generate UUID client-side for immediate availability
+        # Use PostgreSQL upsert to handle race conditions in parallel imports
+        # This prevents UniqueViolation when multiple workers try to create the same legislatura
+        new_id = self._new_id()
+        stmt = pg_insert(Legislatura.__table__).values(
+            id=new_id,
             numero=target_legislature,
             designacao=designacao,
-            data_inicio=None,  # Will be set from XML data
+            data_inicio=None,
             data_fim=None,
-        )
+        ).on_conflict_do_update(
+            index_elements=['numero'],  # Unique constraint column
+            set_={
+                # On conflict, keep existing values (effectively a no-op update)
+                'designacao': Legislatura.__table__.c.designacao
+            }
+        ).returning(Legislatura.__table__.c.id)
 
-        self.session.add(legislatura)
-        # Flush is required here because PostgreSQL checks FK constraints immediately.
-        # Child records (agenda items, atividades, etc.) will reference this legislatura_id,
-        # and the parent row must exist in the DB before INSERT of children.
+        result = self.session.execute(stmt)
+        row = result.fetchone()
+        legislatura_id = row[0]
         self.session.flush()
 
-        # Cache for future lookups
-        if hasattr(self, '_legislatura_cache'):
-            self._legislatura_cache[target_legislature] = legislatura
+        # Fetch the ORM object (either newly created or existing)
+        legislatura = self.session.query(Legislatura).filter_by(id=legislatura_id).first()
 
-        logger.info(f"Created new legislatura: {target_legislature} (ID: {legislatura.id})")
+        if legislatura:
+            # Cache for future lookups
+            if hasattr(self, '_legislatura_cache'):
+                self._legislatura_cache[target_legislature] = legislatura
+
+            if str(legislatura_id) == str(new_id):
+                logger.info(f"Created new legislatura: {target_legislature} (ID: {legislatura.id})")
+            else:
+                logger.debug(f"Found existing legislatura '{target_legislature}' (ID: {legislatura.id}) via upsert")
+
         return legislatura
 
     def _get_legislatura_id(self, file_info: Dict) -> int:

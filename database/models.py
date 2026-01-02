@@ -8031,6 +8031,7 @@ class OrcamentoEstadoPropostaAlteracao(Base):
     )
 
     __table_args__ = (
+        UniqueConstraint("proposta_id", name="uq_oe_proposta_id"),
         Index("idx_oe_proposta_id", "proposta_id"),
         Index("idx_oe_proposta_legislatura", "legislatura_id"),
         Index("idx_oe_proposta_format", "format_type"),
@@ -8102,6 +8103,7 @@ class OrcamentoEstadoItem(Base):
     )
 
     __table_args__ = (
+        UniqueConstraint("item_id", name="uq_oe_item_id"),
         Index("idx_oe_item_id", "item_id"),
         Index("idx_oe_item_pai", "id_pai"),
         Index("idx_oe_item_tipo", "tipo"),

@@ -20,6 +20,7 @@ from app.routes.parlamento import parlamento_bp
 from app.routes.agenda import agenda_bp
 from app.routes.health import health_bp
 from app.routes.transparency import transparency_bp
+from app.routes.admin import admin_bp
 
 # Configure logging with more detailed formatting for debugging
 log_dir = os.path.join(parent_dir, 'logs')
@@ -91,6 +92,7 @@ app.register_blueprint(parlamento_bp, url_prefix='/api')
 app.register_blueprint(agenda_bp, url_prefix='/api')
 app.register_blueprint(health_bp, url_prefix='/api')
 app.register_blueprint(transparency_bp, url_prefix='/api')
+app.register_blueprint(admin_bp, url_prefix='/api')
 
 # Initialize database - defer actual connection until first use
 try:
