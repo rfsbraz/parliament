@@ -677,6 +677,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
 
             return True
 
+        except ValueError as e:
+            # Expected when deputy doesn't exist yet (Biographical Registry not processed)
+            logger.warning(f"Skipping V3 record: {e}")
+            return False
         except Exception as e:
             logger.error(f"Error processing V3 record: {e}")
             return False
@@ -953,6 +957,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
 
             return True
 
+        except ValueError as e:
+            # Expected when deputy doesn't exist yet (Biographical Registry not processed)
+            logger.warning(f"Skipping V2 record: {e}")
+            return False
         except Exception as e:
             logger.error(f"Error processing V2 record: {e}")
             return False
@@ -1025,6 +1033,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
 
             return True
 
+        except ValueError as e:
+            # Expected when deputy doesn't exist yet (Biographical Registry not processed)
+            logger.warning(f"Skipping V1 record: {e}")
+            return False
         except Exception as e:
             logger.error(f"Error processing V1 record: {e}")
             return False
@@ -1624,6 +1636,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
 
             return True
 
+        except ValueError as e:
+            # Expected when deputy doesn't exist yet (Biographical Registry not processed)
+            logger.warning(f"Skipping V5 record: {e}")
+            return False
         except Exception as e:
             logger.error(f"Error processing V5 record: {e}")
             return False
@@ -1811,6 +1827,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
 
             return True
 
+        except ValueError as e:
+            # Expected when deputy doesn't exist yet (Biographical Registry not processed)
+            logger.warning(f"Skipping V5 unified record: {e}")
+            return False
         except Exception as e:
             logger.error(f"Error processing V5 unified record: {e}")
             return False

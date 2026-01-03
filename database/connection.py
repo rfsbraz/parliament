@@ -29,6 +29,7 @@ PG_PORT = os.getenv('PG_PORT', '5432')
 PG_USER = os.getenv('PG_USER', 'parluser')
 PG_PASSWORD = os.getenv('PG_PASSWORD', '')
 PG_DATABASE = os.getenv('PG_DATABASE', 'parliament')
+PG_SSLMODE = os.getenv('PG_SSLMODE', 'require')  # 'require' for production, 'disable' for local dev
 
 # AWS Secrets Manager for production
 DATABASE_SECRET_ARN = os.getenv('DATABASE_SECRET_ARN', '')
@@ -170,7 +171,7 @@ def get_database_url() -> str:
     # Use environment variables (for local development with PostgreSQL)
     if DATABASE_TYPE == 'postgresql' and PG_PASSWORD:
         encoded_password = quote_plus(PG_PASSWORD)
-        return f"postgresql://{PG_USER}:{encoded_password}@{PG_HOST}:{PG_PORT}/{PG_DATABASE}?sslmode=require"
+        return f"postgresql://{PG_USER}:{encoded_password}@{PG_HOST}:{PG_PORT}/{PG_DATABASE}?sslmode={PG_SSLMODE}"
     
     # No fallback - require proper PostgreSQL configuration
     raise RuntimeError(
@@ -196,7 +197,7 @@ def create_database_engine(echo: bool = False):
         'connect_args': {
             'connect_timeout': 30,  # Increased timeout for spot instances
             'application_name': 'parliament-fiscaliza',
-            'sslmode': 'require'  # Required for RDS PostgreSQL
+            'sslmode': PG_SSLMODE  # 'require' for RDS, 'disable' for local
         }
     }
     

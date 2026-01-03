@@ -1,108 +1,238 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Home, Users, Building, Calendar, BarChart3, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
-// Navigation component
+/**
+ * Navigation - Data Observatory Style
+ *
+ * Editorial, authoritative navigation inspired by ProPublica/Guardian data journalism.
+ * Clean typography, minimal decoration, green underline active state.
+ */
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: Home },
-    { path: '/deputados', label: 'Deputados', icon: Users },
-    { path: '/partidos', label: 'Partidos', icon: Building },
-    { path: '/agenda', label: 'Agenda', icon: Calendar },
-    { path: '/transparencia', label: 'Transparência', icon: BarChart3 },
+    { path: '/', label: 'Panorama' },
+    { path: '/deputados', label: 'Deputados' },
+    { path: '/partidos', label: 'Partidos' },
+    { path: '/agenda', label: 'Agenda' },
+    { path: '/transparencia', label: 'Transparência' },
   ];
 
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <nav
+      style={{
+        backgroundColor: '#FFFFFF',
+        borderBottom: '1px solid #E5E5E5',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          padding: '0 1.5rem',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            height: '64px',
+          }}
+        >
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center"
+          <Link
+            to="/"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              textDecoration: 'none',
+            }}
+          >
+            {/* Logo mark */}
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                backgroundColor: '#1B4332',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <Building className="w-5 h-5 text-white" />
-            </motion.div>
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 21h18" />
+                <path d="M5 21V7l8-4v18" />
+                <path d="M19 21V11l-6-4" />
+                <path d="M9 9v.01" />
+                <path d="M9 12v.01" />
+                <path d="M9 15v.01" />
+                <path d="M9 18v.01" />
+              </svg>
+            </div>
+            {/* Logo text */}
+            <span
+              style={{
+                fontFamily: "'Libre Baskerville', Georgia, serif",
+                fontSize: '1.375rem',
+                fontWeight: 700,
+                color: '#1A1A1A',
+                letterSpacing: '-0.01em',
+              }}
+            >
               Fiscaliza
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link key={item.path} to={item.path}>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
-                      isActive(item.path)
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="font-medium">{item.label}</span>
-                  </motion.div>
-                </Link>
-              );
-            })}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+            }}
+            className="nav-desktop"
+          >
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                style={{
+                  position: 'relative',
+                  padding: '0.5rem 1rem',
+                  fontFamily: "'Source Sans 3', sans-serif",
+                  fontSize: '0.9375rem',
+                  fontWeight: isActive(item.path) ? 600 : 500,
+                  color: isActive(item.path) ? '#1B4332' : '#4A4A4A',
+                  textDecoration: 'none',
+                  transition: 'color 150ms ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive(item.path)) {
+                    e.target.style.color = '#1B4332';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive(item.path)) {
+                    e.target.style.color = '#4A4A4A';
+                  }
+                }}
+              >
+                {item.label}
+                {/* Active underline */}
+                {isActive(item.path) && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      bottom: '0',
+                      left: '1rem',
+                      right: '1rem',
+                      height: '2px',
+                      backgroundColor: '#1B4332',
+                    }}
+                  />
+                )}
+              </Link>
+            ))}
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-            >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="nav-mobile-toggle"
+            style={{
+              display: 'none',
+              padding: '0.5rem',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#4A4A4A',
+            }}
+            aria-label={isOpen ? 'Fechar menu' : 'Abrir menu'}
+          >
+            {isOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="md:hidden py-4 border-t border-gray-200"
+          <div
+            className="nav-mobile"
+            style={{
+              display: 'none',
+              paddingBottom: '1rem',
+              borderTop: '1px solid #E5E5E5',
+            }}
           >
-            <div className="space-y-2">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setIsOpen(false)}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                      isActive(item.path)
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </motion.div>
+            {navItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setIsOpen(false)}
+                style={{
+                  display: 'block',
+                  padding: '0.875rem 0',
+                  fontFamily: "'Source Sans 3', sans-serif",
+                  fontSize: '1rem',
+                  fontWeight: isActive(item.path) ? 600 : 400,
+                  color: isActive(item.path) ? '#1B4332' : '#4A4A4A',
+                  textDecoration: 'none',
+                  borderBottom: '1px solid #F5F5F5',
+                }}
+              >
+                {isActive(item.path) && (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: '3px',
+                      height: '1rem',
+                      backgroundColor: '#1B4332',
+                      marginRight: '0.75rem',
+                      verticalAlign: 'middle',
+                    }}
+                  />
+                )}
+                {item.label}
+              </Link>
+            ))}
+          </div>
         )}
       </div>
+
+      {/* Responsive styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          .nav-desktop {
+            display: none !important;
+          }
+          .nav-mobile-toggle {
+            display: block !important;
+          }
+          .nav-mobile {
+            display: block !important;
+          }
+        }
+      `}</style>
     </nav>
   );
 };
 
 export default Navigation;
-

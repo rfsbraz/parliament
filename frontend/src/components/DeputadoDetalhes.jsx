@@ -4,6 +4,8 @@ import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote,
 import VotingAnalytics from './VotingAnalytics';
 import LegislatureDropdown from './LegislatureDropdown';
 import { apiFetch } from '../config/api';
+import { tokens } from '../styles/tokens';
+import { LoadingSpinner } from './common';
 
 // TODO: Deputy mandate linking limitation
 // Current system uses name-based linking to connect same person across legislaturas
@@ -26,117 +28,197 @@ const getTrendIndicator = (current, total, legislaturesServed = 1) => {
 };
 
 /**
- * Get progress bar color based on percentage and color scheme
+ * Color scheme mapping for Data Observatory theme
  */
-const getProgressColor = (percentage, colorScheme) => {
-  const colors = {
-    blue: {
-      bar: 'bg-blue-500',
-      bg: 'bg-blue-100',
-      text: 'text-blue-700'
-    },
-    green: {
-      bar: 'bg-green-500', 
-      bg: 'bg-green-100',
-      text: 'text-green-700'
-    },
-    purple: {
-      bar: 'bg-purple-500',
-      bg: 'bg-purple-100', 
-      text: 'text-purple-700'
-    },
-    orange: {
-      bar: percentage >= 75 ? 'bg-green-500' : percentage >= 50 ? 'bg-orange-500' : 'bg-red-500',
-      bg: percentage >= 75 ? 'bg-green-100' : percentage >= 50 ? 'bg-orange-100' : 'bg-red-100',
-      text: percentage >= 75 ? 'text-green-700' : percentage >= 50 ? 'text-orange-700' : 'text-red-700'
-    }
-  };
-  return colors[colorScheme] || colors.blue;
+const colorSchemes = {
+  blue: {
+    bg: '#EFF6FF',
+    bgSecondary: '#DBEAFE',
+    primary: '#2563EB',
+    primaryDark: '#1D4ED8',
+    text: '#1E40AF',
+    textLight: '#3B82F6',
+    border: '#BFDBFE',
+  },
+  green: {
+    bg: '#F0FDF4',
+    bgSecondary: '#DCFCE7',
+    primary: '#16A34A',
+    primaryDark: '#15803D',
+    text: '#166534',
+    textLight: '#22C55E',
+    border: '#BBF7D0',
+  },
+  purple: {
+    bg: '#FAF5FF',
+    bgSecondary: '#F3E8FF',
+    primary: '#9333EA',
+    primaryDark: '#7E22CE',
+    text: '#6B21A8',
+    textLight: '#A855F7',
+    border: '#E9D5FF',
+  },
+  orange: {
+    bg: '#FFF7ED',
+    bgSecondary: '#FFEDD5',
+    primary: '#EA580C',
+    primaryDark: '#C2410C',
+    text: '#9A3412',
+    textLight: '#F97316',
+    border: '#FED7AA',
+  },
 };
 
 /**
- * Enhanced Statistic Card Component with full accessibility and UX improvements
+ * Get progress bar color based on percentage (for attendance)
  */
-const StatisticCard = ({ 
-  title, 
-  icon: Icon, 
-  current, 
-  total, 
-  colorScheme, 
-  description, 
-  tabId, 
-  onCardClick 
+const getAttendanceColors = (percentage) => {
+  if (percentage >= 75) {
+    return {
+      bar: tokens.colors.success,
+      bg: '#DCFCE7',
+      text: tokens.colors.success,
+      label: 'Excelente',
+    };
+  } else if (percentage >= 50) {
+    return {
+      bar: tokens.colors.orange,
+      bg: '#FFEDD5',
+      text: tokens.colors.warning,
+      label: 'Boa',
+    };
+  } else {
+    return {
+      bar: tokens.colors.danger,
+      bg: '#FEE2E2',
+      text: tokens.colors.danger,
+      label: 'Baixa',
+    };
+  }
+};
+
+/**
+ * Enhanced Statistic Card Component with Data Observatory theme
+ */
+const StatisticCard = ({
+  title,
+  icon: Icon,
+  current,
+  total,
+  colorScheme,
+  description,
+  tabId,
+  onCardClick
 }) => {
   const percentage = total > 0 ? Math.min((current / total) * 100, 100) : 0;
-  const trend = getTrendIndicator(current, total, 3); // Assume average 3 legislatures
-  const colors = getProgressColor(percentage, colorScheme);
-  
+  const trend = getTrendIndicator(current, total, 3);
+  const scheme = colorSchemes[colorScheme] || colorSchemes.blue;
+
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-  
+  const trendColor = trend === 'up' ? tokens.colors.success : trend === 'down' ? tokens.colors.danger : tokens.colors.textMuted;
+
   const handleClick = () => {
     if (onCardClick) {
       onCardClick(tabId);
     }
   };
-  
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       handleClick();
     }
   };
-  
+
   return (
-    <article 
-      className={`group relative bg-gradient-to-br from-${colorScheme}-50 to-${colorScheme}-100 rounded-lg border border-${colorScheme}-200 p-4 sm:p-6 cursor-pointer hover:shadow-md transition-all duration-200 focus-within:ring-2 focus-within:ring-${colorScheme}-500 focus-within:ring-offset-2`}
+    <article
+      style={{
+        position: 'relative',
+        background: `linear-gradient(135deg, ${scheme.bg} 0%, ${scheme.bgSecondary} 100%)`,
+        borderRadius: '4px',
+        border: `1px solid ${scheme.border}`,
+        padding: '16px',
+        cursor: 'pointer',
+        transition: 'border-color 0.15s ease',
+        fontFamily: tokens.fonts.body,
+      }}
       role="listitem"
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={0}
       aria-labelledby={`${tabId}-title`}
       aria-describedby={`${tabId}-description ${tabId}-stats`}
+      onMouseEnter={(e) => e.currentTarget.style.borderColor = scheme.primary}
+      onMouseLeave={(e) => e.currentTarget.style.borderColor = scheme.border}
     >
       {/* Header with Icon and Trend */}
-      <header className="flex items-start justify-between mb-4">
-        <div className={`p-2 sm:p-3 bg-${colorScheme}-500 rounded-lg shadow-sm flex-shrink-0`}>
-          <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" aria-hidden="true" />
+      <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{
+          padding: '10px',
+          backgroundColor: scheme.primary,
+          borderRadius: '4px',
+          flexShrink: 0,
+        }}>
+          <Icon style={{ width: '20px', height: '20px', color: '#FFFFFF' }} aria-hidden="true" />
         </div>
-        <div className={`flex items-center space-x-1 px-2 py-1 bg-white bg-opacity-60 rounded-full`}>
-          <TrendIcon 
-            className={`h-3 w-3 ${trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-gray-500'}`}
-            aria-hidden="true"
-          />
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          padding: '4px 8px',
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          borderRadius: '9999px',
+        }}>
+          <TrendIcon style={{ width: '12px', height: '12px', color: trendColor }} aria-hidden="true" />
           <span className="sr-only">
             Tendência: {trend === 'up' ? 'acima da média' : trend === 'down' ? 'abaixo da média' : 'estável'}
           </span>
         </div>
       </header>
-      
+
       {/* Content */}
       <div>
-        <h4 
+        <h4
           id={`${tabId}-title`}
-          className={`text-sm font-semibold text-${colorScheme}-900 uppercase tracking-wide mb-3`}
+          style={{
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            color: scheme.text,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginBottom: '12px',
+          }}
         >
           {title}
         </h4>
-        
+
         {/* Statistics */}
-        <div id={`${tabId}-stats`} className="space-y-3">
+        <div id={`${tabId}-stats`}>
           {/* Current Value */}
-          <div className="flex items-baseline justify-between">
-            <span className={`text-sm font-medium text-${colorScheme}-700`}>Atual</span>
-            <span className={`text-2xl font-bold text-${colorScheme}-900`}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: scheme.textLight }}>Atual</span>
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: scheme.text, fontFamily: tokens.fonts.mono }}>
               {current.toLocaleString('pt-PT')}
             </span>
           </div>
-          
+
           {/* Progress Bar */}
-          <div className="space-y-2">
-            <div className={`w-full ${colors.bg} rounded-full h-2 overflow-hidden`}>
-              <div 
-                className={`h-full ${colors.bar} rounded-full animate-progress progress-bar`}
-                style={{ width: `${Math.min(percentage, 100)}%` }}
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{
+              width: '100%',
+              backgroundColor: 'rgba(255, 255, 255, 0.6)',
+              borderRadius: '9999px',
+              height: '6px',
+              overflow: 'hidden',
+            }}>
+              <div
+                style={{
+                  height: '100%',
+                  backgroundColor: scheme.primary,
+                  borderRadius: '9999px',
+                  width: `${Math.min(percentage, 100)}%`,
+                  transition: 'width 0.5s ease',
+                }}
                 role="progressbar"
                 aria-valuenow={percentage}
                 aria-valuemin="0"
@@ -144,31 +226,32 @@ const StatisticCard = ({
                 aria-label={`${current} de ${total} (${percentage.toFixed(1)}%)`}
               />
             </div>
-            <div className="flex items-baseline justify-between text-xs">
-              <span className={colors.text}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '6px' }}>
+              <span style={{ fontSize: '0.75rem', color: scheme.textLight }}>
                 {percentage.toFixed(1)}% do total
               </span>
-              <span className={`text-${colorScheme}-600`}>
+              <span style={{ fontSize: '0.75rem', color: scheme.text }}>
                 {total.toLocaleString('pt-PT')} total
               </span>
             </div>
           </div>
-          
+
           {/* Total Career */}
-          <div className={`flex items-baseline justify-between border-t border-${colorScheme}-200 pt-2`}>
-            <span className={`text-xs text-${colorScheme}-600`}>Total carreira</span>
-            <span className={`text-lg font-semibold text-${colorScheme}-700`}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            borderTop: `1px solid ${scheme.border}`,
+            paddingTop: '8px',
+          }}>
+            <span style={{ fontSize: '0.75rem', color: scheme.textLight }}>Total carreira</span>
+            <span style={{ fontSize: '1.125rem', fontWeight: 600, color: scheme.text, fontFamily: tokens.fonts.mono }}>
               {total.toLocaleString('pt-PT')}
             </span>
           </div>
         </div>
       </div>
-      
-      {/* Click indicator */}
-      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        <ChevronRight className={`h-4 w-4 text-${colorScheme}-600`} aria-hidden="true" />
-      </div>
-      
+
       {/* Screen reader description */}
       <p id={`${tabId}-description`} className="sr-only">
         {description}. Clique para ver detalhes.
@@ -178,64 +261,68 @@ const StatisticCard = ({
 };
 
 /**
- * Skeleton Loading Card for Statistics
+ * Skeleton Loading Card for Statistics - Data Observatory theme
  */
-const StatisticCardSkeleton = ({ colorScheme = 'gray' }) => (
-  <article 
-    className={`bg-gradient-to-br from-${colorScheme}-50 to-${colorScheme}-100 rounded-lg border border-${colorScheme}-200 p-4 sm:p-6 animate-pulse`}
-    role="listitem"
-    aria-label="Carregando estatística..."
-  >
-    {/* Header Skeleton */}
-    <header className="flex items-start justify-between mb-4">
-      <div className={`p-2 sm:p-3 bg-${colorScheme}-300 rounded-lg flex-shrink-0`}>
-        <div className="h-5 w-5 sm:h-6 sm:w-6 bg-white rounded" />
-      </div>
-      <div className="px-2 py-1 bg-white bg-opacity-60 rounded-full">
-        <div className="h-3 w-12 bg-gray-300 rounded" />
-      </div>
-    </header>
-    
-    {/* Content Skeleton */}
-    <div>
-      <div className="h-4 bg-gray-300 rounded w-20 mb-3" />
-      <div className="space-y-3">
-        <div className="flex items-baseline justify-between">
-          <div className="h-4 bg-gray-300 rounded w-12" />
-          <div className="h-8 bg-gray-300 rounded w-16" />
+const StatisticCardSkeleton = ({ colorScheme = 'gray' }) => {
+  const scheme = colorSchemes[colorScheme] || { bg: '#F9FAFB', bgSecondary: '#F3F4F6', border: '#E5E7EB', primary: '#D1D5DB' };
+  return (
+    <article
+      style={{
+        background: `linear-gradient(135deg, ${scheme.bg} 0%, ${scheme.bgSecondary} 100%)`,
+        borderRadius: '4px',
+        border: `1px solid ${scheme.border}`,
+        padding: '16px',
+        fontFamily: tokens.fonts.body,
+      }}
+      role="listitem"
+      aria-label="Carregando estatística..."
+    >
+      <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ padding: '10px', backgroundColor: scheme.primary || '#D1D5DB', borderRadius: '4px', opacity: 0.5 }}>
+          <div style={{ width: '20px', height: '20px', backgroundColor: '#FFFFFF', borderRadius: '2px' }} />
         </div>
-        
-        {/* Progress bar skeleton */}
-        <div className="space-y-2">
-          <div className={`w-full bg-${colorScheme}-200 rounded-full h-2`}>
-            <div className={`h-full bg-${colorScheme}-400 rounded-full w-3/5`} />
-          </div>
-          <div className="flex items-baseline justify-between">
-            <div className="h-3 bg-gray-300 rounded w-16" />
-            <div className="h-3 bg-gray-300 rounded w-12" />
-          </div>
+        <div style={{ padding: '4px 8px', backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: '9999px' }}>
+          <div style={{ width: '48px', height: '12px', backgroundColor: '#D1D5DB', borderRadius: '2px' }} />
         </div>
-        
-        <div className={`flex items-baseline justify-between border-t border-${colorScheme}-200 pt-2`}>
-          <div className="h-3 bg-gray-300 rounded w-20" />
-          <div className="h-5 bg-gray-300 rounded w-14" />
+      </header>
+      <div>
+        <div style={{ width: '80px', height: '16px', backgroundColor: '#D1D5DB', borderRadius: '2px', marginBottom: '12px' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <div style={{ width: '48px', height: '16px', backgroundColor: '#D1D5DB', borderRadius: '2px' }} />
+          <div style={{ width: '64px', height: '32px', backgroundColor: '#D1D5DB', borderRadius: '2px' }} />
+        </div>
+        <div style={{ width: '100%', height: '6px', backgroundColor: '#E5E7EB', borderRadius: '9999px', marginBottom: '8px' }}>
+          <div style={{ width: '60%', height: '100%', backgroundColor: '#D1D5DB', borderRadius: '9999px' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${tokens.colors.border}`, paddingTop: '8px' }}>
+          <div style={{ width: '80px', height: '12px', backgroundColor: '#D1D5DB', borderRadius: '2px' }} />
+          <div style={{ width: '56px', height: '20px', backgroundColor: '#D1D5DB', borderRadius: '2px' }} />
         </div>
       </div>
-    </div>
-  </article>
-);
+    </article>
+  );
+};
 
 /**
- * Statistics Loading Skeleton Component
+ * Statistics Loading Skeleton Component - Data Observatory theme
  */
 const StatisticsLoadingSkeleton = () => (
-  <section className="bg-white rounded-lg shadow-sm border mb-8" aria-label="Carregando estatísticas...">
-    <header className="px-6 py-4 border-b border-gray-200">
-      <div className="h-6 bg-gray-300 rounded w-64 mb-2" />
-      <div className="h-4 bg-gray-300 rounded w-96" />
+  <section
+    style={{
+      backgroundColor: tokens.colors.bgSecondary,
+      borderRadius: '4px',
+      border: `1px solid ${tokens.colors.border}`,
+      marginBottom: '32px',
+      fontFamily: tokens.fonts.body,
+    }}
+    aria-label="Carregando estatísticas..."
+  >
+    <header style={{ padding: '16px 24px', borderBottom: `1px solid ${tokens.colors.border}` }}>
+      <div style={{ width: '256px', height: '24px', backgroundColor: '#D1D5DB', borderRadius: '2px', marginBottom: '8px' }} />
+      <div style={{ width: '384px', height: '16px', backgroundColor: '#E5E7EB', borderRadius: '2px' }} />
     </header>
-    <div className="p-4 sm:p-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6" role="list">
+    <div style={{ padding: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }} role="list">
         <StatisticCardSkeleton colorScheme="blue" />
         <StatisticCardSkeleton colorScheme="green" />
         <StatisticCardSkeleton colorScheme="purple" />
@@ -246,105 +333,176 @@ const StatisticsLoadingSkeleton = () => (
 );
 
 /**
- * Statistics Error Component
+ * Statistics Error Component - Data Observatory theme
  */
 const StatisticsError = ({ error, onRetry }) => (
-  <section className="bg-white rounded-lg shadow-sm border mb-8" role="alert" aria-labelledby="error-heading">
-    <header className="px-6 py-4 border-b border-gray-200">
-      <h3 id="error-heading" className="text-lg font-semibold text-gray-900">Resumo de Atividade Parlamentar</h3>
+  <section
+    style={{
+      backgroundColor: tokens.colors.bgSecondary,
+      borderRadius: '4px',
+      border: `1px solid ${tokens.colors.border}`,
+      marginBottom: '32px',
+      fontFamily: tokens.fonts.body,
+    }}
+    role="alert"
+    aria-labelledby="error-heading"
+  >
+    <header style={{ padding: '16px 24px', borderBottom: `1px solid ${tokens.colors.border}` }}>
+      <h3
+        id="error-heading"
+        style={{ fontSize: '1.125rem', fontWeight: 600, color: tokens.colors.textPrimary, fontFamily: tokens.fonts.headline }}
+      >
+        Resumo de Atividade Parlamentar
+      </h3>
     </header>
-    <div className="p-6">
-      <div className="text-center">
-        <AlertTriangle className="mx-auto h-12 w-12 text-red-500 mb-4" aria-hidden="true" />
-        <h4 className="text-lg font-medium text-gray-900 mb-2">Erro ao carregar estatísticas</h4>
-        <p className="text-sm text-gray-600 mb-4">
-          Não foi possível carregar as estatísticas de atividade. Por favor, tente novamente.
-        </p>
-        {error && (
-          <details className="text-xs text-gray-500 mb-4">
-            <summary className="cursor-pointer">Detalhes técnicos</summary>
-            <p className="mt-2 text-left bg-gray-50 p-2 rounded">{error}</p>
-          </details>
-        )}
-        {onRetry && (
-          <button
-            onClick={onRetry}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-          >
-            Tentar novamente
-          </button>
-        )}
-      </div>
+    <div style={{ padding: '24px', textAlign: 'center' }}>
+      <AlertTriangle style={{ margin: '0 auto 16px', width: '48px', height: '48px', color: tokens.colors.danger }} aria-hidden="true" />
+      <h4 style={{ fontSize: '1.125rem', fontWeight: 500, color: tokens.colors.textPrimary, marginBottom: '8px' }}>
+        Erro ao carregar estatísticas
+      </h4>
+      <p style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, marginBottom: '16px' }}>
+        Não foi possível carregar as estatísticas de atividade. Por favor, tente novamente.
+      </p>
+      {error && (
+        <details style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, marginBottom: '16px' }}>
+          <summary style={{ cursor: 'pointer' }}>Detalhes técnicos</summary>
+          <p style={{ marginTop: '8px', textAlign: 'left', backgroundColor: tokens.colors.bgPrimary, padding: '8px', borderRadius: '4px' }}>{error}</p>
+        </details>
+      )}
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '8px 16px',
+            border: 'none',
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            borderRadius: '4px',
+            color: '#FFFFFF',
+            backgroundColor: tokens.colors.primary,
+            cursor: 'pointer',
+            transition: 'background-color 0.15s ease',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = tokens.colors.primaryLight}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = tokens.colors.primary}
+        >
+          Tentar novamente
+        </button>
+      )}
     </div>
   </section>
 );
 
 /**
- * Enhanced Attendance Card with percentage-based styling
+ * Enhanced Attendance Card with Data Observatory theme
  */
 const AttendanceCard = ({ currentRate, totalRate, totalSessions, onCardClick }) => {
   const currentPercentage = (currentRate * 100);
   const totalPercentage = (totalRate * 100);
-  const colors = getProgressColor(currentPercentage, 'orange');
-  
+  const colors = getAttendanceColors(currentPercentage);
+  const scheme = colorSchemes.orange;
+
   const handleClick = () => {
     if (onCardClick) {
       onCardClick('attendance');
     }
   };
-  
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       handleClick();
     }
   };
-  
+
   return (
-    <article 
-      className="group relative bg-gradient-to-br from-orange-50 to-red-100 rounded-lg border border-orange-200 p-4 sm:p-6 cursor-pointer hover:shadow-md transition-all duration-200 focus-within:ring-2 focus-within:ring-orange-500 focus-within:ring-offset-2"
+    <article
+      style={{
+        position: 'relative',
+        background: `linear-gradient(135deg, ${scheme.bg} 0%, #FEE2E2 100%)`,
+        borderRadius: '4px',
+        border: `1px solid ${scheme.border}`,
+        padding: '16px',
+        cursor: 'pointer',
+        transition: 'border-color 0.15s ease',
+        fontFamily: tokens.fonts.body,
+      }}
       role="listitem"
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       tabIndex={0}
       aria-labelledby="attendance-title"
       aria-describedby="attendance-description attendance-stats"
+      onMouseEnter={(e) => e.currentTarget.style.borderColor = scheme.primary}
+      onMouseLeave={(e) => e.currentTarget.style.borderColor = scheme.border}
     >
       {/* Header */}
-      <header className="flex items-start justify-between mb-4">
-        <div className="p-2 sm:p-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg shadow-sm flex-shrink-0">
-          <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-white" aria-hidden="true" />
+      <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{
+          padding: '10px',
+          backgroundColor: scheme.primary,
+          borderRadius: '4px',
+          flexShrink: 0,
+        }}>
+          <Activity style={{ width: '20px', height: '20px', color: '#FFFFFF' }} aria-hidden="true" />
         </div>
-        <div className={`px-2 py-1 bg-white bg-opacity-60 rounded-full text-xs font-medium ${colors.text}`}>
-          {currentPercentage >= 75 ? 'Excelente' : currentPercentage >= 50 ? 'Boa' : 'Baixa'}
+        <div style={{
+          padding: '4px 8px',
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          borderRadius: '9999px',
+          fontSize: '0.75rem',
+          fontWeight: 500,
+          color: colors.text,
+        }}>
+          {colors.label}
         </div>
       </header>
-      
+
       {/* Content */}
       <div>
-        <h4 
+        <h4
           id="attendance-title"
-          className="text-sm font-semibold text-orange-900 uppercase tracking-wide mb-3"
+          style={{
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            color: scheme.text,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginBottom: '12px',
+          }}
         >
           Taxa de Presença
         </h4>
-        
+
         {/* Statistics */}
-        <div id="attendance-stats" className="space-y-3">
+        <div id="attendance-stats">
           {/* Current Rate */}
-          <div className="flex items-baseline justify-between">
-            <span className="text-sm font-medium text-orange-700">Atual</span>
-            <span className="text-2xl font-bold text-orange-900">
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: scheme.textLight }}>Atual</span>
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: scheme.text, fontFamily: tokens.fonts.mono }}>
               {currentPercentage.toFixed(1)}%
             </span>
           </div>
-          
+
           {/* Visual Progress */}
-          <div className="space-y-2">
-            <div className={`w-full ${colors.bg} rounded-full h-2 overflow-hidden`}>
-              <div 
-                className={`h-full ${colors.bar} rounded-full animate-progress progress-bar`}
-                style={{ width: `${currentPercentage}%` }}
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{
+              width: '100%',
+              backgroundColor: colors.bg,
+              borderRadius: '9999px',
+              height: '6px',
+              overflow: 'hidden',
+            }}>
+              <div
+                style={{
+                  height: '100%',
+                  backgroundColor: colors.bar,
+                  borderRadius: '9999px',
+                  width: `${currentPercentage}%`,
+                  transition: 'width 0.5s ease',
+                }}
                 role="progressbar"
                 aria-valuenow={currentPercentage}
                 aria-valuemin="0"
@@ -353,27 +511,29 @@ const AttendanceCard = ({ currentRate, totalRate, totalSessions, onCardClick }) 
               />
             </div>
           </div>
-          
+
           {/* Career Total */}
-          <div className="flex items-baseline justify-between border-t border-orange-200 pt-2">
-            <span className="text-xs text-orange-600">Total carreira</span>
-            <span className="text-lg font-semibold text-orange-700">
+          <div style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            borderTop: `1px solid ${scheme.border}`,
+            paddingTop: '8px',
+            marginBottom: '12px',
+          }}>
+            <span style={{ fontSize: '0.75rem', color: scheme.textLight }}>Total carreira</span>
+            <span style={{ fontSize: '1.125rem', fontWeight: 600, color: scheme.text, fontFamily: tokens.fonts.mono }}>
               {totalPercentage.toFixed(1)}%
             </span>
           </div>
-          
+
           {/* Sessions Info */}
-          <div className="mt-3 text-xs text-orange-600 text-center">
+          <div style={{ fontSize: '0.75rem', color: scheme.textLight, textAlign: 'center' }}>
             {totalSessions} sessões na legislatura atual
           </div>
         </div>
       </div>
-      
-      {/* Click indicator */}
-      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-        <ChevronRight className="h-4 w-4 text-orange-600" aria-hidden="true" />
-      </div>
-      
+
       {/* Screen reader description */}
       <p id="attendance-description" className="sr-only">
         Taxa de presença às sessões parlamentares. Clique para ver detalhes.
@@ -548,22 +708,34 @@ const DeputadoDetalhes = () => {
   }, [cadId, interventionTypeFilter, interventionSort, currentPage, selectedLegislature]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando dados do deputado...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="A carregar dados do deputado" />;
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">Erro: {error}</p>
-          <Link to="/deputados" className="text-blue-600 hover:underline">
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: tokens.colors.bgPrimary,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: tokens.fonts.body,
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{
+            color: tokens.colors.accent,
+            marginBottom: '16px',
+            fontSize: '0.938rem',
+          }}>Erro: {error}</p>
+          <Link
+            to="/deputados"
+            style={{
+              color: tokens.colors.primary,
+              textDecoration: 'none',
+            }}
+            onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+            onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+          >
             Voltar aos deputados
           </Link>
         </div>
@@ -573,8 +745,15 @@ const DeputadoDetalhes = () => {
 
   if (!deputado) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Deputado não encontrado</p>
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: tokens.colors.bgPrimary,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: tokens.fonts.body,
+      }}>
+        <p style={{ color: tokens.colors.textSecondary }}>Deputado não encontrado</p>
       </div>
     );
   }
@@ -590,17 +769,37 @@ const DeputadoDetalhes = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: tokens.colors.bgPrimary,
+      fontFamily: tokens.fonts.body,
+    }}>
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link 
-                to="/deputados" 
-                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+      <div style={{
+        backgroundColor: tokens.colors.bgSecondary,
+        borderBottom: `1px solid ${tokens.colors.border}`,
+      }}>
+        <div style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          padding: '16px 24px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <Link
+                to="/deputados"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: tokens.colors.textSecondary,
+                  textDecoration: 'none',
+                  fontSize: '0.875rem',
+                  transition: 'color 0.15s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = tokens.colors.primary}
+                onMouseLeave={(e) => e.currentTarget.style.color = tokens.colors.textSecondary}
               >
-                <ArrowLeft className="h-5 w-5 mr-2" />
+                <ArrowLeft style={{ width: '18px', height: '18px', marginRight: '8px' }} />
                 Voltar aos Deputados
               </Link>
             </div>
@@ -608,57 +807,110 @@ const DeputadoDetalhes = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div style={{
+        maxWidth: '1280px',
+        margin: '0 auto',
+        padding: '32px 24px',
+      }}>
         {/* Perfil do Deputado */}
-        <div className="bg-white rounded-lg shadow-sm border mb-8">
-          <div className="px-6 py-8">
-            <div className="flex items-start space-x-6">
+        <div style={{
+          backgroundColor: tokens.colors.bgSecondary,
+          border: `1px solid ${tokens.colors.border}`,
+          borderRadius: '4px',
+          marginBottom: '32px',
+        }}>
+          <div style={{ padding: '32px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px', flexWrap: 'wrap' }}>
               {/* Avatar */}
-              <div className="flex-shrink-0">
+              <div style={{ flexShrink: 0 }}>
                 {deputado.picture_url ? (
                   <img
                     src={deputado.picture_url}
                     alt={deputado.nome}
-                    className="h-24 w-24 rounded-full object-cover bg-gray-200 border-2 border-gray-200"
+                    style={{
+                      width: '96px',
+                      height: '96px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      backgroundColor: tokens.colors.border,
+                      border: `2px solid ${tokens.colors.border}`,
+                    }}
                     onError={(e) => {
                       e.target.style.display = 'none';
                       e.target.nextSibling.style.display = 'flex';
                     }}
                   />
                 ) : null}
-                <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center" style={{ display: deputado.picture_url ? 'none' : 'flex' }}>
-                  <User className="h-12 w-12 text-blue-600" />
+                <div style={{
+                  width: '96px',
+                  height: '96px',
+                  borderRadius: '50%',
+                  backgroundColor: '#E8F5E9',
+                  display: deputado.picture_url ? 'none' : 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <User style={{ width: '48px', height: '48px', color: tokens.colors.primary }} />
                 </div>
               </div>
-              
+
               {/* Informações Básicas */}
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <div style={{ flex: 1, minWidth: '300px' }}>
+                <h1 style={{
+                  fontFamily: tokens.fonts.headline,
+                  fontSize: '1.875rem',
+                  fontWeight: 700,
+                  color: tokens.colors.textPrimary,
+                  marginBottom: '8px',
+                  lineHeight: 1.2,
+                }}>
                   {deputado.nome}
                 </h1>
-                
-                <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
-                  <div className="flex items-center">
-                    <Briefcase className="h-4 w-4 mr-2" />
+
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: '16px',
+                  color: tokens.colors.textSecondary,
+                  marginBottom: '16px',
+                  fontSize: '0.875rem',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <Briefcase style={{ width: '16px', height: '16px', marginRight: '8px' }} />
                     <span>{deputado.profissao || 'Profissão não informada'}</span>
                   </div>
-                  
-                  <div className="flex items-center">
-                    <MapPin className="h-4 w-4 mr-2" />
+
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <MapPin style={{ width: '16px', height: '16px', marginRight: '8px' }} />
                     <span>{deputado.circulo}</span>
                   </div>
-                  
-                  <div className="flex items-center">
-                    <Calendar className="h-4 w-4 mr-2" />
+
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <Calendar style={{ width: '16px', height: '16px', marginRight: '8px' }} />
                     <span>Mandato desde {new Date(deputado.mandato.inicio).toLocaleDateString('pt-PT')}</span>
                   </div>
                 </div>
 
                 {/* Partido */}
                 {deputado.partido && (
-                  <Link 
+                  <Link
                     to={`/partidos/${encodeURIComponent(deputado.partido.id)}`}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      fontSize: '0.813rem',
+                      fontWeight: 500,
+                      backgroundColor: '#E8F5E9',
+                      color: tokens.colors.primary,
+                      textDecoration: 'none',
+                      border: `1px solid ${tokens.colors.primary}20`,
+                      transition: 'background-color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#C8E6C9'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#E8F5E9'}
                   >
                     {deputado.partido.sigla} - {deputado.partido.nome}
                   </Link>
@@ -666,26 +918,74 @@ const DeputadoDetalhes = () => {
               </div>
 
               {/* Status and Actions */}
-              <div className="flex-shrink-0">
-                <div className="flex flex-col items-end space-y-3">
+              <div style={{ flexShrink: 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
                   {/* Status Badge */}
                   {deputado.career_info?.is_currently_active ? (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                      <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      fontSize: '0.813rem',
+                      fontWeight: 500,
+                      backgroundColor: tokens.colors.successBg,
+                      color: tokens.colors.success,
+                      border: `1px solid ${tokens.colors.success}30`,
+                    }}>
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        backgroundColor: tokens.colors.success,
+                        borderRadius: '50%',
+                        marginRight: '8px',
+                      }} />
                       Ativo
                     </span>
                   ) : deputado.career_info?.latest_completed_mandate ? (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      fontSize: '0.813rem',
+                      fontWeight: 500,
+                      backgroundColor: tokens.colors.bgPrimary,
+                      color: tokens.colors.textSecondary,
+                      border: `1px solid ${tokens.colors.border}`,
+                    }}>
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        backgroundColor: tokens.colors.textMuted,
+                        borderRadius: '50%',
+                        marginRight: '8px',
+                      }} />
                       Último mandato: {deputado.career_info.latest_completed_mandate.legislatura} ({deputado.career_info.latest_completed_mandate.periodo})
                     </span>
                   ) : (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full mr-2"></div>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      fontSize: '0.813rem',
+                      fontWeight: 500,
+                      backgroundColor: tokens.colors.bgPrimary,
+                      color: tokens.colors.textSecondary,
+                      border: `1px solid ${tokens.colors.border}`,
+                    }}>
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        backgroundColor: tokens.colors.textMuted,
+                        borderRadius: '50%',
+                        marginRight: '8px',
+                      }} />
                       Status Indisponível
                     </span>
                   )}
-                  
+
                   {/* Email Button - Only show for active deputies */}
                   {deputado.career_info?.is_currently_active && (
                     <button
@@ -693,10 +993,24 @@ const DeputadoDetalhes = () => {
                         const emailUrl = `https://www.parlamento.pt/DeputadoGP/Paginas/EmailDeputado.aspx?BID=${deputado.id_cadastro}`;
                         window.open(emailUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
                       }}
-                      className="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors shadow-sm"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        padding: '8px 16px',
+                        border: `1px solid ${tokens.colors.primary}`,
+                        fontSize: '0.813rem',
+                        fontWeight: 500,
+                        borderRadius: '4px',
+                        color: tokens.colors.primary,
+                        backgroundColor: tokens.colors.bgSecondary,
+                        cursor: 'pointer',
+                        transition: 'background-color 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E8F5E9'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = tokens.colors.bgSecondary}
                       title="Enviar email através do site oficial do Parlamento"
                     >
-                      <Mail className="h-4 w-4 mr-2" />
+                      <Mail style={{ width: '16px', height: '16px', marginRight: '8px' }} />
                       Enviar e-mail
                     </button>
                   )}
@@ -707,129 +1021,184 @@ const DeputadoDetalhes = () => {
         </div>
 
         {/* Political Performance Metrics - Meaningful Statistics */}
-        <div className="mb-8">
-          <div className="flex items-center mb-4">
-            <BarChart3 className="h-6 w-6 text-blue-600 mr-2" />
-            <h3 className="text-lg font-semibold text-gray-900">Performance Parliamentary</h3>
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+            <BarChart3 style={{ width: '24px', height: '24px', color: tokens.colors.primary, marginRight: '8px' }} />
+            <h3 style={{
+              fontFamily: tokens.fonts.headline,
+              fontSize: '1.125rem',
+              fontWeight: 600,
+              color: tokens.colors.textPrimary,
+            }}>Performance Parlamentar</h3>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: '16px',
+          }}>
             {/* Legislative Effectiveness */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center">
-                  <Target className="h-8 w-8 text-blue-600" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-600">Eficácia Legislativa</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {deputado.estatisticas.iniciativas_propostas}
-                    </p>
-                  </div>
+            <div style={{
+              backgroundColor: tokens.colors.bgSecondary,
+              border: `1px solid ${tokens.colors.border}`,
+              borderRadius: '4px',
+              padding: '20px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+                <Target style={{ width: '32px', height: '32px', color: tokens.colors.primary }} />
+                <div style={{ marginLeft: '12px' }}>
+                  <p style={{ fontSize: '0.813rem', fontWeight: 500, color: tokens.colors.textSecondary }}>Eficácia Legislativa</p>
+                  <p style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 700,
+                    color: tokens.colors.textPrimary,
+                    fontFamily: tokens.fonts.mono,
+                  }}>
+                    {deputado.estatisticas.iniciativas_propostas}
+                  </p>
                 </div>
               </div>
-              <div className="text-xs text-gray-500">
-                <span className="font-medium">Taxa Atividade:</span> {deputado.estatisticas.taxa_atividade_anual}/ano
+              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted }}>
+                <span style={{ fontWeight: 600 }}>Taxa Atividade:</span> {deputado.estatisticas.taxa_atividade_anual}/ano
               </div>
-              <div className="text-xs text-gray-400 mt-1">
+              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, marginTop: '4px' }}>
                 Iniciativas + Intervenções por ano de serviço
               </div>
             </div>
 
             {/* Political Experience */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center">
-                  <Award className="h-8 w-8 text-purple-600" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-600">Experiência</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {deputado.estatisticas.nivel_experiencia}
-                    </p>
-                  </div>
+            <div style={{
+              backgroundColor: tokens.colors.bgSecondary,
+              border: `1px solid ${tokens.colors.border}`,
+              borderRadius: '4px',
+              padding: '20px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+                <Award style={{ width: '32px', height: '32px', color: tokens.colors.purple }} />
+                <div style={{ marginLeft: '12px' }}>
+                  <p style={{ fontSize: '0.813rem', fontWeight: 500, color: tokens.colors.textSecondary }}>Experiência</p>
+                  <p style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 700,
+                    color: tokens.colors.textPrimary,
+                    fontFamily: tokens.fonts.mono,
+                  }}>
+                    {deputado.estatisticas.nivel_experiencia}
+                  </p>
                 </div>
               </div>
-              <div className="text-xs text-gray-500">
-                <span className="font-medium">{deputado.estatisticas.total_mandatos}</span> mandatos • <span className="font-medium">{deputado.estatisticas.tempo_servico_anos}</span> anos
+              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted }}>
+                <span style={{ fontWeight: 600 }}>{deputado.estatisticas.total_mandatos}</span> mandatos • <span style={{ fontWeight: 600 }}>{deputado.estatisticas.tempo_servico_anos}</span> anos
               </div>
-              <div className="text-xs text-gray-400 mt-1">
+              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, marginTop: '4px' }}>
                 Legislaturas: {deputado.estatisticas.legislaturas_servidas}
               </div>
             </div>
 
             {/* Parliamentary Engagement */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center">
-                  <Activity className={`h-8 w-8 ${
-                    deputado.estatisticas.taxa_assiduidade >= 0.9 ? 'text-green-600' :
-                    deputado.estatisticas.taxa_assiduidade >= 0.8 ? 'text-blue-600' :
-                    deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'text-yellow-600' :
-                    'text-orange-600'
-                  }`} />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-600">Participação</p>
-                    <p className={`text-2xl font-bold ${
-                      deputado.estatisticas.taxa_assiduidade >= 0.9 ? 'text-green-700' :
-                      deputado.estatisticas.taxa_assiduidade >= 0.8 ? 'text-blue-700' :
-                      deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'text-yellow-700' :
-                      'text-orange-700'
-                    }`}>
-                      {(deputado.estatisticas.taxa_assiduidade * 100).toFixed(0)}%
-                    </p>
-                  </div>
+            <div style={{
+              backgroundColor: tokens.colors.bgSecondary,
+              border: `1px solid ${tokens.colors.border}`,
+              borderRadius: '4px',
+              padding: '20px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+                <Activity style={{
+                  width: '32px',
+                  height: '32px',
+                  color: deputado.estatisticas.taxa_assiduidade >= 0.9 ? tokens.colors.success :
+                         deputado.estatisticas.taxa_assiduidade >= 0.8 ? tokens.colors.primary :
+                         deputado.estatisticas.taxa_assiduidade >= 0.7 ? tokens.colors.warning :
+                         tokens.colors.orange,
+                }} />
+                <div style={{ marginLeft: '12px' }}>
+                  <p style={{ fontSize: '0.813rem', fontWeight: 500, color: tokens.colors.textSecondary }}>Participação</p>
+                  <p style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 700,
+                    fontFamily: tokens.fonts.mono,
+                    color: deputado.estatisticas.taxa_assiduidade >= 0.9 ? tokens.colors.success :
+                           deputado.estatisticas.taxa_assiduidade >= 0.8 ? tokens.colors.primary :
+                           deputado.estatisticas.taxa_assiduidade >= 0.7 ? tokens.colors.warning :
+                           tokens.colors.orange,
+                  }}>
+                    {(deputado.estatisticas.taxa_assiduidade * 100).toFixed(0)}%
+                  </p>
                 </div>
               </div>
-              <div className="text-xs text-gray-500">
-                <span className="font-medium">{deputado.estatisticas.intervencoes_parlamentares}</span> intervenções
+              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted }}>
+                <span style={{ fontWeight: 600 }}>{deputado.estatisticas.intervencoes_parlamentares}</span> intervenções
               </div>
-              <div className="text-xs text-gray-400 mt-1">
+              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, marginTop: '4px' }}>
                 Taxa de assiduidade às sessões plenárias
               </div>
             </div>
 
             {/* National Performance Context */}
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center">
-                  <Globe className={`h-8 w-8 ${
-                    deputado.estatisticas.percentil_nacional >= 75 ? 'text-green-600' :
-                    deputado.estatisticas.percentil_nacional >= 50 ? 'text-blue-600' :
-                    deputado.estatisticas.percentil_nacional >= 25 ? 'text-yellow-600' :
-                    'text-orange-600'
-                  }`} />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-gray-600">Ranking Nacional</p>
-                    <p className={`text-2xl font-bold ${
-                      deputado.estatisticas.percentil_nacional >= 75 ? 'text-green-700' :
-                      deputado.estatisticas.percentil_nacional >= 50 ? 'text-blue-700' :
-                      deputado.estatisticas.percentil_nacional >= 25 ? 'text-yellow-700' :
-                      'text-orange-700'
-                    }`}>
-                      {deputado.estatisticas.percentil_nacional}º
-                    </p>
-                  </div>
+            <div style={{
+              backgroundColor: tokens.colors.bgSecondary,
+              border: `1px solid ${tokens.colors.border}`,
+              borderRadius: '4px',
+              padding: '20px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+                <Globe style={{
+                  width: '32px',
+                  height: '32px',
+                  color: deputado.estatisticas.percentil_nacional >= 75 ? tokens.colors.success :
+                         deputado.estatisticas.percentil_nacional >= 50 ? tokens.colors.primary :
+                         deputado.estatisticas.percentil_nacional >= 25 ? tokens.colors.warning :
+                         tokens.colors.orange,
+                }} />
+                <div style={{ marginLeft: '12px' }}>
+                  <p style={{ fontSize: '0.813rem', fontWeight: 500, color: tokens.colors.textSecondary }}>Ranking Nacional</p>
+                  <p style={{
+                    fontSize: '1.5rem',
+                    fontWeight: 700,
+                    fontFamily: tokens.fonts.mono,
+                    color: deputado.estatisticas.percentil_nacional >= 75 ? tokens.colors.success :
+                           deputado.estatisticas.percentil_nacional >= 50 ? tokens.colors.primary :
+                           deputado.estatisticas.percentil_nacional >= 25 ? tokens.colors.warning :
+                           tokens.colors.orange,
+                  }}>
+                    {deputado.estatisticas.percentil_nacional}º
+                  </p>
                 </div>
               </div>
-              <div className="text-xs text-gray-500">
+              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted }}>
                 {deputado.estatisticas.consistencia_eleitoral && (
-                  <div className="flex items-center">
-                    <CheckCircle2 className="h-3 w-3 text-green-500 mr-1" />
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <CheckCircle2 style={{ width: '12px', height: '12px', color: tokens.colors.success, marginRight: '4px' }} />
                     <span>Círculo consistente: {deputado.estatisticas.circulo_principal}</span>
                   </div>
                 )}
               </div>
-              <div className="text-xs text-gray-400 mt-1">
+              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, marginTop: '4px' }}>
                 Percentil com base na atividade legislativa
               </div>
             </div>
           </div>
 
           {/* Comparative Context Footer */}
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center">
-                  <Info className="h-4 w-4 mr-1" />
+          <div style={{
+            marginTop: '16px',
+            padding: '16px',
+            backgroundColor: tokens.colors.bgPrimary,
+            border: `1px solid ${tokens.colors.border}`,
+            borderRadius: '4px',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px',
+              fontSize: '0.813rem',
+              color: tokens.colors.textSecondary,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <Info style={{ width: '16px', height: '16px', marginRight: '4px' }} />
                   <span>Contexto Comparativo:</span>
                 </div>
                 {deputado.estatisticas.partido_atual && (
@@ -838,7 +1207,7 @@ const DeputadoDetalhes = () => {
                   </span>
                 )}
               </div>
-              <div className="text-xs text-gray-400">
+              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted }}>
                 Dados baseados em atividade parlamentar verificável
               </div>
             </div>
@@ -923,23 +1292,54 @@ const DeputadoDetalhes = () => {
         ) : null}
 
         {/* Tabs de Atividade */}
-        <div className="bg-white rounded-lg shadow-sm border">
+        <div style={{
+          backgroundColor: tokens.colors.bgSecondary,
+          border: `1px solid ${tokens.colors.border}`,
+          borderRadius: '4px',
+        }}>
           {/* Tab Headers */}
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
+          <div style={{ borderBottom: `1px solid ${tokens.colors.border}` }}>
+            <nav style={{
+              display: 'flex',
+              gap: '8px',
+              padding: '0 24px',
+              overflowX: 'auto',
+            }}>
               {tabs.map((tab) => {
                 const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => handleTabChange(tab.id)}
-                    className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '16px 8px',
+                      borderBottom: isActive ? `2px solid ${tokens.colors.primary}` : '2px solid transparent',
+                      fontWeight: isActive ? 600 : 400,
+                      fontSize: '0.813rem',
+                      color: isActive ? tokens.colors.primary : tokens.colors.textSecondary,
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'color 0.15s ease, border-color 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.color = tokens.colors.textPrimary;
+                        e.currentTarget.style.borderBottomColor = tokens.colors.border;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.color = tokens.colors.textSecondary;
+                        e.currentTarget.style.borderBottomColor = 'transparent';
+                      }
+                    }}
                   >
-                    <Icon className="h-4 w-4 mr-2" />
+                    <Icon style={{ width: '16px', height: '16px', marginRight: '8px' }} />
                     {tab.label}
                   </button>
                 );
@@ -948,55 +1348,89 @@ const DeputadoDetalhes = () => {
           </div>
 
           {/* Tab Content */}
-          <div className="p-6">
+          <div style={{ padding: '24px' }}>
             {activeTab === 'biografia' && (
               <div>
-                <div className="prose max-w-none">
+                <div style={{ maxWidth: 'none' }}>
                   {(deputado.nome_completo || deputado.data_nascimento || deputado.naturalidade || deputado.profissao || deputado.habilitacoes_academicas || (deputado.atividades_orgaos && deputado.atividades_orgaos.length > 0)) ? (
-                    <div className="space-y-6">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                       {/* Personal Information Section */}
                       {deputado.nome_completo && (
-                        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-6">
-                          <div className="flex items-center mb-4">
-                            <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center mr-3">
-                              <User className="h-5 w-5 text-white" />
+                        <div style={{
+                          backgroundColor: '#E8F5E9',
+                          border: `1px solid ${tokens.colors.primary}30`,
+                          borderRadius: '4px',
+                          padding: '24px',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+                            <div style={{
+                              width: '32px',
+                              height: '32px',
+                              backgroundColor: tokens.colors.primary,
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginRight: '12px',
+                            }}>
+                              <User style={{ width: '20px', height: '20px', color: '#FFFFFF' }} />
                             </div>
-                            <h4 className="text-lg font-semibold text-gray-900">Informações Pessoais</h4>
+                            <h4 style={{
+                              fontFamily: tokens.fonts.headline,
+                              fontSize: '1.125rem',
+                              fontWeight: 600,
+                              color: tokens.colors.textPrimary,
+                            }}>Informações Pessoais</h4>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-3">
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                            gap: '16px',
+                          }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                               <div>
-                                <span className="text-sm font-medium text-indigo-600 uppercase tracking-wide">Nome Completo</span>
-                                <p className="text-gray-900 font-medium">{deputado.nome_completo}</p>
+                                <span style={{
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  color: tokens.colors.primary,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.05em',
+                                }}>Nome Completo</span>
+                                <p style={{ color: tokens.colors.textPrimary, fontWeight: 500 }}>{deputado.nome_completo}</p>
                               </div>
                               {deputado.naturalidade && (
                                 <div>
-                                  <span className="text-sm font-medium text-indigo-600 uppercase tracking-wide">Naturalidade</span>
-                                  <p className="text-gray-900">{deputado.naturalidade}</p>
+                                  <span style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    color: tokens.colors.primary,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                  }}>Naturalidade</span>
+                                  <p style={{ color: tokens.colors.textPrimary }}>{deputado.naturalidade}</p>
                                 </div>
                               )}
                             </div>
-                            <div className="space-y-3">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                               {deputado.data_nascimento && (
                                 <div>
-                                  <span className="text-sm font-medium text-indigo-600 uppercase tracking-wide">Data de Nascimento</span>
-                                  <p className="text-gray-900">
+                                  <span style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    color: tokens.colors.primary,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                  }}>Data de Nascimento</span>
+                                  <p style={{ color: tokens.colors.textPrimary }}>
                                     {new Date(deputado.data_nascimento).toLocaleDateString('pt-PT')}
+                                    {' '}
                                     {(() => {
                                       const birthDate = new Date(deputado.data_nascimento);
                                       const today = new Date();
-                                      const age = today.getFullYear() - birthDate.getFullYear() - 
-                                        (today.getMonth() < birthDate.getMonth() || 
+                                      const age = today.getFullYear() - birthDate.getFullYear() -
+                                        (today.getMonth() < birthDate.getMonth() ||
                                          (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate()) ? 1 : 0);
-                                      return age > 0 ? ` ` : '';
-                                    })()}
-                                    {(() => {
-                                      const birthDate = new Date(deputado.data_nascimento);
-                                      const today = new Date();
-                                      const age = today.getFullYear() - birthDate.getFullYear() - 
-                                        (today.getMonth() < birthDate.getMonth() || 
-                                         (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate()) ? 1 : 0);
-                                      return age > 0 ? <span className="text-sm text-gray-600">({age} anos)</span> : null;
+                                      return age > 0 ? <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary }}>({age} anos)</span> : null;
                                     })()}
                                   </p>
                                 </div>
@@ -1005,48 +1439,79 @@ const DeputadoDetalhes = () => {
                           </div>
                         </div>
                       )}
-                      
-                      {/* Biografia Header - only show if there are other sections */}
+
+                      {/* Biografia Header */}
                       {(deputado.profissao || deputado.habilitacoes_academicas || deputado.biografia || (deputado.atividades_orgaos && deputado.atividades_orgaos.length > 0)) && (
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 mt-8">
+                        <h3 style={{
+                          fontFamily: tokens.fonts.headline,
+                          fontSize: '1.125rem',
+                          fontWeight: 600,
+                          color: tokens.colors.textPrimary,
+                          marginBottom: '16px',
+                          marginTop: '32px',
+                        }}>
                           Biografia
                         </h3>
                       )}
-                      
+
                       {deputado.profissao && (
-                        <div className="relative">
-                          <div className="flex">
-                            <div className="w-1 bg-blue-500 rounded-full mr-4 flex-shrink-0"></div>
-                            <div className="flex-1">
-                              <div className="flex items-center mb-3">
-                                <Briefcase className="h-5 w-5 text-blue-500 mr-2" />
-                                <h4 className="font-semibold text-gray-900">Profissão</h4>
+                        <div style={{ position: 'relative' }}>
+                          <div style={{ display: 'flex' }}>
+                            <div style={{
+                              width: '4px',
+                              backgroundColor: tokens.colors.primary,
+                              borderRadius: '2px',
+                              marginRight: '16px',
+                              flexShrink: 0,
+                            }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+                                <Briefcase style={{ width: '20px', height: '20px', color: tokens.colors.primary, marginRight: '8px' }} />
+                                <h4 style={{ fontWeight: 600, color: tokens.colors.textPrimary }}>Profissão</h4>
                               </div>
-                              <p className="text-gray-700 text-base leading-relaxed pl-7">
+                              <p style={{
+                                color: tokens.colors.textSecondary,
+                                fontSize: '0.938rem',
+                                lineHeight: 1.6,
+                                paddingLeft: '28px',
+                              }}>
                                 {deputado.profissao}
                               </p>
                             </div>
                           </div>
                         </div>
                       )}
-                      
+
                       {deputado.habilitacoes_academicas && (
-                        <div className="relative">
-                          <div className="flex">
-                            <div className="w-1 bg-green-500 rounded-full mr-4 flex-shrink-0"></div>
-                            <div className="flex-1">
-                              <div className="flex items-center mb-3">
-                                <svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                        <div style={{ position: 'relative' }}>
+                          <div style={{ display: 'flex' }}>
+                            <div style={{
+                              width: '4px',
+                              backgroundColor: tokens.colors.success,
+                              borderRadius: '2px',
+                              marginRight: '16px',
+                              flexShrink: 0,
+                            }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+                                <svg style={{ width: '20px', height: '20px', color: tokens.colors.success, marginRight: '8px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
                                 </svg>
-                                <h4 className="font-semibold text-gray-900">Habilitações Académicas</h4>
+                                <h4 style={{ fontWeight: 600, color: tokens.colors.textPrimary }}>Habilitações Académicas</h4>
                               </div>
-                              <div className="text-gray-700 pl-7 space-y-2">
+                              <div style={{ paddingLeft: '28px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {deputado.habilitacoes_academicas.split(';').map((hab, index) => (
-                                  <div key={index} className="flex items-start">
-                                    <div className="w-2 h-2 bg-green-400 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                                    <span className="text-base leading-relaxed">{hab.trim()}</span>
+                                  <div key={index} style={{ display: 'flex', alignItems: 'flex-start' }}>
+                                    <div style={{
+                                      width: '8px',
+                                      height: '8px',
+                                      backgroundColor: tokens.colors.success,
+                                      borderRadius: '50%',
+                                      marginTop: '8px',
+                                      marginRight: '12px',
+                                      flexShrink: 0,
+                                    }} />
+                                    <span style={{ fontSize: '0.938rem', lineHeight: 1.6, color: tokens.colors.textSecondary }}>{hab.trim()}</span>
                                   </div>
                                 ))}
                               </div>
@@ -1054,66 +1519,103 @@ const DeputadoDetalhes = () => {
                           </div>
                         </div>
                       )}
-                      
+
                       {deputado.biografia && (
-                        <div className="relative">
-                          <div className="flex">
-                            <div className="w-1 bg-purple-500 rounded-full mr-4 flex-shrink-0"></div>
-                            <div className="flex-1">
-                              <div className="flex items-center mb-3">
-                                <User className="h-5 w-5 text-purple-500 mr-2" />
-                                <h4 className="font-semibold text-gray-900">Biografia</h4>
+                        <div style={{ position: 'relative' }}>
+                          <div style={{ display: 'flex' }}>
+                            <div style={{
+                              width: '4px',
+                              backgroundColor: tokens.colors.purple,
+                              borderRadius: '2px',
+                              marginRight: '16px',
+                              flexShrink: 0,
+                            }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+                                <User style={{ width: '20px', height: '20px', color: tokens.colors.purple, marginRight: '8px' }} />
+                                <h4 style={{ fontWeight: 600, color: tokens.colors.textPrimary }}>Biografia</h4>
                               </div>
-                              <div className="text-gray-700 text-base leading-relaxed whitespace-pre-line pl-7">
+                              <div style={{
+                                color: tokens.colors.textSecondary,
+                                fontSize: '0.938rem',
+                                lineHeight: 1.6,
+                                whiteSpace: 'pre-line',
+                                paddingLeft: '28px',
+                              }}>
                                 {deputado.biografia}
                               </div>
                             </div>
                           </div>
                         </div>
                       )}
-                      
+
                       {deputado.atividades_orgaos && deputado.atividades_orgaos.length > 0 && (
-                        <div className="relative">
-                          <div className="flex">
-                            <div className="w-1 bg-orange-500 rounded-full mr-4 flex-shrink-0"></div>
-                            <div className="flex-1">
-                              <div className="flex items-center mb-3">
-                                <svg className="h-5 w-5 text-orange-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div style={{ position: 'relative' }}>
+                          <div style={{ display: 'flex' }}>
+                            <div style={{
+                              width: '4px',
+                              backgroundColor: tokens.colors.orange,
+                              borderRadius: '2px',
+                              marginRight: '16px',
+                              flexShrink: 0,
+                            }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+                                <svg style={{ width: '20px', height: '20px', color: tokens.colors.orange, marginRight: '8px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                 </svg>
-                                <h4 className="font-semibold text-gray-900">Atividade em Órgãos Parlamentares</h4>
+                                <h4 style={{ fontWeight: 600, color: tokens.colors.textPrimary }}>Atividade em Órgãos Parlamentares</h4>
                               </div>
-                              <div className="space-y-3 pl-7">
+                              <div style={{ paddingLeft: '28px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 {deputado.atividades_orgaos.map((orgao, index) => (
-                                  <div key={index} className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex-1">
-                                        <div className="flex items-center mb-2">
-                                          <h5 className="font-medium text-gray-900">
+                                  <div key={index} style={{
+                                    backgroundColor: '#FFF7ED',
+                                    border: `1px solid ${tokens.colors.orange}30`,
+                                    borderRadius: '4px',
+                                    padding: '16px',
+                                  }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                                      <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                                          <h5 style={{ fontWeight: 500, color: tokens.colors.textPrimary }}>
                                             {orgao.nome}
                                             {orgao.sigla && (
-                                              <span className="ml-2 text-sm text-orange-600 font-normal">({orgao.sigla})</span>
+                                              <span style={{ marginLeft: '8px', fontSize: '0.875rem', color: tokens.colors.orange, fontWeight: 400 }}>({orgao.sigla})</span>
                                             )}
                                           </h5>
                                         </div>
-                                        <div className="flex flex-wrap items-center gap-3 text-sm">
-                                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                            orgao.titular 
-                                              ? 'bg-green-100 text-green-800' 
-                                              : 'bg-yellow-100 text-yellow-800'
-                                          }`}>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', fontSize: '0.813rem' }}>
+                                          <span style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            padding: '4px 8px',
+                                            borderRadius: '4px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 500,
+                                            backgroundColor: orgao.titular ? tokens.colors.successBg : tokens.colors.warningBg,
+                                            color: orgao.titular ? tokens.colors.success : tokens.colors.warning,
+                                          }}>
                                             {orgao.tipo_membro}
                                           </span>
                                           {orgao.cargo !== 'membro' && (
-                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            <span style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              padding: '4px 8px',
+                                              borderRadius: '4px',
+                                              fontSize: '0.75rem',
+                                              fontWeight: 500,
+                                              backgroundColor: '#E8F5E9',
+                                              color: tokens.colors.primary,
+                                            }}>
                                               {orgao.cargo === 'presidente' ? 'Presidente' :
                                                orgao.cargo === 'vice_presidente' ? 'Vice-Presidente' :
-                                               orgao.cargo === 'secretario' ? 'Secretário' : 
+                                               orgao.cargo === 'secretario' ? 'Secretário' :
                                                orgao.cargo}
                                             </span>
                                           )}
                                           {orgao.observacoes && (
-                                            <span className="text-gray-500">
+                                            <span style={{ color: tokens.colors.textMuted }}>
                                               {orgao.observacoes}
                                             </span>
                                           )}
@@ -1129,12 +1631,22 @@ const DeputadoDetalhes = () => {
                       )}
                     </div>
                   ) : (
-                    <div className="text-center py-12">
-                      <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                        <User className="h-8 w-8 text-gray-400" />
+                    <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                      <div style={{
+                        margin: '0 auto',
+                        width: '64px',
+                        height: '64px',
+                        backgroundColor: tokens.colors.bgPrimary,
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '16px',
+                      }}>
+                        <User style={{ width: '32px', height: '32px', color: tokens.colors.textMuted }} />
                       </div>
-                      <p className="text-gray-500 text-lg font-medium mb-2">Informações biográficas não disponíveis</p>
-                      <p className="text-sm text-gray-400">
+                      <p style={{ color: tokens.colors.textMuted, fontSize: '1.125rem', fontWeight: 500, marginBottom: '8px' }}>Informações biográficas não disponíveis</p>
+                      <p style={{ fontSize: '0.875rem', color: tokens.colors.textMuted }}>
                         Dados biográficos não foram fornecidos para este deputado
                       </p>
                     </div>
@@ -1145,32 +1657,40 @@ const DeputadoDetalhes = () => {
 
             {activeTab === 'intervencoes' && (
               <div>
-                <div className="flex justify-between items-center mb-6">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: tokens.colors.textPrimary, fontFamily: tokens.fonts.headline }}>
                       Intervenções Parlamentares
                     </h3>
                     {totalInterventions > 0 && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        {interventionTypeFilter 
+                      <p style={{ fontSize: '0.875rem', color: tokens.colors.textMuted, marginTop: '4px' }}>
+                        {interventionTypeFilter
                           ? `${atividades?.intervencoes?.length || 0} de ${totalInterventions} intervenções (filtrado por "${interventionTypeFilter}")`
                           : `${totalInterventions} intervenções`
                         }
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-3 items-center">
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     {atividades && atividades.intervencoes.length > 0 && (
-                      <div className="flex gap-2">
-                      <select 
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <select
                         value={interventionTypeFilter}
                         onChange={(e) => {
                           const newType = e.target.value;
                           setInterventionTypeFilter(newType);
-                          setCurrentPage(1); // Reset to page 1 when filtering
+                          setCurrentPage(1);
                           updateInterventionParams({ tipo_intervencao: newType, page: 1 });
                         }}
-                        className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        style={{
+                          border: `1px solid ${tokens.colors.border}`,
+                          borderRadius: '4px',
+                          padding: '6px 12px',
+                          fontSize: '0.875rem',
+                          backgroundColor: tokens.colors.bgSecondary,
+                          color: tokens.colors.textPrimary,
+                          fontFamily: tokens.fonts.body,
+                        }}
                       >
                         <option value="">Todos os tipos</option>
                         <option value="Interpelação">Interpelação à mesa</option>
@@ -1178,14 +1698,22 @@ const DeputadoDetalhes = () => {
                         <option value="Declaração">Declaração política</option>
                         <option value="Pergunta">Pergunta</option>
                       </select>
-                      <select 
+                      <select
                         value={interventionSort}
                         onChange={(e) => {
                           const newSort = e.target.value;
                           setInterventionSort(newSort);
                           updateInterventionParams({ ordenacao_intervencoes: newSort });
                         }}
-                        className="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        style={{
+                          border: `1px solid ${tokens.colors.border}`,
+                          borderRadius: '4px',
+                          padding: '6px 12px',
+                          fontSize: '0.875rem',
+                          backgroundColor: tokens.colors.bgSecondary,
+                          color: tokens.colors.textPrimary,
+                          fontFamily: tokens.fonts.body,
+                        }}
                       >
                         <option value="newest">Mais recentes</option>
                         <option value="oldest">Mais antigas</option>
@@ -1203,102 +1731,166 @@ const DeputadoDetalhes = () => {
                 </div>
 
                 {atividades && atividades.intervencoes.length > 0 ? (
-                  <div className="space-y-6">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     {(() => {
-                      // Interventions are already filtered and sorted by the API
                       const interventions = atividades.intervencoes || [];
-                      
-                      // Helper functions
-                      const getTipoColor = (tipo) => {
-                        if (tipo?.includes('Interpelação')) return 'bg-blue-100 text-blue-800 border-blue-200';
-                        if (tipo?.includes('Declaração')) return 'bg-green-100 text-green-800 border-green-200';
-                        if (tipo?.includes('Pedido')) return 'bg-orange-100 text-orange-800 border-orange-200';
-                        if (tipo?.includes('Pergunta')) return 'bg-purple-100 text-purple-800 border-purple-200';
-                        return 'bg-gray-100 text-gray-800 border-gray-200';
+
+                      // Helper functions for inline styles
+                      const getTipoStyle = (tipo) => {
+                        if (tipo?.includes('Interpelação')) return { backgroundColor: colorSchemes.blue.bg, color: colorSchemes.blue.text, borderColor: colorSchemes.blue.border };
+                        if (tipo?.includes('Declaração')) return { backgroundColor: colorSchemes.green.bg, color: colorSchemes.green.text, borderColor: colorSchemes.green.border };
+                        if (tipo?.includes('Pedido')) return { backgroundColor: colorSchemes.orange.bg, color: colorSchemes.orange.text, borderColor: colorSchemes.orange.border };
+                        if (tipo?.includes('Pergunta')) return { backgroundColor: colorSchemes.purple.bg, color: colorSchemes.purple.text, borderColor: colorSchemes.purple.border };
+                        return { backgroundColor: tokens.colors.bgPrimary, color: tokens.colors.textSecondary, borderColor: tokens.colors.border };
                       };
 
-                      const getQualidadeColor = (qualidade) => {
-                        if (qualidade === 'Deputado') return 'bg-blue-50 text-blue-700 border-blue-200';
-                        if (qualidade === 'P.A.R.') return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-                        return 'bg-gray-50 text-gray-700 border-gray-200';
+                      const getQualidadeStyle = (qualidade) => {
+                        if (qualidade === 'Deputado') return { backgroundColor: colorSchemes.blue.bg, color: colorSchemes.blue.text, borderColor: colorSchemes.blue.border };
+                        if (qualidade === 'P.A.R.') return { backgroundColor: colorSchemes.purple.bg, color: colorSchemes.purple.text, borderColor: colorSchemes.purple.border };
+                        return { backgroundColor: tokens.colors.bgPrimary, color: tokens.colors.textSecondary, borderColor: tokens.colors.border };
                       };
-                      
+
                       return interventions.map((intervencao, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
+                        <div key={index} style={{
+                          border: `1px solid ${tokens.colors.border}`,
+                          borderRadius: '4px',
+                          padding: '24px',
+                          backgroundColor: tokens.colors.bgSecondary,
+                          transition: 'border-color 0.15s ease',
+                        }}>
                           {/* Context badges */}
-                          <div className="flex gap-2 mb-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getTipoColor(intervencao.tipo)}`}>
+                          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                            <span style={{
+                              ...getTipoStyle(intervencao.tipo),
+                              padding: '4px 12px',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
+                              border: `1px solid ${getTipoStyle(intervencao.tipo).borderColor}`,
+                            }}>
                               {intervencao.tipo}
                             </span>
                             {intervencao.qualidade && (
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getQualidadeColor(intervencao.qualidade)}`}>
+                              <span style={{
+                                ...getQualidadeStyle(intervencao.qualidade),
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
+                                fontWeight: 500,
+                                border: `1px solid ${getQualidadeStyle(intervencao.qualidade).borderColor}`,
+                              }}>
                                 {intervencao.qualidade}
                               </span>
                             )}
                             {intervencao.sessao_numero && (
-                              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full border border-gray-200">
+                              <span style={{
+                                padding: '4px 8px',
+                                backgroundColor: tokens.colors.bgPrimary,
+                                color: tokens.colors.textSecondary,
+                                fontSize: '0.75rem',
+                                fontWeight: 500,
+                                borderRadius: '4px',
+                                border: `1px solid ${tokens.colors.border}`,
+                              }}>
                                 Sessão {intervencao.sessao_numero}
                               </span>
                             )}
                           </div>
 
-                          <div className="flex gap-4">
+                          <div style={{ display: 'flex', gap: '16px' }}>
                             {/* Video Thumbnail */}
                             {intervencao.url_video && intervencao.thumbnail_url ? (
-                              <div className="relative flex-shrink-0">
-                                <div className="w-36 h-22 rounded-lg overflow-hidden bg-gray-100 relative group cursor-pointer shadow-sm"
-                                     onClick={() => window.open(intervencao.url_video, '_blank')}>
-                                  <img 
+                              <div style={{ position: 'relative', flexShrink: 0 }}>
+                                <div
+                                  style={{
+                                    width: '144px',
+                                    height: '88px',
+                                    borderRadius: '4px',
+                                    overflow: 'hidden',
+                                    backgroundColor: tokens.colors.bgPrimary,
+                                    position: 'relative',
+                                    cursor: 'pointer',
+                                  }}
+                                  onClick={() => window.open(intervencao.url_video, '_blank')}
+                                >
+                                  <img
                                     src={intervencao.thumbnail_url}
                                     alt="Video thumbnail"
-                                    className="w-full h-full object-cover"
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                     onError={(e) => {
                                       e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTQ0IiBoZWlnaHQ9IjkwIiB2aWV3Qm94PSIwIDAgMTQ0IDkwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTQ0IiBoZWlnaHQ9IjkwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik02MCA0NUw4NCA1N0w2MCA2OVY0NVoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+';
                                     }}
                                   />
-                                  {/* Play Button Overlay */}
-                                  <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="bg-white bg-opacity-95 rounded-full p-2 shadow-lg">
-                                      <Play className="h-6 w-6 text-gray-900 ml-1" />
-                                    </div>
-                                  </div>
-                                  {/* Duration Badge */}
                                   {intervencao.duracao_video && (
-                                    <div className="absolute bottom-1 right-1 bg-black bg-opacity-80 text-white text-xs px-2 py-1 rounded shadow">
-                                      <Clock className="h-3 w-3 inline mr-1" />
+                                    <div style={{
+                                      position: 'absolute',
+                                      bottom: '4px',
+                                      right: '4px',
+                                      backgroundColor: 'rgba(0,0,0,0.8)',
+                                      color: '#FFFFFF',
+                                      fontSize: '0.75rem',
+                                      padding: '2px 6px',
+                                      borderRadius: '2px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                    }}>
+                                      <Clock style={{ width: '12px', height: '12px', marginRight: '4px' }} />
                                       {intervencao.duracao_video}
                                     </div>
                                   )}
                                 </div>
                               </div>
                             ) : intervencao.url_video ? (
-                              // Video without thumbnail
-                              <div className="relative flex-shrink-0">
-                                <div className="w-36 h-22 rounded-lg overflow-hidden bg-gradient-to-br from-blue-100 to-blue-200 relative group cursor-pointer flex items-center justify-center shadow-sm border border-blue-200"
-                                     onClick={() => window.open(intervencao.url_video, '_blank')}>
-                                  <Play className="h-8 w-8 text-blue-600" />
-                                  <div className="absolute inset-0 bg-blue-600 bg-opacity-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                              <div style={{ position: 'relative', flexShrink: 0 }}>
+                                <div
+                                  style={{
+                                    width: '144px',
+                                    height: '88px',
+                                    borderRadius: '4px',
+                                    overflow: 'hidden',
+                                    backgroundColor: colorSchemes.blue.bg,
+                                    border: `1px solid ${colorSchemes.blue.border}`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                  }}
+                                  onClick={() => window.open(intervencao.url_video, '_blank')}
+                                >
+                                  <Play style={{ width: '32px', height: '32px', color: colorSchemes.blue.primary }} />
                                 </div>
                               </div>
                             ) : null}
-                            
+
                             {/* Content */}
-                            <div className="flex-1 min-w-0">
+                            <div style={{ flex: 1, minWidth: 0 }}>
                               {/* Header with date and action buttons */}
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex items-center gap-3 text-sm text-gray-500">
-                                  <div className="flex items-center">
-                                    <Calendar className="h-4 w-4 mr-1" />
+                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.875rem', color: tokens.colors.textMuted }}>
+                                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    <Calendar style={{ width: '16px', height: '16px', marginRight: '4px' }} />
                                     {new Date(intervencao.data).toLocaleDateString('pt-PT')}
                                   </div>
                                 </div>
-                                
+
                                 {/* Action Buttons */}
-                                <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '16px', flexShrink: 0 }}>
                                   {intervencao.url_video && (
                                     <button
                                       onClick={() => window.open(intervencao.url_video, '_blank')}
-                                      className="inline-flex items-center px-3 py-1.5 border border-blue-300 text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors shadow-sm whitespace-nowrap"
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        padding: '6px 12px',
+                                        border: `1px solid ${colorSchemes.blue.border}`,
+                                        fontSize: '0.875rem',
+                                        fontWeight: 500,
+                                        borderRadius: '4px',
+                                        color: colorSchemes.blue.text,
+                                        backgroundColor: colorSchemes.blue.bg,
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                      }}
                                     >
                                       <Play className="h-4 w-4 mr-1" />
                                       Ver Vídeo
@@ -1307,42 +1899,64 @@ const DeputadoDetalhes = () => {
                                   {intervencao.publicacao?.url_diario && (
                                     <button
                                       onClick={() => window.open(intervencao.publicacao.url_diario, '_blank')}
-                                      className="inline-flex items-center px-3 py-1.5 border border-amber-300 text-sm font-medium rounded-md text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors shadow-sm whitespace-nowrap"
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        padding: '6px 12px',
+                                        border: `1px solid ${colorSchemes.orange.border}`,
+                                        fontSize: '0.875rem',
+                                        fontWeight: 500,
+                                        borderRadius: '4px',
+                                        color: colorSchemes.orange.text,
+                                        backgroundColor: colorSchemes.orange.bg,
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                      }}
                                     >
-                                      <ExternalLink className="h-4 w-4 mr-1" />
+                                      <ExternalLink style={{ width: '16px', height: '16px', marginRight: '4px' }} />
                                       {intervencao.publicacao.pub_numero ? `DR ${intervencao.publicacao.pub_numero}` : 'Diário'}
                                     </button>
                                   )}
                                 </div>
                               </div>
 
-                              {/* Subject/Title - separate line for long titles */}
+                              {/* Subject/Title */}
                               {intervencao.assunto && (
-                                <div className="mb-3">
-                                  <h4 className="text-gray-800 font-medium text-sm leading-5 line-clamp-2">
+                                <div style={{ marginBottom: '12px' }}>
+                                  <h4 style={{ color: tokens.colors.textPrimary, fontWeight: 500, fontSize: '0.875rem', lineHeight: 1.4 }}>
                                     {intervencao.assunto}
                                   </h4>
                                 </div>
                               )}
-                              
+
                               {/* Summary */}
                               {intervencao.resumo && (
-                                <p className="text-gray-700 text-sm leading-relaxed mb-3 line-clamp-3">
+                                <p style={{ color: tokens.colors.textSecondary, fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '12px' }}>
                                   {intervencao.resumo}
                                 </p>
                               )}
-                              
+
                               {/* Additional Info */}
                               {(intervencao.sumario || intervencao.fase_sessao) && (
-                                <div className="mt-3 pt-3 border-t border-gray-100">
+                                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${tokens.colors.border}` }}>
                                   {intervencao.sumario && (
-                                    <p className="text-sm text-gray-600 mb-2">
-                                      <span className="font-medium text-gray-700">Sumário:</span> {intervencao.sumario}
+                                    <p style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, marginBottom: '8px' }}>
+                                      <span style={{ fontWeight: 500, color: tokens.colors.textPrimary }}>Sumário:</span> {intervencao.sumario}
                                     </p>
                                   )}
-                                  <div className="flex gap-2 flex-wrap">
+                                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                     {intervencao.fase_sessao && (
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                      <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        padding: '4px 8px',
+                                        borderRadius: '4px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 500,
+                                        backgroundColor: tokens.colors.bgPrimary,
+                                        color: tokens.colors.textSecondary,
+                                        border: `1px solid ${tokens.colors.border}`,
+                                      }}>
                                         {intervencao.fase_sessao}
                                       </span>
                                     )}
@@ -1352,20 +1966,20 @@ const DeputadoDetalhes = () => {
 
                               {/* Publication metadata */}
                               {intervencao.publicacao && (
-                                <div className="mt-3 pt-3 border-t border-gray-100">
-                                  <div className="flex gap-4 text-xs text-gray-500">
+                                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${tokens.colors.border}` }}>
+                                  <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: tokens.colors.textMuted }}>
                                     {intervencao.publicacao.pub_tipo && (
-                                      <span className="flex items-center">
+                                      <span style={{ display: 'flex', alignItems: 'center' }}>
                                         📰 {intervencao.publicacao.pub_tipo}
                                       </span>
                                     )}
                                     {intervencao.publicacao.pub_data && (
-                                      <span className="flex items-center">
+                                      <span style={{ display: 'flex', alignItems: 'center' }}>
                                         📅 Pub: {new Date(intervencao.publicacao.pub_data).toLocaleDateString('pt-PT')}
                                       </span>
                                     )}
                                     {intervencao.publicacao.paginas && (
-                                      <span className="flex items-center">
+                                      <span style={{ display: 'flex', alignItems: 'center' }}>
                                         📄 Pág. {intervencao.publicacao.paginas}
                                       </span>
                                     )}
@@ -1377,10 +1991,18 @@ const DeputadoDetalhes = () => {
                         </div>
                       ));
                     })()}
-                    
+
                     {/* Pagination Controls */}
                     {totalPages > 1 && (
-                      <div className="flex justify-center items-center gap-2 mt-8 pt-6 border-t border-gray-200">
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: '32px',
+                        paddingTop: '24px',
+                        borderTop: `1px solid ${tokens.colors.border}`,
+                      }}>
                         <button
                           onClick={() => {
                             if (currentPage > 1) {
@@ -1390,15 +2012,24 @@ const DeputadoDetalhes = () => {
                             }
                           }}
                           disabled={currentPage <= 1}
-                          className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{
+                            padding: '8px 12px',
+                            fontSize: '0.875rem',
+                            backgroundColor: tokens.colors.bgSecondary,
+                            border: `1px solid ${tokens.colors.border}`,
+                            borderRadius: '4px',
+                            cursor: currentPage <= 1 ? 'not-allowed' : 'pointer',
+                            opacity: currentPage <= 1 ? 0.5 : 1,
+                            color: tokens.colors.textPrimary,
+                          }}
                         >
                           Anterior
                         </button>
-                        
-                        <span className="px-4 py-2 text-sm text-gray-700">
+
+                        <span style={{ padding: '8px 16px', fontSize: '0.875rem', color: tokens.colors.textSecondary, fontFamily: tokens.fonts.mono }}>
                           Página {currentPage} de {totalPages}
                         </span>
-                        
+
                         <button
                           onClick={() => {
                             if (currentPage < totalPages) {
@@ -1408,7 +2039,16 @@ const DeputadoDetalhes = () => {
                             }
                           }}
                           disabled={currentPage >= totalPages}
-                          className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{
+                            padding: '8px 12px',
+                            fontSize: '0.875rem',
+                            backgroundColor: tokens.colors.bgSecondary,
+                            border: `1px solid ${tokens.colors.border}`,
+                            borderRadius: '4px',
+                            cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+                            opacity: currentPage >= totalPages ? 0.5 : 1,
+                            color: tokens.colors.textPrimary,
+                          }}
                         >
                           Próxima
                         </button>
@@ -1416,10 +2056,22 @@ const DeputadoDetalhes = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 text-lg font-medium mb-2">Nenhuma intervenção registada</p>
-                    <p className="text-sm text-gray-400">
+                  <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                    <div style={{
+                      margin: '0 auto',
+                      width: '64px',
+                      height: '64px',
+                      backgroundColor: tokens.colors.bgPrimary,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '16px',
+                    }}>
+                      <MessageSquare style={{ width: '32px', height: '32px', color: tokens.colors.textMuted }} />
+                    </div>
+                    <p style={{ color: tokens.colors.textMuted, fontSize: '1.125rem', fontWeight: 500, marginBottom: '8px' }}>Nenhuma intervenção registada</p>
+                    <p style={{ fontSize: '0.875rem', color: tokens.colors.textMuted }}>
                       Os dados de intervenções serão carregados em futuras atualizações
                     </p>
                   </div>
@@ -1429,18 +2081,39 @@ const DeputadoDetalhes = () => {
 
             {activeTab === 'iniciativas' && (
               <div>
-                <div className="flex items-center justify-between mb-6">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 style={{
+                      fontFamily: tokens.fonts.headline,
+                      fontSize: '1.25rem',
+                      fontWeight: '600',
+                      color: tokens.colors.textPrimary,
+                      margin: 0
+                    }}>
                       Iniciativas Legislativas
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p style={{
+                      fontFamily: tokens.fonts.body,
+                      fontSize: '0.875rem',
+                      color: tokens.colors.textMuted,
+                      marginTop: '0.25rem',
+                      margin: '0.25rem 0 0 0'
+                    }}>
                       Projetos de lei e resoluções apresentados pelo deputado
                     </p>
                   </div>
-                  <div className="flex gap-3 items-center">
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                     {atividades && atividades.iniciativas && atividades.iniciativas.length > 0 && (
-                      <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                      <div style={{
+                        fontFamily: tokens.fonts.mono,
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        color: tokens.colors.primary,
+                        backgroundColor: '#E8F5E9',
+                        padding: '0.375rem 0.75rem',
+                        borderRadius: '2px',
+                        border: `1px solid ${tokens.colors.primary}20`
+                      }}>
                         {atividades.iniciativas.length} iniciativas
                       </div>
                     )}
@@ -1454,93 +2127,186 @@ const DeputadoDetalhes = () => {
                 </div>
                 
                 {atividades && atividades.iniciativas && atividades.iniciativas.length > 0 ? (
-                  <div className="space-y-4">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {atividades.iniciativas.map((iniciativa, index) => {
-                      // Helper function to get type styling
+                      // Helper function to get type styling - returns style object
                       const getTypeStyle = (tipo) => {
                         switch (tipo) {
                           case 'J':
-                            return 'bg-blue-100 text-blue-800 border-blue-200';
+                            return { backgroundColor: colorSchemes.blue.bg, color: colorSchemes.blue.text, borderColor: colorSchemes.blue.border };
                           case 'R':
-                            return 'bg-green-100 text-green-800 border-green-200';
+                            return { backgroundColor: colorSchemes.green.bg, color: colorSchemes.green.text, borderColor: colorSchemes.green.border };
                           case 'P':
-                            return 'bg-purple-100 text-purple-800 border-purple-200';
+                            return { backgroundColor: colorSchemes.purple.bg, color: colorSchemes.purple.text, borderColor: colorSchemes.purple.border };
                           case 'D':
-                            return 'bg-orange-100 text-orange-800 border-orange-200';
+                            return { backgroundColor: colorSchemes.orange.bg, color: colorSchemes.orange.text, borderColor: colorSchemes.orange.border };
                           default:
-                            return 'bg-gray-100 text-gray-800 border-gray-200';
+                            return { backgroundColor: '#F3F4F6', color: tokens.colors.textSecondary, borderColor: tokens.colors.border };
                         }
                       };
 
-                      // Helper function to get status styling
+                      // Helper function to get status styling - returns style object
                       const getStatusStyle = (estado) => {
                         if (!estado) return null;
                         switch (estado?.toLowerCase()) {
                           case 'aprovado':
-                            return 'bg-green-50 text-green-700 border-green-200';
+                            return { backgroundColor: tokens.colors.successBg, color: tokens.colors.success, borderColor: '#BBF7D0' };
                           case 'rejeitado':
-                            return 'bg-red-50 text-red-700 border-red-200';
+                            return { backgroundColor: tokens.colors.dangerBg, color: tokens.colors.danger, borderColor: '#FECACA' };
                           case 'em votação':
-                            return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+                            return { backgroundColor: tokens.colors.warningBg, color: tokens.colors.warning, borderColor: '#FDE68A' };
                           case 'retirado':
-                            return 'bg-gray-50 text-gray-700 border-gray-200';
+                            return { backgroundColor: '#F9FAFB', color: tokens.colors.textSecondary, borderColor: tokens.colors.border };
                           default:
-                            return 'bg-blue-50 text-blue-700 border-blue-200';
+                            return { backgroundColor: tokens.colors.infoBg, color: tokens.colors.info, borderColor: '#BFDBFE' };
                         }
                       };
 
+                      // Helper function to get progress bar color
+                      const getProgressColor = (estado) => {
+                        if (!estado) return tokens.colors.blue;
+                        switch (estado?.toLowerCase()) {
+                          case 'aprovado': return tokens.colors.success;
+                          case 'rejeitado': return tokens.colors.danger;
+                          case 'em votação': return '#F59E0B';
+                          default: return tokens.colors.blue;
+                        }
+                      };
+
+                      // Helper function to get progress bar width
+                      const getProgressWidth = (estado) => {
+                        if (!estado) return '50%';
+                        switch (estado?.toLowerCase()) {
+                          case 'aprovado': return '100%';
+                          case 'rejeitado': return '100%';
+                          case 'em votação': return '75%';
+                          default: return '50%';
+                        }
+                      };
+
+                      const typeStyles = getTypeStyle(iniciativa.tipo);
+                      const statusStyles = getStatusStyle(iniciativa.estado);
+
                       return (
-                        <div key={index} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-200 hover:border-gray-300">
+                        <div key={index} style={{
+                          backgroundColor: tokens.colors.bgSecondary,
+                          border: `1px solid ${tokens.colors.border}`,
+                          borderRadius: '4px',
+                          padding: '1.5rem',
+                          transition: 'border-color 0.2s ease'
+                        }}>
                           {/* Header with type and date */}
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getTypeStyle(iniciativa.tipo)}`}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                              <span style={{
+                                ...typeStyles,
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                padding: '0.375rem 0.75rem',
+                                borderRadius: '2px',
+                                border: `1px solid ${typeStyles.borderColor}`,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.025em'
+                              }}>
                                 {iniciativa.tipo_descricao || iniciativa.tipo}
                               </span>
-                              {iniciativa.estado && (
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusStyle(iniciativa.estado)}`}>
+                              {iniciativa.estado && statusStyles && (
+                                <span style={{
+                                  ...statusStyles,
+                                  fontFamily: tokens.fonts.body,
+                                  fontSize: '0.75rem',
+                                  fontWeight: '500',
+                                  padding: '0.25rem 0.5rem',
+                                  borderRadius: '2px',
+                                  border: `1px solid ${statusStyles.borderColor}`
+                                }}>
                                   {iniciativa.estado}
                                 </span>
                               )}
                             </div>
-                            <div className="text-sm text-gray-500 flex items-center flex-shrink-0 ml-4">
-                              <Calendar className="h-4 w-4 mr-1" />
+                            <div style={{
+                              fontFamily: tokens.fonts.mono,
+                              fontSize: '0.75rem',
+                              color: tokens.colors.textMuted,
+                              display: 'flex',
+                              alignItems: 'center',
+                              flexShrink: 0,
+                              marginLeft: '1rem'
+                            }}>
+                              <Calendar style={{ height: '14px', width: '14px', marginRight: '0.25rem' }} />
                               {new Date(iniciativa.data_apresentacao || iniciativa.data).toLocaleDateString('pt-PT')}
                             </div>
                           </div>
 
                           {/* Title */}
-                          <h4 className="font-semibold text-gray-900 mb-3 text-lg leading-tight">
+                          <h4 style={{
+                            fontFamily: tokens.fonts.headline,
+                            fontWeight: '600',
+                            color: tokens.colors.textPrimary,
+                            marginBottom: '0.75rem',
+                            fontSize: '1.125rem',
+                            lineHeight: '1.4'
+                          }}>
                             {iniciativa.titulo}
                           </h4>
 
                           {/* Details */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4 text-sm text-gray-600">
-                              <div className="flex items-center">
-                                <FileText className="h-4 w-4 mr-1" />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.875rem',
+                                color: tokens.colors.textSecondary,
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}>
+                                <FileText style={{ height: '16px', width: '16px', marginRight: '0.25rem' }} />
                                 <span>Tipo: {iniciativa.tipo}</span>
                               </div>
                               {iniciativa.resultado && (
-                                <div className="flex items-center">
-                                  <Activity className="h-4 w-4 mr-1" />
+                                <div style={{
+                                  fontFamily: tokens.fonts.body,
+                                  fontSize: '0.875rem',
+                                  color: tokens.colors.textSecondary,
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}>
+                                  <Activity style={{ height: '16px', width: '16px', marginRight: '0.25rem' }} />
                                   <span>Resultado: {iniciativa.resultado}</span>
                                 </div>
                               )}
                             </div>
-                            
+
                             {/* Action button */}
-                            <button 
+                            <button
                               onClick={() => toggleInitiativeDetails(index)}
-                              className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center transition-colors"
+                              style={{
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.875rem',
+                                fontWeight: '600',
+                                color: tokens.colors.primary,
+                                backgroundColor: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '2px',
+                                transition: 'background-color 0.2s ease'
+                              }}
                             >
                               {expandedInitiatives.has(index) ? 'Ocultar detalhes' : 'Ver detalhes'}
-                              <svg 
-                                className={`h-4 w-4 ml-1 transition-transform duration-200 ${
-                                  expandedInitiatives.has(index) ? 'rotate-90' : ''
-                                }`} 
-                                fill="none" 
-                                stroke="currentColor" 
+                              <svg
+                                style={{
+                                  height: '16px',
+                                  width: '16px',
+                                  marginLeft: '0.25rem',
+                                  transform: expandedInitiatives.has(index) ? 'rotate(90deg)' : 'none',
+                                  transition: 'transform 0.2s ease'
+                                }}
+                                fill="none"
+                                stroke="currentColor"
                                 viewBox="0 0 24 24"
                               >
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -1550,19 +2316,39 @@ const DeputadoDetalhes = () => {
 
                           {/* Progress indicator based on status */}
                           {iniciativa.estado && (
-                            <div className="mt-4 pt-4 border-t border-gray-100">
-                              <div className="flex items-center text-xs text-gray-500">
-                                <div className="flex-1 bg-gray-200 rounded-full h-1 mr-3">
-                                  <div 
-                                    className={`h-1 rounded-full transition-all duration-300 ${
-                                      iniciativa.estado?.toLowerCase() === 'aprovado' ? 'bg-green-500 w-full' :
-                                      iniciativa.estado?.toLowerCase() === 'rejeitado' ? 'bg-red-500 w-full' :
-                                      iniciativa.estado?.toLowerCase() === 'em votação' ? 'bg-yellow-500 w-3/4' :
-                                      'bg-blue-500 w-1/2'
-                                    }`}
-                                  />
+                            <div style={{
+                              marginTop: '1rem',
+                              paddingTop: '1rem',
+                              borderTop: `1px solid ${tokens.colors.border}`
+                            }}>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                fontFamily: tokens.fonts.mono,
+                                fontSize: '0.75rem',
+                                color: tokens.colors.textMuted
+                              }}>
+                                <div style={{
+                                  flex: 1,
+                                  backgroundColor: '#E5E7EB',
+                                  borderRadius: '2px',
+                                  height: '4px',
+                                  marginRight: '0.75rem',
+                                  overflow: 'hidden'
+                                }}>
+                                  <div style={{
+                                    height: '100%',
+                                    borderRadius: '2px',
+                                    backgroundColor: getProgressColor(iniciativa.estado),
+                                    width: getProgressWidth(iniciativa.estado),
+                                    transition: 'width 0.3s ease'
+                                  }} />
                                 </div>
-                                <span className="text-xs font-medium">
+                                <span style={{
+                                  fontSize: '0.75rem',
+                                  fontWeight: '500',
+                                  color: tokens.colors.textSecondary
+                                }}>
                                   {iniciativa.estado || 'Em análise'}
                                 </span>
                               </div>
@@ -1571,22 +2357,59 @@ const DeputadoDetalhes = () => {
 
                           {/* Expandable Details Section */}
                           {expandedInitiatives.has(index) && (
-                            <div className="mt-4 pt-4 border-t border-gray-100 animate-fadeIn">
-                              <h5 className="font-semibold text-gray-900 mb-3">Detalhes da Iniciativa</h5>
-                              
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div style={{
+                              marginTop: '1rem',
+                              paddingTop: '1rem',
+                              borderTop: `1px solid ${tokens.colors.border}`
+                            }}>
+                              <h5 style={{
+                                fontFamily: tokens.fonts.headline,
+                                fontWeight: '600',
+                                color: tokens.colors.textPrimary,
+                                marginBottom: '0.75rem',
+                                fontSize: '0.9375rem'
+                              }}>Detalhes da Iniciativa</h5>
+
+                              <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                                gap: '1rem',
+                                fontSize: '0.875rem'
+                              }}>
                                 {/* Left Column */}
-                                <div className="space-y-3">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                   <div>
-                                    <span className="font-medium text-gray-700">Tipo:</span>
-                                    <p className="text-gray-600 mt-1">
+                                    <span style={{
+                                      fontFamily: tokens.fonts.body,
+                                      fontWeight: '600',
+                                      color: tokens.colors.textSecondary,
+                                      fontSize: '0.75rem',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.05em'
+                                    }}>Tipo:</span>
+                                    <p style={{
+                                      fontFamily: tokens.fonts.body,
+                                      color: tokens.colors.textPrimary,
+                                      marginTop: '0.25rem'
+                                    }}>
                                       {iniciativa.tipo_descricao} ({iniciativa.tipo})
                                     </p>
                                   </div>
-                                  
+
                                   <div>
-                                    <span className="font-medium text-gray-700">Data de Apresentação:</span>
-                                    <p className="text-gray-600 mt-1">
+                                    <span style={{
+                                      fontFamily: tokens.fonts.body,
+                                      fontWeight: '600',
+                                      color: tokens.colors.textSecondary,
+                                      fontSize: '0.75rem',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.05em'
+                                    }}>Data de Apresentação:</span>
+                                    <p style={{
+                                      fontFamily: tokens.fonts.body,
+                                      color: tokens.colors.textPrimary,
+                                      marginTop: '0.25rem'
+                                    }}>
                                       {new Date(iniciativa.data_apresentacao || iniciativa.data).toLocaleDateString('pt-PT', {
                                         weekday: 'long',
                                         year: 'numeric',
@@ -1598,24 +2421,57 @@ const DeputadoDetalhes = () => {
 
                                   {iniciativa.estado && (
                                     <div>
-                                      <span className="font-medium text-gray-700">Estado Atual:</span>
-                                      <p className="text-gray-600 mt-1">{iniciativa.estado}</p>
+                                      <span style={{
+                                        fontFamily: tokens.fonts.body,
+                                        fontWeight: '600',
+                                        color: tokens.colors.textSecondary,
+                                        fontSize: '0.75rem',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em'
+                                      }}>Estado Atual:</span>
+                                      <p style={{
+                                        fontFamily: tokens.fonts.body,
+                                        color: tokens.colors.textPrimary,
+                                        marginTop: '0.25rem'
+                                      }}>{iniciativa.estado}</p>
                                     </div>
                                   )}
                                 </div>
 
                                 {/* Right Column */}
-                                <div className="space-y-3">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                   {iniciativa.resultado && (
                                     <div>
-                                      <span className="font-medium text-gray-700">Resultado:</span>
-                                      <p className="text-gray-600 mt-1">{iniciativa.resultado}</p>
+                                      <span style={{
+                                        fontFamily: tokens.fonts.body,
+                                        fontWeight: '600',
+                                        color: tokens.colors.textSecondary,
+                                        fontSize: '0.75rem',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.05em'
+                                      }}>Resultado:</span>
+                                      <p style={{
+                                        fontFamily: tokens.fonts.body,
+                                        color: tokens.colors.textPrimary,
+                                        marginTop: '0.25rem'
+                                      }}>{iniciativa.resultado}</p>
                                     </div>
                                   )}
-                                  
+
                                   <div>
-                                    <span className="font-medium text-gray-700">Categoria:</span>
-                                    <p className="text-gray-600 mt-1">
+                                    <span style={{
+                                      fontFamily: tokens.fonts.body,
+                                      fontWeight: '600',
+                                      color: tokens.colors.textSecondary,
+                                      fontSize: '0.75rem',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.05em'
+                                    }}>Categoria:</span>
+                                    <p style={{
+                                      fontFamily: tokens.fonts.body,
+                                      color: tokens.colors.textPrimary,
+                                      marginTop: '0.25rem'
+                                    }}>
                                       {iniciativa.tipo === 'J' ? 'Projeto de Lei' :
                                        iniciativa.tipo === 'R' ? 'Projeto de Resolução' :
                                        iniciativa.tipo === 'P' ? 'Proposta' :
@@ -1623,12 +2479,23 @@ const DeputadoDetalhes = () => {
                                        'Iniciativa Legislativa'}
                                     </p>
                                   </div>
-                                  
+
                                   <div>
-                                    <span className="font-medium text-gray-700">Status:</span>
-                                    <p className="text-gray-600 mt-1">
-                                      {iniciativa.estado ? 
-                                        `Em fase: ${iniciativa.estado}` : 
+                                    <span style={{
+                                      fontFamily: tokens.fonts.body,
+                                      fontWeight: '600',
+                                      color: tokens.colors.textSecondary,
+                                      fontSize: '0.75rem',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.05em'
+                                    }}>Status:</span>
+                                    <p style={{
+                                      fontFamily: tokens.fonts.body,
+                                      color: tokens.colors.textPrimary,
+                                      marginTop: '0.25rem'
+                                    }}>
+                                      {iniciativa.estado ?
+                                        `Em fase: ${iniciativa.estado}` :
                                         'Em análise nas comissões competentes'
                                       }
                                     </p>
@@ -1637,54 +2504,109 @@ const DeputadoDetalhes = () => {
                               </div>
 
                               {/* Full Title Section */}
-                              <div className="mt-4 pt-4 border-t border-gray-50">
-                                <span className="font-medium text-gray-700">Título Completo:</span>
-                                <p className="text-gray-600 mt-2 leading-relaxed">
+                              <div style={{
+                                marginTop: '1rem',
+                                paddingTop: '1rem',
+                                borderTop: `1px solid ${tokens.colors.border}`
+                              }}>
+                                <span style={{
+                                  fontFamily: tokens.fonts.body,
+                                  fontWeight: '600',
+                                  color: tokens.colors.textSecondary,
+                                  fontSize: '0.75rem',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.05em'
+                                }}>Título Completo:</span>
+                                <p style={{
+                                  fontFamily: tokens.fonts.body,
+                                  color: tokens.colors.textSecondary,
+                                  marginTop: '0.5rem',
+                                  lineHeight: '1.6'
+                                }}>
                                   {iniciativa.titulo}
                                 </p>
                               </div>
 
                               {/* Additional Actions */}
-                              <div className="mt-4 pt-4 border-t border-gray-50">
-                                <div className="flex gap-2 flex-wrap">
-                                  <button 
+                              <div style={{
+                                marginTop: '1rem',
+                                paddingTop: '1rem',
+                                borderTop: `1px solid ${tokens.colors.border}`
+                              }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <button
                                     onClick={() => {
-                                      // Use direct Parliament URL if available, fallback to search
-                                      const url = iniciativa.urls?.documento || 
+                                      const url = iniciativa.urls?.documento ||
                                         `https://www.parlamento.pt/site/search/Pages/pesquisa.aspx?sq=${encodeURIComponent(iniciativa.titulo)}`;
                                       window.open(url, '_blank');
                                     }}
-                                    className="text-xs bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full hover:bg-blue-100 transition-colors"
+                                    style={{
+                                      fontFamily: tokens.fonts.body,
+                                      fontSize: '0.75rem',
+                                      fontWeight: '500',
+                                      backgroundColor: colorSchemes.blue.bg,
+                                      color: colorSchemes.blue.text,
+                                      padding: '0.375rem 0.75rem',
+                                      borderRadius: '2px',
+                                      border: `1px solid ${colorSchemes.blue.border}`,
+                                      cursor: 'pointer',
+                                      transition: 'background-color 0.2s ease'
+                                    }}
                                   >
-                                    📄 Ver Documento
+                                    Ver Documento
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={() => {
-                                      // Use direct debates URL if available, fallback to search
-                                      const url = iniciativa.urls?.debates || 
+                                      const url = iniciativa.urls?.debates ||
                                         `https://www.parlamento.pt/ActividadeParlamentar/Paginas/DetalhePerguntaRequerimento.aspx?txt=${encodeURIComponent(iniciativa.titulo)}`;
                                       window.open(url, '_blank');
                                     }}
-                                    className="text-xs bg-gray-50 text-gray-700 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                                    style={{
+                                      fontFamily: tokens.fonts.body,
+                                      fontSize: '0.75rem',
+                                      fontWeight: '500',
+                                      backgroundColor: tokens.colors.bgPrimary,
+                                      color: tokens.colors.textSecondary,
+                                      padding: '0.375rem 0.75rem',
+                                      borderRadius: '2px',
+                                      border: `1px solid ${tokens.colors.border}`,
+                                      cursor: 'pointer',
+                                      transition: 'background-color 0.2s ease'
+                                    }}
                                   >
-                                    📊 Histórico de Votações
+                                    Histórico de Votações
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={() => {
-                                      // Use direct official URL if available, fallback to search
-                                      const url = iniciativa.urls?.oficial || 
+                                      const url = iniciativa.urls?.oficial ||
                                         `https://www.parlamento.pt/ActividadeParlamentar/Paginas/Iniciativas.aspx?txt=${encodeURIComponent(iniciativa.titulo)}`;
                                       window.open(url, '_blank');
                                     }}
-                                    className="text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-full hover:bg-green-100 transition-colors"
+                                    style={{
+                                      fontFamily: tokens.fonts.body,
+                                      fontSize: '0.75rem',
+                                      fontWeight: '500',
+                                      backgroundColor: colorSchemes.green.bg,
+                                      color: colorSchemes.green.text,
+                                      padding: '0.375rem 0.75rem',
+                                      borderRadius: '2px',
+                                      border: `1px solid ${colorSchemes.green.border}`,
+                                      cursor: 'pointer',
+                                      transition: 'background-color 0.2s ease'
+                                    }}
                                   >
-                                    🔗 Link Oficial
+                                    Link Oficial
                                   </button>
                                 </div>
-                                <p className="text-xs text-gray-400 mt-2">
-                                  {iniciativa.urls?.documento || iniciativa.urls?.debates || iniciativa.urls?.oficial ? 
-                                    '🔗 Links diretos para documentos oficiais do Parlamento' :
-                                    'ℹ️ Links direcionam para pesquisa no site oficial do Parlamento'
+                                <p style={{
+                                  fontFamily: tokens.fonts.body,
+                                  fontSize: '0.75rem',
+                                  color: tokens.colors.textMuted,
+                                  marginTop: '0.5rem'
+                                }}>
+                                  {iniciativa.urls?.documento || iniciativa.urls?.debates || iniciativa.urls?.oficial ?
+                                    'Links diretos para documentos oficiais do Parlamento' :
+                                    'Links direcionam para pesquisa no site oficial do Parlamento'
                                   }
                                 </p>
                               </div>
@@ -1695,14 +2617,40 @@ const DeputadoDetalhes = () => {
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <FileText className="h-8 w-8 text-gray-400" />
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '3rem 1rem',
+                    backgroundColor: tokens.colors.bgSecondary,
+                    border: `1px solid ${tokens.colors.border}`,
+                    borderRadius: '4px'
+                  }}>
+                    <div style={{
+                      margin: '0 auto 1rem',
+                      width: '4rem',
+                      height: '4rem',
+                      backgroundColor: tokens.colors.bgPrimary,
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: `1px solid ${tokens.colors.border}`
+                    }}>
+                      <FileText style={{ height: '2rem', width: '2rem', color: tokens.colors.textMuted }} />
                     </div>
-                    <p className="text-gray-500 text-lg font-medium mb-2">
+                    <p style={{
+                      fontFamily: tokens.fonts.headline,
+                      color: tokens.colors.textSecondary,
+                      fontSize: '1.125rem',
+                      fontWeight: '500',
+                      marginBottom: '0.5rem'
+                    }}>
                       Nenhuma iniciativa registada
                     </p>
-                    <p className="text-sm text-gray-400">
+                    <p style={{
+                      fontFamily: tokens.fonts.body,
+                      fontSize: '0.875rem',
+                      color: tokens.colors.textMuted
+                    }}>
                       Este deputado ainda não apresentou iniciativas legislativas nesta legislatura
                     </p>
                   </div>
@@ -1719,51 +2667,73 @@ const DeputadoDetalhes = () => {
 
             {activeTab === 'conflitos-interesse' && (
               <div>
-                <div className="flex items-center justify-between mb-6">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 style={{
+                      fontFamily: tokens.fonts.headline,
+                      fontSize: '1.25rem',
+                      fontWeight: '600',
+                      color: tokens.colors.textPrimary,
+                      margin: 0
+                    }}>
                       Conflitos de Interesse
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p style={{
+                      fontFamily: tokens.fonts.body,
+                      fontSize: '0.875rem',
+                      color: tokens.colors.textMuted,
+                      marginTop: '0.25rem',
+                      margin: '0.25rem 0 0 0'
+                    }}>
                       Declaração de conflitos de interesse conforme exigido por lei
                     </p>
                   </div>
                 </div>
 
                 {conflitosInteresse ? (
-                  <div className="space-y-6">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     {/* Status Card */}
-                    <div className={`rounded-lg border-2 p-6 ${
-                      conflitosInteresse.has_conflict_potential 
-                        ? 'bg-amber-50 border-amber-200' 
-                        : 'bg-green-50 border-green-200'
-                    }`}>
-                      <div className="flex items-start">
-                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                          conflitosInteresse.has_conflict_potential 
-                            ? 'bg-amber-100' 
-                            : 'bg-green-100'
-                        }`}>
+                    <div style={{
+                      borderRadius: '4px',
+                      border: `2px solid ${conflitosInteresse.has_conflict_potential ? '#FDE68A' : '#BBF7D0'}`,
+                      padding: '1.5rem',
+                      backgroundColor: conflitosInteresse.has_conflict_potential ? tokens.colors.warningBg : tokens.colors.successBg
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                        <div style={{
+                          flexShrink: 0,
+                          width: '2.5rem',
+                          height: '2.5rem',
+                          borderRadius: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: conflitosInteresse.has_conflict_potential ? '#FEF3C7' : '#DCFCE7',
+                          border: `1px solid ${conflitosInteresse.has_conflict_potential ? '#FDE68A' : '#BBF7D0'}`
+                        }}>
                           {conflitosInteresse.has_conflict_potential ? (
-                            <AlertTriangle className="h-5 w-5 text-amber-600" />
+                            <AlertTriangle style={{ height: '20px', width: '20px', color: tokens.colors.warning }} />
                           ) : (
-                            <Shield className="h-5 w-5 text-green-600" />
+                            <Shield style={{ height: '20px', width: '20px', color: tokens.colors.success }} />
                           )}
                         </div>
-                        <div className="ml-4 flex-1">
-                          <h4 className={`text-lg font-semibold ${
-                            conflitosInteresse.has_conflict_potential 
-                              ? 'text-amber-900' 
-                              : 'text-green-900'
-                          }`}>
+                        <div style={{ marginLeft: '1rem', flex: 1 }}>
+                          <h4 style={{
+                            fontFamily: tokens.fonts.headline,
+                            fontSize: '1.125rem',
+                            fontWeight: '600',
+                            color: conflitosInteresse.has_conflict_potential ? '#92400E' : '#14532D',
+                            margin: 0
+                          }}>
                             {conflitosInteresse.exclusivity_description}
                           </h4>
-                          <p className={`text-sm mt-1 ${
-                            conflitosInteresse.has_conflict_potential 
-                              ? 'text-amber-700' 
-                              : 'text-green-700'
-                          }`}>
-                            {conflitosInteresse.has_conflict_potential 
+                          <p style={{
+                            fontFamily: tokens.fonts.body,
+                            fontSize: '0.875rem',
+                            marginTop: '0.25rem',
+                            color: conflitosInteresse.has_conflict_potential ? '#B45309' : '#166534'
+                          }}>
+                            {conflitosInteresse.has_conflict_potential
                               ? 'Deputado exerce atividades não exclusivas que podem gerar conflitos de interesse'
                               : 'Deputado exerce mandato em regime de exclusividade'
                             }
@@ -1773,30 +2743,72 @@ const DeputadoDetalhes = () => {
                     </div>
 
                     {/* Personal Information */}
-                    <div className="bg-white rounded-lg border shadow-sm">
-                      <div className="px-6 py-4 border-b border-gray-200">
-                        <h4 className="text-lg font-medium text-gray-900 flex items-center">
-                          <User className="h-5 w-5 text-blue-600 mr-2" />
+                    <div style={{
+                      backgroundColor: tokens.colors.bgSecondary,
+                      borderRadius: '4px',
+                      border: `1px solid ${tokens.colors.border}`
+                    }}>
+                      <div style={{
+                        padding: '1rem 1.5rem',
+                        borderBottom: `1px solid ${tokens.colors.border}`
+                      }}>
+                        <h4 style={{
+                          fontFamily: tokens.fonts.headline,
+                          fontSize: '1rem',
+                          fontWeight: '600',
+                          color: tokens.colors.textPrimary,
+                          display: 'flex',
+                          alignItems: 'center',
+                          margin: 0
+                        }}>
+                          <User style={{ height: '20px', width: '20px', color: tokens.colors.primary, marginRight: '0.5rem' }} />
                           Informações Pessoais
                         </h4>
                       </div>
-                      <div className="px-6 py-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div style={{ padding: '1rem 1.5rem' }}>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                          gap: '1.5rem'
+                        }}>
                           <div>
-                            <label className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                            <label style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              color: tokens.colors.textSecondary,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em'
+                            }}>
                               Nome Completo
                             </label>
-                            <p className="text-gray-900 font-medium mt-1">
+                            <p style={{
+                              fontFamily: tokens.fonts.body,
+                              color: tokens.colors.textPrimary,
+                              fontWeight: '500',
+                              marginTop: '0.25rem'
+                            }}>
                               {conflitosInteresse.full_name}
                             </p>
                           </div>
-                          
+
                           {conflitosInteresse.dgf_number && (
                             <div>
-                              <label className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                              <label style={{
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                color: tokens.colors.textSecondary,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em'
+                              }}>
                                 Número DGF
                               </label>
-                              <p className="text-gray-900 mt-1">
+                              <p style={{
+                                fontFamily: tokens.fonts.mono,
+                                color: tokens.colors.textPrimary,
+                                marginTop: '0.25rem'
+                              }}>
                                 {conflitosInteresse.dgf_number}
                               </p>
                             </div>
@@ -1807,58 +2819,126 @@ const DeputadoDetalhes = () => {
 
                     {/* Marital Status and Regime */}
                     {(conflitosInteresse.marital_status || conflitosInteresse.matrimonial_regime || conflitosInteresse.spouse_name) && (
-                      <div className="bg-white rounded-lg border shadow-sm">
-                        <div className="px-6 py-4 border-b border-gray-200">
-                          <h4 className="text-lg font-medium text-gray-900 flex items-center">
-                            <Heart className="h-5 w-5 text-pink-600 mr-2" />
+                      <div style={{
+                        backgroundColor: tokens.colors.bgSecondary,
+                        borderRadius: '4px',
+                        border: `1px solid ${tokens.colors.border}`
+                      }}>
+                        <div style={{
+                          padding: '1rem 1.5rem',
+                          borderBottom: `1px solid ${tokens.colors.border}`
+                        }}>
+                          <h4 style={{
+                            fontFamily: tokens.fonts.headline,
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            color: tokens.colors.textPrimary,
+                            display: 'flex',
+                            alignItems: 'center',
+                            margin: 0
+                          }}>
+                            <Heart style={{ height: '20px', width: '20px', color: tokens.colors.accent, marginRight: '0.5rem' }} />
                             Estado Civil e Regime Matrimonial
                           </h4>
                         </div>
-                        <div className="px-6 py-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div style={{ padding: '1rem 1.5rem' }}>
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                            gap: '1.5rem'
+                          }}>
                             {conflitosInteresse.marital_status && (
                               <div>
-                                <label className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                                <label style={{
+                                  fontFamily: tokens.fonts.body,
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  color: tokens.colors.textSecondary,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.05em'
+                                }}>
                                   Estado Civil
                                 </label>
-                                <p className="text-gray-900 mt-1">
+                                <p style={{
+                                  fontFamily: tokens.fonts.body,
+                                  color: tokens.colors.textPrimary,
+                                  marginTop: '0.25rem'
+                                }}>
                                   {conflitosInteresse.marital_status}
                                 </p>
                               </div>
                             )}
-                            
+
                             {conflitosInteresse.matrimonial_regime && (
                               <div>
-                                <label className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                                <label style={{
+                                  fontFamily: tokens.fonts.body,
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  color: tokens.colors.textSecondary,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.05em'
+                                }}>
                                   Regime Matrimonial
                                 </label>
-                                <p className="text-gray-900 mt-1">
+                                <p style={{
+                                  fontFamily: tokens.fonts.body,
+                                  color: tokens.colors.textPrimary,
+                                  marginTop: '0.25rem'
+                                }}>
                                   {conflitosInteresse.matrimonial_regime}
                                 </p>
                               </div>
                             )}
-                            
+
                             {conflitosInteresse.spouse_name && (
-                              <div className="md:col-span-2 lg:col-span-1">
-                                <label className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                              <div>
+                                <label style={{
+                                  fontFamily: tokens.fonts.body,
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  color: tokens.colors.textSecondary,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.05em'
+                                }}>
                                   Nome do Cônjuge
                                 </label>
-                                <div className="mt-1">
+                                <div style={{ marginTop: '0.25rem' }}>
                                   {conflitosInteresse.spouse_deputy ? (
-                                    <div className="space-y-2">
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                       <Link
                                         to={getDeputadoUrl(conflitosInteresse.spouse_deputy.cad_id || conflitosInteresse.spouse_deputy.id)}
-                                        className="text-blue-600 hover:text-blue-800 font-medium transition-colors block"
+                                        style={{
+                                          fontFamily: tokens.fonts.body,
+                                          color: tokens.colors.primary,
+                                          fontWeight: '500',
+                                          textDecoration: 'none'
+                                        }}
                                       >
                                         {conflitosInteresse.spouse_name}
                                       </Link>
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        <Users className="h-3 w-3 mr-1" />
+                                      <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        padding: '0.25rem 0.5rem',
+                                        borderRadius: '2px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: '500',
+                                        backgroundColor: colorSchemes.blue.bg,
+                                        color: colorSchemes.blue.text,
+                                        border: `1px solid ${colorSchemes.blue.border}`,
+                                        width: 'fit-content'
+                                      }}>
+                                        <Users style={{ height: '12px', width: '12px', marginRight: '0.25rem' }} />
                                         Também Deputado/a ({conflitosInteresse.spouse_deputy.partido_sigla})
                                       </span>
                                     </div>
                                   ) : (
-                                    <p className="text-gray-900 font-medium">
+                                    <p style={{
+                                      fontFamily: tokens.fonts.body,
+                                      color: tokens.colors.textPrimary,
+                                      fontWeight: '500'
+                                    }}>
                                       {conflitosInteresse.spouse_name}
                                     </p>
                                   )}
@@ -1871,15 +2951,31 @@ const DeputadoDetalhes = () => {
                     )}
 
                     {/* Transparency Note */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex">
-                        <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
-                        <div className="ml-3">
-                          <h5 className="text-sm font-medium text-blue-900">
+                    <div style={{
+                      backgroundColor: tokens.colors.infoBg,
+                      border: `1px solid #BFDBFE`,
+                      borderRadius: '4px',
+                      padding: '1rem'
+                    }}>
+                      <div style={{ display: 'flex' }}>
+                        <Shield style={{ height: '20px', width: '20px', color: tokens.colors.info, marginTop: '2px', flexShrink: 0 }} />
+                        <div style={{ marginLeft: '0.75rem' }}>
+                          <h5 style={{
+                            fontFamily: tokens.fonts.headline,
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            color: '#1E3A8A',
+                            margin: 0
+                          }}>
                             Transparência e Integridade
                           </h5>
-                          <p className="text-sm text-blue-700 mt-1">
-                            Esta informação é disponibilizada em cumprimento das obrigações de transparência 
+                          <p style={{
+                            fontFamily: tokens.fonts.body,
+                            fontSize: '0.875rem',
+                            color: tokens.colors.info,
+                            marginTop: '0.25rem'
+                          }}>
+                            Esta informação é disponibilizada em cumprimento das obrigações de transparência
                             dos deputados, conforme estabelecido na legislação parlamentar portuguesa.
                           </p>
                         </div>
@@ -1887,14 +2983,40 @@ const DeputadoDetalhes = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <Shield className="h-8 w-8 text-gray-400" />
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '3rem 1rem',
+                    backgroundColor: tokens.colors.bgSecondary,
+                    border: `1px solid ${tokens.colors.border}`,
+                    borderRadius: '4px'
+                  }}>
+                    <div style={{
+                      margin: '0 auto 1rem',
+                      width: '4rem',
+                      height: '4rem',
+                      backgroundColor: tokens.colors.bgPrimary,
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: `1px solid ${tokens.colors.border}`
+                    }}>
+                      <Shield style={{ height: '2rem', width: '2rem', color: tokens.colors.textMuted }} />
                     </div>
-                    <p className="text-gray-500 text-lg font-medium mb-2">
+                    <p style={{
+                      fontFamily: tokens.fonts.headline,
+                      color: tokens.colors.textSecondary,
+                      fontSize: '1.125rem',
+                      fontWeight: '500',
+                      marginBottom: '0.5rem'
+                    }}>
                       Dados de conflitos de interesse não disponíveis
                     </p>
-                    <p className="text-sm text-gray-400">
+                    <p style={{
+                      fontFamily: tokens.fonts.body,
+                      fontSize: '0.875rem',
+                      color: tokens.colors.textMuted
+                    }}>
                       As informações sobre conflitos de interesse não foram encontradas para este deputado
                     </p>
                   </div>
@@ -1904,162 +3026,384 @@ const DeputadoDetalhes = () => {
 
             {activeTab === 'attendance' && (
               <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                  <h3 style={{
+                    fontFamily: tokens.fonts.headline,
+                    fontSize: '1.25rem',
+                    fontWeight: '600',
+                    color: tokens.colors.textPrimary,
+                    margin: 0
+                  }}>
                     Registo de Presenças
                   </h3>
                 </div>
 
                 {attendanceData ? (
-                  <div className="space-y-6">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                      <div className="bg-white rounded-lg border p-4">
-                        <div className="flex items-center">
-                          <div className="p-2 bg-blue-100 rounded-lg">
-                            <Activity className="h-5 w-5 text-blue-600" />
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '1rem',
+                      marginBottom: '1.5rem'
+                    }}>
+                      <div style={{
+                        backgroundColor: tokens.colors.bgSecondary,
+                        borderRadius: '4px',
+                        border: `1px solid ${tokens.colors.border}`,
+                        padding: '1rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <div style={{
+                            padding: '0.5rem',
+                            backgroundColor: colorSchemes.blue.bg,
+                            borderRadius: '4px',
+                            border: `1px solid ${colorSchemes.blue.border}`
+                          }}>
+                            <Activity style={{ height: '20px', width: '20px', color: colorSchemes.blue.primary }} />
                           </div>
-                          <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-600">Total Sessões</p>
-                            <p className="text-xl font-bold text-gray-900">{attendanceData.summary.total_sessions}</p>
+                          <div style={{ marginLeft: '0.75rem' }}>
+                            <p style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.875rem',
+                              fontWeight: '500',
+                              color: tokens.colors.textSecondary,
+                              margin: 0
+                            }}>Total Sessões</p>
+                            <p style={{
+                              fontFamily: tokens.fonts.mono,
+                              fontSize: '1.5rem',
+                              fontWeight: '700',
+                              color: tokens.colors.textPrimary,
+                              margin: 0
+                            }}>{attendanceData.summary.total_sessions}</p>
                           </div>
                         </div>
                       </div>
-                      
-                      <div className="bg-white rounded-lg border p-4">
-                        <div className="flex items-center">
-                          <div className="p-2 bg-green-100 rounded-lg">
-                            <Activity className="h-5 w-5 text-green-600" />
+
+                      <div style={{
+                        backgroundColor: tokens.colors.bgSecondary,
+                        borderRadius: '4px',
+                        border: `1px solid ${tokens.colors.border}`,
+                        padding: '1rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <div style={{
+                            padding: '0.5rem',
+                            backgroundColor: colorSchemes.green.bg,
+                            borderRadius: '4px',
+                            border: `1px solid ${colorSchemes.green.border}`
+                          }}>
+                            <Activity style={{ height: '20px', width: '20px', color: colorSchemes.green.primary }} />
                           </div>
-                          <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-600">Presente</p>
-                            <p className="text-xl font-bold text-green-700">{attendanceData.summary.present}</p>
+                          <div style={{ marginLeft: '0.75rem' }}>
+                            <p style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.875rem',
+                              fontWeight: '500',
+                              color: tokens.colors.textSecondary,
+                              margin: 0
+                            }}>Presente</p>
+                            <p style={{
+                              fontFamily: tokens.fonts.mono,
+                              fontSize: '1.5rem',
+                              fontWeight: '700',
+                              color: tokens.colors.success,
+                              margin: 0
+                            }}>{attendanceData.summary.present}</p>
                           </div>
                         </div>
                       </div>
-                      
-                      <div className="bg-white rounded-lg border p-4">
-                        <div className="flex items-center">
-                          <div className="p-2 bg-yellow-100 rounded-lg">
-                            <Activity className="h-5 w-5 text-yellow-600" />
+
+                      <div style={{
+                        backgroundColor: tokens.colors.bgSecondary,
+                        borderRadius: '4px',
+                        border: `1px solid ${tokens.colors.border}`,
+                        padding: '1rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <div style={{
+                            padding: '0.5rem',
+                            backgroundColor: colorSchemes.orange.bg,
+                            borderRadius: '4px',
+                            border: `1px solid ${colorSchemes.orange.border}`
+                          }}>
+                            <Activity style={{ height: '20px', width: '20px', color: colorSchemes.orange.primary }} />
                           </div>
-                          <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-600">Falta Justificada</p>
-                            <p className="text-xl font-bold text-yellow-700">{attendanceData.summary.justified_absence}</p>
+                          <div style={{ marginLeft: '0.75rem' }}>
+                            <p style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.875rem',
+                              fontWeight: '500',
+                              color: tokens.colors.textSecondary,
+                              margin: 0
+                            }}>Falta Justificada</p>
+                            <p style={{
+                              fontFamily: tokens.fonts.mono,
+                              fontSize: '1.5rem',
+                              fontWeight: '700',
+                              color: tokens.colors.warning,
+                              margin: 0
+                            }}>{attendanceData.summary.justified_absence}</p>
                           </div>
                         </div>
                       </div>
-                      
-                      <div className="bg-white rounded-lg border p-4">
-                        <div className="flex items-center">
-                          <div className="p-2 bg-red-100 rounded-lg">
-                            <Activity className="h-5 w-5 text-red-600" />
+
+                      <div style={{
+                        backgroundColor: tokens.colors.bgSecondary,
+                        borderRadius: '4px',
+                        border: `1px solid ${tokens.colors.border}`,
+                        padding: '1rem'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <div style={{
+                            padding: '0.5rem',
+                            backgroundColor: tokens.colors.dangerBg,
+                            borderRadius: '4px',
+                            border: `1px solid #FECACA`
+                          }}>
+                            <Activity style={{ height: '20px', width: '20px', color: tokens.colors.danger }} />
                           </div>
-                          <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-600">Falta Injustificada</p>
-                            <p className="text-xl font-bold text-red-700">{attendanceData.summary.unjustified_absence}</p>
+                          <div style={{ marginLeft: '0.75rem' }}>
+                            <p style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.875rem',
+                              fontWeight: '500',
+                              color: tokens.colors.textSecondary,
+                              margin: 0
+                            }}>Falta Injustificada</p>
+                            <p style={{
+                              fontFamily: tokens.fonts.mono,
+                              fontSize: '1.5rem',
+                              fontWeight: '700',
+                              color: tokens.colors.danger,
+                              margin: 0
+                            }}>{attendanceData.summary.unjustified_absence}</p>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     {/* Timeline */}
-                    <div className="bg-white rounded-lg border">
-                      <div className="px-6 py-4 border-b border-gray-200">
-                        <h4 className="text-lg font-medium text-gray-900">Timeline de Presenças</h4>
+                    <div style={{
+                      backgroundColor: tokens.colors.bgSecondary,
+                      borderRadius: '4px',
+                      border: `1px solid ${tokens.colors.border}`
+                    }}>
+                      <div style={{
+                        padding: '1rem 1.5rem',
+                        borderBottom: `1px solid ${tokens.colors.border}`
+                      }}>
+                        <h4 style={{
+                          fontFamily: tokens.fonts.headline,
+                          fontSize: '1rem',
+                          fontWeight: '600',
+                          color: tokens.colors.textPrimary,
+                          margin: 0
+                        }}>Timeline de Presenças</h4>
                       </div>
-                      <div className="p-6">
-                        <div className="space-y-4">
-                          {attendanceData.timeline.map((entry, index) => (
-                            <div 
-                              key={index} 
-                              className="flex items-start space-x-4 p-4 rounded-lg border border-gray-100 hover:bg-gray-50"
-                            >
-                              <div className={`flex-shrink-0 w-3 h-3 rounded-full mt-2 ${
-                                entry.status === 'success' ? 'bg-green-500' :
-                                entry.status === 'warning' ? 'bg-yellow-500' :
-                                entry.status === 'danger' ? 'bg-red-500' :
-                                entry.status === 'info' ? 'bg-blue-500' :
-                                'bg-gray-400'
-                              }`}></div>
-                              
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-sm font-medium text-gray-900">
-                                      {new Date(entry.date).toLocaleDateString('pt-PT')}
-                                    </span>
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                      entry.status === 'success' ? 'bg-green-100 text-green-800' :
-                                      entry.status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                                      entry.status === 'danger' ? 'bg-red-100 text-red-800' :
-                                      entry.status === 'info' ? 'bg-blue-100 text-blue-800' :
-                                      'bg-gray-100 text-gray-800'
-                                    }`}>
-                                      {entry.attendance_description}
+                      <div style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          {attendanceData.timeline.map((entry, index) => {
+                            const getStatusColor = (status) => {
+                              switch (status) {
+                                case 'success': return tokens.colors.success;
+                                case 'warning': return '#F59E0B';
+                                case 'danger': return tokens.colors.danger;
+                                case 'info': return tokens.colors.blue;
+                                default: return tokens.colors.textMuted;
+                              }
+                            };
+
+                            const getStatusBg = (status) => {
+                              switch (status) {
+                                case 'success': return { bg: colorSchemes.green.bg, text: colorSchemes.green.text, border: colorSchemes.green.border };
+                                case 'warning': return { bg: colorSchemes.orange.bg, text: colorSchemes.orange.text, border: colorSchemes.orange.border };
+                                case 'danger': return { bg: tokens.colors.dangerBg, text: tokens.colors.danger, border: '#FECACA' };
+                                case 'info': return { bg: colorSchemes.blue.bg, text: colorSchemes.blue.text, border: colorSchemes.blue.border };
+                                default: return { bg: '#F3F4F6', text: tokens.colors.textSecondary, border: tokens.colors.border };
+                              }
+                            };
+
+                            const statusStyles = getStatusBg(entry.status);
+
+                            return (
+                              <div
+                                key={index}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: '1rem',
+                                  padding: '1rem',
+                                  borderRadius: '4px',
+                                  border: `1px solid ${tokens.colors.border}`,
+                                  backgroundColor: tokens.colors.bgPrimary
+                                }}
+                              >
+                                <div style={{
+                                  flexShrink: 0,
+                                  width: '12px',
+                                  height: '12px',
+                                  borderRadius: '2px',
+                                  marginTop: '6px',
+                                  backgroundColor: getStatusColor(entry.status)
+                                }}></div>
+
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                      <span style={{
+                                        fontFamily: tokens.fonts.mono,
+                                        fontSize: '0.875rem',
+                                        fontWeight: '500',
+                                        color: tokens.colors.textPrimary
+                                      }}>
+                                        {new Date(entry.date).toLocaleDateString('pt-PT')}
+                                      </span>
+                                      <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        padding: '0.25rem 0.5rem',
+                                        borderRadius: '2px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: '500',
+                                        backgroundColor: statusStyles.bg,
+                                        color: statusStyles.text,
+                                        border: `1px solid ${statusStyles.border}`
+                                      }}>
+                                        {entry.attendance_description}
+                                      </span>
+                                    </div>
+                                    <span style={{
+                                      fontFamily: tokens.fonts.body,
+                                      fontSize: '0.75rem',
+                                      color: tokens.colors.textMuted
+                                    }}>
+                                      {entry.session_type}
                                     </span>
                                   </div>
-                                  <span className="text-xs text-gray-500">
-                                    {entry.session_type}
-                                  </span>
+
+                                  {entry.reason && (
+                                    <p style={{
+                                      fontFamily: tokens.fonts.body,
+                                      fontSize: '0.875rem',
+                                      color: tokens.colors.textSecondary,
+                                      marginTop: '0.5rem'
+                                    }}>
+                                      <span style={{ fontWeight: '600' }}>Motivo:</span> {entry.reason}
+                                    </p>
+                                  )}
+
+                                  {entry.justification && (
+                                    <p style={{
+                                      fontFamily: tokens.fonts.body,
+                                      fontSize: '0.875rem',
+                                      color: tokens.colors.textSecondary,
+                                      marginTop: '0.25rem'
+                                    }}>
+                                      <span style={{ fontWeight: '600' }}>Justificação:</span> {entry.justification}
+                                    </p>
+                                  )}
+
+                                  {entry.observations && (
+                                    <p style={{
+                                      fontFamily: tokens.fonts.body,
+                                      fontSize: '0.875rem',
+                                      color: tokens.colors.textSecondary,
+                                      marginTop: '0.25rem'
+                                    }}>
+                                      <span style={{ fontWeight: '600' }}>Observações:</span> {entry.observations}
+                                    </p>
+                                  )}
                                 </div>
-                                
-                                {entry.reason && (
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    <span className="font-medium">Motivo:</span> {entry.reason}
-                                  </p>
-                                )}
-                                
-                                {entry.justification && (
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    <span className="font-medium">Justificação:</span> {entry.justification}
-                                  </p>
-                                )}
-                                
-                                {entry.observations && (
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    <span className="font-medium">Observações:</span> {entry.observations}
-                                  </p>
-                                )}
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
-                        
+
                         {attendanceData.timeline.length === 0 && (
-                          <div className="text-center py-8">
-                            <Activity className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                            <p className="text-gray-500">Nenhum registo de presença encontrado</p>
+                          <div style={{ textAlign: 'center', padding: '2rem' }}>
+                            <Activity style={{ height: '3rem', width: '3rem', color: tokens.colors.textMuted, margin: '0 auto 0.75rem' }} />
+                            <p style={{
+                              fontFamily: tokens.fonts.body,
+                              color: tokens.colors.textMuted
+                            }}>Nenhum registo de presença encontrado</p>
                           </div>
                         )}
                       </div>
                     </div>
 
                     {/* Legend */}
-                    <div className="bg-white rounded-lg border p-6">
-                      <h4 className="text-lg font-medium text-gray-900 mb-4">Legenda dos Códigos</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {Object.entries(attendanceData.codes_legend).map(([code, info]) => (
-                          <div key={code} className="flex items-center space-x-2">
-                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                              info.status === 'success' ? 'bg-green-100 text-green-800' :
-                              info.status === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                              info.status === 'danger' ? 'bg-red-100 text-red-800' :
-                              info.status === 'info' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {code}
-                            </span>
-                            <span className="text-sm text-gray-700">{info.description}</span>
-                          </div>
-                        ))}
+                    <div style={{
+                      backgroundColor: tokens.colors.bgSecondary,
+                      borderRadius: '4px',
+                      border: `1px solid ${tokens.colors.border}`,
+                      padding: '1.5rem'
+                    }}>
+                      <h4 style={{
+                        fontFamily: tokens.fonts.headline,
+                        fontSize: '1rem',
+                        fontWeight: '600',
+                        color: tokens.colors.textPrimary,
+                        marginBottom: '1rem'
+                      }}>Legenda dos Códigos</h4>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                        gap: '0.75rem'
+                      }}>
+                        {Object.entries(attendanceData.codes_legend).map(([code, info]) => {
+                          const getCodeStyles = (status) => {
+                            switch (status) {
+                              case 'success': return { bg: colorSchemes.green.bg, text: colorSchemes.green.text, border: colorSchemes.green.border };
+                              case 'warning': return { bg: colorSchemes.orange.bg, text: colorSchemes.orange.text, border: colorSchemes.orange.border };
+                              case 'danger': return { bg: tokens.colors.dangerBg, text: tokens.colors.danger, border: '#FECACA' };
+                              case 'info': return { bg: colorSchemes.blue.bg, text: colorSchemes.blue.text, border: colorSchemes.blue.border };
+                              default: return { bg: '#F3F4F6', text: tokens.colors.textSecondary, border: tokens.colors.border };
+                            }
+                          };
+                          const codeStyles = getCodeStyles(info.status);
+
+                          return (
+                            <div key={code} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '2px',
+                                fontSize: '0.75rem',
+                                fontFamily: tokens.fonts.mono,
+                                fontWeight: '600',
+                                backgroundColor: codeStyles.bg,
+                                color: codeStyles.text,
+                                border: `1px solid ${codeStyles.border}`
+                              }}>
+                                {code}
+                              </span>
+                              <span style={{
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.875rem',
+                                color: tokens.colors.textSecondary
+                              }}>{info.description}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <Activity className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500">Dados de presença não disponíveis</p>
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '3rem 1rem',
+                    backgroundColor: tokens.colors.bgSecondary,
+                    border: `1px solid ${tokens.colors.border}`,
+                    borderRadius: '4px'
+                  }}>
+                    <Activity style={{ height: '3rem', width: '3rem', color: tokens.colors.textMuted, margin: '0 auto 0.75rem' }} />
+                    <p style={{
+                      fontFamily: tokens.fonts.body,
+                      color: tokens.colors.textMuted
+                    }}>Dados de presença não disponíveis</p>
                   </div>
                 )}
               </div>
@@ -2067,62 +3411,122 @@ const DeputadoDetalhes = () => {
 
             {activeTab === 'mandatos-anteriores' && (
               <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                  <h3 style={{
+                    fontFamily: tokens.fonts.headline,
+                    fontSize: '1.25rem',
+                    fontWeight: '600',
+                    color: tokens.colors.textPrimary,
+                    margin: 0
+                  }}>
                     Mandatos Anteriores
                   </h3>
                 </div>
 
                 {deputado.mandatos_historico && deputado.mandatos_historico.length > 0 ? (
-                  <div className="space-y-4">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {deputado.mandatos_historico.map((mandato, index) => (
-                      <div 
+                      <div
                         key={index}
-                        className={`bg-white rounded-lg border p-6 hover:shadow-md transition-shadow ${
-                          mandato.is_current ? 'ring-2 ring-blue-500 bg-blue-50' : ''
-                        }`}
+                        style={{
+                          backgroundColor: mandato.is_current ? '#E8F5E9' : tokens.colors.bgSecondary,
+                          borderRadius: '4px',
+                          border: mandato.is_current ? `2px solid ${tokens.colors.primary}` : `1px solid ${tokens.colors.border}`,
+                          padding: '1.5rem',
+                          transition: 'border-color 0.2s ease'
+                        }}
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-3">
-                              <h4 className="text-lg font-semibold text-gray-900">
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                              <h4 style={{
+                                fontFamily: tokens.fonts.headline,
+                                fontSize: '1.125rem',
+                                fontWeight: '600',
+                                color: tokens.colors.textPrimary,
+                                margin: 0
+                              }}>
                                 {mandato.legislatura_nome}
                               </h4>
                               {mandato.is_current && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '0.25rem 0.5rem',
+                                  borderRadius: '2px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  backgroundColor: tokens.colors.primary,
+                                  color: '#FFFFFF',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.025em'
+                                }}>
                                   Atual
                                 </span>
                               )}
                             </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 mb-4">
-                              <div className="flex items-center">
-                                <Calendar className="h-4 w-4 mr-2" />
+
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                              gap: '1rem',
+                              marginBottom: '1rem'
+                            }}>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                fontFamily: tokens.fonts.mono,
+                                fontSize: '0.875rem',
+                                color: tokens.colors.textSecondary
+                              }}>
+                                <Calendar style={{ height: '16px', width: '16px', marginRight: '0.5rem' }} />
                                 <span>
                                   {new Date(mandato.mandato_inicio).toLocaleDateString('pt-PT')} - {' '}
-                                  {mandato.mandato_fim 
+                                  {mandato.mandato_fim
                                     ? new Date(mandato.mandato_fim).toLocaleDateString('pt-PT')
                                     : 'Presente'
                                   }
                                 </span>
                               </div>
-                              
-                              <div className="flex items-center">
-                                <MapPin className="h-4 w-4 mr-2" />
+
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.875rem',
+                                color: tokens.colors.textSecondary
+                              }}>
+                                <MapPin style={{ height: '16px', width: '16px', marginRight: '0.5rem' }} />
                                 <span>{mandato.circulo}</span>
                               </div>
-                              
-                              <div className="flex items-center">
-                                <Briefcase className="h-4 w-4 mr-2" />
+
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.875rem',
+                                color: tokens.colors.textSecondary
+                              }}>
+                                <Briefcase style={{ height: '16px', width: '16px', marginRight: '0.5rem' }} />
                                 <span>{mandato.partido_sigla}</span>
                               </div>
                             </div>
                           </div>
-                          
+
                           {mandato.is_current && (
-                            <div className="flex flex-col gap-2">
-                              <span className="inline-flex items-center px-3 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-blue-50">
-                                <Calendar className="h-4 w-4 mr-2" />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '0.5rem 0.75rem',
+                                borderRadius: '4px',
+                                fontSize: '0.875rem',
+                                fontWeight: '500',
+                                backgroundColor: colorSchemes.green.bg,
+                                color: colorSchemes.green.text,
+                                border: `1px solid ${colorSchemes.green.border}`
+                              }}>
+                                <Calendar style={{ height: '16px', width: '16px', marginRight: '0.5rem' }} />
                                 Legislatura Atual
                               </span>
                             </div>
@@ -2132,14 +3536,40 @@ const DeputadoDetalhes = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <Calendar className="h-8 w-8 text-gray-400" />
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '3rem 1rem',
+                    backgroundColor: tokens.colors.bgSecondary,
+                    border: `1px solid ${tokens.colors.border}`,
+                    borderRadius: '4px'
+                  }}>
+                    <div style={{
+                      margin: '0 auto 1rem',
+                      width: '4rem',
+                      height: '4rem',
+                      backgroundColor: tokens.colors.bgPrimary,
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: `1px solid ${tokens.colors.border}`
+                    }}>
+                      <Calendar style={{ height: '2rem', width: '2rem', color: tokens.colors.textMuted }} />
                     </div>
-                    <p className="text-gray-500 text-lg font-medium mb-2">
+                    <p style={{
+                      fontFamily: tokens.fonts.headline,
+                      color: tokens.colors.textSecondary,
+                      fontSize: '1.125rem',
+                      fontWeight: '500',
+                      marginBottom: '0.5rem'
+                    }}>
                       Apenas um mandato registrado
                     </p>
-                    <p className="text-sm text-gray-400">
+                    <p style={{
+                      fontFamily: tokens.fonts.body,
+                      fontSize: '0.875rem',
+                      color: tokens.colors.textMuted
+                    }}>
                       Este deputado só tem registro de mandato na legislatura atual
                     </p>
                   </div>

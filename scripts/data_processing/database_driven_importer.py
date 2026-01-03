@@ -895,24 +895,28 @@ class DatabaseDrivenImporter:
             return ET.fromstring(decoded_content)
     
     def _get_category_pattern(self, file_type_filter: str) -> Optional[str]:
-        """Map file type filter to category pattern"""
+        """Map file type filter to category pattern.
+
+        Note: Categories in the database are stored WITHOUT accents,
+        so patterns must match the unaccented form.
+        """
         mapping = {
-            'biografico': 'Registo Biográfico',
+            'biografico': 'Registo Biografico',
             'iniciativas': 'Iniciativas',
-            'intervencoes': 'Intervenções',
+            'intervencoes': 'Intervencoes',
             'interesses': 'Registo',
             'deputados': 'Atividade Deputado',
             'agenda': 'Agenda',
             'atividades': 'Atividades',
-            'orgaos': 'Composição',
-            'cooperacao': 'Cooperação',
-            'delegacao': 'Delegação',
-            'informacao': 'Informação',
-            'peticoes': 'Petições',
+            'orgaos': 'Composicao',
+            'cooperacao': 'Cooperacao',
+            'delegacao': 'Delegac',  # Matches both "Delegacoes Eventuais" and "Delegacoes Permanentes"
+            'informacao': 'Informacao',
+            'peticoes': 'Peticoes',
             'perguntas': 'Perguntas',
             'diplomas': 'Diplomas',
-            'orcamento': 'Orçamento',
-            'reunioes': 'Reuniões',
+            'orcamento': 'O E',
+            'reunioes': 'Reunioes',
         }
         return mapping.get(file_type_filter.lower())
     

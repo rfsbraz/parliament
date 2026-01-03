@@ -95,7 +95,64 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
         # Use the passed SQLAlchemy session
         self.session = session
 
+    def _process_organ_activity(
+        self,
+        activity_element: ET.Element,
+        deputy_id,
+        activity_type: str,
+    ) -> bool:
+        """
+        Process a single organ activity element and create DeputadoAtividadeOrgao record.
 
+        This helper method consolidates the common processing logic for committee,
+        working group, and subcommittee activities, eliminating code duplication.
+
+        Args:
+            activity_element: XML element containing the activity data (actividadeCom, actividadeGT, or actividadeSCom)
+            deputy_id: UUID of the deputy
+            activity_type: Type of activity ('committee', 'working_group', or 'subcommittee')
+
+        Returns:
+            True if activity was processed successfully, False otherwise
+        """
+        from database.models import DeputadoAtividadeOrgao
+
+        if activity_element is None:
+            return False
+
+        dados_orgao = activity_element.find("pt_ar_wsgode_objectos_DadosOrgaos")
+        if dados_orgao is None:
+            return False
+
+        # Check for position details (cargoDes structure)
+        tia_des = None
+        try:
+            cargo_des_elem = dados_orgao.find("cargoDes")
+            if cargo_des_elem is not None:
+                cargo_data = cargo_des_elem.find(
+                    "pt_ar_wsgode_objectos_DadosCargosOrgao"
+                )
+                if cargo_data is not None:
+                    tia_des = self._get_text_value(cargo_data, "tiaDes")
+        except AttributeError:
+            logger.debug(
+                f"dados_orgao became None during {activity_type} processing"
+            )
+
+        atividade = DeputadoAtividadeOrgao(
+            deputado_id=deputy_id,
+            tipo_atividade=activity_type,
+            org_id=self._safe_int(
+                self._get_text_value(dados_orgao, "orgId")
+            ),
+            org_sigla=self._get_text_value(dados_orgao, "orgSigla"),
+            org_des=self._get_text_value(dados_orgao, "orgDes"),
+            tim_des=self._get_text_value(dados_orgao, "timDes"),
+            leg_des=self._get_text_value(dados_orgao, "legDes"),
+            tia_des=tia_des,
+        )
+        self.session.add(atividade)
+        return True
 
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -166,6 +223,17 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes",
             "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao",
             "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao.tiaDes",
+            # Subcommittee activity details (actividadeSCom)
+            "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeSCom",
+            "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos",
+            "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.orgSigla",
+            "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.orgDes",
+            "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.orgId",
+            "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.timDes",
+            "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.legDes",
+            "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes",
+            "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao",
+            "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao.tiaDes",
             # Deputy legislature data with all I Legislature fields
             "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis",
             "RegistoBiografico.RegistoBiograficoList.pt_ar_wsgode_objectos_DadosRegistoBiograficoWeb.cadDeputadoLegis.pt_ar_wsgode_objectos_DadosDeputadoLegis",
@@ -270,6 +338,17 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes",
             "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao",
             "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeGT.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao.tiaDes",
+            # Subcommittees - VIII Legislature
+            "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeSCom",
+            "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos",
+            "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.orgId",
+            "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.orgDes",
+            "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.orgSigla",
+            "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.legDes",
+            "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.timDes",
+            "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes",
+            "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao",
+            "ArrayOfDadosRegistoBiografico.DadosRegistoBiografico.CadActividadeOrgaos.actividadeSCom.pt_ar_wsgode_objectos_DadosOrgaos.cargoDes.pt_ar_wsgode_objectos_DadosCargosOrgao.tiaDes",
         }
 
     def validate_and_map(
@@ -445,11 +524,11 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         mandato, "depNomeParlamentar"
                     )
                     
-                    # Log extracted legislature from XML
-                    logger.info(f"[LEG_DES_EXTRACT] Extracted leg_des='{leg_des}' from XML mandate record")
-                    logger.info(f"[LEG_DES_EXTRACT]   - nome_parlamentar: {nome_parlamentar}")
-                    logger.info(f"[LEG_DES_EXTRACT]   - ce_des: {ce_des}")
-                    logger.info(f"[LEG_DES_EXTRACT]   - file_path: {self.file_info.get('file_path', 'unknown')}")
+                    # Log extracted legislature from XML (debug level to avoid UI clutter)
+                    logger.debug(f"[LEG_DES_EXTRACT] Extracted leg_des='{leg_des}' from XML mandate record")
+                    logger.debug(f"[LEG_DES_EXTRACT]   - nome_parlamentar: {nome_parlamentar}")
+                    logger.debug(f"[LEG_DES_EXTRACT]   - ce_des: {ce_des}")
+                    logger.debug(f"[LEG_DES_EXTRACT]   - file_path: {self.file_info.get('file_path', 'unknown')}")
                     
                     # REMOVED: _should_create_mandate filter - was a band-aid fix for Interest Registry auto-creation issue
                     # The biographical data is clean and authoritative. Interest Registry mapper now properly
@@ -515,11 +594,11 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             par_sigla = self._get_text_value(mandato, "parSigla")
                             par_des = self._get_text_value(mandato, "parDes")
                             
-                            # Log mandate creation details
-                            logger.info(f"[MANDATE_CREATE] Creating mandate for deputy {deputy.id} ({deputy.nome_completo})")
-                            logger.info(f"[MANDATE_CREATE]   - leg_des: '{leg_des}'")
-                            logger.info(f"[MANDATE_CREATE]   - deputy.legislatura_id: {deputy.legislatura_id}")
-                            logger.info(f"[MANDATE_CREATE]   - file_path: {self.file_info.get('file_path', 'unknown')}")
+                            # Log mandate creation details (debug level to avoid UI clutter)
+                            logger.debug(f"[MANDATE_CREATE] Creating mandate for deputy {deputy.id} ({deputy.nome_completo})")
+                            logger.debug(f"[MANDATE_CREATE]   - leg_des: '{leg_des}'")
+                            logger.debug(f"[MANDATE_CREATE]   - deputy.legislatura_id: {deputy.legislatura_id}")
+                            logger.debug(f"[MANDATE_CREATE]   - file_path: {self.file_info.get('file_path', 'unknown')}")
                             
                             # Create base mandate record
                             mandate = DeputadoMandatoLegislativo(
@@ -784,6 +863,43 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         )
                         self.session.add(atividade)
 
+                # Process Subcommittee Activities (actividadeSCom)
+                subcomissoes = atividades_orgaos.findall("actividadeSCom")
+                for subcomissao in subcomissoes:
+                    if subcomissao is None:
+                        continue
+                    dados_orgao = subcomissao.find("pt_ar_wsgode_objectos_DadosOrgaos")
+                    if dados_orgao is not None:
+                        # Check for position details (cargoDes structure)
+                        tia_des = None
+                        try:
+                            cargo_des_elem = dados_orgao.find("cargoDes")
+                            if cargo_des_elem is not None:
+                                cargo_data = cargo_des_elem.find(
+                                    "pt_ar_wsgode_objectos_DadosCargosOrgao"
+                                )
+                                if cargo_data is not None:
+                                    tia_des = self._get_text_value(cargo_data, "tiaDes")
+                        except AttributeError:
+                            # Handle case where dados_orgao might be None despite check
+                            logger.debug(
+                                "dados_orgao became None during subcommittee processing"
+                            )
+
+                        atividade = DeputadoAtividadeOrgao(
+                            deputado_id=deputy.id,
+                            tipo_atividade="subcommittee",
+                            org_id=self._safe_int(
+                                self._get_text_value(dados_orgao, "orgId")
+                            ),
+                            org_sigla=self._get_text_value(dados_orgao, "orgSigla"),
+                            org_des=self._get_text_value(dados_orgao, "orgDes"),
+                            tim_des=self._get_text_value(dados_orgao, "timDes"),
+                            leg_des=self._get_text_value(dados_orgao, "legDes"),
+                            tia_des=tia_des,
+                        )
+                        self.session.add(atividade)
+
             return True
 
         except Exception as e:
@@ -1032,11 +1148,11 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             par_sigla = self._get_text_value(mandato, "ParSigla")
                             par_des = self._get_text_value(mandato, "ParDes")
                             
-                            # Log mandate creation details
-                            logger.info(f"[MANDATE_CREATE] Creating mandate for deputy {deputy.id} ({deputy.nome_completo})")
-                            logger.info(f"[MANDATE_CREATE]   - leg_des: '{leg_des}'")
-                            logger.info(f"[MANDATE_CREATE]   - deputy.legislatura_id: {deputy.legislatura_id}")
-                            logger.info(f"[MANDATE_CREATE]   - file_path: {self.file_info.get('file_path', 'unknown')}")
+                            # Log mandate creation details (debug level to avoid UI clutter)
+                            logger.debug(f"[MANDATE_CREATE] Creating mandate for deputy {deputy.id} ({deputy.nome_completo})")
+                            logger.debug(f"[MANDATE_CREATE]   - leg_des: '{leg_des}'")
+                            logger.debug(f"[MANDATE_CREATE]   - deputy.legislatura_id: {deputy.legislatura_id}")
+                            logger.debug(f"[MANDATE_CREATE]   - file_path: {self.file_info.get('file_path', 'unknown')}")
                             
                             # Create base mandate record
                             mandate = DeputadoMandatoLegislativo(
@@ -1061,8 +1177,21 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             # Update mandate with coalition context
                             if par_sigla:
                                 self.update_mandate_coalition_context(mandate, par_sigla)
-                            
+
                             self.session.add(mandate)
+
+            # Process Organ Activities (CadActividadeOrgaos)
+            atividades_orgaos = record.find("CadActividadeOrgaos")
+            if atividades_orgaos is not None:
+                # Process all organ activity types using consolidated helper method
+                organ_activity_types = [
+                    ("actividadeCom", "committee"),
+                    ("actividadeGT", "working_group"),
+                    ("actividadeSCom", "subcommittee"),
+                ]
+                for xml_tag, activity_type in organ_activity_types:
+                    for activity_element in atividades_orgaos.findall(xml_tag):
+                        self._process_organ_activity(activity_element, deputy.id, activity_type)
 
             return True
 

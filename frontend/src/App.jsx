@@ -92,54 +92,151 @@ const AppContent = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div
+        style={{
+          minHeight: '100vh',
+          backgroundColor: '#FAFAFA',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
+          style={{
+            width: '48px',
+            height: '48px',
+            border: '3px solid #E5E5E5',
+            borderTopColor: '#1B4332',
+            borderRadius: '50%',
+          }}
         />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundColor: '#FAFAFA',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <Navigation />
 
-      {/* Construction Banner */}
+      {/* Editorial Notice Banner */}
       {showBanner && (
         <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          className="bg-amber-500 border-b-2 border-amber-600 shadow-lg"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          style={{
+            backgroundColor: '#FFFFFF',
+            borderBottom: '1px solid #E5E5E5',
+          }}
         >
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <AlertTriangle className="h-5 w-5 text-amber-900 flex-shrink-0" />
-                <div className="text-amber-900">
-                  <p className="font-semibold text-sm sm:text-base">
-                    🚧 Website em Desenvolvimento
+          <div
+            style={{
+              maxWidth: '1280px',
+              margin: '0 auto',
+              padding: '0.75rem 1.5rem',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '1rem',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.75rem',
+                }}
+              >
+                <div
+                  style={{
+                    width: '3px',
+                    height: '100%',
+                    minHeight: '2.5rem',
+                    backgroundColor: '#9B2335',
+                    borderRadius: '2px',
+                    flexShrink: 0,
+                  }}
+                />
+                <div>
+                  <p
+                    style={{
+                      fontFamily: "'Source Sans 3', sans-serif",
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      color: '#1A1A1A',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      marginBottom: '0.125rem',
+                    }}
+                  >
+                    Nota Editorial
                   </p>
-                  <p className="text-xs sm:text-sm opacity-90">
-                    Este portal encontra-se em fase de desenvolvimento. Os dados apresentados são meramente demonstrativos e não devem ser considerados oficiais ou definitivos.
+                  <p
+                    style={{
+                      fontFamily: "'Source Sans 3', sans-serif",
+                      fontSize: '0.875rem',
+                      color: '#4A4A4A',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Este portal encontra-se em fase de desenvolvimento. Os dados apresentados são demonstrativos e não devem ser considerados oficiais.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowBanner(false)}
-                className="ml-4 p-1 rounded-md text-amber-900 hover:bg-amber-400 transition-colors flex-shrink-0"
+                style={{
+                  padding: '0.375rem',
+                  background: 'none',
+                  border: '1px solid #E5E5E5',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  color: '#6B6B6B',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 150ms ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#1B4332';
+                  e.currentTarget.style.color = '#1B4332';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#E5E5E5';
+                  e.currentTarget.style.color = '#6B6B6B';
+                }}
                 aria-label="Fechar aviso"
               >
-                <X className="h-4 w-4" />
+                <X size={14} />
               </button>
             </div>
           </div>
         </motion.div>
       )}
 
-      <main className="container mx-auto px-4 py-8">
+      <main
+        style={{
+          flex: 1,
+          maxWidth: '1280px',
+          margin: '0 auto',
+          padding: '2rem 1.5rem',
+          width: '100%',
+        }}
+      >
         <Routes>
           <Route path="/" element={<Dashboard stats={stats} />} />
           <Route path="/deputados" element={<DeputadosPage />} />
@@ -152,34 +249,128 @@ const AppContent = () => {
         </Routes>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-auto">
-        <div className="container mx-auto px-4 py-6">
-          <div className="text-center text-sm text-gray-600">
-            <p className="mb-2">
-              Dados do Parlamento por
+      {/* Editorial Footer */}
+      <footer
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderTop: '1px solid #E5E5E5',
+          marginTop: 'auto',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1280px',
+            margin: '0 auto',
+            padding: '1.5rem',
+          }}
+        >
+          {/* Top section with sources */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '1rem',
+              paddingBottom: '1.25rem',
+              borderBottom: '1px solid #E5E5E5',
+            }}
+          >
+            <p
+              style={{
+                fontFamily: "'Source Sans 3', sans-serif",
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#6B6B6B',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+              }}
+            >
+              Fontes de Dados
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-blue-600">
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '1.5rem',
+              }}
+            >
               <a
                 href="https://www.parlamento.pt/Cidadania/paginas/dadosabertos.aspx"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center hover:text-blue-800 transition-colors"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  fontFamily: "'Source Sans 3', sans-serif",
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: '#1B4332',
+                  textDecoration: 'none',
+                  transition: 'opacity 150ms ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
               >
-                <ExternalLink className="h-4 w-4 mr-1" />
+                <ExternalLink size={14} />
                 Dados Abertos do Parlamento
               </a>
-              <span className="hidden sm:inline text-gray-400">•</span>
+              <span style={{ color: '#D4D4D4' }}>|</span>
               <a
                 href="https://av.parlamento.pt/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center hover:text-blue-800 transition-colors"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  fontFamily: "'Source Sans 3', sans-serif",
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: '#1B4332',
+                  textDecoration: 'none',
+                  transition: 'opacity 150ms ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
               >
-                <ExternalLink className="h-4 w-4 mr-1" />
+                <ExternalLink size={14} />
                 Canal Parlamento
               </a>
             </div>
+          </div>
+
+          {/* Bottom section with branding */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '0.5rem',
+              paddingTop: '1.25rem',
+            }}
+          >
+            <p
+              style={{
+                fontFamily: "'Libre Baskerville', Georgia, serif",
+                fontSize: '1rem',
+                fontWeight: 700,
+                color: '#1A1A1A',
+              }}
+            >
+              Fiscaliza
+            </p>
+            <p
+              style={{
+                fontFamily: "'Source Sans 3', sans-serif",
+                fontSize: '0.75rem',
+                color: '#6B6B6B',
+              }}
+            >
+              Transparência parlamentar ao serviço dos cidadãos
+            </p>
           </div>
         </div>
       </footer>

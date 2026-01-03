@@ -4,6 +4,8 @@ import { ArrowLeft, Users, MapPin, User, BarChart3, TrendingUp, UserCheck, Hands
 import PartyVotingAnalytics from './PartyVotingAnalytics';
 import PartyDemographics from './PartyDemographics';
 import { apiFetch } from '../config/api';
+import { tokens } from '../styles/tokens';
+import { LoadingSpinner } from './common';
 
 const PartidoDetalhes = () => {
   const { partidoId } = useParams();
@@ -73,22 +75,38 @@ const PartidoDetalhes = () => {
   }, [partidoId]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando dados do partido...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="A carregar dados do partido" />;
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">Erro: {error}</p>
-          <Link to="/partidos" className="text-blue-600 hover:underline">
+      <div
+        style={{
+          minHeight: '100vh',
+          backgroundColor: tokens.colors.bgPrimary,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <p
+            style={{
+              fontFamily: tokens.fonts.body,
+              color: tokens.colors.accent,
+              marginBottom: '1rem',
+            }}
+          >
+            Erro: {error}
+          </p>
+          <Link
+            to="/partidos"
+            style={{
+              fontFamily: tokens.fonts.body,
+              color: tokens.colors.primary,
+              textDecoration: 'underline',
+            }}
+          >
             Voltar aos partidos
           </Link>
         </div>
@@ -98,24 +116,54 @@ const PartidoDetalhes = () => {
 
   if (!dados) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Partido não encontrado</p>
+      <div
+        style={{
+          minHeight: '100vh',
+          backgroundColor: tokens.colors.bgPrimary,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <p style={{ fontFamily: tokens.fonts.body, color: tokens.colors.textSecondary }}>
+          Partido não encontrado
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: '100vh', backgroundColor: tokens.colors.bgPrimary }}>
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link 
-                to="/partidos" 
-                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+      <div
+        style={{
+          backgroundColor: tokens.colors.bgSecondary,
+          borderBottom: `1px solid ${tokens.colors.border}`,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1280px',
+            margin: '0 auto',
+            padding: '1rem 1.5rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <Link
+                to="/partidos"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontFamily: tokens.fonts.body,
+                  color: tokens.colors.textSecondary,
+                  textDecoration: 'none',
+                  transition: 'color 150ms ease',
+                }}
+                onMouseEnter={(e) => e.target.style.color = tokens.colors.textPrimary}
+                onMouseLeave={(e) => e.target.style.color = tokens.colors.textSecondary}
               >
-                <ArrowLeft className="h-5 w-5 mr-2" />
+                <ArrowLeft style={{ width: '20px', height: '20px', marginRight: '0.5rem' }} />
                 Voltar aos Partidos
               </Link>
             </div>
@@ -123,83 +171,152 @@ const PartidoDetalhes = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '2rem 1.5rem' }}>
         {/* Informação do Partido */}
-        <div className="bg-white rounded-lg shadow-sm border mb-8">
-          <div className="px-6 py-8">
-            <div className="flex items-center justify-between mb-6">
+        <div
+          style={{
+            backgroundColor: tokens.colors.bgSecondary,
+            border: `1px solid ${tokens.colors.border}`,
+            borderRadius: '4px',
+            marginBottom: '2rem',
+          }}
+        >
+          <div style={{ padding: '1.5rem 2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                <h1
+                  style={{
+                    fontFamily: tokens.fonts.headline,
+                    fontSize: '2rem',
+                    fontWeight: 700,
+                    color: tokens.colors.textPrimary,
+                    marginBottom: '0.5rem',
+                  }}
+                >
                   {dados.partido.sigla}
                 </h1>
-                <p className="text-xl text-gray-600">{dados.partido.nome}</p>
+                <p
+                  style={{
+                    fontFamily: tokens.fonts.body,
+                    fontSize: '1.125rem',
+                    color: tokens.colors.textSecondary,
+                  }}
+                >
+                  {dados.partido.nome}
+                </p>
                 {dados.coligacao && (
-                  <div className="mt-3 flex items-center">
-                    <Handshake className="h-4 w-4 mr-2 text-purple-600" />
-                    <span className="text-sm text-gray-600">
+                  <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center' }}>
+                    <Handshake style={{ width: '16px', height: '16px', marginRight: '0.5rem', color: tokens.colors.purple }} />
+                    <span style={{ fontFamily: tokens.fonts.body, fontSize: '0.875rem', color: tokens.colors.textSecondary }}>
                       Parte da coligação{' '}
-                      <Link 
+                      <Link
                         to={`/coligacoes/${encodeURIComponent(dados.coligacao.sigla)}`}
-                        className="text-purple-600 hover:text-purple-800 font-medium underline"
+                        style={{
+                          color: tokens.colors.purple,
+                          fontWeight: 600,
+                          textDecoration: 'underline',
+                        }}
                       >
                         {dados.coligacao.sigla}
                       </Link>
                       {dados.coligacao.nome && dados.coligacao.nome !== dados.coligacao.sigla && (
-                        <span className="text-gray-500"> ({dados.coligacao.nome})</span>
+                        <span style={{ color: tokens.colors.textMuted }}> ({dados.coligacao.nome})</span>
                       )}
                     </span>
                   </div>
                 )}
               </div>
-              <div className="text-right">
-                <div className="flex items-center text-gray-600 mb-2">
-                  <Users className="h-5 w-5 mr-2" />
-                  <span className="text-2xl font-bold text-blue-600">
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ display: 'flex', alignItems: 'center', color: tokens.colors.textSecondary, marginBottom: '0.5rem' }}>
+                  <Users style={{ width: '20px', height: '20px', marginRight: '0.5rem' }} />
+                  <span
+                    style={{
+                      fontFamily: tokens.fonts.mono,
+                      fontSize: '1.5rem',
+                      fontWeight: 700,
+                      color: tokens.colors.primary,
+                    }}
+                  >
                     {dados.total}
                   </span>
-                  <span className="ml-1">deputados</span>
+                  <span style={{ fontFamily: tokens.fonts.body, marginLeft: '0.25rem' }}>deputados</span>
                 </div>
-                <div className="text-sm text-gray-500">
+                <div style={{ fontFamily: tokens.fonts.body, fontSize: '0.875rem', color: tokens.colors.textMuted }}>
                   {dados.mandatos_ativos} mandatos ativos
                 </div>
               </div>
             </div>
 
             {/* Estatísticas Rápidas */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-              <div className="bg-blue-50 rounded-lg p-4">
-                <div className="flex items-center">
-                  <Users className="h-8 w-8 text-blue-600" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-blue-600">Total Histórico</p>
-                    <p className="text-2xl font-bold text-blue-900">{dados.total}</p>
-                    <p className="text-xs text-blue-600">todas as legislaturas</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
+              <div
+                style={{
+                  backgroundColor: '#E8F5E9',
+                  borderRadius: '4px',
+                  padding: '1rem',
+                  border: `1px solid ${tokens.colors.border}`,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <Users style={{ width: '32px', height: '32px', color: tokens.colors.primary }} />
+                  <div style={{ marginLeft: '0.75rem' }}>
+                    <p style={{ fontFamily: tokens.fonts.body, fontSize: '0.75rem', fontWeight: 600, color: tokens.colors.primary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Total Histórico
+                    </p>
+                    <p style={{ fontFamily: tokens.fonts.mono, fontSize: '1.5rem', fontWeight: 700, color: tokens.colors.textPrimary }}>
+                      {dados.total}
+                    </p>
+                    <p style={{ fontFamily: tokens.fonts.body, fontSize: '0.75rem', color: tokens.colors.primary }}>
+                      todas as legislaturas
+                    </p>
                   </div>
                 </div>
               </div>
-              
-              <div className="bg-green-50 rounded-lg p-4">
-                <div className="flex items-center">
-                  <MapPin className="h-8 w-8 text-green-600" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-green-600">Círculos Históricos</p>
-                    <p className="text-2xl font-bold text-green-900">
+
+              <div
+                style={{
+                  backgroundColor: '#E3F2FD',
+                  borderRadius: '4px',
+                  padding: '1rem',
+                  border: `1px solid ${tokens.colors.border}`,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <MapPin style={{ width: '32px', height: '32px', color: tokens.colors.blue }} />
+                  <div style={{ marginLeft: '0.75rem' }}>
+                    <p style={{ fontFamily: tokens.fonts.body, fontSize: '0.75rem', fontWeight: 600, color: tokens.colors.blue, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Círculos Históricos
+                    </p>
+                    <p style={{ fontFamily: tokens.fonts.mono, fontSize: '1.5rem', fontWeight: 700, color: tokens.colors.textPrimary }}>
                       {dados.historico?.total_circulos || new Set(dados.deputados.map(d => d.circulo)).size}
                     </p>
-                    <p className="text-xs text-green-600">distritos eleitorais</p>
+                    <p style={{ fontFamily: tokens.fonts.body, fontSize: '0.75rem', color: tokens.colors.blue }}>
+                      distritos eleitorais
+                    </p>
                   </div>
                 </div>
               </div>
-              
-              <div className="bg-purple-50 rounded-lg p-4">
-                <div className="flex items-center">
-                  <User className="h-8 w-8 text-purple-600" />
-                  <div className="ml-3">
-                    <p className="text-sm font-medium text-purple-600">Mandatos Ativos</p>
-                    <p className="text-2xl font-bold text-purple-900">
+
+              <div
+                style={{
+                  backgroundColor: '#F3E8FF',
+                  borderRadius: '4px',
+                  padding: '1rem',
+                  border: `1px solid ${tokens.colors.border}`,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <User style={{ width: '32px', height: '32px', color: tokens.colors.purple }} />
+                  <div style={{ marginLeft: '0.75rem' }}>
+                    <p style={{ fontFamily: tokens.fonts.body, fontSize: '0.75rem', fontWeight: 600, color: tokens.colors.purple, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Mandatos Ativos
+                    </p>
+                    <p style={{ fontFamily: tokens.fonts.mono, fontSize: '1.5rem', fontWeight: 700, color: tokens.colors.textPrimary }}>
                       {dados.mandatos_ativos}
                     </p>
-                    <p className="text-xs text-purple-600">legislatura atual</p>
+                    <p style={{ fontFamily: tokens.fonts.body, fontSize: '0.75rem', color: tokens.colors.purple }}>
+                      legislatura atual
+                    </p>
                   </div>
                 </div>
               </div>
@@ -208,27 +325,43 @@ const PartidoDetalhes = () => {
         </div>
 
         {/* Tabs de Atividade */}
-        <div className="bg-white rounded-lg shadow-sm border">
+        <div
+          style={{
+            backgroundColor: tokens.colors.bgSecondary,
+            border: `1px solid ${tokens.colors.border}`,
+            borderRadius: '4px',
+          }}
+        >
           {/* Tab Headers */}
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-8 px-6">
+          <div style={{ borderBottom: `1px solid ${tokens.colors.border}` }}>
+            <nav style={{ display: 'flex', gap: '2rem', padding: '0 1.5rem' }}>
               {[
                 { id: 'deputados', label: 'Deputados', icon: Users },
                 { id: 'demografia', label: 'Demografia', icon: UserCheck },
                 { id: 'analytics', label: 'Análise Política', icon: BarChart3 }
               ].map((tab) => {
                 const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => handleTabChange(tab.id)}
-                    className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '1rem 0',
+                      fontFamily: tokens.fonts.body,
+                      fontSize: '0.875rem',
+                      fontWeight: isActive ? 600 : 500,
+                      color: isActive ? tokens.colors.primary : tokens.colors.textMuted,
+                      background: 'none',
+                      border: 'none',
+                      borderBottom: isActive ? `2px solid ${tokens.colors.primary}` : '2px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 150ms ease',
+                    }}
                   >
-                    <Icon className="h-4 w-4 mr-2" />
+                    <Icon style={{ width: '16px', height: '16px', marginRight: '0.5rem' }} />
                     {tab.label}
                   </button>
                 );
@@ -237,110 +370,217 @@ const PartidoDetalhes = () => {
           </div>
 
           {/* Tab Content */}
-          <div className="p-6">
+          <div style={{ padding: '1.5rem' }}>
             {activeTab === 'deputados' && (
               <div>
-                <div className="mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h2
+                    style={{
+                      fontFamily: tokens.fonts.body,
+                      fontSize: '1.25rem',
+                      fontWeight: 600,
+                      color: tokens.colors.textPrimary,
+                    }}
+                  >
                     Deputados do {dados.partido.sigla}
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Histórico completo de {dados.total} deputados que representaram o {dados.partido.sigla} ao longo de todas as legislaturas. 
+                  <p
+                    style={{
+                      fontFamily: tokens.fonts.body,
+                      fontSize: '0.875rem',
+                      color: tokens.colors.textSecondary,
+                      marginTop: '0.25rem',
+                    }}
+                  >
+                    Histórico completo de {dados.total} deputados que representaram o {dados.partido.sigla} ao longo de todas as legislaturas.
                     {dados.mandatos_ativos} deputados têm mandatos ativos na legislatura atual.
                   </p>
                   {dados.historico && (
-                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center space-x-6 text-xs text-blue-700">
+                    <div
+                      style={{
+                        marginTop: '0.75rem',
+                        padding: '0.75rem',
+                        backgroundColor: '#E8F5E9',
+                        border: `1px solid ${tokens.colors.border}`,
+                        borderRadius: '4px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.75rem', fontFamily: tokens.fonts.body, color: tokens.colors.primary }}>
                         <span>
-                          <span className="font-medium">Período:</span> {dados.historico.periodo_atividade || 'N/A'}
+                          <span style={{ fontWeight: 600 }}>Período:</span> {dados.historico.periodo_atividade || 'N/A'}
                         </span>
                         <span>
-                          <span className="font-medium">Legislaturas:</span> {dados.historico.total_legislaturas || 0}
+                          <span style={{ fontWeight: 600 }}>Legislaturas:</span> {dados.historico.total_legislaturas || 0}
                         </span>
                         <span>
-                          <span className="font-medium">Círculos:</span> {dados.historico.total_circulos || 0}
+                          <span style={{ fontWeight: 600 }}>Círculos:</span> {dados.historico.total_circulos || 0}
                         </span>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="divide-y divide-gray-200">
+                <div>
                   {dados.deputados.map((deputado) => (
-                    <div key={deputado.id} className="py-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3">
-                            <div className="flex-shrink-0 relative">
+                    <div
+                      key={deputado.id}
+                      style={{
+                        padding: '1rem 0',
+                        borderBottom: `1px solid ${tokens.colors.border}`,
+                        transition: 'background-color 150ms ease',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = tokens.colors.bgPrimary}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ flexShrink: 0, position: 'relative' }}>
                               {deputado.picture_url ? (
-                                <div className="h-12 w-12 relative group">
+                                <div style={{ width: '48px', height: '48px', position: 'relative' }}>
                                   <img
                                     src={deputado.picture_url}
                                     alt={deputado.nome}
-                                    className="h-12 w-12 rounded-full object-cover bg-gray-200 ring-2 ring-white shadow-sm group-hover:ring-blue-300 transition-all duration-200"
+                                    style={{
+                                      width: '48px',
+                                      height: '48px',
+                                      borderRadius: '50%',
+                                      objectFit: 'cover',
+                                      backgroundColor: tokens.colors.border,
+                                      border: `2px solid ${tokens.colors.bgSecondary}`,
+                                    }}
                                     onError={(e) => {
                                       e.target.style.display = 'none';
                                       e.target.nextSibling.style.display = 'flex';
                                     }}
                                   />
-                                  <div 
-                                    className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center ring-2 ring-white shadow-sm hidden"
+                                  <div
+                                    style={{
+                                      width: '48px',
+                                      height: '48px',
+                                      borderRadius: '50%',
+                                      backgroundColor: '#E8F5E9',
+                                      display: 'none',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      border: `2px solid ${tokens.colors.bgSecondary}`,
+                                    }}
                                   >
-                                    <User className="h-6 w-6 text-blue-600" />
+                                    <User style={{ width: '24px', height: '24px', color: tokens.colors.primary }} />
                                   </div>
                                 </div>
                               ) : (
-                                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center ring-2 ring-white shadow-sm hover:ring-blue-300 transition-all duration-200">
-                                  <User className="h-6 w-6 text-blue-600" />
+                                <div
+                                  style={{
+                                    width: '48px',
+                                    height: '48px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#E8F5E9',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: `2px solid ${tokens.colors.bgSecondary}`,
+                                  }}
+                                >
+                                  <User style={{ width: '24px', height: '24px', color: tokens.colors.primary }} />
                                 </div>
                               )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <Link 
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <Link
                                 to={`/deputados/${deputado.id_cadastro || deputado.id}`}
-                                className="text-lg font-medium text-gray-900 hover:text-blue-600 transition-colors"
+                                style={{
+                                  fontFamily: tokens.fonts.body,
+                                  fontSize: '1rem',
+                                  fontWeight: 600,
+                                  color: tokens.colors.textPrimary,
+                                  textDecoration: 'none',
+                                  transition: 'color 150ms ease',
+                                }}
+                                onMouseEnter={(e) => e.target.style.color = tokens.colors.primary}
+                                onMouseLeave={(e) => e.target.style.color = tokens.colors.textPrimary}
                               >
                                 {deputado.nome}
                               </Link>
                               {deputado.profissao && (
-                                <p className="text-sm text-gray-600 mt-1">
+                                <p
+                                  style={{
+                                    fontFamily: tokens.fonts.body,
+                                    fontSize: '0.875rem',
+                                    color: tokens.colors.textSecondary,
+                                    marginTop: '0.25rem',
+                                  }}
+                                >
                                   {deputado.profissao}
                                 </p>
                               )}
                             </div>
                           </div>
                         </div>
-                        
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <div className="flex items-center">
-                            <MapPin className="h-4 w-4 mr-1" />
-                            <span>{deputado.circulo}</span>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.875rem', color: tokens.colors.textMuted }}>
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <MapPin style={{ width: '16px', height: '16px', marginRight: '0.25rem' }} />
+                            <span style={{ fontFamily: tokens.fonts.body }}>{deputado.circulo}</span>
                           </div>
-                          
-                          <div className="flex items-center">
-                            <span className="text-xs text-gray-400">
-                              {deputado.mandato_ativo ? 
-                                `Leg. ${deputado.ultima_legislatura} (atual)` : 
+
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <span style={{ fontFamily: tokens.fonts.body, fontSize: '0.75rem', color: tokens.colors.textMuted }}>
+                              {deputado.mandato_ativo ?
+                                `Leg. ${deputado.ultima_legislatura} (atual)` :
                                 `Última: Leg. ${deputado.ultima_legislatura}`
                               }
                             </span>
                           </div>
-                          
-                          <div className="flex items-center">
+
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
                             {deputado.mandato_ativo ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '0.25rem 0.625rem',
+                                  borderRadius: '2px',
+                                  fontSize: '0.75rem',
+                                  fontFamily: tokens.fonts.body,
+                                  fontWeight: 600,
+                                  backgroundColor: '#E8F5E9',
+                                  color: tokens.colors.primary,
+                                }}
+                              >
                                 Ativo
                               </span>
                             ) : (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '0.25rem 0.625rem',
+                                  borderRadius: '2px',
+                                  fontSize: '0.75rem',
+                                  fontFamily: tokens.fonts.body,
+                                  fontWeight: 600,
+                                  backgroundColor: '#F5F5F5',
+                                  color: tokens.colors.textMuted,
+                                }}
+                              >
                                 Inativo
                               </span>
                             )}
                           </div>
-                          
-                          <Link 
+
+                          <Link
                             to={`/deputados/${deputado.id_cadastro || deputado.id}`}
-                            className="text-blue-600 hover:text-blue-800 font-medium"
+                            style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.875rem',
+                              fontWeight: 600,
+                              color: tokens.colors.primary,
+                              textDecoration: 'none',
+                              transition: 'opacity 150ms ease',
+                            }}
+                            onMouseEnter={(e) => e.target.style.opacity = '0.8'}
+                            onMouseLeave={(e) => e.target.style.opacity = '1'}
                           >
                             Ver Detalhes →
                           </Link>
@@ -350,12 +590,28 @@ const PartidoDetalhes = () => {
                   ))}
                 </div>
 
-                {/* Resumo por Círculo - moved inside deputies tab */}
-                <div className="mt-8 bg-gray-50 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {/* Resumo por Círculo */}
+                <div
+                  style={{
+                    marginTop: '2rem',
+                    backgroundColor: tokens.colors.bgPrimary,
+                    borderRadius: '4px',
+                    padding: '1.5rem',
+                    border: `1px solid ${tokens.colors.border}`,
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontFamily: tokens.fonts.body,
+                      fontSize: '1.125rem',
+                      fontWeight: 600,
+                      color: tokens.colors.textPrimary,
+                      marginBottom: '1rem',
+                    }}
+                  >
                     Distribuição por Círculo Eleitoral
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
                     {Object.entries(
                       dados.deputados.reduce((acc, deputado) => {
                         acc[deputado.circulo] = (acc[deputado.circulo] || 0) + 1;
@@ -364,9 +620,20 @@ const PartidoDetalhes = () => {
                     )
                       .sort(([,a], [,b]) => b - a)
                       .map(([circulo, count]) => (
-                        <div key={circulo} className="flex items-center justify-between p-3 bg-white rounded-lg border">
-                          <span className="text-sm font-medium text-gray-900">{circulo}</span>
-                          <span className="text-sm font-bold text-blue-600">{count}</span>
+                        <div
+                          key={circulo}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '0.75rem',
+                            backgroundColor: tokens.colors.bgSecondary,
+                            borderRadius: '4px',
+                            border: `1px solid ${tokens.colors.border}`,
+                          }}
+                        >
+                          <span style={{ fontFamily: tokens.fonts.body, fontSize: '0.875rem', fontWeight: 500, color: tokens.colors.textPrimary }}>{circulo}</span>
+                          <span style={{ fontFamily: tokens.fonts.mono, fontSize: '0.875rem', fontWeight: 700, color: tokens.colors.primary }}>{count}</span>
                         </div>
                       ))
                     }
@@ -376,7 +643,7 @@ const PartidoDetalhes = () => {
             )}
 
             {activeTab === 'demografia' && (
-              <PartyDemographics 
+              <PartyDemographics
                 partidoId={partidoId}
                 dadosDemograficos={dados.demografia}
                 partidoInfo={dados.partido}
@@ -384,8 +651,8 @@ const PartidoDetalhes = () => {
             )}
 
             {activeTab === 'analytics' && (
-              <PartyVotingAnalytics 
-                partidoId={partidoId} 
+              <PartyVotingAnalytics
+                partidoId={partidoId}
                 legislatura="17"
               />
             )}
@@ -398,4 +665,3 @@ const PartidoDetalhes = () => {
 };
 
 export default PartidoDetalhes;
-

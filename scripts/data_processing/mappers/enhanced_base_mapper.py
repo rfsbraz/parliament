@@ -155,11 +155,12 @@ class CacheMixin:
 
 class CoalitionDetectionMixin:
     """Mixin providing coalition detection capabilities to mappers"""
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.coalition_detector = CoalitionDetector()
         self._coalition_cache = {}  # Cache detection results
+        self._created_coalitions = {}  # Cache created Coligacao objects by sigla
     
     def detect_and_process_coalition(self, par_sigla: str, par_des: str = None) -> Dict:
         """
@@ -198,52 +199,63 @@ class CoalitionDetectionMixin:
         """Create or retrieve coalition record"""
         if not coalition_info["is_coalition"]:
             return None
-        
+
         sigla = coalition_info.get("coalition_sigla", "")
         if not sigla:
             return None
-        
-        # Try to find existing coalition
+
+        # Check in-memory cache first (handles uncommitted objects in same session)
+        if sigla in self._created_coalitions:
+            return self._created_coalitions[sigla]
+
+        # Try to find existing coalition in database
         coalition = self.session.query(Coligacao).filter_by(sigla=sigla).first()
-        
-        if not coalition:
-            # Create new coalition with explicit UUID
-            coalition = Coligacao(
-                id=uuid.uuid4(),  # Generate UUID client-side for immediate availability
-                sigla=sigla,
-                nome=coalition_info.get("coalition_name", f"Coligação {sigla}"),
-                nome_eleitoral=coalition_info.get("coalition_name"),
-                data_formacao=coalition_info.get("formation_date"),
-                tipo_coligacao="eleitoral",  # Default type
-                espectro_politico=coalition_info.get("political_spectrum"),
-                confianca_detecao=coalition_info.get("confidence", 0.0)
-                # Note: ativo is now a calculated property based on current legislature XVII deputies
-            )
 
-            try:
-                self.session.add(coalition)
-                # UUID id was generated client-side, no flush needed
+        if coalition:
+            # Cache the found coalition
+            self._created_coalitions[sigla] = coalition
+            return coalition
 
-                # Create component party relationships
-                for component in coalition_info.get("component_parties", []):
-                    relationship = ColigacaoPartido(
-                        id=uuid.uuid4(),  # Generate UUID client-side
-                        coligacao_id=coalition.id,
-                        partido_sigla=component["sigla"],
-                        partido_nome=component["nome"],
-                        ativo=True,
-                        papel_coligacao="componente",
-                        confianca_detecao=coalition_info.get("confidence", 0.0)
-                    )
-                    self.session.add(relationship)
-                
-                logger.info(f"Created coalition: {sigla} with {len(coalition_info.get('component_parties', []))} components")
-                
-            except Exception as e:
-                logger.error(f"Error creating coalition {sigla}: {e}")
-                self.session.rollback()
-                return None
-        
+        # Create new coalition with explicit UUID
+        coalition = Coligacao(
+            id=uuid.uuid4(),  # Generate UUID client-side for immediate availability
+            sigla=sigla,
+            nome=coalition_info.get("coalition_name", f"Coligação {sigla}"),
+            nome_eleitoral=coalition_info.get("coalition_name"),
+            data_formacao=coalition_info.get("formation_date"),
+            tipo_coligacao="eleitoral",  # Default type
+            espectro_politico=coalition_info.get("political_spectrum"),
+            confianca_detecao=coalition_info.get("confidence", 0.0)
+            # Note: ativo is now a calculated property based on current legislature XVII deputies
+        )
+
+        try:
+            self.session.add(coalition)
+            # Cache the created coalition immediately to prevent duplicates
+            self._created_coalitions[sigla] = coalition
+
+            # Create component party relationships
+            for component in coalition_info.get("component_parties", []):
+                relationship = ColigacaoPartido(
+                    id=uuid.uuid4(),  # Generate UUID client-side
+                    coligacao_id=coalition.id,
+                    partido_sigla=component["sigla"],
+                    partido_nome=component["nome"],
+                    ativo=True,
+                    papel_coligacao="componente",
+                    confianca_detecao=coalition_info.get("confidence", 0.0)
+                )
+                self.session.add(relationship)
+
+            logger.info(f"Created coalition: {sigla} with {len(coalition_info.get('component_parties', []))} components")
+
+        except Exception as e:
+            logger.error(f"Error creating coalition {sigla}: {e}")
+            # Remove from cache on error
+            self._created_coalitions.pop(sigla, None)
+            self.session.rollback()
+            return None
+
         return coalition
     
     def update_mandate_coalition_context(self, mandate, par_sigla: str):

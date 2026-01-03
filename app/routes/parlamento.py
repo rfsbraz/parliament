@@ -3,7 +3,7 @@ Parliament API Routes - MySQL Implementation
 Clean implementation with proper MySQL/SQLAlchemy patterns
 """
 from flask import Blueprint, request, jsonify
-from sqlalchemy import func, desc, distinct, or_
+from sqlalchemy import func, desc, distinct, or_, and_
 from database.connection import DatabaseSession
 from database.models import (
     Deputado, Partido, Legislatura, CirculoEleitoral, 
@@ -3419,42 +3419,60 @@ def get_deputados():
             if legislatura:
                 # Filter by specific legislature when explicitly requested - show unique people only
                 # Use subquery to get latest record per unique person (id_cadastro) in that legislature
-                subquery = session.query(
+                # First find max created_at per id_cadastro
+                max_times = session.query(
                     Deputado.id_cadastro,
-                    func.max(Deputado.id).label('latest_id')
+                    func.max(Deputado.created_at).label('max_created_at')
                 ).join(
                     DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
                 ).filter(
                     DeputadoMandatoLegislativo.leg_des == legislatura
                 ).group_by(Deputado.id_cadastro).subquery()
-                
+
+                # Then get the actual record with that created_at
                 query = session.query(Deputado).join(
-                    subquery, Deputado.id == subquery.c.latest_id
+                    max_times,
+                    and_(
+                        Deputado.id_cadastro == max_times.c.id_cadastro,
+                        Deputado.created_at == max_times.c.max_created_at
+                    )
                 )
             elif active_only:
                 # Default behavior: Show only unique active deputies (current legislature XVII)
                 # Use subquery to get latest record per unique person (id_cadastro) in legislature XVII
-                subquery = session.query(
+                # First find max created_at per id_cadastro
+                max_times = session.query(
                     Deputado.id_cadastro,
-                    func.max(Deputado.id).label('latest_id')
+                    func.max(Deputado.created_at).label('max_created_at')
                 ).join(
                     DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
                 ).filter(
                     DeputadoMandatoLegislativo.leg_des == 'XVII'  # Current active legislature
                 ).group_by(Deputado.id_cadastro).subquery()
-                
+
+                # Then get the actual record with that created_at
                 query = session.query(Deputado).join(
-                    subquery, Deputado.id == subquery.c.latest_id
+                    max_times,
+                    and_(
+                        Deputado.id_cadastro == max_times.c.id_cadastro,
+                        Deputado.created_at == max_times.c.max_created_at
+                    )
                 )
             else:
                 # Show all unique deputies by id_cadastro (latest entry per person)
-                subquery = session.query(
+                # First find max created_at per id_cadastro
+                max_times = session.query(
                     Deputado.id_cadastro,
-                    func.max(Deputado.id).label('latest_id')
+                    func.max(Deputado.created_at).label('max_created_at')
                 ).group_by(Deputado.id_cadastro).subquery()
-                
+
+                # Then get the actual record with that created_at
                 query = session.query(Deputado).join(
-                    subquery, Deputado.id == subquery.c.latest_id
+                    max_times,
+                    and_(
+                        Deputado.id_cadastro == max_times.c.id_cadastro,
+                        Deputado.created_at == max_times.c.max_created_at
+                    )
                 )
             
             # Apply search filter if provided

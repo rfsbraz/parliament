@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Search, Filter, MapPin, Briefcase, ArrowRight, Calendar, Users } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { User, Search, ArrowRight, Calendar } from 'lucide-react';
 import { apiFetch } from '../config/api';
+import { tokens } from '../styles/tokens';
+import { LoadingSpinner, Card, PageHeader, Pagination } from './common';
 
 const DeputadosPage = () => {
   const [deputados, setDeputados] = useState([])
@@ -26,7 +26,7 @@ const DeputadosPage = () => {
         per_page: '20',
         active_only: 'false'
       })
-      
+
       if (search) {
         params.append('search', search)
       }
@@ -50,181 +50,350 @@ const DeputadosPage = () => {
   }
 
   if (loading && (deputados || []).length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"
-        />
-      </div>
-    )
+    return <LoadingSpinner message="A carregar deputados" />;
   }
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
     >
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Deputados Únicos
+      <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+        <h1
+          style={{
+            fontFamily: tokens.fonts.headline,
+            fontSize: '2.25rem',
+            fontWeight: 700,
+            color: tokens.colors.textPrimary,
+            marginBottom: '0.5rem',
+          }}
+        >
+          Deputados
         </h1>
-        <p className="text-gray-600">
+        <p
+          style={{
+            fontFamily: tokens.fonts.body,
+            fontSize: '1rem',
+            color: tokens.colors.textSecondary,
+          }}
+        >
           {filters ? (
             <>
-              {pagination?.total || 0} pessoas únicas • {filters.total_deputy_records} mandatos totais • {filters.active_deputies_count || 0} deputados ativos
+              <span style={{ fontFamily: tokens.fonts.mono, fontWeight: 600, color: tokens.colors.primary }}>
+                {pagination?.total || 0}
+              </span> pessoas únicas · {' '}
+              <span style={{ fontFamily: tokens.fonts.mono, fontWeight: 600 }}>
+                {filters.total_deputy_records}
+              </span> mandatos totais · {' '}
+              <span style={{ fontFamily: tokens.fonts.mono, fontWeight: 600, color: tokens.colors.primary }}>
+                {filters.active_deputies_count || 0}
+              </span> ativos
             </>
           ) : 'Carregando...'}
         </p>
       </div>
 
-      {/* Search and Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            <form onSubmit={handleSearch} className="flex space-x-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Pesquisar por nome ou partido..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Pesquisando...' : 'Pesquisar'}
-              </Button>
-            </form>
-            
-            {/* Info Text */}
-            <div className="text-xs text-gray-500">
-              Mostrando todos os deputados da história parlamentar
-            </div>
+      {/* Search */}
+      <div
+        style={{
+          backgroundColor: tokens.colors.bgSecondary,
+          border: `1px solid ${tokens.colors.border}`,
+          borderRadius: '4px',
+          padding: '1.25rem',
+        }}
+      >
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '1rem' }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <Search
+              size={16}
+              style={{
+                position: 'absolute',
+                left: '0.75rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: tokens.colors.textMuted,
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Pesquisar por nome ou partido..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.625rem 0.75rem 0.625rem 2.25rem',
+                fontFamily: tokens.fonts.body,
+                fontSize: '0.9375rem',
+                border: `1px solid ${tokens.colors.border}`,
+                borderRadius: '2px',
+                outline: 'none',
+                transition: 'border-color 150ms ease',
+              }}
+              onFocus={(e) => e.target.style.borderColor = tokens.colors.primary}
+              onBlur={(e) => e.target.style.borderColor = tokens.colors.border}
+            />
           </div>
-        </CardContent>
-      </Card>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: '0.625rem 1.25rem',
+              fontFamily: tokens.fonts.body,
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              color: tokens.colors.bgSecondary,
+              backgroundColor: tokens.colors.primary,
+              border: 'none',
+              borderRadius: '2px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+              transition: 'opacity 150ms ease',
+            }}
+          >
+            {loading ? 'Pesquisando...' : 'Pesquisar'}
+          </button>
+        </form>
+        <p
+          style={{
+            marginTop: '0.75rem',
+            fontFamily: tokens.fonts.body,
+            fontSize: '0.75rem',
+            color: tokens.colors.textMuted,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}
+        >
+          Mostrando todos os deputados da história parlamentar
+        </p>
+      </div>
 
       {/* Deputados Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+          gap: '1rem',
+        }}
+      >
         {(deputados || []).map((deputado, index) => (
           <motion.div
             key={`${deputado.deputado_id}-${index}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
+            transition={{ delay: index * 0.03 }}
           >
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-center space-x-4">
-                  <div className="flex-shrink-0">
+            <div
+              style={{
+                backgroundColor: tokens.colors.bgSecondary,
+                border: `1px solid ${tokens.colors.border}`,
+                borderRadius: '4px',
+                overflow: 'hidden',
+                transition: 'border-color 150ms ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = tokens.colors.borderStrong}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = tokens.colors.border}
+            >
+              {/* Card Header */}
+              <div style={{ padding: '1rem', borderBottom: `1px solid ${tokens.colors.border}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                  <div style={{ flexShrink: 0 }}>
                     {deputado.picture_url ? (
                       <img
                         src={deputado.picture_url}
                         alt={deputado.nome}
-                        className="w-16 h-16 rounded-full object-cover bg-gray-200 border-2 border-gray-200"
+                        style={{
+                          width: '56px',
+                          height: '56px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          backgroundColor: '#F5F5F5',
+                          border: `2px solid ${tokens.colors.border}`,
+                        }}
                         onError={(e) => {
                           e.target.style.display = 'none';
                           e.target.nextSibling.style.display = 'flex';
                         }}
                       />
                     ) : null}
-                    <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center" style={{ display: deputado.picture_url ? 'none' : 'flex' }}>
-                      <User className="h-8 w-8 text-blue-600" />
+                    <div
+                      style={{
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '50%',
+                        backgroundColor: '#F0F7F4',
+                        display: deputado.picture_url ? 'none' : 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: `2px solid ${tokens.colors.border}`,
+                      }}
+                    >
+                      <User size={24} style={{ color: tokens.colors.primary }} />
                     </div>
                   </div>
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h3
+                      style={{
+                        fontFamily: tokens.fonts.body,
+                        fontSize: '1rem',
+                        fontWeight: 600,
+                        color: tokens.colors.textPrimary,
+                        marginBottom: '0.25rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
                       {deputado.nome || deputado.nome_completo}
-                    </CardTitle>
-                    <CardDescription className="flex items-center gap-2 flex-wrap">
-                      <span>{deputado.partido_sigla} • {deputado.circulo}</span>
+                    </h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span
+                        style={{
+                          fontFamily: tokens.fonts.body,
+                          fontSize: '0.8125rem',
+                          color: tokens.colors.textSecondary,
+                        }}
+                      >
+                        {deputado.partido_sigla} · {deputado.circulo}
+                      </span>
                       {deputado.career_info?.is_currently_active ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '0.125rem 0.5rem',
+                            fontFamily: tokens.fonts.body,
+                            fontSize: '0.6875rem',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.03em',
+                            color: tokens.colors.primary,
+                            backgroundColor: '#F0F7F4',
+                            borderRadius: '2px',
+                          }}
+                        >
                           Ativo
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '0.125rem 0.5rem',
+                            fontFamily: tokens.fonts.body,
+                            fontSize: '0.6875rem',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.03em',
+                            color: tokens.colors.textMuted,
+                            backgroundColor: '#F5F5F5',
+                            borderRadius: '2px',
+                          }}
+                        >
                           Inativo
                         </span>
                       )}
                       {deputado.career_info?.is_multi_term && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                          <Calendar className="h-3 w-3 mr-1" />
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: '0.125rem 0.5rem',
+                            fontFamily: tokens.fonts.body,
+                            fontSize: '0.6875rem',
+                            fontWeight: 600,
+                            color: '#92400E',
+                            backgroundColor: '#FEF3C7',
+                            borderRadius: '2px',
+                          }}
+                        >
+                          <Calendar size={10} />
                           {deputado.career_info.total_mandates} mandatos
                         </span>
                       )}
-                    </CardDescription>
+                    </div>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm text-gray-600 mb-4">
+              </div>
+
+              {/* Card Body */}
+              <div style={{ padding: '1rem' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.375rem',
+                    fontFamily: tokens.fonts.body,
+                    fontSize: '0.8125rem',
+                    color: tokens.colors.textSecondary,
+                    marginBottom: '0.875rem',
+                  }}
+                >
                   {deputado.profissao && (
                     <div>
-                      <strong>Profissão:</strong> {deputado.profissao}
+                      <span style={{ color: tokens.colors.textMuted }}>Profissão:</span>{' '}
+                      {deputado.profissao}
                     </div>
                   )}
                   <div>
                     {deputado.career_info?.is_currently_active ? (
-                      <><strong>Mandato Atual:</strong> {deputado.legislatura_nome}</>
+                      <>
+                        <span style={{ color: tokens.colors.textMuted }}>Mandato Atual:</span>{' '}
+                        {deputado.legislatura_nome}
+                      </>
                     ) : deputado.career_info?.latest_completed_mandate ? (
-                      <><strong>Último mandato:</strong> {deputado.career_info.latest_completed_mandate.legislatura} ({deputado.career_info.latest_completed_mandate.periodo})</>
+                      <>
+                        <span style={{ color: tokens.colors.textMuted }}>Último mandato:</span>{' '}
+                        {deputado.career_info.latest_completed_mandate.legislatura} ({deputado.career_info.latest_completed_mandate.periodo})
+                      </>
                     ) : (
-                      <><strong>Mandato:</strong> {deputado.legislatura_nome}</>
+                      <>
+                        <span style={{ color: tokens.colors.textMuted }}>Mandato:</span>{' '}
+                        {deputado.legislatura_nome}
+                      </>
                     )}
                   </div>
                   {deputado.career_info?.is_multi_term && (
-                    <div className="text-xs text-blue-600">
-                      <strong>Carreira:</strong> {deputado.career_info.first_mandate}-{deputado.career_info.latest_mandate}
+                    <div style={{ fontSize: '0.75rem', color: tokens.colors.primary }}>
+                      <span style={{ fontWeight: 600 }}>Carreira:</span>{' '}
+                      {deputado.career_info.first_mandate}–{deputado.career_info.latest_mandate}
                       {deputado.career_info.parties_served.length > 1 && (
-                        <span> • Vários partidos</span>
+                        <span> · Vários partidos</span>
                       )}
                     </div>
                   )}
                 </div>
                 <Link
                   to={`/deputados/${deputado.id_cadastro}`}
-                  className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.375rem',
+                    fontFamily: tokens.fonts.body,
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    color: tokens.colors.primary,
+                    textDecoration: 'none',
+                    transition: 'opacity 150ms ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                 >
                   Ver Detalhes
-                  <ArrowRight className="ml-1 h-4 w-4" />
+                  <ArrowRight size={14} />
                 </Link>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </motion.div>
         ))}
       </div>
 
       {/* Pagination */}
-      {pagination && pagination.pages > 1 && (
-        <div className="flex justify-center space-x-2">
-          <Button
-            variant="outline"
-            disabled={!pagination.has_prev}
-            onClick={() => setPage(page - 1)}
-          >
-            Anterior
-          </Button>
-          <span className="flex items-center px-4 py-2 text-sm text-gray-600">
-            Página {pagination.page} de {pagination.pages}
-          </span>
-          <Button
-            variant="outline"
-            disabled={!pagination.has_next}
-            onClick={() => setPage(page + 1)}
-          >
-            Próxima
-          </Button>
-        </div>
-      )}
+      <Pagination pagination={pagination} onPageChange={setPage} />
     </motion.div>
   )
 }
 
 export default DeputadosPage
-

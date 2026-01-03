@@ -1,612 +1,732 @@
-import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Users, Building, MapPin, TrendingUp, Crown, Award, Sparkles, BarChart3, Target, Activity, Shield, Zap, Layers, ArrowUpDown, Scale, ChevronRight } from 'lucide-react'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line, Area, AreaChart, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { tokens, partidoCores } from '../styles/tokens'
+import { LoadingSpinner } from './common'
+
+/**
+ * Dashboard - Data Observatory Style
+ *
+ * Authoritative, data-journalism aesthetic inspired by ProPublica, FiveThirtyEight, Guardian.
+ * Dense information, serif headlines, monospace numbers, minimal decoration.
+ */
 
 const Dashboard = ({ stats }) => {
   if (!stats) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Carregando Dashboard...</h2>
-          <p className="text-gray-600">Por favor, aguarde enquanto carregamos os dados.</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner message="A carregar dados" />
   }
 
   const { totais = {}, distribuicao_partidos = [], distribuicao_circulos = [], legislatura = {} } = stats
-  
-  // Generate legislature display text
-  const getLegislatureDisplayText = () => {
-    if (!legislatura.numero) return 'XVII Legislatura (2024-presente)'
-    
-    const numero = legislatura.numero
-    const dataInicio = legislatura.data_inicio ? new Date(legislatura.data_inicio).getFullYear() : null
-    const dataFim = legislatura.data_fim ? new Date(legislatura.data_fim).getFullYear() : null
-    
-    if (dataInicio && dataFim) {
-      return `${numero} Legislatura (${dataInicio}-${dataFim})`
-    } else if (dataInicio) {
-      return `${numero} Legislatura (${dataInicio}-presente)`
-    } else {
-      return `${numero} Legislatura`
-    }
-  }
 
-  // Cores para os partidos baseadas nas cores oficiais
-  const partidoCores = {
-    'PSD': '#FF6B35',    // Laranja/Vermelho PSD
-    'PS': '#E91E63',     // Rosa PS
-    'CH': '#1565C0',     // Azul Chega
-    'IL': '#00BCD4',     // Ciano IL
-    'BE': '#9C27B0',     // Roxo BE
-    'PCP': '#F44336',    // Vermelho PCP
-    'L': '#4CAF50',      // Verde Livre
-    'CDS-PP': '#FF9800', // Laranja CDS
-    'PAN': '#8BC34A',    // Verde claro PAN
-    'JPP': '#673AB7'     // Roxo escuro JPP
-  }
-
+  // Process party data
   const partidosData = (distribuicao_partidos || []).map(partido => ({
     ...partido,
     cor: partidoCores[partido.sigla] || '#78716C',
     percentagem: ((partido.deputados / (totais.deputados || 1)) * 100).toFixed(1)
-  }))
+  })).sort((a, b) => b.deputados - a.deputados)
 
-  const circulosData = (distribuicao_circulos || []).slice(0, 10) // Top 10 círculos
+  // Top circles
+  const circulosData = (distribuicao_circulos || []).slice(0, 10)
 
-  // Cálculo de métricas políticas avançadas
+  // Political calculations
   const calcularFragmentacao = () => {
     const total = totais.deputados || 1
     const enp = 1 / partidosData.reduce((sum, p) => sum + Math.pow(p.deputados / total, 2), 0)
-    return enp.toFixed(2)
+    return enp.toFixed(1)
   }
 
-  const governoData = partidosData.filter(p => ['PSD', 'CDS-PP'].includes(p.sigla))
-  const oposicaoData = partidosData.filter(p => !['PSD', 'CDS-PP'].includes(p.sigla))
-  
-  const governoDeputados = governoData.reduce((sum, p) => sum + p.deputados, 0)
-  const oposicaoDeputados = oposicaoData.reduce((sum, p) => sum + p.deputados, 0)
+  const governoPartidos = ['PSD', 'CDS-PP']
+  const governoDeputados = partidosData.filter(p => governoPartidos.includes(p.sigla)).reduce((sum, p) => sum + p.deputados, 0)
+  const oposicaoDeputados = partidosData.filter(p => !governoPartidos.includes(p.sigla)).reduce((sum, p) => sum + p.deputados, 0)
   const maioriaAbsoluta = Math.floor((totais.deputados || 230) / 2) + 1
-  
-  const estabilidadeGoverno = {
-    maioria: governoDeputados >= maioriaAbsoluta,
-    margem: governoDeputados - maioriaAbsoluta,
-    percentagem: ((governoDeputados / (totais.deputados || 1)) * 100).toFixed(1)
-  }
+  const temMaioria = governoDeputados >= maioriaAbsoluta
 
-  // Dados para visualização de estabilidade parlamentar
-  const estabilidadeData = [
-    { name: 'Governo', value: governoDeputados, fill: '#10B981' },
-    { name: 'Oposição', value: oposicaoDeputados, fill: '#EF4444' },
-    { name: 'Maioria Necessária', value: maioriaAbsoluta, fill: '#6B7280', type: 'line' }
-  ]
-
-  // Análise de representatividade regional
-  const representatividadeRegional = circulosData.map(circulo => ({
-    ...circulo,
-    densidade: (circulo.deputados / (totais.deputados || 1) * 100).toFixed(1)
-  }))
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  }
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.5
-      }
-    }
+  // Legislature text
+  const getLegislatureText = () => {
+    if (!legislatura.numero) return 'XVII Legislatura'
+    return `${legislatura.numero} Legislatura`
   }
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="space-y-8"
-    >
-      {/* Enhanced Header with Political Context */}
-      <motion.div variants={itemVariants} className="relative">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl mb-6 shadow-lg">
-            <Building className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-5xl font-bold text-gray-900 mb-4 tracking-tight">
-            Parlamento Português
-          </h1>
-          <p className="text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed mb-6">
-            Análise política em profundidade da XVII Legislatura com métricas de estabilidade democrática e dinâmicas parlamentares
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <div className="flex items-center space-x-2">
-              <Sparkles className="w-5 h-5 text-blue-500" />
-              <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                {getLegislatureDisplayText()}
-              </span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Target className="w-5 h-5 text-green-500" />
-              <span className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-full">
-                Fragmentação: {calcularFragmentacao()} partidos efetivos
-              </span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Shield className="w-5 h-5 text-purple-500" />
-              <span className={`text-sm font-medium px-3 py-1 rounded-full ${
-                estabilidadeGoverno.maioria 
-                  ? 'text-emerald-700 bg-emerald-50' 
-                  : 'text-amber-700 bg-amber-50'
-              }`}>
-                {estabilidadeGoverno.maioria ? 'Maioria Absoluta' : 'Governo Minoritário'}
-              </span>
-            </div>
-          </div>
+    <div style={{ fontFamily: tokens.fonts.body }}>
+      {/* Hero Header */}
+      <header style={{ marginBottom: '3rem' }}>
+        <h1 style={{
+          fontFamily: tokens.fonts.headline,
+          fontSize: '2.75rem',
+          fontWeight: 700,
+          color: tokens.colors.textPrimary,
+          marginBottom: '0.75rem',
+          lineHeight: 1.15,
+        }}>
+          Parlamento Português
+        </h1>
+        <p style={{
+          fontSize: '1.125rem',
+          color: tokens.colors.textSecondary,
+          maxWidth: '640px',
+          lineHeight: 1.5,
+          marginBottom: '1.5rem',
+        }}>
+          Análise da composição e dinâmicas parlamentares da {getLegislatureText()}.
+          Dados extraídos do Portal de Dados Abertos da Assembleia da República.
+        </p>
+
+        {/* Key indicators strip */}
+        <div style={{
+          display: 'flex',
+          gap: '0.5rem',
+          flexWrap: 'wrap',
+        }}>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.375rem 0.75rem',
+            backgroundColor: tokens.colors.bgTertiary,
+            border: `1px solid ${tokens.colors.border}`,
+            borderRadius: '2px',
+            fontSize: '0.8125rem',
+            color: tokens.colors.textSecondary,
+          }}>
+            <span style={{
+              width: '8px',
+              height: '8px',
+              backgroundColor: tokens.colors.primary,
+              borderRadius: '50%',
+            }} />
+            {getLegislatureText()}
+          </span>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.375rem 0.75rem',
+            backgroundColor: temMaioria ? '#DCFCE7' : '#FEF3C7',
+            border: `1px solid ${temMaioria ? '#86EFAC' : '#FCD34D'}`,
+            borderRadius: '2px',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            color: temMaioria ? tokens.colors.success : tokens.colors.warning,
+          }}>
+            {temMaioria ? 'Maioria Absoluta' : 'Governo Minoritário'}
+          </span>
         </div>
-      </motion.div>
+      </header>
 
-      {/* Political Analysis Metrics Cards */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium opacity-90">
-              Composição Parlamentar
-            </CardTitle>
-            <div className="p-2 bg-white/20 rounded-lg">
-              <Users className="h-5 w-5" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold mb-1">{totais.deputados || 230}</div>
-            <p className="text-xs opacity-90">
-              Deputados · {totais.partidos || 0} partidos
+      {/* Metrics Strip */}
+      <section style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: '1px',
+        backgroundColor: tokens.colors.border,
+        border: `1px solid ${tokens.colors.border}`,
+        borderRadius: '4px',
+        marginBottom: '2.5rem',
+        overflow: 'hidden',
+      }}>
+        <MetricCard
+          value={totais.deputados || 230}
+          label="Deputados"
+          sublabel={`${totais.partidos || 0} partidos`}
+        />
+        <MetricCard
+          value={governoDeputados}
+          label="Governo"
+          sublabel={`${((governoDeputados / (totais.deputados || 230)) * 100).toFixed(0)}% dos assentos`}
+          accent="primary"
+        />
+        <MetricCard
+          value={oposicaoDeputados}
+          label="Oposição"
+          sublabel={`${((oposicaoDeputados / (totais.deputados || 230)) * 100).toFixed(0)}% dos assentos`}
+          accent="accent"
+        />
+        <MetricCard
+          value={calcularFragmentacao()}
+          label="Fragmentação"
+          sublabel="Partidos efetivos"
+        />
+      </section>
+
+      {/* Main Content Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '1.5rem',
+        marginBottom: '2.5rem',
+      }}>
+        {/* Party Composition */}
+        <section style={{
+          backgroundColor: tokens.colors.bgSecondary,
+          border: `1px solid ${tokens.colors.border}`,
+          borderRadius: '4px',
+        }}>
+          <div style={{
+            padding: '1.25rem 1.5rem',
+            borderBottom: `1px solid ${tokens.colors.border}`,
+          }}>
+            <h2 style={{
+              fontFamily: tokens.fonts.headline,
+              fontSize: '1.125rem',
+              fontWeight: 700,
+              color: tokens.colors.textPrimary,
+              margin: 0,
+            }}>
+              Composição Partidária
+            </h2>
+            <p style={{
+              fontSize: '0.8125rem',
+              color: tokens.colors.textMuted,
+              margin: '0.25rem 0 0',
+            }}>
+              Distribuição dos {totais.deputados || 230} mandatos
             </p>
-          </CardContent>
-        </Card>
-
-        <Card className={`border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 text-white ${
-          estabilidadeGoverno.maioria 
-            ? 'bg-gradient-to-br from-emerald-500 to-green-600' 
-            : 'bg-gradient-to-br from-amber-500 to-orange-600'
-        }`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium opacity-90">
-              Estabilidade Governamental
-            </CardTitle>
-            <div className="p-2 bg-white/20 rounded-lg">
-              <Shield className="h-5 w-5" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold mb-1">{estabilidadeGoverno.percentagem}%</div>
-            <p className="text-xs opacity-90">
-              {estabilidadeGoverno.maioria ? 'Maioria absoluta' : `Faltam ${Math.abs(estabilidadeGoverno.margem)} deputados`}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium opacity-90">
-              Fragmentação Política
-            </CardTitle>
-            <div className="p-2 bg-white/20 rounded-lg">
-              <Layers className="h-5 w-5" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold mb-1">{calcularFragmentacao()}</div>
-            <p className="text-xs opacity-90">
-              Número efetivo de partidos
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-medium opacity-90">
-              Representação Territorial
-            </CardTitle>
-            <div className="p-2 bg-white/20 rounded-lg">
-              <MapPin className="h-5 w-5" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold mb-1">{totais.circulos || 22}</div>
-            <p className="text-xs opacity-90">
-              Círculos eleitorais ativos
-            </p>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Political Dynamics Overview */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-500 rounded-full">
-                <Crown className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">Maior Partido</h3>
-                <p className="text-2xl font-bold text-blue-600">
-                  {stats.maior_partido?.sigla || 'PSD'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  {stats.maior_partido?.deputados || 0} deputados ({((stats.maior_partido?.deputados || 0) / (totais.deputados || 1) * 100).toFixed(1)}%)
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200">
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-emerald-500 rounded-full">
-                <Scale className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">Balanço Governo-Oposição</h3>
-                <p className="text-lg font-bold text-emerald-600">
-                  {governoDeputados} vs {oposicaoDeputados}
-                </p>
-                <p className="text-sm text-gray-600">
-                  Margem: {estabilidadeGoverno.margem > 0 ? '+' : ''}{estabilidadeGoverno.margem} deputados
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-purple-50 to-violet-50 border-purple-200">
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-purple-500 rounded-full">
-                <MapPin className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">Maior Círculo</h3>
-                <p className="text-2xl font-bold text-purple-600">
-                  {stats.maior_circulo?.designacao || 'Lisboa'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  {stats.maior_circulo?.deputados || 0} deputados
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Enhanced Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Hemiciclo Parlamentar Visualization */}
-        <motion.div variants={itemVariants}>
-          <Card className="shadow-lg border-0 bg-white hover:shadow-xl transition-shadow duration-300">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
-              <CardTitle className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-500 rounded-lg">
-                  <Users className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <span className="text-lg font-semibold text-gray-900">Composição Partidária</span>
-                  <CardDescription className="mt-1">
-                    Distribuição dos 230 deputados por partido político
-                  </CardDescription>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <ResponsiveContainer width="100%" height={350}>
-                <PieChart>
-                  <Pie
-                    data={partidosData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ sigla, deputados, percentagem }) => 
-                      deputados > 10 ? `${sigla}: ${deputados}` : ''
-                    }
-                    outerRadius={100}
-                    innerRadius={40}
-                    fill="#8884d8"
-                    dataKey="deputados"
-                    stroke="#ffffff"
-                    strokeWidth={2}
-                  >
-                    {partidosData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.cor} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value, name) => [`${value} deputados (${((value / (totais.deputados || 1)) * 100).toFixed(1)}%)`, 'Total']}
-                    labelFormatter={(label) => `Partido: ${label}`}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Government Stability Analysis */}
-        <motion.div variants={itemVariants}>
-          <Card className="shadow-lg border-0 bg-white hover:shadow-xl transition-shadow duration-300">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-lg">
-              <CardTitle className="flex items-center space-x-3">
-                <div className="p-2 bg-green-500 rounded-lg">
-                  <Shield className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <span className="text-lg font-semibold text-gray-900">Estabilidade Governamental</span>
-                  <CardDescription className="mt-1">
-                    Análise da correlação de forças parlamentares
-                  </CardDescription>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="h-[350px] flex flex-col justify-center space-y-8">
-                {/* Government vs Opposition Bar */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-700">Governo</span>
-                    <span className="text-sm font-bold text-green-600">{governoDeputados} deputados</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-4">
-                    <div 
-                      className="bg-green-500 h-4 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
-                      style={{ width: `${(governoDeputados / (totais.deputados || 230)) * 100}%` }}
-                    >
-                      <span className="text-xs font-semibold text-white">
-                        {estabilidadeGoverno.percentagem}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-700">Oposição</span>
-                    <span className="text-sm font-bold text-red-600">{oposicaoDeputados} deputados</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-4">
-                    <div 
-                      className="bg-red-500 h-4 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
-                      style={{ width: `${(oposicaoDeputados / (totais.deputados || 230)) * 100}%` }}
-                    >
-                      <span className="text-xs font-semibold text-white">
-                        {((oposicaoDeputados / (totais.deputados || 230)) * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Majority Line */}
-                <div className="border-t pt-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-sm font-medium text-gray-700">Maioria Absoluta</span>
-                    <span className="text-sm font-bold text-gray-600">{maioriaAbsoluta} deputados</span>
-                  </div>
-                  <div className="text-center">
-                    <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${
-                      estabilidadeGoverno.maioria 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {estabilidadeGoverno.maioria ? 'Governo com maioria absoluta' : 'Governo minoritário'}
-                    </span>
-                  </div>
-                  <div className="mt-3 text-center text-xs text-gray-500">
-                    Margem: {estabilidadeGoverno.margem > 0 ? '+' : ''}{estabilidadeGoverno.margem} deputados
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Representação Territorial */}
-      <motion.div variants={itemVariants}>
-        <Card className="shadow-lg border-0 bg-white hover:shadow-xl transition-shadow duration-300">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50 rounded-t-lg">
-            <CardTitle className="flex items-center space-x-3">
-              <div className="p-2 bg-purple-500 rounded-lg">
-                <MapPin className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <span className="text-lg font-semibold text-gray-900">Representação Territorial</span>
-                <CardDescription className="mt-1">
-                  Distribuição de deputados por círculo eleitoral
-                </CardDescription>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={representatividadeRegional} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis 
-                  dataKey="circulo" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                  fontSize={11}
-                  stroke="#6B7280"
-                />
-                <YAxis stroke="#6B7280" fontSize={11} />
-                <Tooltip 
-                  formatter={(value, name) => [
-                    `${value} deputados (${((value / (totais.deputados || 1)) * 100).toFixed(1)}%)`, 
-                    'Representação'
-                  ]}
-                  labelStyle={{ color: '#374151' }}
-                  contentStyle={{ 
-                    backgroundColor: '#f9fafb', 
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px'
+          </div>
+          <div style={{ padding: '1.5rem' }}>
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={partidosData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={90}
+                  dataKey="deputados"
+                  stroke="#FFFFFF"
+                  strokeWidth={2}
+                >
+                  {partidosData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.cor} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value) => [`${value} deputados`, '']}
+                  contentStyle={{
+                    backgroundColor: tokens.colors.bgSecondary,
+                    border: `1px solid ${tokens.colors.border}`,
+                    borderRadius: '4px',
+                    fontFamily: tokens.fonts.body,
+                    fontSize: '0.875rem',
                   }}
                 />
-                <Bar 
-                  dataKey="deputados" 
-                  fill="url(#purpleGradient)" 
-                  radius={[6, 6, 0, 0]}
-                  stroke="#8B5CF6"
-                  strokeWidth={1}
+                <Legend
+                  formatter={(value, entry) => (
+                    <span style={{ color: tokens.colors.textSecondary, fontSize: '0.75rem' }}>
+                      {value}
+                    </span>
+                  )}
                 />
-                <defs>
-                  <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8B5CF6" />
-                    <stop offset="100%" stopColor="#7C3AED" />
-                  </linearGradient>
-                </defs>
-              </BarChart>
+              </PieChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </motion.div>
+          </div>
+        </section>
 
-      {/* Enhanced Party Details with Political Analysis */}
-      <motion.div variants={itemVariants}>
-        <Card className="shadow-lg border-0 bg-white">
-          <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-t-lg">
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gray-700 rounded-lg">
-                  <Building className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <span className="text-xl font-semibold text-gray-900">Análise Partidária Detalhada</span>
-                  <CardDescription className="mt-1">
-                    Força parlamentar e posicionamento político por partido
-                  </CardDescription>
+        {/* Government Stability */}
+        <section style={{
+          backgroundColor: tokens.colors.bgSecondary,
+          border: `1px solid ${tokens.colors.border}`,
+          borderRadius: '4px',
+        }}>
+          <div style={{
+            padding: '1.25rem 1.5rem',
+            borderBottom: `1px solid ${tokens.colors.border}`,
+          }}>
+            <h2 style={{
+              fontFamily: tokens.fonts.headline,
+              fontSize: '1.125rem',
+              fontWeight: 700,
+              color: tokens.colors.textPrimary,
+              margin: 0,
+            }}>
+              Balanço Parlamentar
+            </h2>
+            <p style={{
+              fontSize: '0.8125rem',
+              color: tokens.colors.textMuted,
+              margin: '0.25rem 0 0',
+            }}>
+              Correlação de forças Governo vs. Oposição
+            </p>
+          </div>
+          <div style={{ padding: '1.5rem' }}>
+            {/* Government bar */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginBottom: '0.5rem',
+              }}>
+                <span style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: tokens.colors.textMuted,
+                }}>Governo</span>
+                <span style={{
+                  fontFamily: tokens.fonts.mono,
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: tokens.colors.primary,
+                }}>{governoDeputados}</span>
+              </div>
+              <div style={{
+                height: '24px',
+                backgroundColor: tokens.colors.bgTertiary,
+                borderRadius: '2px',
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: `${(governoDeputados / (totais.deputados || 230)) * 100}%`,
+                  backgroundColor: tokens.colors.primary,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  paddingRight: '0.5rem',
+                }}>
+                  <span style={{
+                    fontFamily: tokens.fonts.mono,
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    color: '#FFFFFF',
+                  }}>
+                    {((governoDeputados / (totais.deputados || 230)) * 100).toFixed(0)}%
+                  </span>
                 </div>
               </div>
-              <div className="text-sm text-gray-500">
-                {partidosData.length} partidos representados
+            </div>
+
+            {/* Opposition bar */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginBottom: '0.5rem',
+              }}>
+                <span style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: tokens.colors.textMuted,
+                }}>Oposição</span>
+                <span style={{
+                  fontFamily: tokens.fonts.mono,
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: tokens.colors.accent,
+                }}>{oposicaoDeputados}</span>
               </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {partidosData
-                .sort((a, b) => b.deputados - a.deputados)
-                .map((partido, index) => {
-                  const isGoverno = ['PSD', 'CDS-PP'].includes(partido.sigla)
-                  const isOposicao = !isGoverno
-                  
-                  return (
-                    <motion.div
-                      key={partido.sigla}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <Link 
+              <div style={{
+                height: '24px',
+                backgroundColor: tokens.colors.bgTertiary,
+                borderRadius: '2px',
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: `${(oposicaoDeputados / (totais.deputados || 230)) * 100}%`,
+                  backgroundColor: tokens.colors.accent,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  paddingRight: '0.5rem',
+                }}>
+                  <span style={{
+                    fontFamily: tokens.fonts.mono,
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    color: '#FFFFFF',
+                  }}>
+                    {((oposicaoDeputados / (totais.deputados || 230)) * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Majority line */}
+            <div style={{
+              paddingTop: '1rem',
+              borderTop: `1px solid ${tokens.colors.border}`,
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '0.75rem',
+              }}>
+                <span style={{
+                  fontSize: '0.8125rem',
+                  color: tokens.colors.textSecondary,
+                }}>Maioria absoluta necessária</span>
+                <span style={{
+                  fontFamily: tokens.fonts.mono,
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  color: tokens.colors.textPrimary,
+                }}>{maioriaAbsoluta}</span>
+              </div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.75rem 1rem',
+                backgroundColor: temMaioria ? '#F0FDF4' : '#FFFBEB',
+                border: `1px solid ${temMaioria ? '#86EFAC' : '#FCD34D'}`,
+                borderRadius: '4px',
+              }}>
+                <span style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: temMaioria ? tokens.colors.success : tokens.colors.warning,
+                }} />
+                <span style={{
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  color: temMaioria ? tokens.colors.success : tokens.colors.warning,
+                }}>
+                  {temMaioria
+                    ? `Governo com maioria (+${governoDeputados - maioriaAbsoluta})`
+                    : `Faltam ${maioriaAbsoluta - governoDeputados} para maioria`}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Regional Distribution */}
+      <section style={{
+        backgroundColor: tokens.colors.bgSecondary,
+        border: `1px solid ${tokens.colors.border}`,
+        borderRadius: '4px',
+        marginBottom: '2.5rem',
+      }}>
+        <div style={{
+          padding: '1.25rem 1.5rem',
+          borderBottom: `1px solid ${tokens.colors.border}`,
+        }}>
+          <h2 style={{
+            fontFamily: tokens.fonts.headline,
+            fontSize: '1.125rem',
+            fontWeight: 700,
+            color: tokens.colors.textPrimary,
+            margin: 0,
+          }}>
+            Distribuição Territorial
+          </h2>
+          <p style={{
+            fontSize: '0.8125rem',
+            color: tokens.colors.textMuted,
+            margin: '0.25rem 0 0',
+          }}>
+            Deputados por círculo eleitoral (top 10)
+          </p>
+        </div>
+        <div style={{ padding: '1.5rem' }}>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={circulosData} margin={{ top: 10, right: 10, left: 10, bottom: 60 }}>
+              <XAxis
+                dataKey="circulo"
+                angle={-45}
+                textAnchor="end"
+                height={60}
+                tick={{ fontSize: 11, fill: tokens.colors.textMuted }}
+                axisLine={{ stroke: tokens.colors.border }}
+                tickLine={{ stroke: tokens.colors.border }}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: tokens.colors.textMuted }}
+                axisLine={{ stroke: tokens.colors.border }}
+                tickLine={{ stroke: tokens.colors.border }}
+              />
+              <Tooltip
+                formatter={(value) => [`${value} deputados`, '']}
+                contentStyle={{
+                  backgroundColor: tokens.colors.bgSecondary,
+                  border: `1px solid ${tokens.colors.border}`,
+                  borderRadius: '4px',
+                  fontFamily: tokens.fonts.body,
+                  fontSize: '0.875rem',
+                }}
+              />
+              <Bar
+                dataKey="deputados"
+                fill={tokens.colors.primary}
+                radius={[2, 2, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      {/* Party Details Table */}
+      <section style={{
+        backgroundColor: tokens.colors.bgSecondary,
+        border: `1px solid ${tokens.colors.border}`,
+        borderRadius: '4px',
+      }}>
+        <div style={{
+          padding: '1.25rem 1.5rem',
+          borderBottom: `1px solid ${tokens.colors.border}`,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+          <div>
+            <h2 style={{
+              fontFamily: tokens.fonts.headline,
+              fontSize: '1.125rem',
+              fontWeight: 700,
+              color: tokens.colors.textPrimary,
+              margin: 0,
+            }}>
+              Partidos com Representação Parlamentar
+            </h2>
+            <p style={{
+              fontSize: '0.8125rem',
+              color: tokens.colors.textMuted,
+              margin: '0.25rem 0 0',
+            }}>
+              Força parlamentar ordenada por número de mandatos
+            </p>
+          </div>
+          <span style={{
+            fontFamily: tokens.fonts.mono,
+            fontSize: '0.8125rem',
+            color: tokens.colors.textMuted,
+          }}>
+            {partidosData.length} partidos
+          </span>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: '0.875rem',
+          }}>
+            <thead>
+              <tr style={{ backgroundColor: tokens.colors.bgTertiary }}>
+                <th style={{
+                  padding: '0.75rem 1.5rem',
+                  textAlign: 'left',
+                  fontWeight: 600,
+                  fontSize: '0.6875rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: tokens.colors.textMuted,
+                  borderBottom: `2px solid ${tokens.colors.borderStrong}`,
+                }}>Partido</th>
+                <th style={{
+                  padding: '0.75rem 1rem',
+                  textAlign: 'right',
+                  fontWeight: 600,
+                  fontSize: '0.6875rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: tokens.colors.textMuted,
+                  borderBottom: `2px solid ${tokens.colors.borderStrong}`,
+                }}>Deputados</th>
+                <th style={{
+                  padding: '0.75rem 1rem',
+                  textAlign: 'right',
+                  fontWeight: 600,
+                  fontSize: '0.6875rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: tokens.colors.textMuted,
+                  borderBottom: `2px solid ${tokens.colors.borderStrong}`,
+                }}>% Parlamento</th>
+                <th style={{
+                  padding: '0.75rem 1rem',
+                  textAlign: 'center',
+                  fontWeight: 600,
+                  fontSize: '0.6875rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: tokens.colors.textMuted,
+                  borderBottom: `2px solid ${tokens.colors.borderStrong}`,
+                }}>Posição</th>
+                <th style={{
+                  padding: '0.75rem 1.5rem',
+                  textAlign: 'left',
+                  fontWeight: 600,
+                  fontSize: '0.6875rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: tokens.colors.textMuted,
+                  borderBottom: `2px solid ${tokens.colors.borderStrong}`,
+                  width: '30%',
+                }}>Força Relativa</th>
+              </tr>
+            </thead>
+            <tbody>
+              {partidosData.map((partido, index) => {
+                const isGoverno = governoPartidos.includes(partido.sigla)
+                const maxDeputados = Math.max(...partidosData.map(p => p.deputados))
+                return (
+                  <tr
+                    key={partido.sigla}
+                    style={{
+                      borderBottom: `1px solid ${tokens.colors.border}`,
+                      transition: 'background-color 150ms ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = tokens.colors.bgTertiary}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <td style={{ padding: '1rem 1.5rem' }}>
+                      <Link
                         to={`/partidos/${encodeURIComponent(partido.id)}`}
-                        className="group relative overflow-hidden bg-white border border-gray-200 rounded-xl p-5 hover:shadow-lg hover:border-gray-300 transition-all duration-300 hover:-translate-y-1 block cursor-pointer"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          textDecoration: 'none',
+                          color: 'inherit',
+                        }}
                       >
-                        {/* Political positioning indicator */}
-                        <div className="absolute top-3 right-3">
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            isGoverno 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {isGoverno ? 'Governo' : 'Oposição'}
-                          </span>
-                        </div>
-
-                        {/* Background gradient effect */}
-                        <div 
-                          className="absolute inset-0 opacity-5 group-hover:opacity-10 transition-opacity duration-300"
-                          style={{ backgroundColor: partido.cor }}
-                        />
-                        
-                        <div className="relative">
-                          <div className="flex items-center space-x-4 mb-4">
-                            <div 
-                              className="w-6 h-6 rounded-full shadow-sm ring-2 ring-white group-hover:ring-4 transition-all duration-300"
-                              style={{ backgroundColor: partido.cor }}
-                            />
-                            <div className="flex-1">
-                              <div className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
-                                {partido.sigla}
-                              </div>
-                              <div className="text-sm text-gray-600 line-clamp-1 group-hover:text-gray-700 transition-colors duration-300">
-                                {partido.nome}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-end mb-3">
-                            <div>
-                              <div className="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
-                                {partido.deputados}
-                              </div>
-                              <div className="text-xs text-gray-500 uppercase tracking-wide font-medium">
-                                deputados
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-lg font-semibold text-gray-700">
-                                {partido.percentagem}%
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                do parlamento
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Strength indicator bar */}
-                          <div className="mb-3 bg-gray-100 rounded-full h-2 overflow-hidden">
-                            <div 
-                              className="h-full rounded-full transition-all duration-500 ease-out group-hover:opacity-90"
-                              style={{ 
-                                backgroundColor: partido.cor,
-                                width: `${(partido.deputados / Math.max(...partidosData.map(p => p.deputados))) * 100}%`
-                              }}
-                            />
-                          </div>
-
-                          {/* Political influence indicator */}
-                          <div className="flex justify-between items-center text-xs text-gray-500">
-                            <span>Influência Parlamentar</span>
-                            <span className="font-medium">
-                              {partido.deputados >= 20 ? 'Alta' : partido.deputados >= 10 ? 'Média' : 'Baixa'}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Click indicator */}
-                        <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <ChevronRight className="w-4 h-4 text-blue-500" />
+                        <span style={{
+                          width: '12px',
+                          height: '12px',
+                          borderRadius: '2px',
+                          backgroundColor: partido.cor,
+                          flexShrink: 0,
+                        }} />
+                        <div>
+                          <div style={{
+                            fontWeight: 600,
+                            color: tokens.colors.textPrimary,
+                          }}>{partido.sigla}</div>
+                          <div style={{
+                            fontSize: '0.75rem',
+                            color: tokens.colors.textMuted,
+                            maxWidth: '200px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}>{partido.nome}</div>
                         </div>
                       </Link>
-                    </motion.div>
-                  )
-                })}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </motion.div>
+                    </td>
+                    <td style={{
+                      padding: '1rem',
+                      textAlign: 'right',
+                      fontFamily: tokens.fonts.mono,
+                      fontWeight: 600,
+                      fontSize: '1rem',
+                      color: tokens.colors.textPrimary,
+                    }}>{partido.deputados}</td>
+                    <td style={{
+                      padding: '1rem',
+                      textAlign: 'right',
+                      fontFamily: tokens.fonts.mono,
+                      color: tokens.colors.textSecondary,
+                    }}>{partido.percentagem}%</td>
+                    <td style={{
+                      padding: '1rem',
+                      textAlign: 'center',
+                    }}>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '0.25rem 0.5rem',
+                        backgroundColor: isGoverno ? '#F0FDF4' : '#EFF6FF',
+                        border: `1px solid ${isGoverno ? '#86EFAC' : '#BFDBFE'}`,
+                        borderRadius: '2px',
+                        fontSize: '0.6875rem',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.03em',
+                        color: isGoverno ? tokens.colors.success : '#2563EB',
+                      }}>
+                        {isGoverno ? 'Governo' : 'Oposição'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '1rem 1.5rem' }}>
+                      <div style={{
+                        height: '8px',
+                        backgroundColor: tokens.colors.bgTertiary,
+                        borderRadius: '2px',
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${(partido.deputados / maxDeputados) * 100}%`,
+                          backgroundColor: partido.cor,
+                          transition: 'width 300ms ease',
+                        }} />
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Responsive styles */}
+      <style>{`
+        @media (max-width: 1024px) {
+          section[style*="grid-template-columns: 1fr 1fr"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 768px) {
+          section[style*="grid-template-columns: repeat(4, 1fr)"] {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        @media (max-width: 480px) {
+          section[style*="grid-template-columns: repeat(2, 1fr)"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+    </div>
   )
 }
+
+// Metric Card Component
+const MetricCard = ({ value, label, sublabel, accent }) => (
+  <div style={{
+    backgroundColor: tokens.colors.bgSecondary,
+    padding: '1.25rem 1.5rem',
+    textAlign: 'center',
+    borderLeft: accent === 'primary' ? `3px solid ${tokens.colors.primary}` :
+               accent === 'accent' ? `3px solid ${tokens.colors.accent}` : 'none',
+  }}>
+    <div style={{
+      fontFamily: tokens.fonts.mono,
+      fontSize: '2rem',
+      fontWeight: 700,
+      color: accent === 'primary' ? tokens.colors.primary :
+             accent === 'accent' ? tokens.colors.accent : tokens.colors.textPrimary,
+      lineHeight: 1,
+      marginBottom: '0.5rem',
+    }}>
+      {value}
+    </div>
+    <div style={{
+      fontSize: '0.6875rem',
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '0.08em',
+      color: tokens.colors.textMuted,
+      marginBottom: '0.125rem',
+    }}>
+      {label}
+    </div>
+    {sublabel && (
+      <div style={{
+        fontSize: '0.75rem',
+        color: tokens.colors.textMuted,
+      }}>
+        {sublabel}
+      </div>
+    )}
+  </div>
+)
 
 export default Dashboard

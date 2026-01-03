@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { 
-  BarChart3, 
-  Activity, 
-  Users, 
-  MessageSquare, 
-  Scale, 
+import {
+  BarChart3,
+  Activity,
+  Users,
+  MessageSquare,
+  Scale,
   RefreshCw,
   TrendingUp,
   Clock,
@@ -21,26 +21,26 @@ import {
   UserCheck,
   Share2
 } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Area, AreaChart } from 'recharts'
 import { apiFetch } from '../config/api';
+import { tokens } from '../styles/tokens';
+import { LoadingSpinner, Section, Card } from './common';
 
 const TransparenciaPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const location = useLocation()
-  
+
   const [activeTab, setActiveTab] = useState('live')
   const [data, setData] = useState({})
   const [loading, setLoading] = useState({})
   const [lastUpdated, setLastUpdated] = useState(null)
 
   const tabs = [
-    { id: 'live', label: 'Atividade Ao Vivo', icon: Activity, color: 'text-blue-600' },
-    { id: 'progress', label: 'Progresso Legislativo', icon: Scale, color: 'text-green-600' },
-    { id: 'deputies', label: 'Performance Deputados', icon: Users, color: 'text-purple-600' },
-    { id: 'participation', label: 'Participação Cidadã', icon: MessageSquare, color: 'text-orange-600' },
-    { id: 'accountability', label: 'Métricas Transparência', icon: BarChart3, color: 'text-red-600' }
+    { id: 'live', label: 'Atividade Ao Vivo', icon: Activity },
+    { id: 'progress', label: 'Progresso Legislativo', icon: Scale },
+    { id: 'deputies', label: 'Performance Deputados', icon: Users },
+    { id: 'participation', label: 'Participação Cidadã', icon: MessageSquare },
+    { id: 'accountability', label: 'Métricas Transparência', icon: BarChart3 }
   ]
 
   const API_BASE_URL = 'transparency'
@@ -65,7 +65,6 @@ const TransparenciaPage = () => {
   }
 
   useEffect(() => {
-    // Load data based on active tab
     switch (activeTab) {
       case 'live':
         fetchData('live-activity', 'liveActivity')
@@ -85,7 +84,6 @@ const TransparenciaPage = () => {
     }
   }, [activeTab])
 
-  // Initialize active tab from URL parameter
   useEffect(() => {
     const tab = searchParams.get('tab')
     const validTabs = ['live', 'progress', 'deputies', 'participation', 'accountability']
@@ -94,17 +92,14 @@ const TransparenciaPage = () => {
     }
   }, [searchParams])
 
-  // Handle tab change and update URL
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)
     setSearchParams({ tab: tabId })
   }
 
-  // Copy link to clipboard for sharing
   const copyTabLink = (tabId) => {
     const url = `${window.location.origin}/transparencia?tab=${tabId}`
     navigator.clipboard.writeText(url).then(() => {
-      // You could add a toast notification here
       console.log('Link copiado:', url)
     })
   }
@@ -118,42 +113,109 @@ const TransparenciaPage = () => {
   }
 
   const getStatusBadge = (status) => {
-    const statusColors = {
-      'excellent': 'bg-green-100 text-green-800',
-      'good': 'bg-blue-100 text-blue-800',
-      'average': 'bg-yellow-100 text-yellow-800',
-      'satisfactory': 'bg-yellow-100 text-yellow-800',
-      'moderate': 'bg-orange-100 text-orange-800',
-      'needs_improvement': 'bg-red-100 text-red-800',
-      'concerning': 'bg-red-100 text-red-800',
-      'strong': 'bg-green-100 text-green-800'
+    const statusStyles = {
+      'excellent': { bg: '#E8F5E9', color: tokens.colors.primary },
+      'good': { bg: '#E3F2FD', color: '#2563EB' },
+      'average': { bg: '#FFF8E1', color: tokens.colors.warning },
+      'satisfactory': { bg: '#FFF8E1', color: tokens.colors.warning },
+      'moderate': { bg: '#FFF3E0', color: '#EA580C' },
+      'needs_improvement': { bg: '#FFEBEE', color: tokens.colors.accent },
+      'concerning': { bg: '#FFEBEE', color: tokens.colors.accent },
+      'strong': { bg: '#E8F5E9', color: tokens.colors.primary }
     }
+    const style = statusStyles[status] || { bg: '#F5F5F5', color: tokens.colors.textMuted }
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[status] || 'bg-gray-100 text-gray-800'}`}>
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          padding: '0.25rem 0.75rem',
+          borderRadius: '2px',
+          fontSize: '0.75rem',
+          fontFamily: tokens.fonts.body,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.025em',
+          backgroundColor: style.bg,
+          color: style.color,
+        }}
+      >
         {status.replace('_', ' ').toUpperCase()}
       </span>
     )
   }
 
-  const MetricCard = ({ icon: Icon, title, value, subtitle, trend, color = 'text-blue-600' }) => (
+  // Editorial-style Metric Card
+  const MetricCard = ({ icon: Icon, title, value, subtitle, trend }) => (
     <motion.div
-      whileHover={{ scale: 1.02 }}
-      className="bg-white rounded-lg border border-gray-200 p-4"
+      whileHover={{ y: -2 }}
+      style={{
+        backgroundColor: tokens.colors.bgSecondary,
+        border: `1px solid ${tokens.colors.border}`,
+        borderRadius: '4px',
+        padding: '1.25rem',
+      }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className={`p-2 rounded-lg bg-opacity-10 ${color.replace('text-', 'bg-')}`}>
-            <Icon className={`h-5 w-5 ${color}`} />
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+          <div
+            style={{
+              padding: '0.5rem',
+              backgroundColor: '#E8F5E9',
+              borderRadius: '4px',
+            }}
+          >
+            <Icon style={{ width: '20px', height: '20px', color: tokens.colors.primary }} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+            <p
+              style={{
+                fontSize: '0.75rem',
+                fontFamily: tokens.fonts.body,
+                fontWeight: 600,
+                color: tokens.colors.textMuted,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '0.25rem',
+              }}
+            >
+              {title}
+            </p>
+            <p
+              style={{
+                fontSize: '1.75rem',
+                fontFamily: tokens.fonts.mono,
+                fontWeight: 700,
+                color: tokens.colors.textPrimary,
+                lineHeight: 1,
+              }}
+            >
+              {value}
+            </p>
+            {subtitle && (
+              <p
+                style={{
+                  fontSize: '0.8125rem',
+                  fontFamily: tokens.fonts.body,
+                  color: tokens.colors.textMuted,
+                  marginTop: '0.25rem',
+                }}
+              >
+                {subtitle}
+              </p>
+            )}
           </div>
         </div>
         {trend && (
-          <div className="text-right">
-            <span className={`text-sm font-medium ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div style={{ textAlign: 'right' }}>
+            <span
+              style={{
+                fontSize: '0.875rem',
+                fontFamily: tokens.fonts.mono,
+                fontWeight: 600,
+                color: trend > 0 ? tokens.colors.primary : tokens.colors.accent,
+              }}
+            >
               {trend > 0 ? '+' : ''}{trend}%
             </span>
           </div>
@@ -162,102 +224,139 @@ const TransparenciaPage = () => {
     </motion.div>
   )
 
-  const ProgressBar = ({ percentage, color = 'bg-blue-500' }) => (
-    <div className="w-full bg-gray-200 rounded-full h-2">
-      <div 
-        className={`h-2 rounded-full ${color} transition-all duration-300`}
-        style={{ width: `${Math.min(percentage, 100)}%` }}
+  // Editorial Progress Bar
+  const ProgressBar = ({ percentage, color = tokens.colors.primary }) => (
+    <div
+      style={{
+        width: '100%',
+        height: '6px',
+        backgroundColor: tokens.colors.border,
+        borderRadius: '3px',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          height: '100%',
+          width: `${Math.min(percentage, 100)}%`,
+          backgroundColor: color,
+          borderRadius: '3px',
+          transition: 'width 300ms ease',
+        }}
       />
+    </div>
+  )
+
+  // Editorial Card Component
+  const Card = ({ children, title, icon: Icon }) => (
+    <div
+      style={{
+        backgroundColor: tokens.colors.bgSecondary,
+        border: `1px solid ${tokens.colors.border}`,
+        borderRadius: '4px',
+      }}
+    >
+      {title && (
+        <div
+          style={{
+            padding: '1rem 1.25rem',
+            borderBottom: `1px solid ${tokens.colors.border}`,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+        >
+          {Icon && <Icon style={{ width: '18px', height: '18px', color: tokens.colors.primary }} />}
+          <h3
+            style={{
+              fontFamily: tokens.fonts.body,
+              fontSize: '1rem',
+              fontWeight: 600,
+              color: tokens.colors.textPrimary,
+              margin: 0,
+            }}
+          >
+            {title}
+          </h3>
+        </div>
+      )}
+      <div style={{ padding: '1.25rem' }}>
+        {children}
+      </div>
     </div>
   )
 
   const renderLiveActivity = () => {
     const liveData = data.liveActivity
-    if (!liveData) return <div className="text-center py-8">Carregando dados da atividade parlamentar...</div>
+    if (!liveData) return (
+      <div style={{ textAlign: 'center', padding: '2rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>
+        Carregando dados da atividade parlamentar...
+      </div>
+    )
 
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
           <MetricCard
             icon={Calendar}
             title="Eventos Hoje"
             value={liveData.todays_agenda?.summary?.total_events || 0}
-            color="text-blue-600"
           />
           <MetricCard
             icon={Users}
             title="Sessões Plenárias"
             value={liveData.todays_agenda?.summary?.plenary_sessions || 0}
-            color="text-green-600"
           />
           <MetricCard
             icon={Vote}
             title="Votações (48h)"
             value={liveData.recent_votes?.summary?.total_votes_48h || 0}
-            color="text-purple-600"
           />
           <MetricCard
             icon={TrendingUp}
             title="Taxa Aprovação"
             value={formatPercentage(liveData.recent_votes?.summary?.approval_rate || 0)}
-            color="text-orange-600"
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Activity className="h-5 w-5" />
-                <span>Agenda de Hoje</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Em Progresso</span>
-                  <span className="font-semibold">{liveData.todays_agenda?.summary?.in_progress || 0}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Completados</span>
-                  <span className="font-semibold">{liveData.todays_agenda?.summary?.completed || 0}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Reuniões Comissão</span>
-                  <span className="font-semibold">{liveData.todays_agenda?.summary?.committee_meetings || 0}</span>
-                </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+          <Card title="Agenda de Hoje" icon={Activity}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, fontFamily: tokens.fonts.body }}>Em Progresso</span>
+                <span style={{ fontFamily: tokens.fonts.mono, fontWeight: 600 }}>{liveData.todays_agenda?.summary?.in_progress || 0}</span>
               </div>
-            </CardContent>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, fontFamily: tokens.fonts.body }}>Completados</span>
+                <span style={{ fontFamily: tokens.fonts.mono, fontWeight: 600 }}>{liveData.todays_agenda?.summary?.completed || 0}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, fontFamily: tokens.fonts.body }}>Reuniões Comissão</span>
+                <span style={{ fontFamily: tokens.fonts.mono, fontWeight: 600 }}>{liveData.todays_agenda?.summary?.committee_meetings || 0}</span>
+              </div>
+            </div>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Vote className="h-5 w-5" />
-                <span>Atividade Votações</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-600">Taxa de Aprovação</span>
-                    <span className="font-semibold">{formatPercentage(liveData.recent_votes?.summary?.approval_rate || 0)}</span>
-                  </div>
-                  <ProgressBar percentage={liveData.recent_votes?.summary?.approval_rate || 0} color="bg-green-500" />
+          <Card title="Atividade Votações" icon={Vote}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, fontFamily: tokens.fonts.body }}>Taxa de Aprovação</span>
+                  <span style={{ fontFamily: tokens.fonts.mono, fontWeight: 600 }}>{formatPercentage(liveData.recent_votes?.summary?.approval_rate || 0)}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-bold text-green-600">{liveData.recent_votes?.summary?.approved || 0}</p>
-                    <p className="text-sm text-gray-600">Aprovadas</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-red-600">{liveData.recent_votes?.summary?.rejected || 0}</p>
-                    <p className="text-sm text-gray-600">Rejeitadas</p>
-                  </div>
+                <ProgressBar percentage={liveData.recent_votes?.summary?.approval_rate || 0} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', textAlign: 'center' }}>
+                <div>
+                  <p style={{ fontSize: '1.5rem', fontFamily: tokens.fonts.mono, fontWeight: 700, color: tokens.colors.primary }}>{liveData.recent_votes?.summary?.approved || 0}</p>
+                  <p style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>Aprovadas</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '1.5rem', fontFamily: tokens.fonts.mono, fontWeight: 700, color: tokens.colors.accent }}>{liveData.recent_votes?.summary?.rejected || 0}</p>
+                  <p style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>Rejeitadas</p>
                 </div>
               </div>
-            </CardContent>
+            </div>
           </Card>
         </div>
       </div>
@@ -266,69 +365,61 @@ const TransparenciaPage = () => {
 
   const renderLegislativeProgress = () => {
     const progressData = data.legislativeProgress
-    if (!progressData) return <div className="text-center py-8">Carregando progresso legislativo...</div>
+    if (!progressData) return (
+      <div style={{ textAlign: 'center', padding: '2rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>
+        Carregando progresso legislativo...
+      </div>
+    )
 
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
           <MetricCard
             icon={FileText}
             title="Iniciativas Totais"
             value={progressData.overall_efficiency?.total_initiatives || 0}
-            color="text-blue-600"
           />
           <MetricCard
             icon={CheckCircle}
             title="Taxa Aprovação"
             value={formatPercentage(progressData.overall_efficiency?.overall_approval_rate || 0)}
-            color="text-green-600"
           />
           <MetricCard
             icon={Users}
             title="Comissões Ativas"
             value={progressData.overall_efficiency?.committees_active || 0}
-            color="text-purple-600"
           />
           <MetricCard
             icon={Clock}
             title="Tempo Resp. Médio"
             value={`${progressData.government_responsiveness?.avg_response_days || 0} dias`}
-            color="text-orange-600"
           />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Scale className="h-5 w-5" />
-              <span>Responsividade do Governo</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Classificação</span>
-                {getStatusBadge(progressData.government_responsiveness?.efficiency_rating)}
+        <Card title="Responsividade do Governo" icon={Scale}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, fontFamily: tokens.fonts.body }}>Classificação</span>
+              {getStatusBadge(progressData.government_responsiveness?.efficiency_rating)}
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, fontFamily: tokens.fonts.body }}>Taxa de Resposta</span>
+                <span style={{ fontFamily: tokens.fonts.mono, fontWeight: 600 }}>{formatPercentage(progressData.government_responsiveness?.response_rate || 0)}</span>
+              </div>
+              <ProgressBar percentage={progressData.government_responsiveness?.response_rate || 0} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', textAlign: 'center' }}>
+              <div>
+                <p style={{ fontSize: '1.25rem', fontFamily: tokens.fonts.mono, fontWeight: 700, color: '#2563EB' }}>{progressData.government_responsiveness?.total_questions || 0}</p>
+                <p style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>Perguntas</p>
               </div>
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Taxa de Resposta</span>
-                  <span className="font-semibold">{formatPercentage(progressData.government_responsiveness?.response_rate || 0)}</span>
-                </div>
-                <ProgressBar percentage={progressData.government_responsiveness?.response_rate || 0} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <p className="text-xl font-bold text-blue-600">{progressData.government_responsiveness?.total_questions || 0}</p>
-                  <p className="text-sm text-gray-600">Perguntas</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xl font-bold text-green-600">{progressData.government_responsiveness?.total_responses || 0}</p>
-                  <p className="text-sm text-gray-600">Respostas</p>
-                </div>
+                <p style={{ fontSize: '1.25rem', fontFamily: tokens.fonts.mono, fontWeight: 700, color: tokens.colors.primary }}>{progressData.government_responsiveness?.total_responses || 0}</p>
+                <p style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>Respostas</p>
               </div>
             </div>
-          </CardContent>
+          </div>
         </Card>
       </div>
     )
@@ -336,68 +427,91 @@ const TransparenciaPage = () => {
 
   const renderDeputyPerformance = () => {
     const deputyData = data.deputyPerformance
-    if (!deputyData) return <div className="text-center py-8">Carregando dados dos deputados...</div>
+    if (!deputyData) return (
+      <div style={{ textAlign: 'center', padding: '2rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>
+        Carregando dados dos deputados...
+      </div>
+    )
 
     const topDeputies = deputyData.deputy_performance?.slice(0, 5) || []
 
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
           <MetricCard
             icon={Users}
             title="Deputados Analisados"
             value={deputyData.analysis_period?.total_deputies_analyzed || 0}
-            color="text-blue-600"
           />
           <MetricCard
             icon={UserCheck}
             title="Assiduidade Média"
             value={formatPercentage(deputyData.analysis_period?.avg_attendance_rate || 0)}
-            color="text-green-600"
           />
           <MetricCard
             icon={Award}
             title="High Performers"
             value={deputyData.summary_statistics?.high_performers || 0}
-            color="text-purple-600"
           />
           <MetricCard
             icon={Activity}
             title="Deputados Ativos"
             value={deputyData.summary_statistics?.active_deputies_90d || 0}
-            color="text-orange-600"
           />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Award className="h-5 w-5" />
-              <span>Top 5 Deputados</span>
-            </CardTitle>
-            <CardDescription>Deputados com melhor performance global</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {topDeputies.map((deputy, index) => (
-                <div key={deputy.deputy_id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-bold text-blue-600">{index + 1}</span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{deputy.parliamentary_name || deputy.name}</p>
-                      <p className="text-sm text-gray-500">{deputy.party || 'N/A'}</p>
-                    </div>
+        <Card title="Top 5 Deputados" icon={Award}>
+          <p style={{ fontSize: '0.875rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body, marginBottom: '1rem' }}>
+            Deputados com melhor performance global
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {topDeputies.map((deputy, index) => (
+              <div
+                key={deputy.deputy_id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.75rem',
+                  backgroundColor: tokens.colors.bgPrimary,
+                  borderRadius: '4px',
+                  border: `1px solid ${tokens.colors.border}`,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      backgroundColor: '#E8F5E9',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.875rem', fontFamily: tokens.fonts.mono, fontWeight: 700, color: tokens.colors.primary }}>
+                      {index + 1}
+                    </span>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900">{deputy.performance?.overall_score}</p>
-                    {getStatusBadge(deputy.performance?.rating)}
+                  <div>
+                    <p style={{ fontFamily: tokens.fonts.body, fontWeight: 600, color: tokens.colors.textPrimary, margin: 0 }}>
+                      {deputy.parliamentary_name || deputy.name}
+                    </p>
+                    <p style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body, margin: 0 }}>
+                      {deputy.party || 'N/A'}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontFamily: tokens.fonts.mono, fontWeight: 700, color: tokens.colors.textPrimary, margin: 0 }}>
+                    {deputy.performance?.overall_score}
+                  </p>
+                  {getStatusBadge(deputy.performance?.rating)}
+                </div>
+              </div>
+            ))}
+          </div>
         </Card>
       </div>
     )
@@ -405,69 +519,61 @@ const TransparenciaPage = () => {
 
   const renderCitizenParticipation = () => {
     const participationData = data.citizenParticipation
-    if (!participationData) return <div className="text-center py-8">Carregando dados de participação...</div>
+    if (!participationData) return (
+      <div style={{ textAlign: 'center', padding: '2rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>
+        Carregando dados de participação...
+      </div>
+    )
 
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
           <MetricCard
             icon={FileText}
             title="Petições Totais"
             value={participationData.petition_data?.total_petitions || 0}
-            color="text-blue-600"
           />
           <MetricCard
             icon={CheckCircle}
             title="Taxa Aceitação"
             value={formatPercentage(participationData.petition_data?.processing_status?.acceptance_rate || 0)}
-            color="text-green-600"
           />
           <MetricCard
             icon={Users}
             title="Subscritores Médios"
             value={participationData.petition_data?.engagement_metrics?.avg_subscribers || 0}
-            color="text-purple-600"
           />
           <MetricCard
             icon={TrendingUp}
             title="Score Engagement"
             value={participationData.petition_data?.engagement_metrics?.citizen_engagement_score || 0}
-            color="text-orange-600"
           />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <MessageSquare className="h-5 w-5" />
-              <span>Participação Cidadã</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Classificação Geral</span>
-                {getStatusBadge(participationData.participation_summary?.overall_rating)}
+        <Card title="Participação Cidadã" icon={MessageSquare}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, fontFamily: tokens.fonts.body }}>Classificação Geral</span>
+              {getStatusBadge(participationData.participation_summary?.overall_rating)}
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, fontFamily: tokens.fonts.body }}>Score de Transparência</span>
+                <span style={{ fontFamily: tokens.fonts.mono, fontWeight: 600 }}>{participationData.participation_summary?.transparency_score || 0}</span>
+              </div>
+              <ProgressBar percentage={participationData.participation_summary?.transparency_score || 0} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', textAlign: 'center' }}>
+              <div>
+                <p style={{ fontSize: '1.25rem', fontFamily: tokens.fonts.mono, fontWeight: 700, color: tokens.colors.primary }}>{participationData.petition_data?.processing_status?.accepted || 0}</p>
+                <p style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>Aceites</p>
               </div>
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Score de Transparência</span>
-                  <span className="font-semibold">{participationData.participation_summary?.transparency_score || 0}</span>
-                </div>
-                <ProgressBar percentage={participationData.participation_summary?.transparency_score || 0} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <p className="text-xl font-bold text-green-600">{participationData.petition_data?.processing_status?.accepted || 0}</p>
-                  <p className="text-sm text-gray-600">Aceites</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xl font-bold text-yellow-600">{participationData.petition_data?.processing_status?.processing || 0}</p>
-                  <p className="text-sm text-gray-600">Em Análise</p>
-                </div>
+                <p style={{ fontSize: '1.25rem', fontFamily: tokens.fonts.mono, fontWeight: 700, color: tokens.colors.warning }}>{participationData.petition_data?.processing_status?.processing || 0}</p>
+                <p style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>Em Análise</p>
               </div>
             </div>
-          </CardContent>
+          </div>
         </Card>
       </div>
     )
@@ -475,73 +581,65 @@ const TransparenciaPage = () => {
 
   const renderAccountabilityMetrics = () => {
     const accountabilityData = data.accountabilityMetrics
-    if (!accountabilityData) return <div className="text-center py-8">Carregando métricas de transparência...</div>
+    if (!accountabilityData) return (
+      <div style={{ textAlign: 'center', padding: '2rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>
+        Carregando métricas de transparência...
+      </div>
+    )
 
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
           <MetricCard
             icon={Target}
             title="Score Geral"
             value={accountabilityData.accountability_summary?.overall_score || 0}
-            color="text-blue-600"
           />
           <MetricCard
             icon={TrendingUp}
             title="Responsividade"
             value={formatPercentage(accountabilityData.key_performance_indicators?.government_responsiveness?.score || 0)}
-            color="text-green-600"
           />
           <MetricCard
             icon={Scale}
             title="Eficiência"
             value={formatPercentage(accountabilityData.key_performance_indicators?.legislative_efficiency?.score || 0)}
-            color="text-purple-600"
           />
           <MetricCard
             icon={Eye}
             title="Transparência"
             value={formatPercentage(accountabilityData.key_performance_indicators?.meeting_transparency?.score || 0)}
-            color="text-orange-600"
           />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <BarChart3 className="h-5 w-5" />
-              <span>Saúde Democrática</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Classificação Geral</span>
-                {getStatusBadge(accountabilityData.accountability_summary?.overall_rating)}
+        <Card title="Saúde Democrática" icon={BarChart3}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, fontFamily: tokens.fonts.body }}>Classificação Geral</span>
+              {getStatusBadge(accountabilityData.accountability_summary?.overall_rating)}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, fontFamily: tokens.fonts.body }}>Saúde Democrática</span>
+              {getStatusBadge(accountabilityData.benchmark_comparison?.overall_democratic_health)}
+            </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, fontFamily: tokens.fonts.body }}>Score de Accountability</span>
+                <span style={{ fontFamily: tokens.fonts.mono, fontWeight: 600 }}>{accountabilityData.accountability_summary?.overall_score || 0}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Saúde Democrática</span>
-                {getStatusBadge(accountabilityData.benchmark_comparison?.overall_democratic_health)}
+              <ProgressBar percentage={accountabilityData.accountability_summary?.overall_score || 0} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', textAlign: 'center' }}>
+              <div>
+                <p style={{ fontSize: '1.25rem', fontFamily: tokens.fonts.mono, fontWeight: 700, color: tokens.colors.primary }}>{accountabilityData.benchmark_comparison?.areas_above_benchmark || 0}</p>
+                <p style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>Acima Benchmark</p>
               </div>
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Score de Accountability</span>
-                  <span className="font-semibold">{accountabilityData.accountability_summary?.overall_score || 0}</span>
-                </div>
-                <ProgressBar percentage={accountabilityData.accountability_summary?.overall_score || 0} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <p className="text-xl font-bold text-green-600">{accountabilityData.benchmark_comparison?.areas_above_benchmark || 0}</p>
-                  <p className="text-sm text-gray-600">Acima Benchmark</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xl font-bold text-red-600">{accountabilityData.benchmark_comparison?.areas_needing_attention || 0}</p>
-                  <p className="text-sm text-gray-600">Precisam Atenção</p>
-                </div>
+                <p style={{ fontSize: '1.25rem', fontFamily: tokens.fonts.mono, fontWeight: 700, color: tokens.colors.accent }}>{accountabilityData.benchmark_comparison?.areas_needing_attention || 0}</p>
+                <p style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, fontFamily: tokens.fonts.body }}>Precisam Atenção</p>
               </div>
             </div>
-          </CardContent>
+          </div>
         </Card>
       </div>
     )
@@ -549,15 +647,7 @@ const TransparenciaPage = () => {
 
   const renderContent = () => {
     if (loading[activeTab]) {
-      return (
-        <div className="flex items-center justify-center py-12">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"
-          />
-        </div>
-      )
+      return <LoadingSpinner message="A carregar dados" fullHeight={false} />
     }
 
     switch (activeTab) {
@@ -571,70 +661,119 @@ const TransparenciaPage = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center"
-      >
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Dashboard de Transparência</h1>
-        <p className="text-lg text-gray-600 mb-6">
-          Monitorização em tempo real da atividade parlamentar portuguesa
-        </p>
-        {lastUpdated && (
-          <p className="text-sm text-gray-500">
-            Última atualização: {formatDate(lastUpdated)}
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundColor: tokens.colors.bgPrimary,
+        padding: '2rem 1.5rem',
+      }}
+    >
+      <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ textAlign: 'center', marginBottom: '2rem' }}
+        >
+          <h1
+            style={{
+              fontFamily: tokens.fonts.headline,
+              fontSize: '2.5rem',
+              fontWeight: 700,
+              color: tokens.colors.textPrimary,
+              marginBottom: '0.5rem',
+            }}
+          >
+            Dashboard de Transparência
+          </h1>
+          <p
+            style={{
+              fontFamily: tokens.fonts.body,
+              fontSize: '1.125rem',
+              color: tokens.colors.textSecondary,
+              marginBottom: '1rem',
+            }}
+          >
+            Monitorização em tempo real da atividade parlamentar portuguesa
           </p>
-        )}
-      </motion.div>
+          {lastUpdated && (
+            <p
+              style={{
+                fontFamily: tokens.fonts.body,
+                fontSize: '0.8125rem',
+                color: tokens.colors.textMuted,
+              }}
+            >
+              Última atualização: {formatDate(lastUpdated)}
+            </p>
+          )}
+        </motion.div>
 
-      {/* Tab Navigation */}
-      <div className="bg-white rounded-lg border border-gray-200 p-2">
-        <div className="flex flex-wrap gap-2">
-          {tabs.map((tab) => {
-            const Icon = tab.icon
-            const isActive = activeTab === tab.id
-            return (
-              <div key={tab.id} className="relative group">
-                <button
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </button>
-                
-                {/* Share button - appears on hover */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    copyTabLink(tab.id)
-                  }}
-                  className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white border border-gray-300 rounded-full p-1 hover:bg-gray-50 shadow-sm"
-                  title={`Copiar link para ${tab.label}`}
-                >
-                  <Share2 className="h-3 w-3 text-gray-500" />
-                </button>
-              </div>
-            )
-          })}
+        {/* Tab Navigation */}
+        <div
+          style={{
+            backgroundColor: tokens.colors.bgSecondary,
+            border: `1px solid ${tokens.colors.border}`,
+            borderRadius: '4px',
+            padding: '0.5rem',
+            marginBottom: '1.5rem',
+          }}
+        >
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              const isActive = activeTab === tab.id
+              return (
+                <div key={tab.id} style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => handleTabChange(tab.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '4px',
+                      fontFamily: tokens.fonts.body,
+                      fontSize: '0.875rem',
+                      fontWeight: isActive ? 600 : 500,
+                      border: isActive ? `1px solid ${tokens.colors.primary}` : '1px solid transparent',
+                      backgroundColor: isActive ? '#E8F5E9' : 'transparent',
+                      color: isActive ? tokens.colors.primary : tokens.colors.textSecondary,
+                      cursor: 'pointer',
+                      transition: 'all 150ms ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = tokens.colors.bgPrimary
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }
+                    }}
+                  >
+                    <Icon style={{ width: '16px', height: '16px' }} />
+                    <span style={{ display: 'none', '@media (min-width: 640px)': { display: 'inline' } }} className="hidden sm:inline">
+                      {tab.label}
+                    </span>
+                  </button>
+                </div>
+              )
+            })}
+          </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <motion.div
-        key={activeTab}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        {renderContent()}
-      </motion.div>
+        {/* Content */}
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {renderContent()}
+        </motion.div>
+      </div>
     </div>
   )
 }

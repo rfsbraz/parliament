@@ -312,13 +312,14 @@ class ReunioesNacionaisMapper(EnhancedSchemaMapper):
                 )
             
             # Create participant record
+            # Note: deputado_id stores the XML's integer ID, not the UUID foreign key
             participant_record = ParticipanteReuniaoNacional(
                 id=uuid.uuid4(),
                 reuniao_id=meeting_record.id,
                 tipo=tipo,
                 nome=nome,
                 grupo_parlamentar=gp,
-                deputado_id=deputado.id if deputado else None
+                deputado_id=deputy_id  # Use XML integer ID, not UUID
             )
 
             self.session.add(participant_record)

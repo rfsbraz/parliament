@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Users, TrendingUp, BarChart3, ArrowRight, Building, Handshake, Filter } from 'lucide-react';
+import { Users, TrendingUp, ArrowRight, Building, Handshake } from 'lucide-react';
 import { apiFetch } from '../config/api';
+import { tokens } from '../styles/tokens';
+import { LoadingSpinner, PageHeader } from './common';
 
 const PartidosPage = () => {
   const [partidos, setPartidos] = useState([]);
   const [coligacoes, setColigacoes] = useState([]);
   const [legislaturaInfo, setLegislaturaInfo] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState('all'); // 'all', 'partidos', 'coligacoes'
+  const [activeView, setActiveView] = useState('all');
   const [showInactiveCoalitions, setShowInactiveCoalitions] = useState(false);
 
   useEffect(() => {
@@ -22,21 +24,17 @@ const PartidosPage = () => {
 
   const fetchData = async () => {
     try {
-      // Fetch parties
       const partidosResponse = await apiFetch('partidos');
       const partidosData = await partidosResponse.json();
       setPartidos(partidosData.partidos || []);
 
-      // Fetch coalitions
       const coligacoesResponse = await apiFetch(`coligacoes?include_inactive=${showInactiveCoalitions}`);
       const coligacoesData = await coligacoesResponse.json();
       setColigacoes(coligacoesData.coligacoes || []);
 
-      // Fetch legislature info
       const legislaturasResponse = await apiFetch('legislaturas');
       const legislaturasData = await legislaturasResponse.json();
-      
-      // Get current legislature (one with null data_fim)
+
       const currentLegislature = legislaturasData.legislaturas?.find(leg => leg.data_fim === null);
       if (currentLegislature) {
         setLegislaturaInfo(currentLegislature);
@@ -48,6 +46,7 @@ const PartidosPage = () => {
     }
   };
 
+  // Keep original party colors for visual identification
   const partidoCores = {
     'PSD': '#FF6B35',
     'CH': '#1E3A8A',
@@ -61,14 +60,6 @@ const PartidosPage = () => {
     'JPP': '#6366F1'
   };
 
-  const coligacaoCores = {
-    'AD': '#3B82F6',
-    'CDU': '#DC2626',
-    'PAF': '#3B82F6',
-    'APU': '#EF4444',
-    'MDP/CDE': '#F59E0B'
-  };
-
   const spectrumColors = {
     'esquerda': '#DC2626',
     'centro-esquerda': '#F59E0B',
@@ -77,14 +68,13 @@ const PartidosPage = () => {
     'direita': '#1E40AF'
   };
 
-  // Generate legislature display text (similar to Dashboard)
   const getLegislatureDisplayText = () => {
     if (!legislaturaInfo) return 'XVII Legislatura (2025-presente)';
-    
+
     const numero = legislaturaInfo.numero;
     const dataInicio = legislaturaInfo.data_inicio ? new Date(legislaturaInfo.data_inicio).getFullYear() : null;
     const dataFim = legislaturaInfo.data_fim ? new Date(legislaturaInfo.data_fim).getFullYear() : null;
-    
+
     if (dataInicio && dataFim) {
       return `${numero} Legislatura (${dataInicio}-${dataFim})`;
     } else if (dataInicio) {
@@ -95,38 +85,64 @@ const PartidosPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"
-        />
-      </div>
-    );
+    return <LoadingSpinner message="A carregar partidos" />;
   }
 
   const totalDeputados = partidos.reduce((sum, partido) => sum + partido.num_deputados, 0);
   const activeColigacoes = coligacoes.filter(c => c.ativa);
 
+  const tabs = [
+    { id: 'all', label: 'Todos' },
+    { id: 'partidos', label: `Partidos (${partidos.length})` },
+    { id: 'coligacoes', label: `Coligações (${coligacoes.length})` },
+  ];
+
   return (
-    <div className="space-y-8">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center"
+        style={{ textAlign: 'center' }}
       >
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">
+        <h1
+          style={{
+            fontFamily: tokens.fonts.headline,
+            fontSize: '2.25rem',
+            fontWeight: 700,
+            color: tokens.colors.textPrimary,
+            marginBottom: '0.75rem',
+          }}
+        >
           Partidos e Coligações
         </h1>
-        <div className="mb-4">
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+        <div style={{ marginBottom: '0.75rem' }}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '0.25rem 0.75rem',
+              fontFamily: tokens.fonts.body,
+              fontSize: '0.8125rem',
+              fontWeight: 500,
+              color: tokens.colors.primary,
+              backgroundColor: '#F0F7F4',
+              borderRadius: '2px',
+            }}
+          >
             {getLegislatureDisplayText()}
           </span>
         </div>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-          Explore o panorama completo dos partidos políticos e coligações no Parlamento Português
+        <p
+          style={{
+            fontFamily: tokens.fonts.body,
+            fontSize: '1rem',
+            color: tokens.colors.textSecondary,
+            maxWidth: '48rem',
+            margin: '0 auto',
+          }}
+        >
+          Panorama completo dos partidos políticos e coligações no Parlamento Português
         </p>
       </motion.div>
 
@@ -135,107 +151,117 @@ const PartidosPage = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-4 gap-6"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '1rem',
+        }}
       >
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <div className="flex items-center">
-            <Building className="h-8 w-8 text-blue-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Partidos</p>
-              <p className="text-2xl font-bold text-gray-900">{partidos.length}</p>
+        {[
+          { icon: Building, label: 'PARTIDOS', value: partidos.length, color: tokens.colors.primary },
+          { icon: Handshake, label: 'COLIGAÇÕES', value: coligacoes.length, color: '#7C3AED' },
+          { icon: Users, label: 'DEPUTADOS', value: totalDeputados, color: tokens.colors.primary },
+          { icon: TrendingUp, label: 'COLIGAÇÕES ATIVAS', value: activeColigacoes.length, color: '#D97706' },
+        ].map((stat, index) => (
+          <div
+            key={stat.label}
+            style={{
+              backgroundColor: tokens.colors.bgSecondary,
+              border: `1px solid ${tokens.colors.border}`,
+              borderRadius: '4px',
+              padding: '1.25rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <stat.icon size={24} style={{ color: stat.color }} />
+              <div>
+                <p
+                  style={{
+                    fontFamily: tokens.fonts.body,
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    color: tokens.colors.textMuted,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    marginBottom: '0.125rem',
+                  }}
+                >
+                  {stat.label}
+                </p>
+                <p
+                  style={{
+                    fontFamily: tokens.fonts.mono,
+                    fontSize: '1.5rem',
+                    fontWeight: 700,
+                    color: tokens.colors.textPrimary,
+                  }}
+                >
+                  {stat.value}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <div className="flex items-center">
-            <Handshake className="h-8 w-8 text-purple-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Coligações</p>
-              <p className="text-2xl font-bold text-gray-900">{coligacoes.length}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <div className="flex items-center">
-            <Users className="h-8 w-8 text-green-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Total Deputados</p>
-              <p className="text-2xl font-bold text-gray-900">{totalDeputados}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-          <div className="flex items-center">
-            <TrendingUp className="h-8 w-8 text-orange-600" />
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-600">Coligações Ativas</p>
-              <p className="text-2xl font-bold text-gray-900">{activeColigacoes.length}</p>
-            </div>
-          </div>
-        </div>
+        ))}
       </motion.div>
 
       {/* Filter Tabs */}
-      <div className="flex flex-col items-center space-y-4">
-        <div className="flex justify-center space-x-4">
-          <button
-            onClick={() => setActiveView('all')}
-            className={`px-6 py-3 rounded-lg font-medium transition-all ${
-              activeView === 'all'
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4" />
-              <span>Todos</span>
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveView('partidos')}
-            className={`px-6 py-3 rounded-lg font-medium transition-all ${
-              activeView === 'partidos'
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <Building className="h-4 w-4" />
-              <span>Partidos ({partidos.length})</span>
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveView('coligacoes')}
-            className={`px-6 py-3 rounded-lg font-medium transition-all ${
-              activeView === 'coligacoes'
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <Handshake className="h-4 w-4" />
-              <span>Coligações ({coligacoes.length})</span>
-            </div>
-          </button>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '0.25rem',
+            padding: '0.25rem',
+            backgroundColor: tokens.colors.bgSecondary,
+            border: `1px solid ${tokens.colors.border}`,
+            borderRadius: '4px',
+          }}
+        >
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveView(tab.id)}
+              style={{
+                padding: '0.5rem 1.25rem',
+                fontFamily: tokens.fonts.body,
+                fontSize: '0.875rem',
+                fontWeight: activeView === tab.id ? 600 : 500,
+                color: activeView === tab.id ? tokens.colors.bgSecondary : tokens.colors.textSecondary,
+                backgroundColor: activeView === tab.id ? tokens.colors.primary : 'transparent',
+                border: 'none',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                transition: 'all 150ms ease',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-        
-        {/* Show Inactive Coalitions Toggle */}
+
         {(activeView === 'all' || activeView === 'coligacoes') && (
-          <div className="flex items-center space-x-2">
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontFamily: tokens.fonts.body,
+              fontSize: '0.8125rem',
+              color: tokens.colors.textSecondary,
+              cursor: 'pointer',
+            }}
+          >
             <input
               type="checkbox"
-              id="showInactive"
               checked={showInactiveCoalitions}
               onChange={(e) => setShowInactiveCoalitions(e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              style={{
+                width: '16px',
+                height: '16px',
+                accentColor: tokens.colors.primary,
+              }}
             />
-            <label htmlFor="showInactive" className="text-sm text-gray-600">
-              Mostrar coligações inativas
-            </label>
-          </div>
+            Mostrar coligações inativas
+          </label>
         )}
       </div>
 
@@ -246,181 +272,402 @@ const PartidosPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-            <Building className="h-6 w-6 mr-2 text-blue-600" />
+          <h2
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontFamily: tokens.fonts.headline,
+              fontSize: '1.375rem',
+              fontWeight: 700,
+              color: tokens.colors.textPrimary,
+              marginBottom: '1.25rem',
+            }}
+          >
+            <Building size={20} style={{ color: tokens.colors.primary }} />
             Partidos Individuais
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(partidos || []).map((partido, index) => (
-              <motion.div
-                key={partido.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 * index }}
-                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden group"
-              >
-                {/* Party color bar */}
-                <div 
-                  className="h-2 w-full"
-                  style={{ backgroundColor: partidoCores[partido.sigla] || '#6B7280' }}
-                ></div>
-                
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-1">
-                        {partido.sigla}
-                      </h3>
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {partido.nome}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-3xl font-bold" style={{ color: partidoCores[partido.sigla] || '#6B7280' }}>
-                        {partido.num_deputados}
-                      </div>
-                      <div className="text-xs text-gray-500">deputados</div>
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="mb-4">
-                    <div className="flex justify-between text-xs text-gray-600 mb-1">
-                      <span>Representação</span>
-                      <span>{((partido.num_deputados / 230) * 100).toFixed(1)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="h-2 rounded-full transition-all duration-500"
-                        style={{ 
-                          backgroundColor: partidoCores[partido.sigla] || '#6B7280',
-                          width: `${(partido.num_deputados / 230) * 100}%`
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  <Link
-                    to={`/partidos/${partido.sigla}`}
-                    className="inline-flex items-center text-blue-600 hover:text-blue-700 text-sm font-medium group-hover:translate-x-1 transition-transform"
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: '1rem',
+            }}
+          >
+            {(partidos || []).map((partido, index) => {
+              const partyColor = partidoCores[partido.sigla] || '#6B7280';
+              return (
+                <motion.div
+                  key={partido.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.03 * index }}
+                >
+                  <div
+                    style={{
+                      backgroundColor: tokens.colors.bgSecondary,
+                      border: `1px solid ${tokens.colors.border}`,
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                      transition: 'border-color 150ms ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = tokens.colors.borderStrong}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = tokens.colors.border}
                   >
-                    Ver detalhes
-                    <ArrowRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
+                    {/* Party color bar */}
+                    <div style={{ height: '3px', backgroundColor: partyColor }} />
+
+                    <div style={{ padding: '1.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <div>
+                          <h3
+                            style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '1.5rem',
+                              fontWeight: 700,
+                              color: tokens.colors.textPrimary,
+                              marginBottom: '0.25rem',
+                            }}
+                          >
+                            {partido.sigla}
+                          </h3>
+                          <p
+                            style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.8125rem',
+                              color: tokens.colors.textSecondary,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            {partido.nome}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div
+                            style={{
+                              fontFamily: tokens.fonts.mono,
+                              fontSize: '1.75rem',
+                              fontWeight: 700,
+                              color: partyColor,
+                            }}
+                          >
+                            {partido.num_deputados}
+                          </div>
+                          <div
+                            style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.6875rem',
+                              color: tokens.colors.textMuted,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.03em',
+                            }}
+                          >
+                            deputados
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div style={{ marginBottom: '1rem' }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            fontFamily: tokens.fonts.body,
+                            fontSize: '0.75rem',
+                            color: tokens.colors.textMuted,
+                            marginBottom: '0.375rem',
+                          }}
+                        >
+                          <span>Representação</span>
+                          <span style={{ fontFamily: tokens.fonts.mono }}>
+                            {((partido.num_deputados / 230) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            width: '100%',
+                            height: '4px',
+                            backgroundColor: '#F5F5F5',
+                            borderRadius: '2px',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <div
+                            style={{
+                              height: '100%',
+                              width: `${(partido.num_deputados / 230) * 100}%`,
+                              backgroundColor: partyColor,
+                              transition: 'width 500ms ease',
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <Link
+                        to={`/partidos/${partido.sigla}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.375rem',
+                          fontFamily: tokens.fonts.body,
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          color: tokens.colors.primary,
+                          textDecoration: 'none',
+                          transition: 'opacity 150ms ease',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                      >
+                        Ver detalhes
+                        <ArrowRight size={14} />
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </motion.div>
       )}
 
-      {/* Coalitions Section - Moved to bottom */}
+      {/* Coalitions Section */}
       {(activeView === 'all' || activeView === 'coligacoes') && coligacoes.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: activeView === 'all' ? 0.3 : 0.2 }}
         >
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-            <Handshake className="h-6 w-6 mr-2 text-purple-600" />
+          <h2
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontFamily: tokens.fonts.headline,
+              fontSize: '1.375rem',
+              fontWeight: 700,
+              color: tokens.colors.textPrimary,
+              marginBottom: '1.25rem',
+            }}
+          >
+            <Handshake size={20} style={{ color: '#7C3AED' }} />
             Coligações
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {coligacoes.map((coligacao, index) => (
-              <motion.div
-                key={coligacao.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 * index }}
-                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden group"
-              >
-                {/* Coalition color bar */}
-                <div 
-                  className="h-3 w-full bg-gradient-to-r"
-                  style={{ 
-                    background: `linear-gradient(to right, ${
-                      spectrumColors[coligacao.espectro_politico] || '#6B7280'
-                    }, ${
-                      coligacaoCores[coligacao.sigla] || '#9333EA'
-                    })` 
-                  }}
-                ></div>
-                
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="text-2xl font-bold text-gray-900">
-                          {coligacao.sigla}
-                        </h3>
-                        <Handshake className="h-5 w-5 text-purple-600" />
-                        {coligacao.ativa && (
-                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-semibold">
-                            Ativa
-                          </span>
-                        )}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gap: '1rem',
+            }}
+          >
+            {coligacoes.map((coligacao, index) => {
+              const spectrumColor = spectrumColors[coligacao.espectro_politico] || '#6B7280';
+              return (
+                <motion.div
+                  key={coligacao.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.03 * index }}
+                >
+                  <div
+                    style={{
+                      backgroundColor: tokens.colors.bgSecondary,
+                      border: `1px solid ${tokens.colors.border}`,
+                      borderRadius: '4px',
+                      overflow: 'hidden',
+                      transition: 'border-color 150ms ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = tokens.colors.borderStrong}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = tokens.colors.border}
+                  >
+                    {/* Coalition color bar */}
+                    <div style={{ height: '4px', backgroundColor: spectrumColor }} />
+
+                    <div style={{ padding: '1.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                            <h3
+                              style={{
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '1.5rem',
+                                fontWeight: 700,
+                                color: tokens.colors.textPrimary,
+                              }}
+                            >
+                              {coligacao.sigla}
+                            </h3>
+                            <Handshake size={16} style={{ color: '#7C3AED' }} />
+                            {coligacao.ativa && (
+                              <span
+                                style={{
+                                  padding: '0.125rem 0.5rem',
+                                  fontFamily: tokens.fonts.body,
+                                  fontSize: '0.625rem',
+                                  fontWeight: 600,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.03em',
+                                  color: tokens.colors.primary,
+                                  backgroundColor: '#F0F7F4',
+                                  borderRadius: '2px',
+                                }}
+                              >
+                                Ativa
+                              </span>
+                            )}
+                          </div>
+                          <p
+                            style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.8125rem',
+                              color: tokens.colors.textSecondary,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            {coligacao.nome}
+                          </p>
+                          {coligacao.espectro_politico && (
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                marginTop: '0.5rem',
+                                padding: '0.125rem 0.5rem',
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.6875rem',
+                                color: tokens.colors.textMuted,
+                                backgroundColor: '#F5F5F5',
+                                borderRadius: '2px',
+                              }}
+                            >
+                              {coligacao.espectro_politico}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ textAlign: 'right', marginLeft: '1rem' }}>
+                          <div
+                            style={{
+                              fontFamily: tokens.fonts.mono,
+                              fontSize: '1.75rem',
+                              fontWeight: 700,
+                              color: '#7C3AED',
+                            }}
+                          >
+                            {coligacao.deputy_count || 0}
+                          </div>
+                          <div
+                            style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.6875rem',
+                              color: tokens.colors.textMuted,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.03em',
+                            }}
+                          >
+                            deputados
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {coligacao.nome}
-                      </p>
-                      {coligacao.espectro_politico && (
-                        <span className="inline-block mt-2 px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                          {coligacao.espectro_politico}
-                        </span>
+
+                      {/* Component parties preview */}
+                      {coligacao.component_parties && coligacao.component_parties.length > 0 && (
+                        <div style={{ marginBottom: '0.75rem' }}>
+                          <p
+                            style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.6875rem',
+                              color: tokens.colors.textMuted,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.03em',
+                              marginBottom: '0.375rem',
+                            }}
+                          >
+                            Partidos componentes
+                          </p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                            {coligacao.component_parties.slice(0, 3).map(party => (
+                              <span
+                                key={party.sigla}
+                                style={{
+                                  padding: '0.125rem 0.5rem',
+                                  fontFamily: tokens.fonts.body,
+                                  fontSize: '0.75rem',
+                                  fontWeight: 500,
+                                  color: tokens.colors.primary,
+                                  backgroundColor: '#F0F7F4',
+                                  borderRadius: '2px',
+                                }}
+                              >
+                                {party.sigla}
+                              </span>
+                            ))}
+                            {coligacao.component_parties.length > 3 && (
+                              <span
+                                style={{
+                                  padding: '0.125rem 0.5rem',
+                                  fontFamily: tokens.fonts.body,
+                                  fontSize: '0.75rem',
+                                  color: tokens.colors.textMuted,
+                                  backgroundColor: '#F5F5F5',
+                                  borderRadius: '2px',
+                                }}
+                              >
+                                +{coligacao.component_parties.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       )}
-                    </div>
-                    <div className="text-right ml-4">
-                      <div className="text-3xl font-bold text-purple-600">
-                        {coligacao.deputy_count || 0}
-                      </div>
-                      <div className="text-xs text-gray-500">deputados</div>
+
+                      {/* Dates */}
+                      {(coligacao.data_formacao || coligacao.data_dissolucao) && (
+                        <div
+                          style={{
+                            fontFamily: tokens.fonts.body,
+                            fontSize: '0.75rem',
+                            color: tokens.colors.textMuted,
+                            marginBottom: '0.75rem',
+                          }}
+                        >
+                          {coligacao.data_formacao && (
+                            <p>Formada: {new Date(coligacao.data_formacao).getFullYear()}</p>
+                          )}
+                          {coligacao.data_dissolucao && (
+                            <p>Dissolvida: {new Date(coligacao.data_dissolucao).getFullYear()}</p>
+                          )}
+                        </div>
+                      )}
+
+                      <Link
+                        to={`/coligacoes/${encodeURIComponent(coligacao.sigla)}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.375rem',
+                          fontFamily: tokens.fonts.body,
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          color: '#7C3AED',
+                          textDecoration: 'none',
+                          transition: 'opacity 150ms ease',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = '0.7'}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                      >
+                        Ver detalhes
+                        <ArrowRight size={14} />
+                      </Link>
                     </div>
                   </div>
-
-                  {/* Component parties preview */}
-                  {coligacao.component_parties && coligacao.component_parties.length > 0 && (
-                    <div className="mb-4">
-                      <p className="text-xs text-gray-500 mb-2">Partidos componentes:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {coligacao.component_parties.slice(0, 3).map(party => (
-                          <span 
-                            key={party.sigla}
-                            className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded"
-                          >
-                            {party.sigla}
-                          </span>
-                        ))}
-                        {coligacao.component_parties.length > 3 && (
-                          <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded">
-                            +{coligacao.component_parties.length - 3}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Dates */}
-                  {(coligacao.data_formacao || coligacao.data_dissolucao) && (
-                    <div className="text-xs text-gray-500 mb-4">
-                      {coligacao.data_formacao && (
-                        <p>Formada: {new Date(coligacao.data_formacao).getFullYear()}</p>
-                      )}
-                      {coligacao.data_dissolucao && (
-                        <p>Dissolvida: {new Date(coligacao.data_dissolucao).getFullYear()}</p>
-                      )}
-                    </div>
-                  )}
-
-                  <Link
-                    to={`/coligacoes/${encodeURIComponent(coligacao.sigla)}`}
-                    className="inline-flex items-center text-purple-600 hover:text-purple-700 text-sm font-medium group-hover:translate-x-1 transition-transform"
-                  >
-                    Ver detalhes
-                    <ArrowRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         </motion.div>
       )}

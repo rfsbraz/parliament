@@ -1,28 +1,26 @@
 # Portuguese Parliament Local Development Stack
-# Provides hot reload development environment with MySQL database
+# Provides hot reload development environment with PostgreSQL database
 
 version: '3.8'
 
 services:
-  # MySQL Database (local replacement for Aurora)
-  mysql:
-    image: mysql:8.0
-    container_name: parliament_mysql
+  # PostgreSQL Database (matches production RDS)
+  postgres:
+    image: postgres:15-alpine
+    container_name: parliament_postgres
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: parliament_dev
-      MYSQL_DATABASE: parliament
-      MYSQL_USER: parliament_user
-      MYSQL_PASSWORD: parliament_pass
+      POSTGRES_DB: parliament
+      POSTGRES_USER: parluser
+      POSTGRES_PASSWORD: parliament_dev
     ports:
-      - "3306:3306"
+      - "5432:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./database/init:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - parliament_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pparliament_dev"]
+      test: ["CMD-SHELL", "pg_isready -U parluser -d parliament"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -40,15 +38,15 @@ services:
       FLASK_ENV: development
       FLASK_DEBUG: 1
       FLASK_APP: app.main:app
-      
-      # Database configuration (local MySQL)
-      DATABASE_TYPE: mysql
-      DATABASE_HOST: mysql
-      DATABASE_PORT: 3306
-      DATABASE_NAME: parliament
-      DATABASE_USER: parliament_user
-      DATABASE_PASSWORD: parliament_pass
-      
+
+      # Database configuration (local PostgreSQL)
+      DATABASE_TYPE: postgresql
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DATABASE: parliament
+      PG_USER: parluser
+      PG_PASSWORD: parliament_dev
+
       # Development settings
       ENABLE_HOT_RELOAD: "true"
       PYTHONPATH: /app
@@ -59,12 +57,10 @@ services:
       - ./app:/app/app:ro
       - ./config:/app/config:ro
       - ./requirements.txt:/app/requirements.txt:ro
-      # For development database access (if needed)
-      - ./parlamento.db:/app/parlamento.db
     networks:
       - parliament_network
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
@@ -93,23 +89,23 @@ services:
     depends_on:
       - backend
 
-  # phpMyAdmin (Database Management UI)
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin:5.2
-    container_name: parliament_phpmyadmin
+  # pgAdmin (Database Management UI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: parliament_pgadmin
     restart: unless-stopped
     ports:
       - "8080:80"
     networks:
       - parliament_network
     depends_on:
-      - mysql
+      - postgres
     environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-      PMA_USER: parliament_user
-      PMA_PASSWORD: parliament_pass
-      MYSQL_ROOT_PASSWORD: parliament_dev
+      PGADMIN_DEFAULT_EMAIL: admin@parliament.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
 
   # Redis (for caching, sessions, etc.)
   redis:
@@ -130,7 +126,9 @@ services:
       retries: 3
 
 volumes:
-  mysql_data:
+  postgres_data:
+    driver: local
+  pgadmin_data:
     driver: local
   redis_data:
     driver: local
