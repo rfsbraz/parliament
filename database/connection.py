@@ -193,7 +193,7 @@ def create_database_engine(echo: bool = False):
         'max_overflow': 12,  # Allow overflow connections (20 total)
         'pool_timeout': 30,  # Increased timeout for spot instances
         'pool_recycle': 300,  # Recycle connections every 5 minutes
-        'pool_reset_on_return': 'commit',  # Reset connections more aggressively
+        'pool_reset_on_return': 'rollback',  # Rollback on return to ensure clean state after errors
         'connect_args': {
             'connect_timeout': 30,  # Increased timeout for spot instances
             'application_name': 'parliament-fiscaliza',
