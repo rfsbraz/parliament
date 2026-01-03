@@ -32,6 +32,13 @@ from typing import Dict, List, Optional, Callable, Any
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+# Load .env file for local development
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not required in production
+
 try:
     from rich.console import Console
     from rich.layout import Layout
