@@ -3,7 +3,7 @@ Parliament API Routes - MySQL Implementation
 Clean implementation with proper MySQL/SQLAlchemy patterns
 """
 from flask import Blueprint, request, jsonify
-from sqlalchemy import func, desc, distinct, or_, and_
+from sqlalchemy import func, desc, distinct, or_, and_, case, exists, select
 from database.connection import DatabaseSession
 from database.models import (
     Deputado, Partido, Legislatura, CirculoEleitoral, 
@@ -798,39 +798,87 @@ def get_partido_deputados(partido_sigla):
                 partido = MockParty(partido_sigla, mandate_exists.par_des or partido_sigla)
             
             # Get deputies from this party with improved coalition handling
+            # Subquery to get deputy IDs with active mandate in XVII
+            active_deputy_ids = session.query(
+                DeputadoMandatoLegislativo.deputado_id
+            ).filter(
+                DeputadoMandatoLegislativo.leg_des == 'XVII'
+            ).distinct().subquery()
+
             # First try exact match
             if legislatura:
                 # Filter by specific legislature
                 deputados = session.query(Deputado).join(
                     DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
+                ).join(
+                    Legislatura, Deputado.legislatura_id == Legislatura.id
+                ).outerjoin(
+                    active_deputy_ids, Deputado.id == active_deputy_ids.c.deputado_id
                 ).filter(
                     DeputadoMandatoLegislativo.par_sigla == partido_sigla,
                     DeputadoMandatoLegislativo.leg_des == legislatura
+                ).order_by(
+                    desc(case((active_deputy_ids.c.deputado_id != None, 1), else_=0)),
+                    desc(Legislatura.data_inicio),
+                    Deputado.nome.asc()
                 ).all()
-                
+
                 # If no exact match found, try pattern matching for coalitions
                 if not deputados:
                     deputados = session.query(Deputado).join(
                         DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
+                    ).join(
+                        Legislatura, Deputado.legislatura_id == Legislatura.id
+                    ).outerjoin(
+                        active_deputy_ids, Deputado.id == active_deputy_ids.c.deputado_id
                     ).filter(
                         DeputadoMandatoLegislativo.par_sigla.like(f'%{partido_sigla}%'),
                         DeputadoMandatoLegislativo.leg_des == legislatura
+                    ).order_by(
+                        desc(case((active_deputy_ids.c.deputado_id != None, 1), else_=0)),
+                        desc(Legislatura.data_inicio),
+                        Deputado.nome.asc()
                     ).all()
             else:
                 # Get all deputies from all legislatures (historical data)
-                deputados = session.query(Deputado).join(
-                    DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
+                # First get unique deputy IDs for this party
+                deputy_ids_query = session.query(
+                    DeputadoMandatoLegislativo.deputado_id
                 ).filter(
                     DeputadoMandatoLegislativo.par_sigla == partido_sigla
-                ).distinct().all()
-                
+                ).distinct()
+
+                deputados = session.query(Deputado).join(
+                    Legislatura, Deputado.legislatura_id == Legislatura.id
+                ).outerjoin(
+                    active_deputy_ids, Deputado.id == active_deputy_ids.c.deputado_id
+                ).filter(
+                    Deputado.id.in_(deputy_ids_query)
+                ).order_by(
+                    desc(case((active_deputy_ids.c.deputado_id != None, 1), else_=0)),
+                    desc(Legislatura.data_inicio),
+                    Deputado.nome.asc()
+                ).all()
+
                 # If no exact match found, try pattern matching for coalitions
                 if not deputados:
-                    deputados = session.query(Deputado).join(
-                        DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
+                    deputy_ids_query = session.query(
+                        DeputadoMandatoLegislativo.deputado_id
                     ).filter(
                         DeputadoMandatoLegislativo.par_sigla.like(f'%{partido_sigla}%')
-                    ).distinct().all()
+                    ).distinct()
+
+                    deputados = session.query(Deputado).join(
+                        Legislatura, Deputado.legislatura_id == Legislatura.id
+                    ).outerjoin(
+                        active_deputy_ids, Deputado.id == active_deputy_ids.c.deputado_id
+                    ).filter(
+                        Deputado.id.in_(deputy_ids_query)
+                    ).order_by(
+                        desc(case((active_deputy_ids.c.deputado_id != None, 1), else_=0)),
+                        desc(Legislatura.data_inicio),
+                        Deputado.nome.asc()
+                    ).all()
             
             # Check if this party is part of any coalition
             coalition_query = session.query(
@@ -3475,18 +3523,33 @@ def get_deputados():
                     )
                 )
             
-            # Apply search filter if provided
+            # Apply search filter if provided (case-insensitive)
             if search:
+                search_pattern = f"%{search}%"
                 query = query.filter(
-                    Deputado.nome_completo.contains(search)
+                    or_(
+                        Deputado.nome.ilike(search_pattern),
+                        Deputado.nome_completo.ilike(search_pattern)
+                    )
                 )
             
-            # Apply sorting: newest legislature first, then by name
+            # Apply sorting: active deputies first, then newest legislature, then by name
+            # Create subquery to check if deputy has active mandate in XVII
+            has_active_mandate = exists(
+                select(DeputadoMandatoLegislativo.id).where(
+                    and_(
+                        DeputadoMandatoLegislativo.deputado_id == Deputado.id,
+                        DeputadoMandatoLegislativo.leg_des == 'XVII'
+                    )
+                )
+            )
+
             query = query.join(
                 Legislatura, Deputado.legislatura_id == Legislatura.id
             ).order_by(
-                desc(Legislatura.data_inicio),  # Newest legislature first
-                Deputado.nome_completo.asc()  # Then alphabetically by name
+                desc(case((has_active_mandate, 1), else_=0)),  # Active deputies first
+                desc(Legislatura.data_inicio),  # Then newest legislature
+                Deputado.nome.asc()  # Then alphabetically by name
             )
             
             # Get total count for pagination
