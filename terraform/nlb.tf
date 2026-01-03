@@ -7,7 +7,7 @@ resource "aws_eip" "nlb" {
   count = var.enable_nlb ? length(local.azs) : 0
 
   domain = "vpc"
-  
+
   tags = merge(local.network_tags, {
     Name         = "${local.name_prefix}-nlb-eip-${count.index + 1}"
     ResourceType = "elastic-ip"
@@ -23,7 +23,7 @@ resource "aws_lb" "nlb" {
   name               = "${local.name_prefix}-nlb"
   internal           = false
   load_balancer_type = "network"
-  
+
   # Assign Elastic IPs to each subnet
   dynamic "subnet_mapping" {
     for_each = range(length(local.azs))

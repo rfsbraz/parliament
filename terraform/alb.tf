@@ -72,18 +72,18 @@ resource "aws_lb" "main" {
 resource "aws_lb_target_group" "ecs" {
   count = var.enable_alb ? 1 : 0
 
-  name     = "${local.name_prefix}-ecs-tg"
-  port     = 5000
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+  name        = "${local.name_prefix}-ecs-tg"
+  port        = 5000
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
   target_type = "ip"
 
   health_check {
     enabled             = true
-    healthy_threshold   = 2   # 2 consecutive successes = healthy  
-    unhealthy_threshold = 3   # 3 consecutive failures = unhealthy (more tolerance)
-    timeout             = 5   # 5 second timeout per check
-    interval            = 15  # Check every 15 seconds (faster than 30s)
+    healthy_threshold   = 2  # 2 consecutive successes = healthy  
+    unhealthy_threshold = 3  # 3 consecutive failures = unhealthy (more tolerance)
+    timeout             = 5  # 5 second timeout per check
+    interval            = 15 # Check every 15 seconds (faster than 30s)
     path                = "/api/ping"
     matcher             = "200"
     protocol            = "HTTP"
@@ -91,7 +91,7 @@ resource "aws_lb_target_group" "ecs" {
   }
 
   # Fast deregistration for zero-downtime deployments
-  deregistration_delay = 30  # 30 seconds instead of default 300
+  deregistration_delay = 30 # 30 seconds instead of default 300
 
   tags = merge(local.network_tags, {
     Name         = "${local.name_prefix}-ecs-target-group"
@@ -111,7 +111,7 @@ resource "aws_lb_listener" "http" {
   # Redirect HTTP to HTTPS
   default_action {
     type = "redirect"
-    
+
     redirect {
       port        = "443"
       protocol    = "HTTPS"

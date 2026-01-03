@@ -41,7 +41,7 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
 
 # DB Subnet Group
 resource "aws_db_subnet_group" "parliament" {
-  name       = "${local.name_prefix}-db-subnet-group"
+  name = "${local.name_prefix}-db-subnet-group"
   # Use public subnets if admin IP is specified for remote access, otherwise use private
   subnet_ids = var.admin_ip_address != "" ? aws_subnet.public[*].id : aws_subnet.private[*].id
 
@@ -145,17 +145,17 @@ resource "aws_db_instance" "parliament" {
   copy_tags_to_snapshot      = true
 
   tags = merge(local.database_tags, {
-    Name           = "${local.name_prefix}-postgres"
-    ResourceType   = "rds-instance"
-    Purpose        = "primary-database"
-    Engine         = "postgresql"
-    EngineVersion  = "15.12"
-    InstanceClass  = var.db_instance_class
-    StorageType    = var.db_storage_type
-    StorageSize    = "${var.db_allocated_storage}GB"
-    MultiAZ        = var.db_multi_az ? "enabled" : "disabled"
+    Name            = "${local.name_prefix}-postgres"
+    ResourceType    = "rds-instance"
+    Purpose         = "primary-database"
+    Engine          = "postgresql"
+    EngineVersion   = "15.12"
+    InstanceClass   = var.db_instance_class
+    StorageType     = var.db_storage_type
+    StorageSize     = "${var.db_allocated_storage}GB"
+    MultiAZ         = var.db_multi_az ? "enabled" : "disabled"
     BackupRetention = "${var.db_backup_retention_period}days"
-    Database       = "parliament"
+    Database        = "parliament"
   })
 
   lifecycle {
@@ -252,9 +252,9 @@ resource "aws_sns_topic" "rds_alerts" {
   name = "${local.name_prefix}-rds-alerts"
 
   tags = merge(local.monitoring_tags, {
-    Name         = "${local.name_prefix}-rds-alerts"
-    ResourceType = "sns-topic"
-    Purpose      = "database-alert-notifications"
+    Name             = "${local.name_prefix}-rds-alerts"
+    ResourceType     = "sns-topic"
+    Purpose          = "database-alert-notifications"
     NotificationType = "email"
   })
 }
@@ -333,10 +333,10 @@ resource "aws_db_parameter_group" "parliament" {
   }
 
   tags = merge(local.database_tags, {
-    Name         = "${local.name_prefix}-postgres-params"
-    ResourceType = "db-parameter-group"
-    Purpose      = "database-performance-optimization"
-    Family       = "postgres15"
+    Name           = "${local.name_prefix}-postgres-params"
+    ResourceType   = "db-parameter-group"
+    Purpose        = "database-performance-optimization"
+    Family         = "postgres15"
     MaxConnections = var.max_connections
   })
 }

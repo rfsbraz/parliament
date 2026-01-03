@@ -9,11 +9,11 @@ resource "aws_sns_topic" "critical_alerts" {
   name = "${local.name_prefix}-critical-alerts"
 
   tags = merge(local.monitoring_tags, {
-    Name         = "${local.name_prefix}-critical-alerts"
-    ResourceType = "sns-topic"
-    Purpose      = "critical-system-alerts"
+    Name             = "${local.name_prefix}-critical-alerts"
+    ResourceType     = "sns-topic"
+    Purpose          = "critical-system-alerts"
     NotificationType = "email"
-    TopicType    = "critical"
+    TopicType        = "critical"
   })
 }
 
@@ -146,10 +146,10 @@ resource "aws_cloudwatch_log_group" "application_logs" {
   retention_in_days = var.environment == "prod" ? 7 : 3
 
   tags = merge(local.monitoring_tags, {
-    Name         = "${local.name_prefix}-application-logs"
-    ResourceType = "cloudwatch-log-group"
-    Purpose      = "application-logging"
-    LogType      = "application"
+    Name          = "${local.name_prefix}-application-logs"
+    ResourceType  = "cloudwatch-log-group"
+    Purpose       = "application-logging"
+    LogType       = "application"
     RetentionDays = var.environment == "prod" ? "7" : "3"
   })
 }

@@ -10,10 +10,10 @@ resource "cloudflare_record" "main" {
   name    = var.domain_name
   content = var.enable_cloudfront_for_website ? aws_cloudfront_distribution.static_website[0].domain_name : aws_s3_bucket_website_configuration.static_website.website_endpoint
   type    = "CNAME"
-  proxied = var.enable_cloudfront_for_website ? false : true  # Disable proxy when using CloudFront
-  ttl     = var.enable_cloudfront_for_website ? 300 : 1       # Set TTL when not proxied
+  proxied = true # CloudFlare proxy mode - SSL termination, bucket name matches domain
+  ttl     = 1    # Auto TTL when proxied
 
-  comment = var.enable_cloudfront_for_website ? "Main domain pointing to CloudFront distribution" : "Main domain pointing to S3 static website"
+  comment = var.enable_cloudfront_for_website ? "Main domain pointing to CloudFront distribution" : "Main domain pointing to S3 static website with CloudFlare SSL"
 }
 
 # WWW subdomain CNAME record pointing to CloudFront or S3 static website
@@ -24,10 +24,10 @@ resource "cloudflare_record" "www" {
   name    = "www"
   content = var.enable_cloudfront_for_website ? aws_cloudfront_distribution.static_website[0].domain_name : aws_s3_bucket_website_configuration.static_website.website_endpoint
   type    = "CNAME"
-  proxied = var.enable_cloudfront_for_website ? false : true  # Disable proxy when using CloudFront
-  ttl     = var.enable_cloudfront_for_website ? 300 : 1       # Set TTL when not proxied
+  proxied = true # CloudFlare proxy mode - SSL termination, bucket name matches domain
+  ttl     = 1    # Auto TTL when proxied
 
-  comment = var.enable_cloudfront_for_website ? "WWW subdomain pointing to CloudFront distribution" : "WWW subdomain pointing to S3 static website"
+  comment = var.enable_cloudfront_for_website ? "WWW subdomain pointing to CloudFront distribution" : "WWW subdomain pointing to S3 static website with CloudFlare SSL"
 }
 
 # API subdomain CNAME record pointing to ALB (for backend API)
@@ -38,8 +38,8 @@ resource "cloudflare_record" "api" {
   name    = var.api_subdomain
   content = aws_lb.main[0].dns_name
   type    = "CNAME"
-  proxied = false  # DNS-only mode for API, ALB handles SSL
-  ttl     = 300    # 5 minutes TTL for DNS-only
+  proxied = false # DNS-only mode for API, ALB handles SSL
+  ttl     = 300   # 5 minutes TTL for DNS-only
 
   comment = "API subdomain pointing to ALB with SSL termination"
 }
@@ -50,18 +50,21 @@ resource "cloudflare_zone_settings_override" "fiscaliza" {
   zone_id = var.cloudflare_zone_id
 
   settings {
+    # SSL mode: flexible = HTTPS to CloudFlare, HTTP to origin (port 80)
+    ssl = "flexible"
+
     # Minimal caching to prevent stale content issues
     cache_level = "basic"
-    
+
     # Browser cache TTL - minimal (120 seconds - CloudFlare minimum)
     browser_cache_ttl = 120
-    
+
     # Always use HTTPS
     always_use_https = "on"
-    
+
     # Security settings
     security_level = "medium"
-    
+
     # Development mode - bypasses cache
     development_mode = "on"
   }
@@ -75,7 +78,7 @@ resource "cloudflare_page_rule" "disable_cache_all" {
   priority = 1
 
   actions {
-    cache_level = "bypass"
+    cache_level       = "bypass"
     browser_cache_ttl = 120
   }
 }

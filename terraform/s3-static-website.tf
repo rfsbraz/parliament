@@ -3,11 +3,12 @@
 # CloudFlare points to this for the main domain
 
 # S3 Bucket for static website
+# Bucket name MUST match domain name exactly for S3 website hosting with custom domain
 resource "aws_s3_bucket" "static_website" {
-  bucket = "${var.domain_name}-static-website"
+  bucket = var.domain_name
 
   tags = merge(local.storage_tags, {
-    Name         = "${var.domain_name}-static-website"
+    Name         = var.domain_name
     ResourceType = "s3-bucket"
     Purpose      = "static-website-hosting"
     Billable     = "true"
@@ -33,7 +34,7 @@ resource "aws_s3_bucket_website_configuration" "static_website" {
   }
 
   error_document {
-    key = "index.html"  # SPA routing - all errors go to index.html
+    key = "index.html" # SPA routing - all errors go to index.html
   }
 }
 
@@ -45,8 +46,8 @@ resource "aws_s3_bucket_policy" "static_website" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid       = "AllowCloudFrontServicePrincipal"
-        Effect    = "Allow"
+        Sid    = "AllowCloudFrontServicePrincipal"
+        Effect = "Allow"
         Principal = {
           Service = "cloudfront.amazonaws.com"
         }
@@ -59,7 +60,7 @@ resource "aws_s3_bucket_policy" "static_website" {
         }
       }
     ]
-  }) : jsonencode({
+    }) : jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
@@ -78,7 +79,7 @@ resource "aws_s3_bucket_policy" "static_website" {
 # S3 Bucket versioning (optional, for rollbacks)
 resource "aws_s3_bucket_versioning" "static_website" {
   bucket = aws_s3_bucket.static_website.id
-  
+
   versioning_configuration {
     status = var.environment == "prod" ? "Enabled" : "Suspended"
   }
@@ -194,8 +195,8 @@ resource "aws_cloudfront_distribution" "static_website" {
     }
 
     min_ttl     = 0
-    default_ttl = 0    # No caching
-    max_ttl     = 0    # No caching
+    default_ttl = 0 # No caching
+    max_ttl     = 0 # No caching
   }
 
   # Cache behavior for static assets - long cache
@@ -214,8 +215,8 @@ resource "aws_cloudfront_distribution" "static_website" {
     }
 
     min_ttl     = 0
-    default_ttl = 31536000  # 1 year for static assets
-    max_ttl     = 31536000  # 1 year for static assets
+    default_ttl = 31536000 # 1 year for static assets
+    max_ttl     = 31536000 # 1 year for static assets
   }
 
   # Custom error pages for SPA routing

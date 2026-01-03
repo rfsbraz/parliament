@@ -26,6 +26,13 @@ variable "cost_optimization_mode" {
   default     = true
 }
 
+# NAT Gateway - Major cost driver (~€35/month)
+variable "enable_nat_gateway" {
+  description = "Enable NAT Gateway for private subnet internet access. Disable to save ~€35/month (resources will use public subnets or VPC endpoints)"
+  type        = bool
+  default     = false # Disabled by default for cost optimization
+}
+
 # Database Configuration - Standard RDS PostgreSQL
 variable "db_engine" {
   description = "Database engine (postgresql for cost optimization)"
@@ -166,9 +173,9 @@ variable "cloudflare_zone_id" {
 
 # Load Balancer Configuration
 variable "enable_alb" {
-  description = "Enable Application Load Balancer (HTTP/HTTPS, ~$16/month)"
+  description = "Enable Application Load Balancer (HTTP/HTTPS, ~€16/month). Disable to save costs - CloudFlare will connect directly to ECS public IP"
   type        = bool
-  default     = true
+  default     = false # Disabled by default for cost optimization
 }
 
 variable "enable_nlb" {
@@ -178,9 +185,16 @@ variable "enable_nlb" {
 }
 
 variable "enable_ip_automation" {
-  description = "Enable automated CloudFlare IP updates via Lambda (~$0.01/month)"
+  description = "DEPRECATED: Use enable_cloudflare_dns_updater instead"
   type        = bool
   default     = false
+}
+
+# CloudFlare DNS Auto-Updater
+variable "enable_cloudflare_dns_updater" {
+  description = "Enable automatic CloudFlare DNS updates when ECS task IP changes. Required when ALB is disabled. Cost: ~€0.01/month"
+  type        = bool
+  default     = true # Enabled by default when ALB is disabled
 }
 
 # Static Website Configuration

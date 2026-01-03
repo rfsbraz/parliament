@@ -27,18 +27,18 @@ resource "aws_ecs_task_definition" "parliament" {
   cpu                      = var.fargate_cpu
   memory                   = var.fargate_memory
   execution_role_arn       = aws_iam_role.ecs_execution.arn
-  task_role_arn           = aws_iam_role.ecs_task.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([
     {
       name  = "parliament-backend"
       image = var.backend_image != "" ? var.backend_image : "public.ecr.aws/docker/library/python:3.12-slim"
-      
-      # Port configuration
+
+      # Port configuration - Port 80 for CloudFlare Flexible SSL
       portMappings = [
         {
-          containerPort = 5000
-          hostPort      = 5000
+          containerPort = 80
+          hostPort      = 80
           protocol      = "tcp"
         }
       ]
@@ -73,7 +73,7 @@ resource "aws_ecs_task_definition" "parliament" {
 
       # Health check
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:5000/api/ping || exit 1"]
+        command     = ["CMD-SHELL", "curl -f http://localhost:80/api/ping || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3
@@ -125,7 +125,7 @@ resource "aws_ecs_service" "parliament" {
     content {
       target_group_arn = aws_lb_target_group.ecs[0].arn
       container_name   = "parliament-backend"
-      container_port   = 5000
+      container_port   = 80
     }
   }
 
@@ -133,11 +133,11 @@ resource "aws_ecs_service" "parliament" {
   enable_execute_command = var.environment != "prod" # Enable ECS Exec for dev/test
 
   # Deployment configuration - Zero-downtime with 2 tasks
-  deployment_maximum_percent         = 200  # Allow 2x tasks during deployment (4 total)
-  deployment_minimum_healthy_percent = 50   # Keep 50% (1 task) healthy during deployment
+  deployment_maximum_percent         = 200 # Allow 2x tasks during deployment (4 total)
+  deployment_minimum_healthy_percent = 50  # Keep 50% (1 task) healthy during deployment
 
   # Health check grace period - optimized for faster deployments
-  health_check_grace_period_seconds = 60  # 1 minute grace period
+  health_check_grace_period_seconds = 60 # 1 minute grace period
 
   tags = merge(local.compute_tags, {
     Name         = "${local.name_prefix}-backend-service"
@@ -195,13 +195,13 @@ resource "aws_security_group" "ecs_service" {
   vpc_id      = aws_vpc.main.id
   description = "Security group for ECS Fargate service"
 
-  # Allow inbound from CloudFlare IP ranges on port 5000
+  # Allow inbound from CloudFlare IP ranges on port 80
   ingress {
-    from_port   = 5000
-    to_port     = 5000
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = var.cloudflare_ip_ranges
-    description = "Allow CloudFlare direct access"
+    description = "Allow CloudFlare proxy access on port 80"
   }
 
   # Allow all outbound traffic
@@ -243,9 +243,9 @@ resource "aws_iam_role" "ecs_execution" {
   })
 
   tags = merge(local.security_tags, {
-    Name         = "${local.name_prefix}-ecs-execution-role"
-    ResourceType = "iam-role"
-    Purpose      = "ecs-task-execution-permissions"
+    Name             = "${local.name_prefix}-ecs-execution-role"
+    ResourceType     = "iam-role"
+    Purpose          = "ecs-task-execution-permissions"
     ServicePrincipal = "ecs-tasks.amazonaws.com"
   })
 }
@@ -268,9 +268,9 @@ resource "aws_iam_role" "ecs_task" {
   })
 
   tags = merge(local.security_tags, {
-    Name         = "${local.name_prefix}-ecs-task-role"
-    ResourceType = "iam-role" 
-    Purpose      = "ecs-task-runtime-permissions"
+    Name             = "${local.name_prefix}-ecs-task-role"
+    ResourceType     = "iam-role"
+    Purpose          = "ecs-task-runtime-permissions"
     ServicePrincipal = "ecs-tasks.amazonaws.com"
   })
 }
@@ -308,10 +308,10 @@ resource "aws_cloudwatch_log_group" "ecs_backend" {
   retention_in_days = var.environment == "prod" ? 7 : 3 # Cost optimization
 
   tags = merge(local.monitoring_tags, {
-    Name         = "${local.name_prefix}-ecs-backend-logs"
-    ResourceType = "cloudwatch-log-group"
-    Purpose      = "ecs-container-logs"
-    LogType      = "application"
+    Name          = "${local.name_prefix}-ecs-backend-logs"
+    ResourceType  = "cloudwatch-log-group"
+    Purpose       = "ecs-container-logs"
+    LogType       = "application"
     RetentionDays = var.environment == "prod" ? "7" : "3"
   })
 }

@@ -50,19 +50,19 @@ ENV FLASK_DEBUG=0
 ENV LOG_LEVEL=INFO
 
 # Application configuration
-ENV PORT=5000
+ENV PORT=80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:5000/api/ping || exit 1
+    CMD curl -f http://localhost:80/api/ping || exit 1
 
-# Expose port
-EXPOSE 5000
+# Expose port 80 for CloudFlare Flexible SSL
+EXPOSE 80
 
-# Create non-root user for security
-RUN groupadd -r flask && useradd -r -g flask flask
-RUN chown -R flask:flask /app
-USER flask
+# Note: Running as root to bind to port 80. Container is protected by:
+# - AWS Security Groups (only CloudFlare IPs allowed)
+# - VPC network isolation
+# For production with non-root user, use ALB for SSL termination
 
-# Start Flask application with Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--timeout", "120", "--keep-alive", "5", "app.main:app"]
+# Start Flask application with Gunicorn on port 80
+CMD ["gunicorn", "--bind", "0.0.0.0:80", "--workers", "2", "--timeout", "120", "--keep-alive", "5", "app.main:app"]

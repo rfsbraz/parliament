@@ -48,7 +48,7 @@ resource "aws_lambda_function" "spot_launcher" {
   environment {
     variables = {
       SPOT_INSTANCE_TYPE     = var.spot_instance_type
-      SPOT_MAX_PRICE         = ""  # Use current spot price
+      SPOT_MAX_PRICE         = "" # Use current spot price
       IMPORT_TIMEOUT_MINUTES = var.import_timeout_minutes
       PUBLIC_SUBNET_IDS      = join(",", aws_subnet.public[*].id)
       SECURITY_GROUP_ID      = aws_security_group.spot_import.id
@@ -309,7 +309,7 @@ resource "aws_security_group" "spot_import" {
     protocol    = "udp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
   egress {
     from_port   = 53
     to_port     = 53
@@ -324,13 +324,13 @@ resource "aws_security_group" "spot_import" {
     protocol        = "tcp"
     security_groups = [aws_security_group.rds.id]
   }
-  
+
   # Direct PostgreSQL access to RDS subnet (fallback for IP-based connections)
   egress {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = ["10.0.1.0/24", "10.0.2.0/24"]  # RDS subnets
+    cidr_blocks = ["10.0.1.0/24", "10.0.2.0/24"] # RDS subnets
   }
 
   tags = merge(local.security_tags, {
@@ -365,7 +365,7 @@ resource "aws_cloudwatch_event_rule" "spot_import_schedule" {
   name                = "${local.name_prefix}-spot-import-schedule"
   description         = "Scheduled parliament data import using spot instances"
   schedule_expression = var.import_automation_mode == "daily" ? "cron(0 2 * * ? *)" : var.import_schedule
-  state              = "ENABLED"
+  state               = "ENABLED"
 
   tags = merge(local.monitoring_tags, {
     Name         = "${local.name_prefix}-spot-import-schedule"
@@ -411,10 +411,10 @@ resource "aws_cloudwatch_log_group" "spot_import" {
   retention_in_days = 7
 
   tags = merge(local.monitoring_tags, {
-    Name         = "${local.name_prefix}-spot-import-logs"
-    ResourceType = "cloudwatch-log-group"
-    Purpose      = "spot-import-application-logs"
-    LogType      = "application"
+    Name          = "${local.name_prefix}-spot-import-logs"
+    ResourceType  = "cloudwatch-log-group"
+    Purpose       = "spot-import-application-logs"
+    LogType       = "application"
     RetentionDays = tostring(var.import_log_retention_days)
   })
 }
@@ -425,10 +425,10 @@ resource "aws_cloudwatch_log_group" "spot_launcher_logs" {
   retention_in_days = 7
 
   tags = merge(local.monitoring_tags, {
-    Name         = "${local.name_prefix}-spot-launcher-logs"
-    ResourceType = "cloudwatch-log-group"
-    Purpose      = "lambda-application-logs"
-    LogType      = "lambda"
+    Name          = "${local.name_prefix}-spot-launcher-logs"
+    ResourceType  = "cloudwatch-log-group"
+    Purpose       = "lambda-application-logs"
+    LogType       = "lambda"
     RetentionDays = tostring(var.import_log_retention_days)
   })
 }

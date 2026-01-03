@@ -19,34 +19,34 @@ output "alb_https_endpoint" {
 
 output "website_url" {
   description = "Static website URL"
-  value = var.cloudflare_zone_id != "" ? "https://${var.domain_name}" : aws_s3_bucket_website_configuration.static_website.website_endpoint
+  value       = var.cloudflare_zone_id != "" ? "https://${var.domain_name}" : aws_s3_bucket_website_configuration.static_website.website_endpoint
 }
 
 output "cloudfront_distribution_id" {
   description = "CloudFront distribution ID for cache invalidation"
-  value = var.enable_cloudfront_for_website ? aws_cloudfront_distribution.static_website[0].id : "CloudFront not enabled"
+  value       = var.enable_cloudfront_for_website ? aws_cloudfront_distribution.static_website[0].id : "CloudFront not enabled"
 }
 
 output "api_url" {
   description = "API endpoint URL"
-  value = var.enable_alb && var.cloudflare_zone_id != "" ? "https://${local.api_domain_name}" : (var.enable_alb ? "https://${aws_lb.main[0].dns_name}" : "API not configured")
+  value       = var.enable_alb && var.cloudflare_zone_id != "" ? "https://${local.api_domain_name}" : (var.enable_alb ? "https://${aws_lb.main[0].dns_name}" : "API not configured")
 }
 
 output "s3_website_endpoint" {
   description = "S3 static website endpoint"
-  value = aws_s3_bucket_website_configuration.static_website.website_endpoint
+  value       = aws_s3_bucket_website_configuration.static_website.website_endpoint
 }
 
 output "s3_bucket_name" {
   description = "S3 bucket name for frontend deployment"
-  value = aws_s3_bucket.static_website.bucket
+  value       = aws_s3_bucket.static_website.bucket
 }
 
 output "load_balancer_status" {
   description = "Current load balancer configuration"
   value = {
-    alb_enabled = var.enable_alb
-    nlb_enabled = var.enable_nlb
+    alb_enabled           = var.enable_alb
+    nlb_enabled           = var.enable_nlb
     ip_automation_enabled = var.enable_ip_automation
   }
 }
@@ -106,8 +106,8 @@ output "public_subnet_ids" {
 }
 
 output "nat_gateway_id" {
-  description = "NAT Gateway ID (single NAT for cost optimization)"
-  value       = aws_nat_gateway.main.id
+  description = "NAT Gateway ID (single NAT for cost optimization, if enabled)"
+  value       = var.enable_nat_gateway ? aws_nat_gateway.main[0].id : "NAT Gateway disabled for cost optimization"
 }
 
 # Security Information
@@ -129,7 +129,7 @@ output "cost_optimization_enabled" {
 
 output "estimated_monthly_cost" {
   description = "Estimated monthly cost in USD"
-  value = var.enable_automated_import ? "$8-12/month + ~$0.03/month for spot imports" : "$8-12/month (ECS Fargate with direct CloudFlare connection)"
+  value       = var.enable_automated_import ? "$8-12/month + ~$0.03/month for spot imports" : "$8-12/month (ECS Fargate with direct CloudFlare connection)"
 }
 
 output "cost_savings_vs_original" {
@@ -154,12 +154,12 @@ output "aws_region" {
 output "fargate_configuration" {
   description = "ECS Fargate service configuration"
   value = {
-    cpu               = var.fargate_cpu
-    memory            = var.fargate_memory
-    desired_count     = var.fargate_desired_count
-    min_capacity      = var.fargate_min_capacity
-    max_capacity      = var.fargate_max_capacity
-    runtime           = "ECS Fargate with Gunicorn"
+    cpu           = var.fargate_cpu
+    memory        = var.fargate_memory
+    desired_count = var.fargate_desired_count
+    min_capacity  = var.fargate_min_capacity
+    max_capacity  = var.fargate_max_capacity
+    runtime       = "ECS Fargate with Gunicorn"
   }
 }
 
@@ -205,8 +205,8 @@ output "caching_configuration" {
 output "tagging_strategy" {
   description = "Comprehensive tagging strategy information"
   value = {
-    project_name             = var.project_name
-    application_name         = var.application_name
+    project_name            = var.project_name
+    application_name        = var.application_name
     environment             = var.environment
     cost_center             = var.cost_center
     business_unit           = var.business_unit
@@ -225,41 +225,41 @@ output "billable_resources_summary" {
   description = "Summary of all billable AWS resources and their key cost-related tags"
   value = {
     rds_instance = {
-      resource_type     = "RDS PostgreSQL Instance"
-      instance_class    = var.db_instance_class
-      storage_type      = var.db_storage_type
-      storage_size_gb   = var.db_allocated_storage
-      multi_az          = var.db_multi_az
-      backup_retention  = var.db_backup_retention_period
-      billable          = "true"
-      component_type    = "database"
+      resource_type    = "RDS PostgreSQL Instance"
+      instance_class   = var.db_instance_class
+      storage_type     = var.db_storage_type
+      storage_size_gb  = var.db_allocated_storage
+      multi_az         = var.db_multi_az
+      backup_retention = var.db_backup_retention_period
+      billable         = "true"
+      component_type   = "database"
     }
     ecs_fargate = {
-      resource_type    = "ECS Fargate Service"
-      cpu_units        = var.fargate_cpu
-      memory_mb        = var.fargate_memory
-      desired_count    = var.fargate_desired_count
-      billable         = "true"
-      component_type   = "compute"
+      resource_type  = "ECS Fargate Service"
+      cpu_units      = var.fargate_cpu
+      memory_mb      = var.fargate_memory
+      desired_count  = var.fargate_desired_count
+      billable       = "true"
+      component_type = "compute"
     }
-    nat_gateway = {
+    nat_gateway = var.enable_nat_gateway ? {
       resource_type  = "NAT Gateway"
       billable       = "true"
       component_type = "network"
       purpose        = "cost-optimized-single-nat"
-    }
-    elastic_ip = {
+    } : null
+    elastic_ip = var.enable_nat_gateway ? {
       resource_type  = "Elastic IP"
       billable       = "true"
       component_type = "network"
       purpose        = "nat-gateway"
-    }
+    } : null
     cloudwatch_logs = {
-      resource_type     = "CloudWatch Log Groups"
-      retention_days    = var.environment == "prod" ? "7" : "3"
-      billable          = "true"
-      component_type    = "monitoring"
-      purpose           = "logging"
+      resource_type  = "CloudWatch Log Groups"
+      retention_days = var.environment == "prod" ? "7" : "3"
+      billable       = "true"
+      component_type = "monitoring"
+      purpose        = "logging"
     }
     sns_topics = var.enable_basic_monitoring && var.alert_email != "" ? {
       resource_type  = "SNS Topics"
@@ -274,23 +274,23 @@ output "cost_allocation_tags" {
   description = "Key tags for AWS Cost Explorer and billing analysis"
   value = {
     # Primary cost allocation tags
-    cost_center    = var.cost_center
-    business_unit  = var.business_unit
-    project        = var.project_name
-    application    = var.application_name
-    environment    = var.environment
-    owner_team     = var.owner_team
-    
+    cost_center   = var.cost_center
+    business_unit = var.business_unit
+    project       = var.project_name
+    application   = var.application_name
+    environment   = var.environment
+    owner_team    = var.owner_team
+
     # Secondary cost analysis tags
-    cost_optimized = var.cost_optimization_mode
-    backup_schedule = var.backup_schedule
+    cost_optimized   = var.cost_optimization_mode
+    backup_schedule  = var.backup_schedule
     monitoring_level = var.monitoring_level
-    auto_shutdown   = var.auto_shutdown
-    
+    auto_shutdown    = var.auto_shutdown
+
     # Technical categorization
-    managed_by      = "Terraform"
-    repository      = "parliament"
-    terraform       = "true"
+    managed_by = "Terraform"
+    repository = "parliament"
+    terraform  = "true"
   }
 }
 
@@ -298,23 +298,23 @@ output "tag_compliance_check" {
   description = "Tag compliance verification for governance and cost analysis"
   value = {
     required_tags_present = {
-      project_name      = var.project_name != ""
-      application_name  = var.application_name != ""
-      environment       = var.environment != ""
-      cost_center       = var.cost_center != ""
-      business_unit     = var.business_unit != ""
-      owner_team        = var.owner_team != ""
+      project_name        = var.project_name != ""
+      application_name    = var.application_name != ""
+      environment         = var.environment != ""
+      cost_center         = var.cost_center != ""
+      business_unit       = var.business_unit != ""
+      owner_team          = var.owner_team != ""
       data_classification = contains(["public", "internal", "confidential", "restricted"], var.data_classification)
-      backup_schedule   = contains(["daily", "weekly", "monthly", "none"], var.backup_schedule)
-      monitoring_level  = contains(["basic", "standard", "enhanced"], var.monitoring_level)
+      backup_schedule     = contains(["daily", "weekly", "monthly", "none"], var.backup_schedule)
+      monitoring_level    = contains(["basic", "standard", "enhanced"], var.monitoring_level)
     }
     optional_tags_present = {
       owner_email_configured = var.owner_email != ""
-      additional_tags_count = length(var.additional_tags)
+      additional_tags_count  = length(var.additional_tags)
     }
     governance_compliance = {
       gdpr_compliance_tagged = var.compliance_requirements == "gdpr"
-      cost_center_defined   = var.cost_center != ""
+      cost_center_defined    = var.cost_center != ""
       business_owner_defined = var.business_unit != "" && var.owner_team != ""
     }
   }
@@ -334,16 +334,20 @@ output "resource_inventory_by_component" {
       "aws_db_subnet_group.parliament"
     ]
     storage_resources = []
-    network_resources = [
-      "aws_vpc.main",
-      "aws_subnet.public",
-      "aws_subnet.private", 
-      "aws_nat_gateway.main",
-      "aws_eip.nat",
-      "aws_internet_gateway.main",
-      "aws_route_table.public",
-      "aws_route_table.private"
-    ]
+    network_resources = concat(
+      [
+        "aws_vpc.main",
+        "aws_subnet.public",
+        "aws_subnet.private",
+        "aws_internet_gateway.main",
+        "aws_route_table.public",
+        "aws_route_table.private"
+      ],
+      var.enable_nat_gateway ? [
+        "aws_nat_gateway.main",
+        "aws_eip.nat"
+      ] : []
+    )
     security_resources = [
       "aws_security_group.ecs_service",
       "aws_security_group.rds",
@@ -378,20 +382,21 @@ output "cost_optimization_summary" {
   value = {
     optimization_mode = var.cost_optimization_mode
     cost_saving_features = {
-      single_nat_gateway         = "Reduced network costs vs multi-AZ NAT"
-      fargate_direct_connection  = "Direct CloudFlare connection eliminates API Gateway (~$3-5/month saved)"
-      rds_single_az              = "Reduced database costs vs Multi-AZ"
-      short_log_retention        = "Reduced CloudWatch storage costs"
-      basic_monitoring_only      = "Reduced monitoring costs"
-      fargate_optimized_sizing   = "Right-sized CPU/memory allocation"
-      cost_optimized_cloudfront  = "Disabled - CloudFront removed"
+      nat_gateway_disabled      = var.enable_nat_gateway ? "NAT Gateway enabled" : "NAT Gateway disabled (~€35/month saved)"
+      alb_disabled              = var.enable_alb ? "ALB enabled" : "ALB disabled - CloudFlare direct to ECS (~€16/month saved)"
+      fargate_direct_connection = "Direct CloudFlare connection eliminates API Gateway (~$3-5/month saved)"
+      rds_single_az             = "Reduced database costs vs Multi-AZ"
+      short_log_retention       = "Reduced CloudWatch storage costs"
+      basic_monitoring_only     = "Reduced monitoring costs"
+      fargate_optimized_sizing  = "Right-sized CPU/memory allocation"
+      cost_optimized_cloudfront = var.enable_cloudfront_for_website ? "CloudFront enabled" : "CloudFront disabled"
     }
-    target_monthly_cost = "$8-12"
+    target_monthly_cost     = "$8-12"
     cost_savings_percentage = "50-70% vs full-featured architecture"
     billable_resource_count = {
-      always_billable = 4  # RDS, ECS Fargate, NAT Gateway, EIP
-      conditional_billable = 0  # No CloudFront/S3 static assets
-      monitoring_billable = var.enable_basic_monitoring ? 3 : 1  # CloudWatch logs, alarms, SNS
+      always_billable      = var.enable_nat_gateway ? 4 : 2      # RDS, ECS Fargate (+ NAT Gateway, EIP if enabled)
+      conditional_billable = var.enable_alb ? 1 : 0              # ALB if enabled
+      monitoring_billable  = var.enable_basic_monitoring ? 3 : 1 # CloudWatch logs, alarms, SNS
     }
   }
 }
@@ -403,8 +408,8 @@ output "cost_optimization_summary" {
 output "import_automation_status" {
   description = "Status of automated data import configuration"
   value = var.enable_automated_import ? {
-    enabled                 = true
-    automation_mode         = var.import_automation_mode
+    enabled                = true
+    automation_mode        = var.import_automation_mode
     schedule               = var.import_automation_mode == "daily" ? "Daily at 2 AM UTC" : (var.import_automation_mode == "custom" ? var.import_schedule : "Manual only")
     spot_instance_type     = var.spot_instance_type
     timeout_minutes        = var.import_timeout_minutes
@@ -412,7 +417,7 @@ output "import_automation_status" {
     monitoring_enabled     = var.enable_basic_monitoring
     estimated_cost_per_run = "~$0.001 (20 minutes on t3.nano spot)"
     estimated_monthly_cost = "~$0.03"
-  } : {
+    } : {
     enabled = false
     message = "Set enable_automated_import = true to enable spot instance imports"
   }
@@ -425,15 +430,15 @@ output "import_automation_status" {
 output "database_connection_info" {
   description = "Database connection information for remote access"
   value = var.admin_ip_address != "" ? {
-    endpoint      = aws_db_instance.parliament.endpoint
-    port          = aws_db_instance.parliament.port
-    database_name = aws_db_instance.parliament.db_name
-    username      = aws_db_instance.parliament.username
-    admin_ip      = var.admin_ip_address
+    endpoint            = aws_db_instance.parliament.endpoint
+    port                = aws_db_instance.parliament.port
+    database_name       = aws_db_instance.parliament.db_name
+    username            = aws_db_instance.parliament.username
+    admin_ip            = var.admin_ip_address
     publicly_accessible = aws_db_instance.parliament.publicly_accessible
-    connection_string = "postgresql://${aws_db_instance.parliament.username}:PASSWORD@${aws_db_instance.parliament.endpoint}/${aws_db_instance.parliament.db_name}"
-    note          = "Replace PASSWORD with the actual database password. Password is stored in AWS Secrets Manager."
-  } : {
+    connection_string   = "postgresql://${aws_db_instance.parliament.username}:PASSWORD@${aws_db_instance.parliament.endpoint}/${aws_db_instance.parliament.db_name}"
+    note                = "Replace PASSWORD with the actual database password. Password is stored in AWS Secrets Manager."
+    } : {
     note = "Database remote access is disabled. Set admin_ip_address variable to enable."
   }
   sensitive = false

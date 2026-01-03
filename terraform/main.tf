@@ -18,32 +18,32 @@ locals {
   # Enhanced tagging strategy for cost analysis and resource management
   # Filter out empty values to prevent AWS validation errors
   base_tags = {
-    Project              = var.project_name
-    Application          = var.application_name
-    Environment          = var.environment
-    ManagedBy           = "Terraform"
-    BusinessUnit        = var.business_unit
-    CostCenter          = var.cost_center
-    OwnerTeam           = var.owner_team
-    DataClassification  = var.data_classification
+    Project                = var.project_name
+    Application            = var.application_name
+    Environment            = var.environment
+    ManagedBy              = "Terraform"
+    BusinessUnit           = var.business_unit
+    CostCenter             = var.cost_center
+    OwnerTeam              = var.owner_team
+    DataClassification     = var.data_classification
     ComplianceRequirements = var.compliance_requirements
-    BackupSchedule      = var.backup_schedule
-    MonitoringLevel     = var.monitoring_level
-    AutoShutdown        = var.auto_shutdown ? "enabled" : "disabled"
-    CostOptimized       = var.cost_optimization_mode ? "true" : "false"
-    Website             = replace(var.domain_name, ".", "-")
-    TargetCost          = "8_12_USD_monthly"
-    Terraform           = "true"
-    Repository          = "parliament"
-    CreatedDate         = formatdate("YYYY_MM_DD", timestamp())
-    LastModified        = formatdate("YYYY_MM_DD", timestamp())
+    BackupSchedule         = var.backup_schedule
+    MonitoringLevel        = var.monitoring_level
+    AutoShutdown           = var.auto_shutdown ? "enabled" : "disabled"
+    CostOptimized          = var.cost_optimization_mode ? "true" : "false"
+    Website                = replace(var.domain_name, ".", "-")
+    TargetCost             = "8_12_USD_monthly"
+    Terraform              = "true"
+    Repository             = "parliament"
+    CreatedDate            = formatdate("YYYY_MM_DD", timestamp())
+    LastModified           = formatdate("YYYY_MM_DD", timestamp())
   }
-  
+
   # Add optional tags only if they have values
   optional_tags = var.owner_email != "" ? {
     OwnerEmail = var.owner_email
   } : {}
-  
+
   common_tags = merge(
     local.base_tags,
     local.optional_tags,
@@ -158,7 +158,10 @@ resource "aws_subnet" "private" {
 }
 
 # Single NAT Gateway for cost optimization (instead of one per AZ)
+# CONDITIONAL: Only created when enable_nat_gateway = true
+# Saves ~€35/month when disabled
 resource "aws_eip" "nat" {
+  count  = var.enable_nat_gateway ? 1 : 0
   domain = "vpc"
 
   depends_on = [aws_internet_gateway.main]
@@ -172,7 +175,8 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "main" {
-  allocation_id = aws_eip.nat.id
+  count         = var.enable_nat_gateway ? 1 : 0
+  allocation_id = aws_eip.nat[0].id
   subnet_id     = aws_subnet.public[0].id
 
   depends_on = [aws_internet_gateway.main]
@@ -202,18 +206,31 @@ resource "aws_route_table" "public" {
 }
 
 # Route table for private subnets
+# When NAT Gateway is disabled, private subnets route through IGW (cost optimization)
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main.id
+  # Conditional routing: NAT Gateway when enabled, IGW when disabled
+  dynamic "route" {
+    for_each = var.enable_nat_gateway ? [1] : []
+    content {
+      cidr_block     = "0.0.0.0/0"
+      nat_gateway_id = aws_nat_gateway.main[0].id
+    }
+  }
+
+  dynamic "route" {
+    for_each = var.enable_nat_gateway ? [] : [1]
+    content {
+      cidr_block = "0.0.0.0/0"
+      gateway_id = aws_internet_gateway.main.id
+    }
   }
 
   tags = merge(local.network_tags, {
     Name         = "${local.name_prefix}-private-rt"
     ResourceType = "route-table"
-    Purpose      = "private-subnet-routing"
+    Purpose      = var.enable_nat_gateway ? "private-subnet-routing" : "private-subnet-routing-via-igw"
   })
 }
 
@@ -274,10 +291,10 @@ resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
   retention_in_days = 3 # Short retention for cost optimization
 
   tags = merge(local.monitoring_tags, {
-    Name         = "${local.name_prefix}-vpc-flow-logs-group"
-    ResourceType = "cloudwatch-log-group"
-    Purpose      = "vpc-flow-logs-storage"
-    LogType      = "vpc-flow"
+    Name          = "${local.name_prefix}-vpc-flow-logs-group"
+    ResourceType  = "cloudwatch-log-group"
+    Purpose       = "vpc-flow-logs-storage"
+    LogType       = "vpc-flow"
     RetentionDays = "3"
   })
 }

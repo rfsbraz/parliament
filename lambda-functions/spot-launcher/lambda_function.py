@@ -154,12 +154,13 @@ touch database/__init__.py
 # Install Python dependencies from requirements.txt
 if [ -f requirements.txt ]; then
     echo "Installing Python dependencies from requirements.txt..."
-    pip3 install -r requirements.txt
+    # Use --ignore-installed to bypass RPM-installed package conflicts
+    pip3 install --ignore-installed -r requirements.txt
     echo "Installing additional dependencies for spot instances..."
-    pip3 install rich alembic
+    pip3 install --ignore-installed rich alembic beautifulsoup4 lxml
 else
     echo "No requirements.txt found, installing basic dependencies..."
-    pip3 install requests beautifulsoup4 lxml sqlalchemy flask rich alembic
+    pip3 install --ignore-installed requests beautifulsoup4 lxml sqlalchemy flask rich alembic
 fi
 
 # Debug: Show installed packages
@@ -275,12 +276,12 @@ try:
     print('Running discovery service with real-time output...')
     # Use shell=True to avoid output buffering and show real-time progress
     result = subprocess.run(
-        'python3 scripts/data_processing/discovery_service.py 2>&1',
+        'python3 scripts/data_processing/discovery_service.py --discover-all 2>&1',
         shell=True, timeout={timeout_minutes * 60}
     )  # Use configured timeout: {timeout_minutes} minutes
-    
+
     print('Discovery process completed with return code:', result.returncode)
-    
+
 except subprocess.TimeoutExpired:
     print('Discovery process timed out after {timeout_minutes} minutes')
 except Exception as e:
@@ -332,12 +333,12 @@ try:
     print('Running discovery service with real-time output...')
     # Use shell=True to avoid output buffering and show real-time progress
     result = subprocess.run(
-        'python3 scripts/data_processing/discovery_service.py 2>&1',
+        'python3 scripts/data_processing/discovery_service.py --discover-all 2>&1',
         shell=True, timeout={timeout_minutes * 60}
     )  # Use configured timeout: {timeout_minutes} minutes
-    
+
     print('Discovery process completed with return code:', result.returncode)
-    
+
 except subprocess.TimeoutExpired:
     print('Discovery process timed out after {timeout_minutes} minutes')
 except Exception as e:
@@ -378,7 +379,7 @@ shutdown -h now
                 {
                     'DeviceName': '/dev/xvda',
                     'Ebs': {
-                        'VolumeSize': 20,  # 20GB root volume (up from 8GB default)
+                        'VolumeSize': 30,  # 30GB root volume (matches AMI snapshot size)
                         'VolumeType': 'gp3',
                         'DeleteOnTermination': True
                     }
@@ -388,7 +389,7 @@ shutdown -h now
         
         # Request spot instance
         response = ec2.request_spot_instances(
-            SpotPrice='0.05',  # Max price for t3.medium
+            SpotPrice='0.10',  # Max price for t3.large (~$0.05 current spot price)
             InstanceCount=1,
             LaunchSpecification=launch_config
         )

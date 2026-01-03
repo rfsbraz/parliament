@@ -41,7 +41,7 @@ variable "spot_instance_type" {
   default     = "t3.large"
   validation {
     condition = contains([
-      "t3.nano", "t3.micro", "t3.small", 
+      "t3.nano", "t3.micro", "t3.small",
       "t4g.nano", "t4g.micro", "t4g.small", "t3.large"
     ], var.spot_instance_type)
     error_message = "Spot instance type must be a cost-optimized instance (t3.nano, t3.micro, t3.small, t4g.nano, t4g.micro, t4g.small)."
@@ -61,7 +61,7 @@ variable "spot_max_price" {
 variable "import_timeout_minutes" {
   description = "Maximum import execution time in minutes (instance auto-terminates after this)"
   type        = number
-  default     = 120  # 2 hours default timeout
+  default     = 120 # 2 hours default timeout
   validation {
     condition     = var.import_timeout_minutes >= 10 && var.import_timeout_minutes <= 800
     error_message = "Import timeout must be between 10 and 240 minutes (4 hours max)."
@@ -121,7 +121,7 @@ variable "import_log_retention_days" {
   type        = number
   default     = 7
   validation {
-    condition = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.import_log_retention_days)
+    condition     = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653], var.import_log_retention_days)
     error_message = "Log retention days must be a valid CloudWatch retention period."
   }
 }
