@@ -336,6 +336,23 @@ class PipelineStats:
             self._error_log_file.close()
             self._error_log_file = None
 
+    def get_error_log_tail(self, lines: int = 15) -> List[str]:
+        """Get the last N lines from the error log file."""
+        if not hasattr(self, '_error_log_path') or not self._error_log_path:
+            return ["[dim]No error log[/dim]"]
+
+        try:
+            with open(self._error_log_path, 'r', encoding='utf-8') as f:
+                all_lines = f.readlines()
+                # Skip header lines (first 2)
+                content_lines = all_lines[2:] if len(all_lines) > 2 else []
+                if not content_lines:
+                    return ["[dim]No errors yet[/dim]"]
+                # Return last N lines, stripped
+                return [line.rstrip() for line in content_lines[-lines:]]
+        except Exception as e:
+            return [f"[red]Error reading log: {e}[/red]"]
+
     def start_download(self, file_name: str, category: str = "") -> int:
         """Register a new download worker."""
         with self._worker_lock:
@@ -496,7 +513,8 @@ class LocalPipelineRunner:
 
         layout["right"].split_column(
             Layout(name="pending", ratio=1),
-            Layout(name="activity", ratio=2)
+            Layout(name="activity", ratio=1),
+            Layout(name="error_log", ratio=1)
         )
 
         return layout
@@ -615,12 +633,13 @@ class LocalPipelineRunner:
         if self.stats.last_full_error:
             activity_lines.append("[bold red]LAST ERROR:[/bold red]")
             error_text = self.stats.last_full_error
-            for i, line in enumerate(error_text[:500].split('\n')[:5]):
-                activity_lines.append(f"[red]{line}[/red]")
+            # Truncate long error messages for display
+            truncated = error_text[:200] + "..." if len(error_text) > 200 else error_text
+            activity_lines.append(f"[red]{truncated}[/red]")
             activity_lines.append("")
 
         if self.stats.recent_messages:
-            max_recent = 5 if self.stats.last_full_error else 10
+            max_recent = 8
             for msg in self.stats.recent_messages[-max_recent:]:
                 activity_lines.append(msg)
         elif not self.stats.last_full_error:
@@ -628,8 +647,17 @@ class LocalPipelineRunner:
 
         layout["activity"].update(Panel(
             "\n".join(activity_lines),
-            title="Activity Log",
+            title="Activity",
             border_style="red" if self.stats.last_full_error else "blue"
+        ))
+
+        # Error log tail
+        error_log_lines = self.stats.get_error_log_tail(12)
+        error_count = self.stats.import_failed
+        layout["error_log"].update(Panel(
+            "\n".join(error_log_lines),
+            title=f"Error Log ({error_count})",
+            border_style="red" if error_count > 0 else "dim"
         ))
 
         # Footer
