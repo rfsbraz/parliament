@@ -29,8 +29,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Callable, Any
 
-# Add project root to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+# Add project root and scripts/data_processing to path for imports
+# (data_processing modules use relative imports like 'from http_retry_utils import ...')
+_project_root = Path(__file__).parent.parent.parent
+_data_processing_dir = Path(__file__).parent
+sys.path.insert(0, str(_project_root))
+sys.path.insert(0, str(_data_processing_dir))
 
 # Load .env file for local development
 try:
