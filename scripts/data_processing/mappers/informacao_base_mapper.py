@@ -33,6 +33,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
 
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
+
 from .common_utilities import DataValidationUtils
 from .enhanced_base_mapper import SchemaError, SchemaMapper
 
@@ -269,6 +271,11 @@ class InformacaoBaseMapper(SchemaMapper):
 
             return results
 
+        except SQLAlchemyError as e:
+            # Database errors must be re-raised to abort the transaction properly
+            error_msg = f"Database error processing InformacaoBase file: {e}"
+            logger.error(error_msg)
+            raise
         except Exception as e:
             error_msg = f"Error processing InformacaoBase file: {e}"
             logger.error(error_msg)
@@ -369,7 +376,7 @@ class InformacaoBaseMapper(SchemaMapper):
                 if self._is_nil_element(gp_element):
                     logger.debug("Skipping nil parliamentary group element")
                     continue
-                
+
                 # Extract group information
                 sigla = self._get_text_value(gp_element, "sigla")
                 nome = self._get_text_value(gp_element, "nome")
@@ -382,16 +389,16 @@ class InformacaoBaseMapper(SchemaMapper):
 
                 # Detect and process coalition vs individual party
                 entity_info = self.detect_and_process_coalition(sigla, nome)
-                
+
                 if entity_info["is_coalition"]:
                     # Process as coalition
                     coalition = self.get_or_create_coalition(entity_info)
-                    
+
                     if coalition:
                         logger.debug(f"Processed coalition: {sigla} ({nome})")
                     else:
                         logger.warning(f"Failed to process coalition: {sigla} ({nome})")
-                        
+
                 else:
                     # Process as individual party with cache and upsert for parallel safety
                     existing_party = None
@@ -442,6 +449,10 @@ class InformacaoBaseMapper(SchemaMapper):
 
                         logger.debug(f"Processed parliamentary group: {sigla} ({nome})")
 
+        except SQLAlchemyError as e:
+            # Database errors must be re-raised to abort the transaction properly
+            logger.error(f"Database error processing parliamentary groups: {e}")
+            raise
         except Exception as e:
             logger.error(f"Error processing parliamentary groups: {e}")
 
@@ -518,6 +529,10 @@ class InformacaoBaseMapper(SchemaMapper):
 
                     logger.debug(f"Processed electoral circle: {cp_id} ({cp_des})")
 
+        except SQLAlchemyError as e:
+            # Database errors must be re-raised to abort the transaction properly
+            logger.error(f"Database error processing electoral circles: {e}")
+            raise
         except Exception as e:
             logger.error(f"Error processing electoral circles: {e}")
 
@@ -538,6 +553,10 @@ class InformacaoBaseMapper(SchemaMapper):
             ):
                 self._process_i_legislatura_deputy(deputado_element, legislatura)
 
+        except SQLAlchemyError as e:
+            # Database errors must be re-raised to abort the transaction properly
+            logger.error(f"Database error processing deputies: {e}")
+            raise
         except Exception as e:
             logger.error(f"Error processing deputies: {e}")
 
@@ -654,6 +673,10 @@ class InformacaoBaseMapper(SchemaMapper):
             if dep_videos is not None:
                 self._process_deputy_videos(dep_videos, deputado)
 
+        except SQLAlchemyError as e:
+            # Database errors must be re-raised to abort the transaction properly
+            logger.error(f"Database error processing standard deputy: {e}")
+            raise
         except Exception as e:
             logger.error(f"Error processing standard deputy: {e}")
 
@@ -767,6 +790,10 @@ class InformacaoBaseMapper(SchemaMapper):
                 f"Processed I_Legislatura deputy: {dep_nome_parlamentar} (ID: {dep_cad_id})"
             )
 
+        except SQLAlchemyError as e:
+            # Database errors must be re-raised to abort the transaction properly
+            logger.error(f"Database error processing I_Legislatura deputy: {e}")
+            raise
         except Exception as e:
             logger.error(f"Error processing I_Legislatura deputy: {e}")
 
@@ -819,6 +846,10 @@ class InformacaoBaseMapper(SchemaMapper):
                     f"Processed GP situation: Deputy {deputado.nome} -> {gp_sigla} ({gp_dt_inicio} - {gp_dt_fim})"
                 )
 
+        except SQLAlchemyError as e:
+            # Database errors must be re-raised to abort the transaction properly
+            logger.error(f"Database error processing deputy GP situations: {e}")
+            raise
         except Exception as e:
             logger.error(f"Error processing deputy GP situations: {e}")
 
@@ -867,6 +898,10 @@ class InformacaoBaseMapper(SchemaMapper):
                     f"Processed deputy situation: {deputado.nome} -> {sio_des} ({sio_dt_inicio} - {sio_dt_fim})"
                 )
 
+        except SQLAlchemyError as e:
+            # Database errors must be re-raised to abort the transaction properly
+            logger.error(f"Database error processing deputy situations: {e}")
+            raise
         except Exception as e:
             logger.error(f"Error processing deputy situations: {e}")
 

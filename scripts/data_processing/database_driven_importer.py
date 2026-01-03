@@ -635,7 +635,17 @@ class DatabaseDrivenImporter:
                 mapper_class = self.schema_mappers[mapper_key]
                 mapper = mapper_class(db_session)  # Use the same session for transaction control
                 results = mapper.validate_and_map(xml_root, file_info, strict_mode)
-                
+
+                # CRITICAL: Check if the transaction is still valid after mapper processing
+                # Mappers may catch exceptions internally without re-raising, which can leave
+                # the transaction in a failed state. This check prevents InFailedSqlTransaction errors.
+                try:
+                    # Try a minimal operation to detect if transaction is aborted
+                    db_session.connection()
+                except Exception as conn_error:
+                    # Transaction is in a failed state - treat as error
+                    raise RuntimeError(f"Transaction aborted during processing (mapper swallowed error): {conn_error}")
+
                 # Update import record with results
                 import_record.status = 'completed'
                 import_record.processing_completed_at = datetime.now()

@@ -120,3 +120,4 @@ parliament_deploy_key
 
 # Windows artifacts
 nul
+terraform/tfplan

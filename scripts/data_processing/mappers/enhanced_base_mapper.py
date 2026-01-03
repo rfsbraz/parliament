@@ -196,7 +196,7 @@ class CoalitionDetectionMixin:
         return result
     
     def get_or_create_coalition(self, coalition_info: Dict) -> Optional[Coligacao]:
-        """Create or retrieve coalition record"""
+        """Create or retrieve coalition record using upsert for parallel safety"""
         if not coalition_info["is_coalition"]:
             return None
 
@@ -208,55 +208,68 @@ class CoalitionDetectionMixin:
         if sigla in self._created_coalitions:
             return self._created_coalitions[sigla]
 
-        # Try to find existing coalition in database
-        coalition = self.session.query(Coligacao).filter_by(sigla=sigla).first()
-
-        if coalition:
-            # Cache the found coalition
-            self._created_coalitions[sigla] = coalition
-            return coalition
-
-        # Create new coalition with explicit UUID
-        coalition = Coligacao(
-            id=uuid.uuid4(),  # Generate UUID client-side for immediate availability
-            sigla=sigla,
-            nome=coalition_info.get("coalition_name", f"Coligação {sigla}"),
-            nome_eleitoral=coalition_info.get("coalition_name"),
-            data_formacao=coalition_info.get("formation_date"),
-            tipo_coligacao="eleitoral",  # Default type
-            espectro_politico=coalition_info.get("political_spectrum"),
-            confianca_detecao=coalition_info.get("confidence", 0.0)
-            # Note: ativo is now a calculated property based on current legislature XVII deputies
-        )
+        # Use PostgreSQL upsert for parallel-safe coalition creation
+        # This prevents UniqueViolation when multiple workers try to create the same coalition
+        new_id = uuid.uuid4()
+        nome = coalition_info.get("coalition_name", f"Coligação {sigla}")
 
         try:
-            self.session.add(coalition)
-            # Cache the created coalition immediately to prevent duplicates
-            self._created_coalitions[sigla] = coalition
+            stmt = pg_insert(Coligacao.__table__).values(
+                id=new_id,
+                sigla=sigla,
+                nome=nome,
+                nome_eleitoral=coalition_info.get("coalition_name"),
+                data_formacao=coalition_info.get("formation_date"),
+                tipo_coligacao="eleitoral",
+                espectro_politico=coalition_info.get("political_spectrum"),
+                confianca_detecao=coalition_info.get("confidence", 0.0)
+            ).on_conflict_do_update(
+                index_elements=['sigla'],  # Unique constraint column
+                set_={
+                    # On conflict, update these fields (keep existing values for most)
+                    'nome': nome,
+                    'confianca_detecao': coalition_info.get("confidence", 0.0)
+                }
+            ).returning(Coligacao.__table__.c.id)
 
-            # Create component party relationships
-            for component in coalition_info.get("component_parties", []):
-                relationship = ColigacaoPartido(
-                    id=uuid.uuid4(),  # Generate UUID client-side
-                    coligacao_id=coalition.id,
-                    partido_sigla=component["sigla"],
-                    partido_nome=component["nome"],
-                    ativo=True,
-                    papel_coligacao="componente",
-                    confianca_detecao=coalition_info.get("confidence", 0.0)
-                )
-                self.session.add(relationship)
+            result = self.session.execute(stmt)
+            coalition_id = result.scalar()
+            self.session.flush()
 
-            logger.info(f"Created coalition: {sigla} with {len(coalition_info.get('component_parties', []))} components")
+            # Fetch the ORM object (either newly created or existing)
+            coalition = self.session.query(Coligacao).filter_by(id=coalition_id).first()
+
+            if coalition:
+                # Cache the coalition
+                self._created_coalitions[sigla] = coalition
+
+                # Create component party relationships (use upsert too)
+                for component in coalition_info.get("component_parties", []):
+                    rel_stmt = pg_insert(ColigacaoPartido.__table__).values(
+                        id=uuid.uuid4(),
+                        coligacao_id=coalition.id,
+                        partido_sigla=component["sigla"],
+                        partido_nome=component["nome"],
+                        ativo=True,
+                        papel_coligacao="componente",
+                        confianca_detecao=coalition_info.get("confidence", 0.0)
+                    ).on_conflict_do_nothing(
+                        index_elements=['coligacao_id', 'partido_sigla']
+                    )
+                    self.session.execute(rel_stmt)
+
+                if str(coalition_id) == str(new_id):
+                    logger.info(f"Created coalition: {sigla} with {len(coalition_info.get('component_parties', []))} components")
+                else:
+                    logger.debug(f"Found existing coalition '{sigla}' via upsert")
+
+            return coalition
 
         except Exception as e:
             logger.error(f"Error creating coalition {sigla}: {e}")
             # Remove from cache on error
             self._created_coalitions.pop(sigla, None)
-            self.session.rollback()
-            return None
-
-        return coalition
+            raise  # Re-raise to abort transaction properly
     
     def update_mandate_coalition_context(self, mandate, par_sigla: str):
         """Update mandate record with coalition context"""
