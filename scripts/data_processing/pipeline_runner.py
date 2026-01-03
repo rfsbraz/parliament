@@ -286,6 +286,7 @@ class PipelineStats:
     active_imports: Dict[int, ActiveWorker] = None
     _next_download_id: int = 0
     _next_import_id: int = 0
+    _error_log_file: Any = None  # File handle for error logging
 
     def __post_init__(self):
         if self.recent_messages is None:
@@ -298,6 +299,42 @@ class PipelineStats:
             self.active_imports = {}
         self._message_lock = threading.Lock()
         self._worker_lock = threading.Lock()
+
+    def setup_error_log(self, log_dir: Path = None):
+        """Create a fresh error log file for this pipeline run."""
+        if log_dir is None:
+            log_dir = _project_root / "logs"
+        log_dir.mkdir(exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_path = log_dir / f"pipeline_errors_{timestamp}.log"
+        self._error_log_file = open(log_path, 'w', encoding='utf-8')
+        self._error_log_path = log_path
+
+        # Write header
+        self._error_log_file.write(f"Pipeline Error Log - Started {datetime.now().isoformat()}\n")
+        self._error_log_file.write("=" * 80 + "\n\n")
+        self._error_log_file.flush()
+
+        return log_path
+
+    def log_error(self, file_name: str, category: str, legislature: str, error_message: str):
+        """Log an error to the error log file."""
+        if self._error_log_file:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            entry = f"[{timestamp}] {category} | {legislature} | {file_name}\n  ERROR: {error_message}\n\n"
+            self._error_log_file.write(entry)
+            self._error_log_file.flush()
+
+    def close_error_log(self):
+        """Close the error log file and write summary."""
+        if self._error_log_file:
+            self._error_log_file.write("=" * 80 + "\n")
+            self._error_log_file.write(f"Pipeline completed at {datetime.now().isoformat()}\n")
+            self._error_log_file.write(f"Total errors: {self.import_failed}\n")
+            self._error_log_file.write(f"Total records imported: {self.total_records_imported:,}\n")
+            self._error_log_file.close()
+            self._error_log_file = None
 
     def start_download(self, file_name: str, category: str = "") -> int:
         """Register a new download worker."""
@@ -767,11 +804,23 @@ class LocalPipelineRunner:
                             self.stats.import_failed += 1
                             err_msg = result.error_message or "Unknown error"
                             self.stats.add_message(f"FAILED: {result.file_name} - {err_msg}", priority='error')
+                            self.stats.log_error(
+                                file_info['file_name'],
+                                file_info['category'],
+                                file_info['legislatura'],
+                                err_msg
+                            )
                             self.stats.error_occurred = True
 
                     except Exception as e:
                         self.stats.import_failed += 1
                         self.stats.add_message(f"Import exception: {str(e)}", priority='error')
+                        self.stats.log_error(
+                            file_info.get('file_name', 'unknown'),
+                            file_info.get('category', ''),
+                            file_info.get('legislatura', ''),
+                            str(e)
+                        )
                         self.stats.error_occurred = True
                     finally:
                         self.stats.end_import(worker_id)
@@ -809,7 +858,8 @@ class LocalPipelineRunner:
                                         'status_id': record.id,
                                         'file_path': record.file_path,
                                         'file_name': record.file_name,
-                                        'category': record.category or ""
+                                        'category': record.category or "",
+                                        'legislatura': record.legislatura or ""
                                     })
                                 db_session.commit()
 
@@ -867,6 +917,10 @@ class LocalPipelineRunner:
         self.stats.start_time = datetime.now()
         self._running = True
 
+        # Set up fresh error log for this run
+        error_log_path = self.stats.setup_error_log()
+        self.console.print(f"Error log: {error_log_path}")
+
         file_types_str = ", ".join(self.allowed_file_types) if self.allowed_file_types else "ALL"
         self.stats.add_message(f"Pipeline started - Files: {file_types_str}", priority='high')
         self.stats.add_message(f"Workers: {self.max_concurrent_downloads} DL / {self.max_concurrent_imports} IMP", priority='high')
@@ -906,6 +960,11 @@ class LocalPipelineRunner:
             for task in tasks:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Close error log with summary
+            self.stats.close_error_log()
+            if hasattr(self.stats, '_error_log_path'):
+                self.console.print(f"Errors logged to: {self.stats._error_log_path}")
 
             self.console.print("Pipeline stopped")
 

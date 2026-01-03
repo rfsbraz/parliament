@@ -300,6 +300,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             "ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiCadId",
             "ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiDataVersao",
             "ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiLegDes",
+            "ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV1.cadRgi.pt_ar_wsgode_objectos_DadosRegistoInteressesWeb.rgiServicosPrestados",
             # Additional missing V3 fields from error logs
             "ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.Societies.RecordInterestSocietyResponse.ActivityArea",
             "ArrayOfRegistoInteresses.RegistoInteresses.RegistoInteressesV3.RecordInterests.RecordInterestResponse.PositionChangedDate",
