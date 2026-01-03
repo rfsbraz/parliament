@@ -1,12 +1,20 @@
 """
 Pipeline orchestration commands for Parliament Operations CLI.
 
-Handles remote triggering of data import pipelines via Lambda/Spot instances.
+Unified entry point for both local and remote (ECS) pipeline execution.
+
+Usage:
+    ops pipeline run --local       # Rich UI local execution
+    ops pipeline run --ecs         # ECS Fargate execution
+    ops pipeline status            # Show import status
+    ops pipeline logs              # Tail ECS logs
 """
 
+import asyncio
 import json
+import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 import click
@@ -27,113 +35,253 @@ except ImportError:
 from .config import get_config, Config
 
 
-def invoke_lambda_url(url: str, payload: dict) -> dict:
-    """Invoke Lambda function via Function URL."""
-    if not HAS_URLLIB:
-        raise click.ClickException("urllib not available")
-
-    data = json.dumps(payload).encode('utf-8')
-    req = urllib.request.Request(url, data=data, method='POST')
-    req.add_header('Content-Type', 'application/json')
-
-    try:
-        with urllib.request.urlopen(req, timeout=120) as response:
-            return json.loads(response.read().decode())
-    except urllib.error.HTTPError as e:
-        error_body = e.read().decode()
-        raise click.ClickException(f"Lambda invocation failed: {e.code} - {error_body}")
-    except urllib.error.URLError as e:
-        raise click.ClickException(f"Connection failed: {e.reason}")
-
-
-def invoke_lambda_direct(function_name: str, payload: dict, region: str, profile: str = None) -> dict:
-    """Invoke Lambda function directly via boto3."""
+def get_boto3_session(config: Config):
+    """Get boto3 session with proper credentials."""
     if not HAS_BOTO3:
         raise click.ClickException("boto3 not installed. Run: pip install boto3")
 
-    session = boto3.Session(profile_name=profile, region_name=region) if profile else boto3.Session(region_name=region)
-    client = session.client('lambda')
+    if config.aws.profile:
+        return boto3.Session(profile_name=config.aws.profile, region_name=config.aws.region)
+    return boto3.Session(region_name=config.aws.region)
 
-    response = client.invoke(
-        FunctionName=function_name,
-        InvocationType='RequestResponse',
-        Payload=json.dumps(payload)
+
+def get_terraform_output(terraform_dir, output_name: str) -> str:
+    """Get a specific terraform output value."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["terraform", "output", "-raw", output_name],
+            cwd=terraform_dir,
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except Exception:
+        pass
+    return ""
+
+
+def run_ecs_task(config: Config, task_type: str) -> dict:
+    """Run an ECS task for import pipeline."""
+    session = get_boto3_session(config)
+    ecs = session.client('ecs')
+
+    # Get task definition ARN from terraform outputs
+    if task_type == 'discovery':
+        task_arn = get_terraform_output(config.terraform_dir, "ecs_import_discovery_task_arn")
+    else:
+        task_arn = get_terraform_output(config.terraform_dir, "ecs_import_importer_task_arn")
+
+    if not task_arn:
+        raise click.ClickException(f"Could not get ECS task ARN for {task_type}. Run 'terraform apply' first.")
+
+    # Get network configuration
+    public_subnets = get_terraform_output(config.terraform_dir, "public_subnet_ids")
+    security_group = get_terraform_output(config.terraform_dir, "ecs_import_security_group_id")
+    cluster_name = get_terraform_output(config.terraform_dir, "ecs_cluster_name")
+
+    if not all([public_subnets, security_group, cluster_name]):
+        raise click.ClickException("Could not get network configuration from terraform outputs")
+
+    # Parse subnet IDs (terraform outputs them as JSON array)
+    try:
+        if public_subnets.startswith('['):
+            subnet_ids = json.loads(public_subnets)
+        else:
+            subnet_ids = [s.strip() for s in public_subnets.split(',')]
+    except Exception:
+        subnet_ids = [public_subnets]
+
+    # Run the task
+    response = ecs.run_task(
+        cluster=cluster_name,
+        taskDefinition=task_arn,
+        launchType='FARGATE',
+        count=1,
+        networkConfiguration={
+            'awsvpcConfiguration': {
+                'subnets': subnet_ids,
+                'securityGroups': [security_group],
+                'assignPublicIp': 'ENABLED'
+            }
+        },
+        startedBy='ops-cli'
     )
 
-    response_payload = json.loads(response['Payload'].read())
+    if response.get('failures'):
+        failure = response['failures'][0]
+        raise click.ClickException(f"Failed to start task: {failure.get('reason', 'Unknown error')}")
 
-    if response.get('FunctionError'):
-        raise click.ClickException(f"Lambda error: {response_payload}")
-
-    return response_payload
-
-
-def get_spot_instance_status(instance_id: str, region: str, profile: str = None) -> dict:
-    """Get status of a spot instance."""
-    if not HAS_BOTO3:
-        raise click.ClickException("boto3 not installed")
-
-    session = boto3.Session(profile_name=profile, region_name=region) if profile else boto3.Session(region_name=region)
-    ec2 = session.client('ec2')
-
-    response = ec2.describe_instances(InstanceIds=[instance_id])
-
-    if not response['Reservations']:
-        return {'state': 'not_found'}
-
-    instance = response['Reservations'][0]['Instances'][0]
+    task = response['tasks'][0]
     return {
-        'state': instance['State']['Name'],
-        'instance_id': instance_id,
-        'instance_type': instance.get('InstanceType'),
-        'launch_time': str(instance.get('LaunchTime')),
-        'public_ip': instance.get('PublicIpAddress'),
+        'task_arn': task['taskArn'],
+        'task_id': task['taskArn'].split('/')[-1],
+        'cluster': cluster_name,
+        'status': task['lastStatus'],
+        'created_at': str(task.get('createdAt', '')),
     }
 
 
-def get_cloudwatch_logs(log_group: str, log_stream_prefix: str, region: str, limit: int = 50, profile: str = None) -> list:
-    """Get recent CloudWatch logs."""
-    if not HAS_BOTO3:
-        raise click.ClickException("boto3 not installed")
+def get_ecs_task_status(config: Config, task_id: str) -> dict:
+    """Get status of an ECS task."""
+    session = get_boto3_session(config)
+    ecs = session.client('ecs')
 
-    session = boto3.Session(profile_name=profile, region_name=region) if profile else boto3.Session(region_name=region)
-    logs = session.client('logs')
+    cluster_name = get_terraform_output(config.terraform_dir, "ecs_cluster_name")
 
     try:
-        # Find log streams
-        streams_response = logs.describe_log_streams(
-            logGroupName=log_group,
-            orderBy='LastEventTime',
-            descending=True,
-            limit=5
+        response = ecs.describe_tasks(
+            cluster=cluster_name,
+            tasks=[task_id]
         )
 
-        if not streams_response.get('logStreams'):
-            return []
+        if not response.get('tasks'):
+            return {'status': 'NOT_FOUND'}
 
-        # Get events from the most recent stream
-        stream_name = streams_response['logStreams'][0]['logStreamName']
+        task = response['tasks'][0]
 
-        events_response = logs.get_log_events(
-            logGroupName=log_group,
-            logStreamName=stream_name,
-            limit=limit,
-            startFromHead=False
-        )
+        # Get exit code if available
+        exit_code = None
+        if task.get('containers'):
+            container = task['containers'][0]
+            exit_code = container.get('exitCode')
 
-        return [{
-            'timestamp': datetime.fromtimestamp(e['timestamp'] / 1000).isoformat(),
-            'message': e['message']
-        } for e in events_response.get('events', [])]
-
+        return {
+            'status': task['lastStatus'],
+            'desired_status': task.get('desiredStatus', ''),
+            'exit_code': exit_code,
+            'stopped_reason': task.get('stoppedReason', ''),
+            'created_at': str(task.get('createdAt', '')),
+            'started_at': str(task.get('startedAt', '')),
+            'stopped_at': str(task.get('stoppedAt', '')),
+        }
     except Exception as e:
-        click.echo(click.style(f"  Warning: Could not fetch logs: {e}", fg="yellow"))
+        return {'status': 'ERROR', 'error': str(e)}
+
+
+def list_ecs_import_tasks(config: Config, status_filter: str = None) -> list:
+    """List recent ECS import tasks."""
+    session = get_boto3_session(config)
+    ecs = session.client('ecs')
+
+    cluster_name = get_terraform_output(config.terraform_dir, "ecs_cluster_name")
+
+    tasks = []
+
+    # Get running tasks
+    try:
+        running = ecs.list_tasks(
+            cluster=cluster_name,
+            desiredStatus='RUNNING',
+            startedBy='ops-cli'
+        )
+        tasks.extend(running.get('taskArns', []))
+    except Exception:
+        pass
+
+    # Get stopped tasks (recent)
+    try:
+        stopped = ecs.list_tasks(
+            cluster=cluster_name,
+            desiredStatus='STOPPED',
+            startedBy='ops-cli'
+        )
+        tasks.extend(stopped.get('taskArns', []))
+    except Exception:
+        pass
+
+    if not tasks:
         return []
+
+    # Get task details
+    try:
+        response = ecs.describe_tasks(cluster=cluster_name, tasks=tasks[:10])
+        return response.get('tasks', [])
+    except Exception:
+        return []
+
+
+def tail_ecs_logs(config: Config, task_type: str = 'discovery', follow: bool = True):
+    """Tail logs from ECS import tasks."""
+    session = get_boto3_session(config)
+    logs_client = session.client('logs')
+
+    log_group = f"/ecs/fiscaliza-{config.environment}/import"
+    stream_prefix = task_type  # 'discovery' or 'importer'
+
+    last_timestamp = int((datetime.now() - timedelta(minutes=30)).timestamp() * 1000)
+    seen_event_ids = set()
+
+    click.echo(click.style(f"Tailing {log_group}/{stream_prefix}... (Ctrl+C to stop)", fg="cyan"))
+
+    try:
+        while True:
+            try:
+                # Find recent streams
+                streams_response = logs_client.describe_log_streams(
+                    logGroupName=log_group,
+                    logStreamNamePrefix=stream_prefix,
+                    orderBy='LastEventTime',
+                    descending=True,
+                    limit=3
+                )
+
+                for stream in streams_response.get('logStreams', []):
+                    stream_name = stream['logStreamName']
+
+                    try:
+                        events = logs_client.get_log_events(
+                            logGroupName=log_group,
+                            logStreamName=stream_name,
+                            startTime=last_timestamp,
+                            startFromHead=False
+                        )
+
+                        for event in events.get('events', []):
+                            event_id = f"{event['timestamp']}-{hash(event['message'])}"
+                            if event_id not in seen_event_ids:
+                                seen_event_ids.add(event_id)
+                                ts = datetime.fromtimestamp(event['timestamp'] / 1000)
+                                msg = event['message'].strip()
+
+                                # Sanitize Unicode for Windows
+                                msg = msg.replace('\u2713', '[OK]').replace('\u2717', '[X]')
+                                msg = msg.replace('\u2714', '[OK]').replace('\u2716', '[X]')
+
+                                # Color code by content
+                                if 'ERROR' in msg or 'Error' in msg or 'failed' in msg.lower():
+                                    click.echo(click.style(f"[{ts.strftime('%H:%M:%S')}] {msg}", fg="red"))
+                                elif 'SUCCESS' in msg or 'completed' in msg.lower():
+                                    click.echo(click.style(f"[{ts.strftime('%H:%M:%S')}] {msg}", fg="green"))
+                                elif 'WARNING' in msg or 'Warning' in msg:
+                                    click.echo(click.style(f"[{ts.strftime('%H:%M:%S')}] {msg}", fg="yellow"))
+                                else:
+                                    click.echo(f"[{ts.strftime('%H:%M:%S')}] {msg}")
+
+                                last_timestamp = max(last_timestamp, event['timestamp'] + 1)
+
+                    except Exception:
+                        continue
+
+                if not follow:
+                    break
+
+            except logs_client.exceptions.ResourceNotFoundException:
+                click.echo(click.style("  Log group not found. Run an import task first.", fg="yellow"))
+                break
+            except Exception as e:
+                click.echo(click.style(f"Error: {e}", fg="red"))
+
+            if follow:
+                time.sleep(2)
+
+    except KeyboardInterrupt:
+        click.echo("\nStopped tailing.")
 
 
 def get_import_status(config: Config) -> dict:
     """Get import status from the API."""
-    # Try to get status from the running API
     api_url = f"https://api.{config.domain_name}/api/admin/import-stats"
 
     try:
@@ -141,7 +289,6 @@ def get_import_status(config: Config) -> dict:
         with urllib.request.urlopen(req, timeout=10) as response:
             return json.loads(response.read().decode())
     except Exception:
-        # Try localhost fallback
         try:
             req = urllib.request.Request("http://localhost:5000/api/admin/import-stats", method='GET')
             with urllib.request.urlopen(req, timeout=5) as response:
@@ -152,208 +299,295 @@ def get_import_status(config: Config) -> dict:
 
 @click.group()
 def pipeline():
-    """Remote pipeline orchestration commands."""
+    """Pipeline orchestration - unified local and ECS execution.
+
+    Run data import pipelines locally (default) or on ECS Fargate.
+    Local mode provides a Rich terminal UI with real-time progress.
+
+    Examples:
+        ops pipeline run                  # Full pipeline, local with Rich UI
+        ops pipeline run -d prod          # Local against production database
+        ops pipeline run --ecs            # Run on ECS Fargate
+        ops pipeline discover             # Discovery only
+        ops pipeline status               # Check status
+    """
     pass
 
 
 @pipeline.command()
 @click.option('--mode', '-m', type=click.Choice(['discovery', 'importer', 'full']), default='full',
-              help='Pipeline mode: discovery, importer, or full')
-@click.option('--wait', '-w', is_flag=True, help='Wait for completion and show logs')
-@click.option('--timeout', '-t', type=int, default=None, help='Override timeout in minutes')
-@click.option('--production', '-p', is_flag=True, default=True, help='Run on production (default, spot instances)')
-@click.option('--local', '-l', is_flag=True, help='Run locally instead of on spot instance')
-def run(mode: str, wait: bool, timeout: Optional[int], production: bool, local: bool):
-    """Start pipeline on EC2 Spot instance or locally."""
+              help='Pipeline mode: discovery, importer, or full (default: full)')
+@click.option('--wait', '-w', is_flag=True, help='Wait for ECS completion and show logs')
+@click.option('--local', '-l', is_flag=True, default=True, help='Run locally with Rich UI (default)')
+@click.option('--ecs', '-e', is_flag=True, help='Run on ECS Fargate instead of locally')
+@click.option('--database', '-d', type=click.Choice(['local', 'prod', 'auto']), default='auto',
+              help='Database: local, prod, or auto-detect (default: auto)')
+@click.option('--max-downloads', type=int, default=5, help='Max concurrent downloads (local mode)')
+@click.option('--max-imports', type=int, default=4, help='Max concurrent imports (local mode)')
+@click.option('--file-types', type=str, default='XML', help='File types to process (comma-separated)')
+@click.option('--stop-on-error', is_flag=True, help='Stop pipeline on first error (local mode)')
+@click.option('--download-only', is_flag=True, help='Only download, skip import (local mode)')
+@click.option('--import-only', is_flag=True, help='Only import, skip download (local mode)')
+@click.option('--retry-failed', is_flag=True, help='Reset failed imports to pending before starting')
+def run(mode: str, wait: bool, local: bool, ecs: bool, database: str,
+        max_downloads: int, max_imports: int, file_types: str,
+        stop_on_error: bool, download_only: bool, import_only: bool, retry_failed: bool):
+    """Start import pipeline locally (default) or on ECS Fargate.
+
+    By default, runs locally with a Rich terminal UI showing real-time progress.
+    Use --ecs flag to run on ECS Fargate instead.
+
+    Examples:
+        ops pipeline run                    # Local with Rich UI
+        ops pipeline run --database prod    # Local against production DB
+        ops pipeline run --ecs              # Run on ECS Fargate
+        ops pipeline run --ecs -m discovery # Run only discovery on ECS
+    """
     config = get_config()
 
-    # Handle local mode
+    # --ecs flag overrides --local
+    if ecs:
+        local = False
+
+    # Handle local mode with Rich UI
     if local:
-        click.echo(click.style(f"\n=== Starting Pipeline ({mode}) - LOCAL ===", fg="cyan", bold=True))
-        click.echo("  Running pipeline locally...")
-
-        import subprocess
-        import sys
-
-        if mode == 'discovery':
-            script = "scripts/data_processing/discovery_service.py"
-            args = ["--discover-all"]
-        elif mode == 'importer':
-            script = "scripts/data_processing/database_driven_importer.py"
-            args = []
-        else:
-            click.echo("  Note: 'full' mode will run discovery first.")
-            script = "scripts/data_processing/discovery_service.py"
-            args = ["--discover-all"]
+        click.echo(click.style(f"\n=== Starting Pipeline - LOCAL (Rich UI) ===", fg="cyan", bold=True))
 
         try:
-            result = subprocess.run(
-                [sys.executable, script] + args,
-                cwd=config.project_root,
-                check=False
+            from scripts.data_processing.pipeline_runner import (
+                setup_database_environment,
+                LocalPipelineRunner
             )
-            if result.returncode == 0:
-                click.echo(click.style("\n  Pipeline completed successfully!", fg="green"))
-            else:
-                click.echo(click.style(f"\n  Pipeline exited with code {result.returncode}", fg="yellow"))
-        except Exception as e:
-            raise click.ClickException(f"Failed to run pipeline: {e}")
-        return
+        except ImportError as e:
+            raise click.ClickException(
+                f"Failed to import pipeline runner: {e}\n"
+                "Make sure you're running from the project root."
+            )
 
-    # Production mode (default) - run on spot instance
-    click.echo(click.style(f"\n=== Starting Pipeline ({mode}) ===", fg="cyan", bold=True))
-    click.echo(f"  Region: {config.aws.region}")
-    click.echo(f"  Instance type: {config.pipeline.spot_instance_type}")
-    click.echo(f"  Timeout: {timeout or config.pipeline.timeout_minutes} minutes")
-
-    # Determine operation mode for Lambda
-    if mode == 'full':
-        # For full pipeline, we'll run discovery first, then importer
-        click.echo("\n  Note: 'full' mode will run discovery. Run 'ops pipeline run -m importer' after discovery completes.")
-        operation_mode = 'discovery'
-    else:
-        operation_mode = mode
-
-    payload = {
-        'mode': operation_mode,
-        'source': 'ops-cli'
-    }
-
-    # Try Lambda Function URL first
-    if config.pipeline.lambda_function_url:
-        click.echo(f"\n  Invoking Lambda via Function URL...")
+        # Setup database
         try:
-            result = invoke_lambda_url(config.pipeline.lambda_function_url, payload)
-            body = json.loads(result.get('body', '{}')) if isinstance(result.get('body'), str) else result.get('body', {})
-        except Exception as e:
-            click.echo(click.style(f"  Function URL failed: {e}", fg="yellow"))
-            click.echo("  Trying direct Lambda invocation...")
-            function_name = f"fiscaliza-{config.environment}-spot-launcher"
-            result = invoke_lambda_direct(function_name, payload, config.aws.region, config.aws.profile)
-            body = json.loads(result.get('body', '{}')) if isinstance(result.get('body'), str) else result.get('body', {})
-    else:
-        # Direct Lambda invocation
-        click.echo(f"\n  Invoking Lambda directly...")
-        function_name = f"fiscaliza-{config.environment}-spot-launcher"
-        result = invoke_lambda_direct(function_name, payload, config.aws.region, config.aws.profile)
-        body = json.loads(result.get('body', '{}')) if isinstance(result.get('body'), str) else result.get('body', {})
+            db_config = setup_database_environment(database)
+            click.echo(f"  Database: {db_config.display_name}")
+        except RuntimeError as e:
+            raise click.ClickException(str(e))
 
-    # Display result
-    if 'error' in body:
-        click.echo(click.style(f"\n  Error: {body['error']}", fg="red"))
-        return
+        # Handle retry-failed
+        if retry_failed:
+            try:
+                from database.connection import DatabaseSession
+                from database.models import ImportStatus
+                from sqlalchemy import update
 
-    click.echo(click.style("\n  Pipeline started successfully!", fg="green"))
-    click.echo(f"  Spot Request ID: {body.get('spotRequestId', 'N/A')}")
-    click.echo(f"  Instance ID: {body.get('instanceId', 'pending...')}")
-    click.echo(f"  Operation Mode: {body.get('operationMode', operation_mode)}")
+                with DatabaseSession() as db_session:
+                    result = db_session.execute(
+                        update(ImportStatus)
+                        .where(ImportStatus.status == 'import_error')
+                        .values(status='pending', error_message=None)
+                    )
+                    db_session.commit()
+                    click.echo(f"  Reset {result.rowcount} failed imports")
+            except Exception as e:
+                click.echo(click.style(f"  Warning: Could not reset failed imports: {e}", fg="yellow"))
 
-    instance_id = body.get('instanceId')
+        # Parse file types
+        allowed_file_types = [ft.strip() for ft in file_types.split(',')] if file_types else ['XML']
 
-    # Wait for completion if requested
-    if wait and instance_id:
-        click.echo("\n  Waiting for completion (Ctrl+C to stop watching)...")
+        # Determine mode flags
+        if mode == 'discovery':
+            download_only = True
+            import_only = False
+        elif mode == 'importer':
+            download_only = False
+            import_only = True
+
+        # Create and run the pipeline
+        runner = LocalPipelineRunner(
+            db_config=db_config,
+            max_concurrent_downloads=max_downloads,
+            max_concurrent_imports=max_imports,
+            allowed_file_types=allowed_file_types,
+            stop_on_error=stop_on_error,
+            download_only=download_only,
+            import_only=import_only
+        )
+
         try:
-            while True:
-                time.sleep(30)
-                status = get_spot_instance_status(instance_id, config.aws.region, config.aws.profile)
-                state = status.get('state', 'unknown')
-
-                if state == 'running':
-                    click.echo(f"    [{datetime.now().strftime('%H:%M:%S')}] Instance running...")
-                elif state == 'terminated':
-                    click.echo(click.style(f"    [{datetime.now().strftime('%H:%M:%S')}] Instance terminated (completed)", fg="green"))
-                    break
-                elif state == 'not_found':
-                    click.echo(click.style(f"    [{datetime.now().strftime('%H:%M:%S')}] Instance not found", fg="yellow"))
-                    break
-                else:
-                    click.echo(f"    [{datetime.now().strftime('%H:%M:%S')}] State: {state}")
-
+            asyncio.run(runner.run())
         except KeyboardInterrupt:
-            click.echo("\n  Stopped watching. Pipeline continues in background.")
+            click.echo("\n  Pipeline interrupted.")
+        except Exception as e:
+            raise click.ClickException(f"Pipeline failed: {e}")
 
-    # Show how to check logs
-    click.echo(f"\n  View logs: ops logs pipeline")
-    click.echo(f"  Check status: ops pipeline status")
+        return
+
+    # ECS mode (production)
+    click.echo(click.style(f"\n=== Starting Pipeline ({mode}) - ECS ===", fg="cyan", bold=True))
+    click.echo(f"  Region: {config.aws.region}")
+
+    if mode == 'full':
+        # Run discovery first, then importer
+        click.echo("\n  Running full pipeline: discovery then importer...")
+
+        # Start discovery
+        click.echo("\n  Starting discovery task...")
+        discovery_result = run_ecs_task(config, 'discovery')
+        click.echo(click.style(f"  Discovery task started: {discovery_result['task_id']}", fg="green"))
+
+        if wait:
+            click.echo("  Waiting for discovery to complete...")
+            while True:
+                time.sleep(10)
+                status = get_ecs_task_status(config, discovery_result['task_id'])
+                if status['status'] == 'STOPPED':
+                    if status.get('exit_code') == 0:
+                        click.echo(click.style("  Discovery completed successfully!", fg="green"))
+                        break
+                    else:
+                        click.echo(click.style(f"  Discovery failed: {status.get('stopped_reason', 'Unknown')}", fg="red"))
+                        return
+                elif status['status'] == 'RUNNING':
+                    click.echo(f"    [{datetime.now().strftime('%H:%M:%S')}] Discovery running...")
+                else:
+                    click.echo(f"    [{datetime.now().strftime('%H:%M:%S')}] Status: {status['status']}")
+
+            # Now run importer
+            click.echo("\n  Starting importer task...")
+            importer_result = run_ecs_task(config, 'importer')
+            click.echo(click.style(f"  Importer task started: {importer_result['task_id']}", fg="green"))
+
+            click.echo("  Waiting for importer to complete...")
+            while True:
+                time.sleep(10)
+                status = get_ecs_task_status(config, importer_result['task_id'])
+                if status['status'] == 'STOPPED':
+                    if status.get('exit_code') == 0:
+                        click.echo(click.style("  Importer completed successfully!", fg="green"))
+                    else:
+                        click.echo(click.style(f"  Importer failed: {status.get('stopped_reason', 'Unknown')}", fg="red"))
+                    break
+                elif status['status'] == 'RUNNING':
+                    click.echo(f"    [{datetime.now().strftime('%H:%M:%S')}] Importer running...")
+        else:
+            click.echo("\n  Tip: Use --wait to wait for completion, or monitor with:")
+            click.echo(f"    ops pipeline logs -m discovery")
+    else:
+        # Single mode
+        result = run_ecs_task(config, mode)
+        click.echo(click.style(f"\n  Task started successfully!", fg="green"))
+        click.echo(f"  Task ID: {result['task_id']}")
+        click.echo(f"  Cluster: {result['cluster']}")
+        click.echo(f"  Status: {result['status']}")
+
+        if wait:
+            click.echo("\n  Waiting for completion (Ctrl+C to stop watching)...")
+            try:
+                while True:
+                    time.sleep(10)
+                    status = get_ecs_task_status(config, result['task_id'])
+
+                    if status['status'] == 'STOPPED':
+                        if status.get('exit_code') == 0:
+                            click.echo(click.style(f"\n  Task completed successfully!", fg="green"))
+                        else:
+                            click.echo(click.style(f"\n  Task failed: {status.get('stopped_reason', 'Unknown')}", fg="red"))
+                            click.echo(f"  Exit code: {status.get('exit_code')}")
+                        break
+                    elif status['status'] == 'RUNNING':
+                        click.echo(f"    [{datetime.now().strftime('%H:%M:%S')}] Task running...")
+                    else:
+                        click.echo(f"    [{datetime.now().strftime('%H:%M:%S')}] Status: {status['status']}")
+            except KeyboardInterrupt:
+                click.echo("\n  Stopped watching. Task continues in background.")
+        else:
+            click.echo(f"\n  View logs: ops pipeline logs -m {mode}")
+            click.echo(f"  Check status: ops pipeline status")
 
 
 @pipeline.command()
-@click.option('--wait', '-w', is_flag=True, help='Wait for completion')
-@click.option('--production', '-p', is_flag=True, default=True, help='Run on production (default)')
-@click.option('--local', '-l', is_flag=True, help='Run locally')
-def discover(wait: bool, production: bool, local: bool):
+@click.option('--wait', '-w', is_flag=True, help='Wait for ECS completion')
+@click.option('--ecs', '-e', is_flag=True, help='Run on ECS Fargate instead of locally')
+@click.option('--database', '-d', type=click.Choice(['local', 'prod', 'auto']), default='auto',
+              help='Database: local, prod, or auto-detect')
+def discover(wait: bool, ecs: bool, database: str):
     """Run discovery only (find new files on parliament.pt)."""
     ctx = click.get_current_context()
-    ctx.invoke(run, mode='discovery', wait=wait, production=production, local=local)
+    ctx.invoke(run, mode='discovery', wait=wait, ecs=ecs, database=database, download_only=True)
 
 
 @pipeline.command(name='import')
-@click.option('--wait', '-w', is_flag=True, help='Wait for completion')
-@click.option('--production', '-p', is_flag=True, default=True, help='Run on production (default)')
-@click.option('--local', '-l', is_flag=True, help='Run locally')
-def import_cmd(wait: bool, production: bool, local: bool):
-    """Run import only (process discovered files)."""
+@click.option('--wait', '-w', is_flag=True, help='Wait for ECS completion')
+@click.option('--ecs', '-e', is_flag=True, help='Run on ECS Fargate instead of locally')
+@click.option('--database', '-d', type=click.Choice(['local', 'prod', 'auto']), default='auto',
+              help='Database: local, prod, or auto-detect')
+@click.option('--retry-failed', is_flag=True, help='Reset failed imports to pending')
+def import_cmd(wait: bool, ecs: bool, database: str, retry_failed: bool):
+    """Run import only (process downloaded files)."""
     ctx = click.get_current_context()
-    ctx.invoke(run, mode='importer', wait=wait, production=production, local=local)
+    ctx.invoke(run, mode='importer', wait=wait, ecs=ecs, database=database, import_only=True, retry_failed=retry_failed)
 
 
 @pipeline.command()
-@click.option('--production', '-p', is_flag=True, default=True, help='Check production status (default)')
-@click.option('--local', '-l', is_flag=True, help='Check local status')
-def status(production: bool, local: bool):
-    """Check pipeline and import status."""
+@click.option('--mode', '-m', type=click.Choice(['discovery', 'importer']), default='discovery',
+              help='Which task logs to show')
+@click.option('--follow', '-f', is_flag=True, help='Follow log output in real-time')
+@click.option('--lines', '-n', type=int, default=50, help='Number of lines to show')
+def logs(mode: str, follow: bool, lines: int):
+    """View import task logs."""
     config = get_config()
 
-    if local:
-        click.echo(click.style("\n=== Pipeline Status (Local) ===", fg="cyan", bold=True))
-        # Show local import statistics
-        click.echo("\n  Import Statistics (Local):")
-        stats = get_import_status(config)
-        if stats:
-            click.echo(f"    Total files: {stats.get('total', 'N/A')}")
-            click.echo(f"    Completed: {stats.get('completed', 'N/A')}")
-            click.echo(f"    Pending: {stats.get('pending', 'N/A')}")
-            click.echo(f"    Failed: {stats.get('failed', 'N/A')}")
-        else:
-            click.echo("    Could not fetch import statistics (local API not reachable)")
-        return
+    click.echo(click.style(f"\n=== Import Logs ({mode}) ===", fg="cyan", bold=True))
+
+    if follow:
+        tail_ecs_logs(config, task_type=mode, follow=True)
+    else:
+        tail_ecs_logs(config, task_type=mode, follow=False)
+
+
+@pipeline.command()
+def status():
+    """Check pipeline and import task status."""
+    config = get_config()
 
     click.echo(click.style("\n=== Pipeline Status ===", fg="cyan", bold=True))
 
-    # Check for running spot instances
-    if HAS_BOTO3:
-        session = boto3.Session(profile_name=config.aws.profile, region_name=config.aws.region) if config.aws.profile else boto3.Session(region_name=config.aws.region)
-        ec2 = session.client('ec2')
+    # Check for running/recent ECS tasks
+    click.echo("\n  Recent Import Tasks:")
+    tasks = list_ecs_import_tasks(config)
 
-        try:
-            response = ec2.describe_instances(
-                Filters=[
-                    {'Name': 'tag:Project', 'Values': ['Parliament']},
-                    {'Name': 'tag:Purpose', 'Values': ['automated-data-import']},
-                    {'Name': 'instance-state-name', 'Values': ['pending', 'running']}
-                ]
-            )
+    if tasks:
+        for task in tasks[:5]:
+            task_id = task['taskArn'].split('/')[-1]
+            status = task['lastStatus']
 
-            instances = []
-            for reservation in response.get('Reservations', []):
-                for instance in reservation.get('Instances', []):
-                    instances.append({
-                        'id': instance['InstanceId'],
-                        'state': instance['State']['Name'],
-                        'type': instance.get('InstanceType'),
-                        'launch_time': str(instance.get('LaunchTime')),
-                    })
+            # Get task family (discovery or importer)
+            task_def = task.get('taskDefinitionArn', '')
+            task_type = 'discovery' if 'discovery' in task_def else 'importer'
 
-            if instances:
-                click.echo("\n  Running Import Instances:")
-                for inst in instances:
-                    click.echo(f"    - {inst['id']}: {inst['state']} ({inst['type']}) - launched {inst['launch_time']}")
+            # Format time
+            created = task.get('createdAt')
+            if created:
+                created_str = created.strftime('%Y-%m-%d %H:%M:%S') if hasattr(created, 'strftime') else str(created)[:19]
             else:
-                click.echo("\n  No running import instances.")
+                created_str = 'Unknown'
 
-        except Exception as e:
-            click.echo(click.style(f"  Could not check EC2 instances: {e}", fg="yellow"))
+            # Color by status
+            if status == 'RUNNING':
+                status_str = click.style(status, fg='cyan')
+            elif status == 'STOPPED':
+                exit_code = None
+                if task.get('containers'):
+                    exit_code = task['containers'][0].get('exitCode')
+                if exit_code == 0:
+                    status_str = click.style('COMPLETED', fg='green')
+                else:
+                    status_str = click.style(f'FAILED (exit {exit_code})', fg='red')
+            else:
+                status_str = click.style(status, fg='yellow')
+
+            click.echo(f"    {task_id[:12]}... [{task_type}] {status_str} - {created_str}")
+    else:
+        click.echo("    No recent import tasks found.")
+        click.echo("    Run 'ops pipeline run -m discovery' to start a new import.")
 
     # Get import statistics from API
     click.echo("\n  Import Statistics:")
@@ -364,23 +598,13 @@ def status(production: bool, local: bool):
         click.echo(f"    Completed: {stats.get('completed', 'N/A')}")
         click.echo(f"    Pending: {stats.get('pending', 'N/A')}")
         click.echo(f"    Failed: {stats.get('failed', 'N/A')}")
-        click.echo(f"    Records imported: {stats.get('total_records', 'N/A')}")
+        if stats.get('total_records'):
+            click.echo(f"    Records imported: {stats.get('total_records', 'N/A')}")
     else:
         click.echo("    Could not fetch import statistics (API not reachable)")
 
-    # Show recent logs
-    click.echo("\n  Recent Log Entries:")
-    logs = get_cloudwatch_logs(
-        "/aws/parliament/import",
-        "parliament-import",
-        config.aws.region,
-        limit=5,
-        profile=config.aws.profile
-    )
-
-    if logs:
-        for log in logs[-5:]:
-            msg = log['message'][:80] + "..." if len(log['message']) > 80 else log['message']
-            click.echo(f"    [{log['timestamp']}] {msg}")
-    else:
-        click.echo("    No recent logs available")
+    # Show schedule status
+    click.echo("\n  Scheduled Imports:")
+    click.echo("    Discovery: Daily at 2 AM UTC")
+    click.echo("    Importer:  Daily at 4 AM UTC")
+    click.echo("    (Enable with: terraform apply -var='enable_scheduled_import=true')")

@@ -221,18 +221,49 @@ class DatabaseDrivenImporter:
         }
     
     def _setup_console_logging(self):
-        """Setup console logging for standalone mode"""
+        """Setup console logging for standalone mode.
+
+        Uses structured JSON logging when running in non-interactive environments
+        (ECS, CI/CD) for CloudWatch Logs Insights compatibility.
+        """
         # Only configure if not already configured
         if not logger.handlers:
-            logging.basicConfig(
-                level=logging.INFO,
-                format="%(asctime)s - %(levelname)s - %(message)s",
-                handlers=[
-                    logging.FileHandler("database_driven_importer.log", encoding="utf-8"),
-                    UnicodeSafeHandler(),  # Console handler with Unicode safety
-                ],
-            )
-            logger.info("Database-driven importer logging configured for standalone mode")
+            try:
+                from scripts.data_processing.pipeline_logging import is_interactive, JsonFormatter
+
+                if is_interactive():
+                    # Interactive mode: human-readable logs
+                    logging.basicConfig(
+                        level=logging.INFO,
+                        format="%(asctime)s - %(levelname)s - %(message)s",
+                        handlers=[
+                            logging.FileHandler("database_driven_importer.log", encoding="utf-8"),
+                            UnicodeSafeHandler(),  # Console handler with Unicode safety
+                        ],
+                    )
+                    logger.info("Database-driven importer logging configured for standalone mode")
+                else:
+                    # Non-interactive mode (ECS/CI): structured JSON logging
+                    handler = logging.StreamHandler(sys.stdout)
+                    handler.setFormatter(JsonFormatter(extra_fields={
+                        'service': 'parliament-importer',
+                        'component': 'database_driven_importer'
+                    }))
+                    logger.addHandler(handler)
+                    logger.setLevel(logging.INFO)
+                    logger.propagate = False
+                    logger.info("Database-driven importer logging configured for ECS/CloudWatch mode")
+            except ImportError:
+                # Fallback if pipeline_logging not available
+                logging.basicConfig(
+                    level=logging.INFO,
+                    format="%(asctime)s - %(levelname)s - %(message)s",
+                    handlers=[
+                        logging.FileHandler("database_driven_importer.log", encoding="utf-8"),
+                        UnicodeSafeHandler(),
+                    ],
+                )
+                logger.info("Database-driven importer logging configured (fallback mode)")
     
     def _print(self, *args, **kwargs):
         """Print only if not in quiet mode"""
@@ -633,7 +664,22 @@ class DatabaseDrivenImporter:
             except SchemaError as e:
                 # Rollback the failed transaction (both mapper data and import status changes)
                 db_session.rollback()
-                
+
+                # After rollback, re-fetch the import record to get a clean state
+                record_id = import_record.id
+                try:
+                    import_record = db_session.query(ImportStatus).filter(ImportStatus.id == record_id).first()
+                    if not import_record:
+                        logger.error(f"Could not re-fetch import record {record_id} after rollback")
+                        return False
+                except Exception as refetch_error:
+                    logger.error(f"Failed to re-fetch import record after rollback: {refetch_error}")
+                    try:
+                        db_session.rollback()
+                    except:
+                        pass
+                    return False
+
                 error_msg = f"Schema coverage violation - unmapped fields detected: {str(e)}"
                 logger.error(f"Schema error for {import_record.file_name}: {error_msg}")
                 import_record.status = 'import_error'
@@ -646,12 +692,33 @@ class DatabaseDrivenImporter:
                 import_record.updated_at = datetime.now()
 
                 # Commit only the error record (not the failed mapper data)
-                db_session.commit()
+                try:
+                    db_session.commit()
+                except Exception as commit_error:
+                    logger.error(f"Failed to commit error status: {commit_error}")
+                    db_session.rollback()
                 return False
 
             except Exception as e:
                 # Rollback the failed transaction (both mapper data and import status changes)
                 db_session.rollback()
+
+                # After rollback, re-fetch the import record to get a clean state
+                # This prevents InFailedSqlTransaction errors from stale session state
+                record_id = import_record.id
+                try:
+                    import_record = db_session.query(ImportStatus).filter(ImportStatus.id == record_id).first()
+                    if not import_record:
+                        logger.error(f"Could not re-fetch import record {record_id} after rollback")
+                        return False
+                except Exception as refetch_error:
+                    logger.error(f"Failed to re-fetch import record after rollback: {refetch_error}")
+                    # Try one more rollback in case of nested transaction issues
+                    try:
+                        db_session.rollback()
+                    except:
+                        pass
+                    return False
 
                 error_msg = f"Processing error: {str(e)}"
                 import_record.status = 'import_error'
@@ -664,12 +731,31 @@ class DatabaseDrivenImporter:
                 import_record.updated_at = datetime.now()
 
                 # Commit only the error record (not the failed mapper data)
-                db_session.commit()
+                try:
+                    db_session.commit()
+                except Exception as commit_error:
+                    logger.error(f"Failed to commit error status: {commit_error}")
+                    db_session.rollback()
                 return False
 
         except Exception as e:
             # Rollback any changes from the outer try block
             db_session.rollback()
+
+            # After rollback, re-fetch the import record to get a clean state
+            record_id = import_record.id
+            try:
+                import_record = db_session.query(ImportStatus).filter(ImportStatus.id == record_id).first()
+                if not import_record:
+                    logger.error(f"Could not re-fetch import record {record_id} after rollback")
+                    return False
+            except Exception as refetch_error:
+                logger.error(f"Failed to re-fetch import record after rollback: {refetch_error}")
+                try:
+                    db_session.rollback()
+                except:
+                    pass
+                return False
 
             import_record.status = 'import_error'
             import_record.error_message = f"Unexpected error: {str(e)}"
@@ -681,7 +767,11 @@ class DatabaseDrivenImporter:
             import_record.updated_at = datetime.now()
 
             # Commit only the error record
-            db_session.commit()
+            try:
+                db_session.commit()
+            except Exception as commit_error:
+                logger.error(f"Failed to commit error status: {commit_error}")
+                db_session.rollback()
             return False
     
     def _download_file(self, import_record: ImportStatus) -> bool:

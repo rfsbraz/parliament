@@ -323,6 +323,13 @@ variable "backend_image" {
   default     = ""
 }
 
+# Import Pipeline Configuration
+variable "enable_scheduled_import" {
+  description = "Enable scheduled ECS tasks for data discovery and import (daily at 2 AM and 4 AM UTC)"
+  type        = bool
+  default     = false  # Disabled by default - enable when ready for production imports
+}
+
 # ============================================================================
 # TAGGING CONFIGURATION FOR COST ANALYSIS AND RESOURCE MANAGEMENT
 # ============================================================================

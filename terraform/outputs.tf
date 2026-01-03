@@ -61,6 +61,36 @@ output "ecs_service_name" {
   value       = aws_ecs_service.parliament.name
 }
 
+# Import Pipeline Outputs
+output "ecs_import_discovery_task_arn" {
+  description = "ECS task definition ARN for discovery"
+  value       = aws_ecs_task_definition.import_discovery.arn
+}
+
+output "ecs_import_importer_task_arn" {
+  description = "ECS task definition ARN for importer"
+  value       = aws_ecs_task_definition.import_importer.arn
+}
+
+output "ecs_import_log_group" {
+  description = "CloudWatch log group for import tasks"
+  value       = aws_cloudwatch_log_group.ecs_import.name
+}
+
+output "ecs_import_security_group_id" {
+  description = "Security group ID for import tasks"
+  value       = aws_security_group.ecs_import.id
+}
+
+output "import_schedule_status" {
+  description = "Status of scheduled import tasks"
+  value = {
+    enabled            = var.enable_scheduled_import
+    discovery_schedule = "Daily at 2 AM UTC"
+    importer_schedule  = "Daily at 4 AM UTC"
+  }
+}
+
 output "spot_import_function_url" {
   description = "Lambda Function URL for manual data import triggers (when enabled)"
   value       = var.enable_automated_import ? aws_lambda_function_url.spot_launcher[0].function_url : "Not enabled"

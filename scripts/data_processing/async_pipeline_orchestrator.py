@@ -1,8 +1,24 @@
 #!/usr/bin/env python3
 """
-Async Parliament Data Pipeline Orchestrator
-============================================
+DEPRECATED: Async Parliament Data Pipeline Orchestrator
+========================================================
 
+This module has been superseded by the unified pipeline orchestration in:
+- scripts/data_processing/pipeline_runner.py  (core module)
+- ops/pipeline.py                              (CLI interface)
+
+Please use the unified interface instead:
+
+    ops pipeline run                    # Full pipeline with Rich UI (local)
+    ops pipeline run --database prod    # Against production database
+    ops pipeline run --ecs              # Run on ECS Fargate
+    ops pipeline discover               # Discovery only
+    ops pipeline import                 # Import only
+
+This file is kept for backward compatibility but will be removed in a future version.
+
+Original description:
+--------------------
 Orchestrates the complete parliament data pipeline with async/parallel processing:
 1. Discovery Service - Finds and catalogs file URLs (runs in thread pool)
 2. Async Download Manager - Downloads files concurrently (3-5 parallel)
@@ -14,6 +30,13 @@ Features:
 - Rate limiting for discovery and downloads
 - Graceful shutdown handling
 """
+
+import warnings
+warnings.warn(
+    "async_pipeline_orchestrator.py is deprecated. Use 'ops pipeline run' instead.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 import argparse
 import asyncio
@@ -267,7 +290,8 @@ class AsyncPipelineOrchestrator:
         allowed_file_types: List[str] = None,
         stop_on_error: bool = False,
         download_only: bool = False,
-        import_only: bool = False
+        import_only: bool = False,
+        database_env: str = "auto"
     ):
         self.console = Console()
         self.stats = AsyncPipelineStats()
@@ -275,6 +299,7 @@ class AsyncPipelineOrchestrator:
         self.download_only = download_only
         self.import_only = import_only
         self.allowed_file_types = allowed_file_types or ['XML']
+        self.database_env = database_env  # Store database environment for UI display
 
         # Configuration
         self.discovery_rate_limit = discovery_rate_limit
@@ -362,7 +387,10 @@ class AsyncPipelineOrchestrator:
             mode_str = " | Mode: Download Only"
         elif self.import_only:
             mode_str = " | Mode: Import Only"
-        header_text = f"Async Parliament Pipeline - Runtime: {self.stats.elapsed_time} | File Types: {file_types_info}{mode_str}"
+
+        # Add database environment indicator with color coding
+        db_color = "green" if "prod" in self.database_env else "yellow" if "local" in self.database_env else "blue"
+        header_text = f"Async Parliament Pipeline - Runtime: {self.stats.elapsed_time} | DB: [{db_color}]{self.database_env}[/{db_color}] | Files: {file_types_info}{mode_str}"
 
         layout["header"].update(Panel(header_text, style="bold blue"))
 
@@ -886,9 +914,143 @@ class AsyncPipelineOrchestrator:
             self.console.print("Pipeline stopped")
 
 
+def setup_database_environment(env_choice: str) -> str:
+    """
+    Configure database environment variables based on user choice.
+
+    Returns the environment name being used.
+    """
+    if env_choice == 'auto':
+        # Check if we have AWS credentials/secret ARN configured
+        if os.getenv('DATABASE_SECRET_ARN'):
+            return 'prod (via DATABASE_SECRET_ARN)'
+        elif os.getenv('DATABASE_URL'):
+            return 'custom (via DATABASE_URL)'
+        elif os.getenv('PG_PASSWORD'):
+            # Check if it looks like a production host
+            pg_host = os.getenv('PG_HOST', 'localhost')
+            if 'rds.amazonaws.com' in pg_host:
+                return f'prod ({pg_host})'
+            return f'local ({pg_host}:{os.getenv("PG_PORT", "5432")})'
+        else:
+            raise RuntimeError(
+                "No database configuration found. Use --database local or --database prod, "
+                "or set DATABASE_URL, DATABASE_SECRET_ARN, or PG_PASSWORD environment variables."
+            )
+
+    elif env_choice == 'local':
+        # Force use of local environment variables
+        # Clear any AWS secret ARN that might be set
+        if 'DATABASE_SECRET_ARN' in os.environ:
+            del os.environ['DATABASE_SECRET_ARN']
+        if 'DATABASE_URL' in os.environ:
+            del os.environ['DATABASE_URL']
+
+        # Check that we have local config
+        if not os.getenv('PG_PASSWORD'):
+            raise RuntimeError(
+                "Local database configuration requires PG_PASSWORD environment variable. "
+                "Also set PG_HOST, PG_PORT, PG_USER, PG_DATABASE as needed."
+            )
+
+        # Set sslmode to disable for local connections
+        os.environ['PG_SSLMODE'] = 'disable'
+        return f"local ({os.getenv('PG_HOST', 'localhost')}:{os.getenv('PG_PORT', '5432')})"
+
+    elif env_choice == 'prod':
+        # Clear DATABASE_SECRET_ARN - we'll use PG_* vars with production host instead
+        # This allows running locally against prod without AWS credentials
+        if 'DATABASE_SECRET_ARN' in os.environ:
+            del os.environ['DATABASE_SECRET_ARN']
+        if 'DATABASE_URL' in os.environ:
+            del os.environ['DATABASE_URL']
+
+        # Always get the production endpoint from terraform (overrides .env settings)
+        try:
+            import subprocess
+
+            # Get the database endpoint from terraform
+            result = subprocess.run(
+                ['terraform', 'output', '-raw', 'database_endpoint'],
+                cwd=os.path.join(os.path.dirname(__file__), '..', '..', 'terraform'),
+                capture_output=True,
+                text=True
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                endpoint = result.stdout.strip()
+                # Parse host:port from endpoint
+                if ':' in endpoint:
+                    host, port = endpoint.rsplit(':', 1)
+                    os.environ['PG_HOST'] = host
+                    os.environ['PG_PORT'] = port
+                else:
+                    os.environ['PG_HOST'] = endpoint
+                    os.environ['PG_PORT'] = '5432'
+
+                os.environ['PG_SSLMODE'] = 'require'
+
+                # Check if PROD_PG_PASSWORD is set (separate from local PG_PASSWORD)
+                prod_password = os.getenv('PROD_PG_PASSWORD') or os.getenv('PG_PROD_PASSWORD')
+                if prod_password:
+                    os.environ['PG_PASSWORD'] = prod_password
+                    return f"prod ({os.getenv('PG_HOST')})"
+
+                # Prompt for password if not set
+                print("\n" + "="*70)
+                print("PRODUCTION DATABASE CONNECTION")
+                print("="*70)
+                print(f"Host: {os.getenv('PG_HOST')}")
+                print(f"Port: {os.getenv('PG_PORT', '5432')}")
+                print(f"User: {os.getenv('PG_USER', 'parluser')}")
+                print(f"Database: {os.getenv('PG_DATABASE', 'parliament')}")
+                print("-"*70)
+                print("Production password not set.")
+                print("Set PROD_PG_PASSWORD environment variable, or enter it now:")
+                print("="*70)
+
+                import getpass
+                password = getpass.getpass("Production DB Password: ")
+                if not password:
+                    raise RuntimeError("Password required for production database access")
+
+                os.environ['PG_PASSWORD'] = password
+                return f"prod ({os.getenv('PG_HOST')})"
+
+            else:
+                raise RuntimeError(
+                    "Could not get database endpoint from terraform outputs. "
+                    "Run from project root or set PG_HOST manually."
+                )
+        except FileNotFoundError:
+            raise RuntimeError(
+                "terraform not available. Set PG_HOST, PG_PORT, and PROD_PG_PASSWORD manually."
+            )
+
+    else:
+        raise ValueError(f"Unknown database environment: {env_choice}")
+
+
 def main():
-    """Main CLI interface"""
-    parser = argparse.ArgumentParser(description="Async Parliament Data Pipeline")
+    """Main CLI interface - DEPRECATED"""
+    # Show prominent deprecation warning
+    print("\n" + "="*70)
+    print("DEPRECATION WARNING")
+    print("="*70)
+    print("This script is deprecated. Please use the unified interface:")
+    print("")
+    print("  ops pipeline run                    # Full pipeline with Rich UI")
+    print("  ops pipeline run --database prod    # Against production database")
+    print("  ops pipeline run --ecs              # Run on ECS Fargate")
+    print("")
+    print("This script will continue running, but please migrate to 'ops pipeline'.")
+    print("="*70 + "\n")
+
+    parser = argparse.ArgumentParser(
+        description="DEPRECATED: Async Parliament Data Pipeline. Use 'ops pipeline run' instead.",
+        epilog="This script is deprecated. Use 'ops pipeline run' for the unified interface."
+    )
+    parser.add_argument('--database', '-d', type=str, choices=['local', 'prod', 'auto'], default='auto',
+                       help='Database environment: local (uses PG_* env vars), prod (uses AWS Secrets Manager), auto (detect)')
     parser.add_argument('--legislature', type=str, help='Filter by legislature')
     parser.add_argument('--category', type=str, help='Filter by category')
     parser.add_argument('--discovery-rate-limit', type=float, default=0.5)
@@ -903,6 +1065,14 @@ def main():
     parser.add_argument('--import-only', action='store_true')
 
     args = parser.parse_args()
+
+    # Setup database environment before doing anything else
+    try:
+        db_env = setup_database_environment(args.database)
+        print(f"Database: {db_env}")
+    except RuntimeError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
 
     if args.retry_failed:
         with DatabaseSession() as db_session:
@@ -925,7 +1095,8 @@ def main():
         allowed_file_types=allowed_file_types,
         stop_on_error=args.stop_on_error,
         download_only=args.download_only,
-        import_only=args.import_only
+        import_only=args.import_only,
+        database_env=db_env
     )
 
     try:
