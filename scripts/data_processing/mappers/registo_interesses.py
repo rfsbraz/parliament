@@ -551,16 +551,11 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         self, record_id: str, full_name: str, legislatura: Legislatura
     ) -> Deputado:
         """
-        FIXED: Deputy lookup without auto-creation to prevent cross-legislature contamination.
+        Get or create deputy by cadastral ID.
 
-        This method implements the correct deputy association pattern:
-        - Use XML RecordId as cadastral ID (id_cadastro) that tracks a person across legislatures
-        - Find existing deputy by id_cadastro + legislature combination
-        - FAIL if deputy doesn't exist (prevents bogus cross-legislature records)
-
-        The Interest Registry should only reference deputies who actually served in that legislature
-        as established by the authoritative Biographical Registry data. Auto-creating deputy records
-        leads to data integrity violations like André Ventura appearing in Legislature I.
+        With on-the-fly file processing, files can arrive in any order. Deputies are created
+        from whichever source arrives first (Biographical Registry, Interest Registry, etc.)
+        and enriched by subsequent imports.
 
         Args:
             record_id: XML RecordId to use as cadastral ID
@@ -568,10 +563,10 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
             legislatura: Legislature context
 
         Returns:
-            Deputado: Existing deputy record
+            Deputado: Existing or newly created deputy record
 
         Raises:
-            ValueError: If record_id is not numeric, missing required data, or deputy doesn't exist
+            ValueError: If record_id is not numeric or missing required data
         """
         # Validate cadastral ID
         id_cadastro = self._safe_int(record_id)
@@ -588,13 +583,16 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
         )
 
         if not deputado:
-            # CRITICAL FIX: Do NOT auto-create deputy records
-            # Deputies should only be created by Biographical Registry mapper which has authoritative data
-            # Interest Registry files sometimes contain cross-legislature contamination that would create bogus records
-            raise ValueError(
-                f"Deputy with cadastral ID {id_cadastro} ({full_name}) not found in legislature {legislatura.numero}. "
-                f"Deputies must be created by Biographical Registry first. This prevents cross-legislature contamination."
+            # Create deputy with basic info - will be enriched by Biographical Registry later
+            deputado = Deputado(
+                id_cadastro=id_cadastro,
+                nome=full_name or f"Deputy {id_cadastro}",
+                nome_completo=full_name,
+                legislatura_id=legislatura.id,
             )
+            self.session.add(deputado)
+            self.session.flush()  # Get ID for relationships
+            logger.debug(f"Created deputy {id_cadastro} ({full_name}) in legislature {legislatura.numero} from Interest Registry")
         else:
             # Update existing deputy with any new information
             if full_name and deputado.nome != full_name:

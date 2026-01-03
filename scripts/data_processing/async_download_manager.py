@@ -37,6 +37,7 @@ class DownloadResult:
     success: bool
     error_message: Optional[str] = None
     is_not_found: bool = False  # For 404 errors that need recrawl
+    skipped_existing: bool = False  # File already existed on disk
 
 
 class AsyncDownloadManager:
@@ -91,6 +92,38 @@ class AsyncDownloadManager:
         """Number of currently active downloads"""
         return self._active_downloads
 
+    def _get_deterministic_path(self, import_record: Any) -> Path:
+        """
+        Get deterministic file path based on category/legislatura/filename.
+
+        This ensures files can be found after database wipes, avoiding
+        unnecessary re-downloads of already existing files.
+
+        Structure: downloads_dir/{category}/{legislatura}/{file_name}
+        """
+        # Sanitize category and legislatura for filesystem
+        category = (import_record.category or "unknown").replace(" ", "_").replace("/", "_")
+        legislatura = (import_record.legislatura or "unknown").replace(" ", "_").replace("/", "_")
+
+        # Create subdirectory path
+        subdir = self.downloads_dir / category / legislatura
+        subdir.mkdir(parents=True, exist_ok=True)
+
+        return subdir / import_record.file_name
+
+    def check_existing_file(self, import_record: Any) -> Optional[Path]:
+        """
+        Check if file already exists on disk.
+
+        Returns the file path if it exists and has content, None otherwise.
+        """
+        file_path = self._get_deterministic_path(import_record)
+
+        if file_path.exists() and file_path.stat().st_size > 0:
+            return file_path
+
+        return None
+
     async def _rate_limit(self):
         """Ensure minimum delay between requests"""
         async with self._rate_limiter:
@@ -105,11 +138,34 @@ class AsyncDownloadManager:
         Download a single file with semaphore limiting
 
         Args:
-            import_record: ImportStatus database record with file_url, id, file_name
+            import_record: ImportStatus database record with file_url, id, file_name,
+                          category, legislatura
 
         Returns:
             DownloadResult with success/failure info
         """
+        # Check if file already exists (before acquiring semaphore for efficiency)
+        existing_path = self.check_existing_file(import_record)
+        if existing_path:
+            # File exists, calculate hash from existing file and skip download
+            try:
+                file_size = existing_path.stat().st_size
+                with open(existing_path, 'rb') as f:
+                    file_hash = hashlib.sha1(f.read()).hexdigest()
+
+                return DownloadResult(
+                    status_id=import_record.id,
+                    file_name=import_record.file_name,
+                    file_path=existing_path,
+                    file_size=file_size,
+                    file_hash=file_hash,
+                    success=True,
+                    skipped_existing=True
+                )
+            except Exception:
+                # If we can't read the existing file, try re-downloading
+                pass
+
         async with self._semaphore:
             self._active_downloads += 1
             try:
@@ -122,9 +178,8 @@ class AsyncDownloadManager:
                 # Calculate hash
                 file_hash = hashlib.sha1(content).hexdigest()
 
-                # Save to disk
-                local_filename = f"{import_record.id}_{import_record.file_name}"
-                file_path = self.downloads_dir / local_filename
+                # Save to disk using deterministic path (category/legislatura/filename)
+                file_path = self._get_deterministic_path(import_record)
 
                 # Write file atomically (write to temp, then rename)
                 temp_path = file_path.with_suffix('.tmp')

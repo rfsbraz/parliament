@@ -1173,19 +1173,28 @@ class EnhancedSchemaMapper(
                     self._cache_deputado(deputy)
                     return deputy
 
-        # Step 4: No match found using any strategy
-        names = []
-        if nome_completo:
-            names.append(f"nome_completo='{nome_completo}'")
-        if nome_parlamentar:
-            names.append(f"nome_parlamentar='{nome_parlamentar}'")
-        name_info = " (" + ", ".join(names) + ")" if names else ""
+        # Step 4: No match found - create new deputy
+        # With on-the-fly file processing, files can arrive in any order.
+        # Deputies are created from whichever source arrives first and enriched later.
+        if legislatura_id is None:
+            raise ValueError(f"Cannot create deputy {cad_id} - legislatura_id is required")
 
-        legislature_info = f" in legislature {legislatura_id}" if legislatura_id else ""
-
-        raise ValueError(
-            f"Deputy with cadId {cad_id} not found in database using any matching strategy{name_info}{legislature_info}"
+        nome = nome_parlamentar or nome_completo or f"Deputy {cad_id}"
+        deputado = Deputado(
+            id_cadastro=cad_id,
+            nome=nome,
+            nome_completo=nome_completo,
+            legislatura_id=legislatura_id,
         )
+        self.session.add(deputado)
+        self.session.flush()  # Get ID for relationships
+
+        # Cache for future lookups
+        self._deputado_cache[cache_key] = deputado
+        self._cache_deputado(deputado)
+
+        logger.debug(f"Created deputy {cad_id} ({nome}) in legislature {legislatura_id}")
+        return deputado
 
     def _record_identity_mapping(
         self, old_cad_id: int, new_cad_id: int, deputy_name: str, deputy: Deputado

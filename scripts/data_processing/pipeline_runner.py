@@ -43,6 +43,8 @@ try:
 except ImportError:
     pass  # dotenv not required in production
 
+import logging
+
 try:
     from rich.console import Console
     from rich.layout import Layout
@@ -52,6 +54,37 @@ try:
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
+
+
+def configure_logging_for_rich_ui():
+    """
+    Configure logging to suppress console output when Rich UI is active.
+
+    This prevents log messages from polluting the Rich terminal UI.
+    Logs are still written to files via error logging.
+    """
+    # Suppress all console logging from the root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.CRITICAL)
+
+    # Remove all handlers that write to stdout/stderr
+    for handler in root_logger.handlers[:]:
+        if isinstance(handler, logging.StreamHandler):
+            root_logger.removeHandler(handler)
+
+    # Also suppress specific module loggers that might be pre-configured
+    for logger_name in [
+        'scripts.data_processing',
+        'scripts.data_processing.mappers',
+        'scripts.data_processing.database_driven_importer',
+        'database',
+        'database.connection',
+        'sqlalchemy',
+        'urllib3',
+        'aiohttp',
+    ]:
+        logging.getLogger(logger_name).setLevel(logging.CRITICAL)
+        logging.getLogger(logger_name).propagate = False
 
 
 # =============================================================================
@@ -270,6 +303,7 @@ class PipelineStats:
     discovery_status: str = "Waiting"
     download_queue_size: int = 0
     download_completed: int = 0
+    download_skipped: int = 0  # Files already on disk (skipped download)
     download_failed: int = 0
     import_queue_size: int = 0
     import_completed: int = 0
@@ -446,6 +480,9 @@ class LocalPipelineRunner:
         if not HAS_RICH:
             raise RuntimeError("Rich library required for local pipeline. Install with: pip install rich")
 
+        # Suppress console logging to prevent pollution of Rich UI
+        configure_logging_for_rich_ui()
+
         self.console = Console()
         self.db_config = db_config
         self.stats = PipelineStats()
@@ -544,9 +581,10 @@ class LocalPipelineRunner:
 
         dl_active = len(self.stats.active_downloads)
         dl_color = "green" if dl_active > 0 else "dim"
+        skip_dl_str = f" | SKIP: {self.stats.download_skipped}" if self.stats.download_skipped > 0 else ""
         stats_table.add_row(
             "Downloads",
-            f"[{dl_color}]{dl_active} active[/{dl_color}] | OK: {self.stats.download_completed} | ERR: {self.stats.download_failed} | Queue: {self.stats.download_queue_size}"
+            f"[{dl_color}]{dl_active} active[/{dl_color}] | OK: {self.stats.download_completed}{skip_dl_str} | ERR: {self.stats.download_failed} | Queue: {self.stats.download_queue_size}"
         )
 
         imp_active = len(self.stats.active_imports)
@@ -734,7 +772,8 @@ class LocalPipelineRunner:
                             'id': record.id,
                             'file_url': record.file_url,
                             'file_name': record.file_name,
-                            'category': record.category or ""
+                            'category': record.category or "",
+                            'legislatura': record.legislatura or ""
                         })
                     db_session.commit()
 
@@ -746,6 +785,8 @@ class LocalPipelineRunner:
                                 self.id = d['id']
                                 self.file_url = d['file_url']
                                 self.file_name = d['file_name']
+                                self.category = d.get('category', 'unknown')
+                                self.legislatura = d.get('legislatura', 'unknown')
 
                         result = await self._download_manager.download_file(SimpleRecord(file_info))
                         return result, file_info
@@ -771,7 +812,10 @@ class LocalPipelineRunner:
                             record.file_size = result.file_size
                             record.status = 'pending'
                             record.updated_at = datetime.now()
-                            self.stats.download_completed += 1
+                            if result.skipped_existing:
+                                self.stats.download_skipped += 1
+                            else:
+                                self.stats.download_completed += 1
                         else:
                             if result.is_not_found:
                                 record.status = 'recrawl'
@@ -1141,7 +1185,8 @@ class HeadlessPipelineRunner:
                             'id': record.id,
                             'file_url': record.file_url,
                             'file_name': record.file_name,
-                            'category': record.category or ""
+                            'category': record.category or "",
+                            'legislatura': record.legislatura or ""
                         })
                     db_session.commit()
 
@@ -1153,6 +1198,8 @@ class HeadlessPipelineRunner:
                                 self.id = d['id']
                                 self.file_url = d['file_url']
                                 self.file_name = d['file_name']
+                                self.category = d.get('category', 'unknown')
+                                self.legislatura = d.get('legislatura', 'unknown')
 
                         result = await self._download_manager.download_file(SimpleRecord(file_info))
 
@@ -1165,7 +1212,10 @@ class HeadlessPipelineRunner:
                                     record.file_size = result.file_size
                                     record.status = 'pending'
                                     record.updated_at = datetime.now()
-                                    self.progress.stats.download_completed += 1
+                                    if result.skipped_existing:
+                                        self.progress.stats.download_skipped += 1
+                                    else:
+                                        self.progress.stats.download_completed += 1
                                 else:
                                     record.status = 'failed' if not result.is_not_found else 'recrawl'
                                     record.error_message = result.error_message

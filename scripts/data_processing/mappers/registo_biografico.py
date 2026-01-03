@@ -1266,19 +1266,21 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             if not existing:
                 interest_registry = RegistoInteressesUnified(
                     deputado_id=deputy.id,
+                    legislatura_id=legislatura_id,
                     cad_id=cad_id,
-                    cad_estado_civil_cod=self._get_text_value(
+                    schema_version="V2",  # I Legislature uses V2 schema format
+                    marital_status_code=self._get_text_value(
                         record, "cadEstadoCivilCod"
                     ),
-                    cad_nome_completo=self._get_text_value(
+                    full_name=self._get_text_value(
                         record, "cadNomeCompleto"
-                    ),  # New I Legislature field
-                    cad_actividade_profissional=self._get_text_value(
+                    ),
+                    professional_activity=self._get_text_value(
                         record, "cadActividadeProfissional"
-                    ),  # New I Legislature field
-                    cad_estado_civil_des=self._get_text_value(
+                    ),
+                    marital_status_desc=self._get_text_value(
                         record, "cadEstadoCivilDes"
-                    ),  # New I Legislature field
+                    ),
                 )
                 self.session.add(interest_registry)
 

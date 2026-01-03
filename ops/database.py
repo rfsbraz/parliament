@@ -151,9 +151,17 @@ def get_db_connection_info(production: bool = False):
         }
 
 
-def clear_all_tables(engine, echo: bool = False):
-    """Clear all data from tables without dropping them."""
+def clear_all_tables(engine, echo: bool = False, exclude_tables: list = None):
+    """Clear all data from tables without dropping them.
+
+    Args:
+        engine: SQLAlchemy engine
+        echo: Print progress messages
+        exclude_tables: List of table names to skip (e.g., ['import_status'])
+    """
     from sqlalchemy import text, MetaData
+
+    exclude_tables = exclude_tables or []
 
     metadata = MetaData()
     metadata.reflect(bind=engine)
@@ -167,6 +175,10 @@ def clear_all_tables(engine, echo: bool = False):
         conn.execute(text("SET session_replication_role = 'replica';"))
 
         for table in tables:
+            if table.name in exclude_tables:
+                if echo:
+                    click.echo(f"    Skipping table: {table.name} (excluded)")
+                continue
             if echo:
                 click.echo(f"    Clearing table: {table.name}")
             conn.execute(text(f'TRUNCATE TABLE "{table.name}" CASCADE'))
@@ -261,14 +273,17 @@ def database():
 @database.command()
 @click.option('--yes', '-y', is_flag=True, help='Skip confirmation prompt')
 @click.option('--preserve-schema', is_flag=True, help='Keep tables, only clear data')
+@click.option('--keep-downloads', is_flag=True, help='Preserve download state (reset import_status instead of truncating)')
 @click.option('--verbose', '-v', is_flag=True, help='Show detailed progress')
 @click.option('--production', '-p', is_flag=True, help='Connect to production RDS database')
-def clear(yes: bool, preserve_schema: bool, verbose: bool, production: bool):
+def clear(yes: bool, preserve_schema: bool, keep_downloads: bool, verbose: bool, production: bool):
     """
     Clear all data from the database.
 
     By default, drops and recreates all tables from models.
     Use --preserve-schema to only truncate data while keeping table structure.
+    Use --keep-downloads to preserve import_status records (reset to 'discovered' state)
+        so that already-downloaded files are not re-downloaded after a wipe.
     Use --production to connect to the production RDS database.
     """
     click.echo(click.style("\n[Database] Clear Database", fg="blue", bold=True))
@@ -289,6 +304,8 @@ def clear(yes: bool, preserve_schema: bool, verbose: bool, production: bool):
     # Confirmation
     if not yes:
         action = "truncate all tables" if preserve_schema else "drop and recreate all tables"
+        if keep_downloads:
+            action += " (preserving import_status)"
         if not click.confirm(click.style(f"\n  WARNING: This will {action}. Continue?", fg="yellow")):
             click.echo("  Aborted.")
             return
@@ -298,12 +315,33 @@ def clear(yes: bool, preserve_schema: bool, verbose: bool, production: bool):
 
         if preserve_schema:
             click.echo("\n  Truncating all tables...")
-            count = clear_all_tables(engine, echo=verbose)
+            exclude_tables = ['import_status'] if keep_downloads else []
+            count = clear_all_tables(engine, echo=verbose, exclude_tables=exclude_tables)
             click.echo(click.style(f"\n  Cleared {count} tables successfully!", fg="green"))
+
+            if keep_downloads:
+                click.echo("\n  Resetting import_status records...")
+                reset_count = reset_import_status(engine, echo=verbose)
+                if reset_count > 0:
+                    click.echo(click.style(f"  Reset {reset_count} import records to 'discovered' state", fg="cyan"))
+                else:
+                    click.echo(click.style("  No import records needed reset", fg="cyan"))
         else:
-            click.echo("\n  Dropping and recreating tables...")
-            count = drop_and_recreate_tables(engine, echo=verbose)
-            click.echo(click.style(f"\n  Recreated {count} tables successfully!", fg="green"))
+            if keep_downloads:
+                click.echo(click.style("\n  Note: --keep-downloads requires --preserve-schema", fg="yellow"))
+                click.echo("  Falling back to preserve-schema mode...")
+                exclude_tables = ['import_status']
+                count = clear_all_tables(engine, echo=verbose, exclude_tables=exclude_tables)
+                click.echo(click.style(f"\n  Cleared {count} tables successfully!", fg="green"))
+
+                click.echo("\n  Resetting import_status records...")
+                reset_count = reset_import_status(engine, echo=verbose)
+                if reset_count > 0:
+                    click.echo(click.style(f"  Reset {reset_count} import records to 'discovered' state", fg="cyan"))
+            else:
+                click.echo("\n  Dropping and recreating tables...")
+                count = drop_and_recreate_tables(engine, echo=verbose)
+                click.echo(click.style(f"\n  Recreated {count} tables successfully!", fg="green"))
 
     except Exception as e:
         raise click.ClickException(f"Database operation failed: {e}")
