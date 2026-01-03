@@ -956,10 +956,19 @@ class LocalPipelineRunner:
             self.console.print("\nShutdown requested...")
         finally:
             self._running = False
+            self.console.print("Cancelling tasks...")
 
             for task in tasks:
                 task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Wait for tasks with timeout to avoid hanging
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True),
+                    timeout=5.0
+                )
+            except asyncio.TimeoutError:
+                self.console.print("Some tasks did not stop cleanly (timeout)")
 
             # Close error log with summary
             self.stats.close_error_log()
