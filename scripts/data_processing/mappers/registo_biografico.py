@@ -1126,17 +1126,45 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             self.session.add(publication)
 
             # Process Legislative Mandates (CadDeputadoLegis)
+            # CRITICAL: Each mandate has its own leg_des and must be linked to the correct deputy
+            # for that legislature, not the file-level deputy
             legislaturas = record.find("CadDeputadoLegis")
             if legislaturas is not None:
                 for mandato in legislaturas.findall("DadosDeputadoLegis"):
                     leg_des = self._get_text_value(mandato, "LegDes")
                     ce_des = self._get_text_value(mandato, "CeDes")
+                    nome_parlamentar = self._get_text_value(mandato, "DepNomeParlamentar")
 
                     if leg_des:
+                        # Find the correct deputy for THIS mandate's legislature
+                        # Each mandate belongs to a specific legislature and must link to the
+                        # deputy record for that legislature, not the file-level deputy
+                        try:
+                            mandate_legislatura_sigla = self._extract_legislatura_from_xml_content(leg_des)
+                            if mandate_legislatura_sigla:
+                                mandate_legislatura = self._get_or_create_legislatura(mandate_legislatura_sigla)
+                                mandate_legislatura_id = mandate_legislatura.id
+                                logger.debug(f"Mandate leg_des '{leg_des}' resolved to legislature ID {mandate_legislatura_id}")
+                            else:
+                                # Fallback to file-level legislature (shouldn't happen if leg_des is valid)
+                                mandate_legislatura_id = legislatura_id
+                                logger.warning(f"Could not extract legislature from leg_des '{leg_des}', using file-level legislature")
+                        except Exception as e:
+                            logger.warning(f"Failed to extract legislature from mandate leg_des '{leg_des}': {e} - using file-level legislature")
+                            mandate_legislatura_id = legislatura_id
+
+                        # Find the correct deputy for this mandate's legislature
+                        mandate_deputy = self._find_deputy_robust(
+                            cad_id,
+                            nome_completo=nome_completo,
+                            nome_parlamentar=nome_parlamentar,
+                            legislatura_id=mandate_legislatura_id,
+                        )
+
                         existing = (
                             self.session.query(DeputadoMandatoLegislativo)
                             .filter(
-                                DeputadoMandatoLegislativo.deputado_id == deputy.id,
+                                DeputadoMandatoLegislativo.deputado_id == mandate_deputy.id,
                                 DeputadoMandatoLegislativo.leg_des == leg_des,
                                 DeputadoMandatoLegislativo.ce_des == ce_des,
                             )
@@ -1147,19 +1175,17 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             # Extract party information
                             par_sigla = self._get_text_value(mandato, "ParSigla")
                             par_des = self._get_text_value(mandato, "ParDes")
-                            
+
                             # Log mandate creation details (debug level to avoid UI clutter)
-                            logger.debug(f"[MANDATE_CREATE] Creating mandate for deputy {deputy.id} ({deputy.nome_completo})")
+                            logger.debug(f"[MANDATE_CREATE] Creating mandate for deputy {mandate_deputy.id} ({mandate_deputy.nome_completo})")
                             logger.debug(f"[MANDATE_CREATE]   - leg_des: '{leg_des}'")
-                            logger.debug(f"[MANDATE_CREATE]   - deputy.legislatura_id: {deputy.legislatura_id}")
+                            logger.debug(f"[MANDATE_CREATE]   - mandate_deputy.legislatura_id: {mandate_deputy.legislatura_id}")
                             logger.debug(f"[MANDATE_CREATE]   - file_path: {self.file_info.get('file_path', 'unknown')}")
-                            
+
                             # Create base mandate record
                             mandate = DeputadoMandatoLegislativo(
-                                deputado_id=deputy.id,
-                                dep_nome_parlamentar=self._get_text_value(
-                                    mandato, "DepNomeParlamentar"
-                                ),
+                                deputado_id=mandate_deputy.id,
+                                dep_nome_parlamentar=nome_parlamentar,
                                 leg_des=leg_des,
                                 ce_des=ce_des,
                                 par_sigla=par_sigla,
@@ -1173,7 +1199,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                     self._get_text_value(mandato, "IndData")
                                 ),  # VIII Legislature field
                             )
-                            
+
                             # Update mandate with coalition context
                             if par_sigla:
                                 self.update_mandate_coalition_context(mandate, par_sigla)

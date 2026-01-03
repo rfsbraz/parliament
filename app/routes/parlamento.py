@@ -765,27 +765,31 @@ def get_partido(partido_id):
 
 @parlamento_bp.route('/partidos/<path:partido_sigla>/deputados', methods=['GET'])
 def get_partido_deputados(partido_sigla):
-    """Retorna deputados de um partido usando nova estrutura de dados"""
+    """Retorna deputados de um partido usando nova estrutura de dados.
+
+    Returns unique people (by id_cadastro) with their most recent mandate info,
+    showing only one entry per person instead of one per legislature.
+    """
     try:
         # URL decode the party sigla to handle special characters like slashes
         from urllib.parse import unquote
         partido_sigla = unquote(partido_sigla)
-        
+
         legislatura = request.args.get('legislatura', None, type=str)
-        
+
         with DatabaseSession() as session:
             # First try to get the party information from the partidos table
             partido = session.query(Partido).filter_by(sigla=partido_sigla).first()
-            
+
             # If not found in partidos table, check if it exists in mandate table
             if not partido:
                 mandate_exists = session.query(DeputadoMandatoLegislativo).filter(
                     DeputadoMandatoLegislativo.par_sigla == partido_sigla
                 ).first()
-                
+
                 if not mandate_exists:
                     return jsonify({'error': 'Party not found'}), 404
-                
+
                 # Create a mock party object with data from mandate table
                 class MockParty:
                     def __init__(self, sigla, nome):
@@ -794,92 +798,210 @@ def get_partido_deputados(partido_sigla):
                         self.designacao_completa = nome
                         self.cor_hex = None
                         self.is_active = True
-                
+
                 partido = MockParty(partido_sigla, mandate_exists.par_des or partido_sigla)
-            
-            # Get deputies from this party with improved coalition handling
-            # Subquery to get deputy IDs with active mandate in XVII
-            active_deputy_ids = session.query(
-                DeputadoMandatoLegislativo.deputado_id
-            ).filter(
-                DeputadoMandatoLegislativo.leg_des == 'XVII'
-            ).distinct().subquery()
 
-            # First try exact match
-            if legislatura:
-                # Filter by specific legislature
-                deputados = session.query(Deputado).join(
-                    DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
-                ).join(
-                    Legislatura, Deputado.legislatura_id == Legislatura.id
-                ).outerjoin(
-                    active_deputy_ids, Deputado.id == active_deputy_ids.c.deputado_id
-                ).filter(
-                    DeputadoMandatoLegislativo.par_sigla == partido_sigla,
-                    DeputadoMandatoLegislativo.leg_des == legislatura
-                ).order_by(
-                    desc(case((active_deputy_ids.c.deputado_id != None, 1), else_=0)),
-                    desc(Legislatura.data_inicio),
-                    Deputado.nome.asc()
-                ).all()
+            # Build party filter (exact match or pattern for coalitions)
+            def get_party_filter(use_pattern=False):
+                if use_pattern:
+                    return DeputadoMandatoLegislativo.par_sigla.like(f'%{partido_sigla}%')
+                return DeputadoMandatoLegislativo.par_sigla == partido_sigla
 
-                # If no exact match found, try pattern matching for coalitions
-                if not deputados:
-                    deputados = session.query(Deputado).join(
-                        DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
+            # Get unique id_cadastro values for people who served in this party
+            # with their most recent legislature for this party
+            def get_unique_deputies(use_pattern=False):
+                party_filter = get_party_filter(use_pattern)
+
+                if legislatura:
+                    # For specific legislature, get deputies from that legislature
+                    deputy_mandates = session.query(
+                        DeputadoMandatoLegislativo.deputado_id,
+                        Deputado.id_cadastro,
+                        DeputadoMandatoLegislativo.leg_des,
+                        DeputadoMandatoLegislativo.ce_des,
+                        DeputadoMandatoLegislativo.par_sigla,
+                        DeputadoMandatoLegislativo.gp_sigla,
+                        DeputadoMandatoLegislativo.eh_coligacao
+                    ).join(
+                        Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
+                    ).filter(
+                        party_filter,
+                        DeputadoMandatoLegislativo.leg_des == legislatura
+                    ).all()
+                else:
+                    # Get all unique people who ever served for this party
+                    # First, get the most recent mandate for each person with this party
+                    deputy_mandates = session.query(
+                        DeputadoMandatoLegislativo.deputado_id,
+                        Deputado.id_cadastro,
+                        DeputadoMandatoLegislativo.leg_des,
+                        DeputadoMandatoLegislativo.ce_des,
+                        DeputadoMandatoLegislativo.par_sigla,
+                        DeputadoMandatoLegislativo.gp_sigla,
+                        DeputadoMandatoLegislativo.eh_coligacao,
+                        Legislatura.data_inicio
+                    ).join(
+                        Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
                     ).join(
                         Legislatura, Deputado.legislatura_id == Legislatura.id
-                    ).outerjoin(
-                        active_deputy_ids, Deputado.id == active_deputy_ids.c.deputado_id
                     ).filter(
-                        DeputadoMandatoLegislativo.par_sigla.like(f'%{partido_sigla}%'),
-                        DeputadoMandatoLegislativo.leg_des == legislatura
+                        party_filter
                     ).order_by(
-                        desc(case((active_deputy_ids.c.deputado_id != None, 1), else_=0)),
-                        desc(Legislatura.data_inicio),
-                        Deputado.nome.asc()
+                        desc(Legislatura.data_inicio)
                     ).all()
-            else:
-                # Get all deputies from all legislatures (historical data)
-                # First get unique deputy IDs for this party
-                deputy_ids_query = session.query(
-                    DeputadoMandatoLegislativo.deputado_id
+
+                return deputy_mandates
+
+            # Get deputies with exact match first (historical party members)
+            deputy_mandates = get_unique_deputies(use_pattern=False)
+
+            # If no results, try pattern matching for coalitions
+            if not deputy_mandates:
+                deputy_mandates = get_unique_deputies(use_pattern=True)
+
+            # Also include current XVII coalition deputies who sit with this party (gp_sigla)
+            # This ensures deputies like Paulo (only coalition mandates, but gp_sigla=CDS-PP) are included
+            current_gp_members = session.query(
+                DeputadoMandatoLegislativo.deputado_id,
+                Deputado.id_cadastro,
+                DeputadoMandatoLegislativo.leg_des,
+                DeputadoMandatoLegislativo.ce_des,
+                DeputadoMandatoLegislativo.par_sigla,
+                DeputadoMandatoLegislativo.gp_sigla,
+                DeputadoMandatoLegislativo.eh_coligacao,
+                Legislatura.data_inicio
+            ).join(
+                Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
+            ).join(
+                Legislatura, Deputado.legislatura_id == Legislatura.id
+            ).filter(
+                DeputadoMandatoLegislativo.gp_sigla == partido_sigla,
+                DeputadoMandatoLegislativo.leg_des == 'XVII'
+            ).all()
+
+            # Get existing id_cadastros from deputy_mandates
+            existing_cadastros = {m.id_cadastro for m in deputy_mandates}
+
+            # Add any XVII gp_sigla members not already in the list
+            for gp_member in current_gp_members:
+                if gp_member.id_cadastro not in existing_cadastros:
+                    deputy_mandates.append(gp_member)
+                    existing_cadastros.add(gp_member.id_cadastro)
+
+            # Group by id_cadastro to get unique people
+            # Keep track of most recent mandate per person
+            unique_people = {}
+            for mandate in deputy_mandates:
+                id_cadastro = mandate.id_cadastro
+                if id_cadastro not in unique_people:
+                    unique_people[id_cadastro] = {
+                        'deputado_id': mandate.deputado_id,
+                        'id_cadastro': id_cadastro,
+                        'leg_des': mandate.leg_des,
+                        'ce_des': mandate.ce_des,
+                        'par_sigla': mandate.par_sigla,
+                        'gp_sigla': mandate.gp_sigla,
+                        'eh_coligacao': mandate.eh_coligacao
+                    }
+                # If not filtered by legislature, keep the most recent (first in desc order)
+
+            # Check which people have active mandates in XVII with this party
+            # Include both direct party members (par_sigla) AND parliamentary group members (gp_sigla)
+            active_id_cadastros = set()
+
+            # First check exact par_sigla match
+            party_filter = get_party_filter(use_pattern=False)
+            active_query = session.query(
+                Deputado.id_cadastro
+            ).join(
+                DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
+            ).filter(
+                party_filter,
+                DeputadoMandatoLegislativo.leg_des == 'XVII'
+            ).distinct()
+
+            for row in active_query:
+                active_id_cadastros.add(row.id_cadastro)
+
+            # If no active with exact match, try pattern matching on par_sigla
+            if not active_id_cadastros:
+                party_filter = get_party_filter(use_pattern=True)
+                active_query = session.query(
+                    Deputado.id_cadastro
+                ).join(
+                    DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
                 ).filter(
-                    DeputadoMandatoLegislativo.par_sigla == partido_sigla
+                    party_filter,
+                    DeputadoMandatoLegislativo.leg_des == 'XVII'
                 ).distinct()
 
-                deputados = session.query(Deputado).join(
-                    Legislatura, Deputado.legislatura_id == Legislatura.id
-                ).outerjoin(
-                    active_deputy_ids, Deputado.id == active_deputy_ids.c.deputado_id
-                ).filter(
-                    Deputado.id.in_(deputy_ids_query)
-                ).order_by(
-                    desc(case((active_deputy_ids.c.deputado_id != None, 1), else_=0)),
-                    desc(Legislatura.data_inicio),
-                    Deputado.nome.asc()
-                ).all()
+                for row in active_query:
+                    active_id_cadastros.add(row.id_cadastro)
 
-                # If no exact match found, try pattern matching for coalitions
-                if not deputados:
-                    deputy_ids_query = session.query(
-                        DeputadoMandatoLegislativo.deputado_id
-                    ).filter(
-                        DeputadoMandatoLegislativo.par_sigla.like(f'%{partido_sigla}%')
-                    ).distinct()
+            # Also include XVII deputies with gp_sigla matching this party (parliamentary group)
+            # This correctly identifies CDS-PP members who are part of a coalition
+            gp_active_query = session.query(
+                Deputado.id_cadastro
+            ).join(
+                DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
+            ).filter(
+                DeputadoMandatoLegislativo.gp_sigla == partido_sigla,
+                DeputadoMandatoLegislativo.leg_des == 'XVII'
+            ).distinct()
 
-                    deputados = session.query(Deputado).join(
-                        Legislatura, Deputado.legislatura_id == Legislatura.id
-                    ).outerjoin(
-                        active_deputy_ids, Deputado.id == active_deputy_ids.c.deputado_id
-                    ).filter(
-                        Deputado.id.in_(deputy_ids_query)
-                    ).order_by(
-                        desc(case((active_deputy_ids.c.deputado_id != None, 1), else_=0)),
-                        desc(Legislatura.data_inicio),
-                        Deputado.nome.asc()
-                    ).all()
-            
+            for row in gp_active_query:
+                active_id_cadastros.add(row.id_cadastro)
+
+            # Build result list with proper active status
+            result_deputies = []
+            for id_cadastro, mandate_info in unique_people.items():
+                # Get the Deputado record for most recent legislature
+                deputado = session.query(Deputado).filter_by(id=mandate_info['deputado_id']).first()
+                if not deputado:
+                    continue
+
+                legislatura_obj = session.query(Legislatura).filter_by(id=deputado.legislatura_id).first()
+
+                # Determine if this person is currently active with this party
+                is_active = id_cadastro in active_id_cadastros
+
+                result_deputies.append({
+                    'deputado_id': deputado.id,
+                    'id': deputado.id,
+                    'id_cadastro': deputado.id_cadastro,
+                    'nome': deputado.nome,
+                    'nome_completo': deputado.nome_completo,
+                    'data_nascimento': deputado.data_nascimento.isoformat() if deputado.data_nascimento else None,
+                    'naturalidade': deputado.naturalidade,
+                    'profissao': deputado.profissao,
+                    'legislatura_id': deputado.legislatura_id,
+                    'foto_url': deputado.foto_url,
+                    'picture_url': f'https://app.parlamento.pt/webutils/getimage.aspx?id={deputado.id_cadastro}&type=deputado' if deputado.id_cadastro else None,
+                    'sexo': deputado.sexo,
+                    'ativo': deputado.is_active,
+                    'partido_sigla': (
+                        mandate_info['gp_sigla'] if mandate_info.get('eh_coligacao') and mandate_info.get('gp_sigla')
+                        else mandate_info['par_sigla']
+                    ),
+                    'circulo': mandate_info['ce_des'],
+                    'legislatura_nome': legislatura_obj.designacao if legislatura_obj else None,
+                    'legislatura_numero': legislatura_obj.numero if legislatura_obj else None,
+                    # CRITICAL: mandato_ativo is True ONLY if they have XVII mandate with this party
+                    'mandato_ativo': is_active,
+                    'ultima_legislatura': mandate_info['leg_des'],
+                    'career_info': {
+                        'is_currently_active': is_active,
+                        'is_multi_term': False,
+                        'total_mandates': 1,
+                        'first_mandate': mandate_info['leg_des'],
+                        'latest_mandate': mandate_info['leg_des'],
+                        'parties_served': [mandate_info['gp_sigla'] if mandate_info.get('eh_coligacao') and mandate_info.get('gp_sigla') else mandate_info['par_sigla']] if mandate_info.get('par_sigla') or mandate_info.get('gp_sigla') else []
+                    }
+                })
+
+            # Sort: active first, then by name
+            result_deputies.sort(key=lambda x: (not x['mandato_ativo'], x['nome'] or ''))
+
             # Check if this party is part of any coalition
             coalition_query = session.query(
                 DeputadoMandatoLegislativo.coligacao_id,
@@ -888,12 +1010,12 @@ def get_partido_deputados(partido_sigla):
                 DeputadoMandatoLegislativo.par_sigla == partido_sigla,
                 DeputadoMandatoLegislativo.eh_coligacao == True
             )
-            
+
             if legislatura:
                 coalition_query = coalition_query.filter(DeputadoMandatoLegislativo.leg_des == legislatura)
-            
+
             coalition_info = coalition_query.first()
-            
+
             coalition_data = None
             if coalition_info and coalition_info.coligacao_id:
                 # Get coalition information
@@ -904,30 +1026,19 @@ def get_partido_deputados(partido_sigla):
                         'nome': coalition.nome,
                         'id': coalition.id
                     }
-            
-            # Calculate demographic data
-            demographic_data = calculate_party_demographics(deputados, session)
-            
-            # Count active mandates (deputies in current legislature XVII)
-            mandatos_ativos = session.query(Deputado).join(
-                DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
-            ).filter(
-                DeputadoMandatoLegislativo.par_sigla == partido_sigla,
-                DeputadoMandatoLegislativo.leg_des == 'XVII'  # Current legislature
-            ).count()
-            
-            # If no exact match, try pattern matching for active mandates too
-            if mandatos_ativos == 0:
-                mandatos_ativos = session.query(Deputado).join(
-                    DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
-                ).filter(
-                    DeputadoMandatoLegislativo.par_sigla.like(f'%{partido_sigla}%'),
-                    DeputadoMandatoLegislativo.leg_des == 'XVII'  # Current legislature
-                ).count()
-            
+
+            # Calculate demographic data using Deputado objects for compatibility
+            deputado_objs = [session.query(Deputado).filter_by(id=d['deputado_id']).first() for d in result_deputies]
+            deputado_objs = [d for d in deputado_objs if d]  # Filter None
+            demographic_data = calculate_party_demographics(deputado_objs, session)
+
+            # Count active mandates (only historical party members who are currently active)
+            # This is the intersection of our unique people and those with XVII mandate
+            mandatos_ativos = sum(1 for d in result_deputies if d['mandato_ativo'])
+
             return jsonify({
-                'deputados': [deputado_to_dict(d, session) for d in deputados],
-                'total': len(deputados),
+                'deputados': result_deputies,
+                'total': len(result_deputies),
                 'mandatos_ativos': mandatos_ativos,
                 'partido': {
                     'sigla': partido.sigla,
@@ -940,7 +1051,7 @@ def get_partido_deputados(partido_sigla):
                 'legislatura': legislatura,
                 'demografia': demographic_data
             })
-            
+
     except Exception as e:
         return log_and_return_error(e, '/api/partidos/<id>/deputados')
 
