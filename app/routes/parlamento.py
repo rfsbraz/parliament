@@ -355,39 +355,50 @@ def log_and_return_error(e, endpoint_info="", status_code=500):
 def get_most_recent_deputy(session, cad_id):
     """
     Get the most recent deputy record for a given cadastro ID.
-    
+
     Selection Priority:
-    1. Most recent legislature (by data_inicio) 
-    2. Fallback to legislature XVII if no dates available
-    3. Last resort: highest legislatura_id
-    
+    1. Current legislature (XVII) if deputy has a record there
+    2. Most recent legislature by data_inicio (handling NULLs properly)
+    3. Last resort: any record for this person
+
     Args:
         session: SQLAlchemy session
         cad_id: Deputy cadastro ID (unique person identifier)
-        
+
     Returns:
         Deputado object or None if not found
     """
     try:
-        # Primary method: Order by legislature start date (most recent first)
-        # Note: MySQL doesn't support NULLS LAST, so we handle nulls differently
+        # Primary method: Find deputy in the current legislature (XVII)
+        deputado = session.query(Deputado).filter(
+            Deputado.id_cadastro == cad_id
+        ).join(Legislatura).filter(
+            Legislatura.numero == 'XVII'
+        ).first()
+
+        if deputado:
+            return deputado
+
+        # Secondary method: Order by legislature start date (most recent first)
+        # Use NULLS LAST to ensure records with NULL dates don't appear first
+        from sqlalchemy import nullslast
         deputado = session.query(Deputado).filter(
             Deputado.id_cadastro == cad_id
         ).join(Legislatura).order_by(
-            Legislatura.data_inicio.desc(),
+            nullslast(Legislatura.data_inicio.desc()),
             Legislatura.numero.desc()  # Secondary sort for same dates
         ).first()
-        
+
         if deputado:
             return deputado
-            
+
         # Fallback: Try without join (in case of missing legislature data)
         deputado = session.query(Deputado).filter(
             Deputado.id_cadastro == cad_id
         ).order_by(Deputado.legislatura_id.desc()).first()
-        
+
         return deputado
-        
+
     except Exception as e:
         print(f"Error in get_most_recent_deputy for cad_id {cad_id}: {e}")
         # Last resort fallback
@@ -513,14 +524,18 @@ def get_deputado_detalhes(cad_id):
                 IniciativaAutorDeputado.id_cadastro == deputado.id_cadastro
             ).scalar() or 0
             
-            # Count total mandates for this person using id_cadastro
-            total_mandatos = session.query(func.count(Deputado.id)).filter(
+            # Count total mandates for this person using DeputadoMandatoLegislativo (actual mandates)
+            total_mandatos = session.query(func.count(DeputadoMandatoLegislativo.id)).join(
+                Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
+            ).filter(
                 Deputado.id_cadastro == deputado.id_cadastro
             ).scalar() or 1
-            
-            # Get all legislatures served by this person with dates
+
+            # Get all legislatures actually served by this person (based on actual mandates)
             legislaturas_servidas_query = session.query(Legislatura).join(
-                Deputado, Deputado.legislatura_id == Legislatura.id
+                DeputadoMandatoLegislativo, DeputadoMandatoLegislativo.leg_des == Legislatura.numero
+            ).join(
+                Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
             ).filter(
                 Deputado.id_cadastro == deputado.id_cadastro
             ).distinct().all()
@@ -955,15 +970,47 @@ def get_partido_deputados(partido_sigla):
             # Build result list with proper active status
             result_deputies = []
             for id_cadastro, mandate_info in unique_people.items():
-                # Get the Deputado record for most recent legislature
-                deputado = session.query(Deputado).filter_by(id=mandate_info['deputado_id']).first()
-                if not deputado:
-                    continue
-
-                legislatura_obj = session.query(Legislatura).filter_by(id=deputado.legislatura_id).first()
-
                 # Determine if this person is currently active with this party
                 is_active = id_cadastro in active_id_cadastros
+
+                # For ACTIVE deputies, ALWAYS use their XVII legislature data
+                if is_active:
+                    # Get the XVII Deputado record for this person
+                    xvii_deputado = session.query(Deputado).join(
+                        DeputadoMandatoLegislativo, Deputado.id == DeputadoMandatoLegislativo.deputado_id
+                    ).filter(
+                        Deputado.id_cadastro == id_cadastro,
+                        DeputadoMandatoLegislativo.leg_des == 'XVII'
+                    ).first()
+
+                    if xvii_deputado:
+                        deputado = xvii_deputado
+                        legislatura_obj = session.query(Legislatura).filter_by(numero='XVII').first()
+                        # Update mandate_info to reflect XVII data
+                        xvii_mandate = session.query(DeputadoMandatoLegislativo).filter_by(
+                            deputado_id=xvii_deputado.id
+                        ).first()
+                        if xvii_mandate:
+                            mandate_info = {
+                                'deputado_id': xvii_deputado.id,
+                                'id_cadastro': id_cadastro,
+                                'leg_des': 'XVII',
+                                'ce_des': xvii_mandate.ce_des,
+                                'par_sigla': xvii_mandate.par_sigla,
+                                'gp_sigla': xvii_mandate.gp_sigla,
+                                'eh_coligacao': xvii_mandate.eh_coligacao
+                            }
+                    else:
+                        # Fallback to stored mandate_info if XVII not found
+                        deputado = session.query(Deputado).filter_by(id=mandate_info['deputado_id']).first()
+                        legislatura_obj = session.query(Legislatura).filter_by(id=deputado.legislatura_id).first() if deputado else None
+                else:
+                    # For inactive deputies, use the stored mandate info (most recent mandate)
+                    deputado = session.query(Deputado).filter_by(id=mandate_info['deputado_id']).first()
+                    legislatura_obj = session.query(Legislatura).filter_by(id=deputado.legislatura_id).first() if deputado else None
+
+                if not deputado:
+                    continue
 
                 result_deputies.append({
                     'deputado_id': deputado.id,
