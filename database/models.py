@@ -299,8 +299,9 @@ class ColigacaoPartido(Base):
     # Relationships
     coligacao = relationship("Coligacao", back_populates="partidos_componentes")
     
-    # Indexes for efficient queries
+    # Indexes and constraints for efficient queries
     __table_args__ = (
+        UniqueConstraint('coligacao_id', 'partido_sigla', name='uq_coligacao_partido'),
         Index("idx_coligacao_partido", "coligacao_id", "partido_sigla"),
         Index("idx_partido_sigla", "partido_sigla"),
         Index("idx_ativo_coligacao", "ativo", "coligacao_id"),

@@ -162,6 +162,9 @@ def clear_all_tables(engine, echo: bool = False, exclude_tables: list = None):
     from sqlalchemy import text, MetaData
 
     exclude_tables = exclude_tables or []
+    # Always preserve alembic_version to maintain migration state
+    if 'alembic_version' not in exclude_tables:
+        exclude_tables.append('alembic_version')
 
     metadata = MetaData()
     metadata.reflect(bind=engine)
@@ -190,8 +193,42 @@ def clear_all_tables(engine, echo: bool = False, exclude_tables: list = None):
     return cleared_count
 
 
+def drop_all_tables(engine, echo: bool = False):
+    """Drop all tables including alembic_version.
+
+    Alembic will recreate alembic_version when running migrations.
+    Returns the number of tables dropped.
+    """
+    from sqlalchemy import text, MetaData
+
+    metadata = MetaData()
+    metadata.reflect(bind=engine)
+
+    # Get tables in reverse dependency order (to handle foreign keys)
+    tables = list(reversed(metadata.sorted_tables))
+
+    dropped_count = 0
+    with engine.begin() as conn:
+        # Disable foreign key checks temporarily
+        conn.execute(text("SET session_replication_role = 'replica';"))
+
+        for table in tables:
+            if echo:
+                click.echo(f"    Dropping table: {table.name}")
+            conn.execute(text(f'DROP TABLE IF EXISTS "{table.name}" CASCADE'))
+            dropped_count += 1
+
+        # Re-enable foreign key checks
+        conn.execute(text("SET session_replication_role = 'origin';"))
+
+    return dropped_count
+
+
 def drop_and_recreate_tables(engine, echo: bool = False):
-    """Drop all tables and recreate them from models."""
+    """Drop all tables and recreate them from models.
+
+    DEPRECATED: Use drop_all_tables_except_alembic + run migrations instead.
+    """
     from database.models import Base
 
     if echo:
@@ -264,6 +301,63 @@ def get_engine(production: bool, verbose: bool):
         return create_database_engine(echo=verbose)
 
 
+def run_alembic_command(args: list[str], db_url: str = None, verbose: bool = False) -> subprocess.CompletedProcess:
+    """Run an alembic command with optional database URL override."""
+    cmd = ["alembic"] + args
+
+    env = os.environ.copy()
+    if db_url:
+        env["DATABASE_URL"] = db_url
+
+    if verbose:
+        click.echo(f"  $ {' '.join(cmd)}")
+
+    result = subprocess.run(
+        cmd,
+        cwd=project_root,
+        capture_output=True,
+        text=True,
+        env=env
+    )
+
+    return result
+
+
+def get_current_revision(db_url: str = None, verbose: bool = False) -> str:
+    """Get current alembic revision from database."""
+    result = run_alembic_command(["current"], db_url=db_url, verbose=verbose)
+    if result.returncode == 0:
+        # Parse output like "a1b2c3d4e5f6 (head)" or just revision id
+        output = result.stdout.strip()
+        if output:
+            # Extract just the revision id
+            return output.split()[0] if output else "None"
+    return "Unknown"
+
+
+def get_pending_migrations(db_url: str = None, verbose: bool = False) -> list[str]:
+    """Get list of pending migrations."""
+    result = run_alembic_command(["history", "--indicate-current"], db_url=db_url, verbose=verbose)
+    if result.returncode != 0:
+        return []
+
+    pending = []
+    current_found = False
+    for line in result.stdout.strip().split('\n'):
+        if '(current)' in line or '(head)' in line:
+            current_found = True
+            if '(current)' in line and '(head)' not in line:
+                # There are migrations after current
+                continue
+        elif current_found:
+            continue
+        elif line.strip() and '->' in line:
+            # This is a pending migration (before current marker)
+            pending.append(line.strip())
+
+    return pending
+
+
 @click.group()
 def database():
     """Database management commands."""
@@ -280,8 +374,12 @@ def clear(yes: bool, preserve_schema: bool, keep_downloads: bool, verbose: bool,
     """
     Clear all data from the database.
 
-    By default, drops and recreates all tables from models.
+    By default, drops all tables and recreates them by running migrations.
+    Alembic automatically recreates its tracking table during migration.
+
     Use --preserve-schema to only truncate data while keeping table structure.
+    This preserves alembic_version to maintain migration state.
+
     Use --keep-downloads to preserve import_status records (reset to 'discovered' state)
         so that already-downloaded files are not re-downloaded after a wipe.
     Use --production to connect to the production RDS database.
@@ -339,9 +437,32 @@ def clear(yes: bool, preserve_schema: bool, keep_downloads: bool, verbose: bool,
                 if reset_count > 0:
                     click.echo(click.style(f"  Reset {reset_count} import records to 'discovered' state", fg="cyan"))
             else:
-                click.echo("\n  Dropping and recreating tables...")
-                count = drop_and_recreate_tables(engine, echo=verbose)
-                click.echo(click.style(f"\n  Recreated {count} tables successfully!", fg="green"))
+                # Drop all tables (alembic will recreate alembic_version)
+                click.echo("\n  Dropping all tables...")
+                count = drop_all_tables(engine, echo=verbose)
+                click.echo(click.style(f"\n  Dropped {count} tables.", fg="cyan"))
+
+                # Run migrations to recreate tables
+                click.echo("\n  Running migrations to recreate tables...")
+                db_url = None
+                if production:
+                    config = get_config()
+                    db_url, _ = get_production_db_url(config)
+
+                result = run_alembic_command(["upgrade", "head"], db_url=db_url, verbose=True)
+
+                if result.returncode == 0:
+                    click.echo(click.style("\n  Tables recreated successfully via migrations!", fg="green"))
+                    if result.stdout:
+                        for line in result.stdout.strip().split('\n'):
+                            if line.strip():
+                                click.echo(f"    {line}")
+                else:
+                    click.echo(click.style("\n  Migration failed!", fg="red"))
+                    if result.stderr:
+                        for line in result.stderr.strip().split('\n'):
+                            click.echo(f"    {line}")
+                    raise click.ClickException("Failed to recreate tables via migrations")
 
     except Exception as e:
         raise click.ClickException(f"Database operation failed: {e}")
@@ -442,7 +563,216 @@ def status(verbose: bool, production: bool):
                     for row in rows:
                         click.echo(f"    {row[0]}: {row[1]:,}")
 
+                # Processing time statistics
+                time_result = conn.execute(text("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE processing_duration_seconds IS NOT NULL) as processed_count,
+                        SUM(processing_duration_seconds) as total_seconds,
+                        AVG(processing_duration_seconds) as avg_seconds,
+                        MIN(processing_duration_seconds) as min_seconds,
+                        MAX(processing_duration_seconds) as max_seconds,
+                        MIN(processing_started_at) as first_started,
+                        MAX(processing_completed_at) as last_completed
+                    FROM import_status
+                    WHERE processing_duration_seconds IS NOT NULL
+                """))
+                time_row = time_result.fetchone()
+
+                if time_row and time_row[0] and time_row[0] > 0:
+                    click.echo("\n  Processing time:")
+                    processed_count = time_row[0]
+                    total_seconds = time_row[1] or 0
+                    avg_seconds = time_row[2] or 0
+                    min_seconds = time_row[3] or 0
+                    max_seconds = time_row[4] or 0
+                    first_started = time_row[5]
+                    last_completed = time_row[6]
+
+                    # Format total time
+                    hours, remainder = divmod(int(total_seconds), 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    if hours > 0:
+                        total_fmt = f"{hours}h {minutes}m {seconds}s"
+                    elif minutes > 0:
+                        total_fmt = f"{minutes}m {seconds}s"
+                    else:
+                        total_fmt = f"{total_seconds:.1f}s"
+
+                    click.echo(f"    Files processed: {processed_count:,}")
+                    click.echo(f"    Total time: {total_fmt}")
+                    click.echo(f"    Avg per file: {avg_seconds:.2f}s")
+                    click.echo(f"    Min/Max: {min_seconds:.2f}s / {max_seconds:.2f}s")
+
+                    if first_started and last_completed:
+                        # Calculate wall clock time
+                        wall_time = (last_completed - first_started).total_seconds()
+                        wall_hours, wall_remainder = divmod(int(wall_time), 3600)
+                        wall_minutes, wall_seconds = divmod(wall_remainder, 60)
+                        if wall_hours > 0:
+                            wall_fmt = f"{wall_hours}h {wall_minutes}m {wall_seconds}s"
+                        elif wall_minutes > 0:
+                            wall_fmt = f"{wall_minutes}m {wall_seconds}s"
+                        else:
+                            wall_fmt = f"{wall_time:.1f}s"
+                        click.echo(f"    Wall clock: {wall_fmt}")
+                        click.echo(f"    Started: {first_started.strftime('%Y-%m-%d %H:%M:%S')}")
+                        click.echo(f"    Completed: {last_completed.strftime('%Y-%m-%d %H:%M:%S')}")
+
         click.echo(click.style("\n  Database connection OK", fg="green"))
 
     except Exception as e:
         raise click.ClickException(f"Could not connect to database: {e}")
+
+
+@database.command()
+@click.option('--yes', '-y', is_flag=True, help='Skip confirmation prompt')
+@click.option('--verbose', '-v', is_flag=True, help='Show detailed progress')
+@click.option('--production', '-p', is_flag=True, help='Connect to production RDS database')
+@click.option('--revision', '-r', default='head', help='Target revision (default: head)')
+@click.option('--dry-run', is_flag=True, help='Show what would be done without executing')
+def migrate(yes: bool, verbose: bool, production: bool, revision: str, dry_run: bool):
+    """
+    Run database migrations using Alembic.
+
+    Applies pending migrations to bring the database schema up to date.
+    Use --production to run against the production RDS database.
+    Use --dry-run to see what migrations would be applied.
+
+    Examples:
+        ops database migrate              # Migrate local database
+        ops database migrate -p           # Migrate production database
+        ops database migrate --dry-run    # Show pending migrations
+        ops database migrate -r abc123    # Migrate to specific revision
+    """
+    click.echo(click.style("\n[Database] Run Migrations", fg="blue", bold=True))
+
+    # Get database URL
+    db_url = None
+    if production:
+        try:
+            config = get_config()
+            db_url, info = get_production_db_url(config)
+        except Exception as e:
+            raise click.ClickException(f"Could not get production database URL: {e}")
+    else:
+        info = get_db_connection_info(production=False)
+
+    # Show connection info
+    click.echo(f"\n  Connection: {info['source']}")
+    click.echo(f"  Host: {info['host']}")
+    click.echo(f"  Database: {info.get('database', 'parliament')}")
+
+    # Show current state
+    click.echo(f"\n  Current revision: {get_current_revision(db_url, verbose)}")
+    click.echo(f"  Target revision: {revision}")
+
+    # Check what migrations would run
+    result = run_alembic_command(["history", "-r", "current:head", "--verbose"], db_url=db_url, verbose=verbose)
+
+    if result.returncode != 0:
+        # If current is not set, show all migrations
+        result = run_alembic_command(["history", "--verbose"], db_url=db_url, verbose=verbose)
+
+    pending_output = result.stdout.strip() if result.returncode == 0 else ""
+
+    if not pending_output or "head" in get_current_revision(db_url, verbose).lower():
+        click.echo(click.style("\n  Database is up to date - no migrations needed.", fg="green"))
+        return
+
+    click.echo("\n  Pending migrations:")
+    for line in pending_output.split('\n')[:10]:  # Show first 10 lines
+        if line.strip():
+            click.echo(f"    {line.strip()}")
+
+    if dry_run:
+        click.echo(click.style("\n  Dry run complete - no changes made.", fg="cyan"))
+        return
+
+    # Extra warning for production
+    if production:
+        click.echo(click.style("\n  ⚠️  WARNING: You are about to migrate PRODUCTION database!", fg="red", bold=True))
+
+    # Confirmation
+    if not yes:
+        if not click.confirm(click.style(f"\n  Apply migrations to {revision}?", fg="yellow")):
+            click.echo("  Aborted.")
+            return
+
+    # Run migration
+    click.echo(f"\n  Running: alembic upgrade {revision}")
+
+    result = run_alembic_command(["upgrade", revision], db_url=db_url, verbose=True)
+
+    if result.returncode == 0:
+        click.echo(click.style("\n  Migrations applied successfully!", fg="green"))
+        if result.stdout:
+            for line in result.stdout.strip().split('\n'):
+                click.echo(f"    {line}")
+        click.echo(f"\n  New revision: {get_current_revision(db_url, verbose)}")
+    else:
+        click.echo(click.style("\n  Migration failed!", fg="red"))
+        if result.stderr:
+            click.echo(f"\n  Error output:")
+            for line in result.stderr.strip().split('\n'):
+                click.echo(f"    {line}")
+        if result.stdout:
+            click.echo(f"\n  Output:")
+            for line in result.stdout.strip().split('\n'):
+                click.echo(f"    {line}")
+        raise click.ClickException("Migration failed")
+
+
+@database.command()
+@click.option('--verbose', '-v', is_flag=True, help='Show detailed information')
+@click.option('--production', '-p', is_flag=True, help='Connect to production RDS database')
+def migration_status(verbose: bool, production: bool):
+    """
+    Show current migration status and history.
+
+    Displays the current revision and available migrations.
+    Use --production to check the production database.
+    """
+    click.echo(click.style("\n[Database] Migration Status", fg="blue", bold=True))
+
+    # Get database URL
+    db_url = None
+    if production:
+        try:
+            config = get_config()
+            db_url, info = get_production_db_url(config)
+        except Exception as e:
+            raise click.ClickException(f"Could not get production database URL: {e}")
+    else:
+        info = get_db_connection_info(production=False)
+
+    # Show connection info
+    click.echo(f"\n  Connection: {info['source']}")
+    click.echo(f"  Host: {info['host']}")
+    click.echo(f"  Database: {info.get('database', 'parliament')}")
+
+    # Get current revision
+    current = get_current_revision(db_url, verbose)
+    click.echo(f"\n  Current revision: {current}")
+
+    # Get head revision
+    result = run_alembic_command(["heads"], db_url=db_url, verbose=verbose)
+    if result.returncode == 0:
+        head = result.stdout.strip().split()[0] if result.stdout.strip() else "Unknown"
+        click.echo(f"  Head revision: {head}")
+
+        if current == head or "(head)" in current:
+            click.echo(click.style("\n  Status: Up to date", fg="green"))
+        else:
+            click.echo(click.style("\n  Status: Migrations pending", fg="yellow"))
+
+    if verbose:
+        click.echo("\n  Migration history:")
+        result = run_alembic_command(["history", "--indicate-current"], db_url=db_url, verbose=verbose)
+        if result.returncode == 0:
+            for line in result.stdout.strip().split('\n'):
+                if line.strip():
+                    # Highlight current revision
+                    if '(current)' in line:
+                        click.echo(click.style(f"    {line.strip()}", fg="cyan"))
+                    else:
+                        click.echo(f"    {line.strip()}")

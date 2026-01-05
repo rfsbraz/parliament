@@ -69,17 +69,29 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    # Try to use centralized database connection, fallback to config
-    try:
-        from database.connection import get_engine
-        connectable = get_engine()
-    except Exception:
-        # Fallback to original config-based approach
-        connectable = engine_from_config(
-            config.get_section(config.config_ini_section, {}),
-            prefix="sqlalchemy.",
+    from sqlalchemy import create_engine
+
+    # Check for DATABASE_URL environment variable first (used by ops commands for production)
+    database_url = os.environ.get("DATABASE_URL")
+
+    if database_url:
+        # Use the provided URL directly (e.g., for production with SSL)
+        connectable = create_engine(
+            database_url,
             poolclass=pool.NullPool,
         )
+    else:
+        # Try to use centralized database connection, fallback to config
+        try:
+            from database.connection import get_engine
+            connectable = get_engine()
+        except Exception:
+            # Fallback to original config-based approach
+            connectable = engine_from_config(
+                config.get_section(config.config_ini_section, {}),
+                prefix="sqlalchemy.",
+                poolclass=pool.NullPool,
+            )
 
     with connectable.connect() as connection:
         context.configure(

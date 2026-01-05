@@ -8,7 +8,7 @@ Usage:
     ./ops.py deploy [infra|backend|frontend|all]
     ./ops.py pipeline [run|discover|import|status]
     ./ops.py logs [ecs|pipeline|lambda]
-    ./ops.py database [clear|reset-imports|status]
+    ./ops.py database [clear|reset-imports|status|migrate|migration-status]
 
 Examples:
     ./ops.py deploy all                    # Full stack deployment
@@ -19,6 +19,9 @@ Examples:
     ./ops.py logs pipeline -n 100          # View last 100 pipeline log lines
     ./ops.py database clear -y             # Clear all database tables
     ./ops.py database reset-imports        # Reset import status for re-import
+    ./ops.py database migrate              # Run migrations on local database
+    ./ops.py database migrate -p           # Run migrations on production database
+    ./ops.py database migration-status -v  # Show migration history
 """
 
 import sys
