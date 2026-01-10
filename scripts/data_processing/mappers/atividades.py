@@ -98,9 +98,9 @@ class AtividadesMapper(SchemaMapper):
     with proper translator integration for coded field values.
     """
 
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         # Accept SQLAlchemy session directly (passed by unified importer)
-        super().__init__(session)
+        super().__init__(session, import_status_record=import_status_record)
         # In-memory caches to track records created in this batch (avoid flush round-trips)
         self._atividade_cache = {}  # (atividade_id, legislatura_id) -> AtividadeParlamentar
         self._debate_cache = {}  # (debate_id, legislatura_id) -> DebateParlamentar
@@ -776,7 +776,7 @@ class AtividadesMapper(SchemaMapper):
                     pass  # Skip outros_subscritores if column doesn't exist
 
                 atividade_obj = AtividadeParlamentar(**atividade_data)
-                self.session.add(atividade_obj)
+                self._add_with_tracking(atividade_obj)
                 # Add to cache for deduplication within this batch (no flush needed)
                 if cache_key:
                     self._atividade_cache[cache_key] = atividade_obj
@@ -904,7 +904,7 @@ class AtividadesMapper(SchemaMapper):
                     pass  # Skip artigo if column doesn't exist
 
                 debate_obj = DebateParlamentar(**debate_data)
-                self.session.add(debate_obj)
+                self._add_with_tracking(debate_obj)
                 # Add to cache for deduplication within this batch (no flush needed)
                 self._debate_cache[cache_key] = debate_obj
 
@@ -998,7 +998,7 @@ class AtividadesMapper(SchemaMapper):
                 audicoes=audicoes,
                 legislatura_id=legislatura.id,
             )
-            self.session.add(relatorio_obj)
+            self._add_with_tracking(relatorio_obj)
             # No flush needed - child records use relatorio_obj.id which is already a UUID
 
             # Process XIII Legislature related structures
@@ -1111,7 +1111,7 @@ class AtividadesMapper(SchemaMapper):
                     id_pag=id_pag,
                     id_deb=id_deb,
                 )
-                self.session.add(publicacao_record)
+                self._add_with_tracking(publicacao_record)
 
     def _process_activity_votacoes(
         self, atividade: ET.Element, atividade_obj: AtividadeParlamentar
@@ -1135,7 +1135,7 @@ class AtividadesMapper(SchemaMapper):
                     publicacao=publicacao,
                     data=data,
                 )
-                self.session.add(votacao_record)
+                self._add_with_tracking(votacao_record)
 
     def _process_activity_eleitos(
         self, atividade: ET.Element, atividade_obj: AtividadeParlamentar
@@ -1152,7 +1152,7 @@ class AtividadesMapper(SchemaMapper):
                         id=uuid.uuid4(),
                         atividade_id=atividade_obj.id, nome=nome, cargo=cargo
                     )
-                    self.session.add(eleito_record)
+                    self._add_with_tracking(eleito_record)
 
     def _process_activity_convidados(
         self, atividade: ET.Element, atividade_obj: AtividadeParlamentar
@@ -1170,7 +1170,7 @@ class AtividadesMapper(SchemaMapper):
                         id=uuid.uuid4(),
                         atividade_id=atividade_obj.id, nome=nome, pais=pais, honra=honra
                     )
-                    self.session.add(convidado_record)
+                    self._add_with_tracking(convidado_record)
 
     def _process_orcamento_gerencia(
         self, entry: ET.Element, legislatura: Legislatura
@@ -1242,7 +1242,7 @@ class AtividadesMapper(SchemaMapper):
                 dt_agendamento=dt_agendamento,
                 legislatura_id=legislatura.id,
             )
-            self.session.add(orcamento_obj)
+            self._add_with_tracking(orcamento_obj)
             # Add to cache for deduplication within this batch (no flush needed)
             self._orcamento_cache[cache_key] = orcamento_obj
 
@@ -1299,7 +1299,7 @@ class AtividadesMapper(SchemaMapper):
                     tipo=tipo,
                     link=link,
                 )
-                self.session.add(doc_obj)
+                self._add_with_tracking(doc_obj)
 
             return True
         except Exception as e:
@@ -1341,7 +1341,7 @@ class AtividadesMapper(SchemaMapper):
                     url=url,
                     descricao=descricao,
                 )
-                self.session.add(link_obj)
+                self._add_with_tracking(link_obj)
 
             return True
         except Exception as e:
@@ -1393,7 +1393,7 @@ class AtividadesMapper(SchemaMapper):
                     sessao_legislativa=sessao_legislativa,
                     legislatura_id=legislatura.id,
                 )
-                self.session.add(evento_obj)
+                self._add_with_tracking(evento_obj)
                 # Add to cache for deduplication within this batch (no flush needed)
                 self._evento_cache[cache_key] = evento_obj
 
@@ -1453,7 +1453,7 @@ class AtividadesMapper(SchemaMapper):
                     sessao_legislativa=sessao_legislativa,
                     legislatura_id=legislatura.id,
                 )
-                self.session.add(deslocacao_obj)
+                self._add_with_tracking(deslocacao_obj)
                 # Add to cache for deduplication within this batch (no flush needed)
                 self._deslocacao_cache[cache_key] = deslocacao_obj
 
@@ -1506,7 +1506,7 @@ class AtividadesMapper(SchemaMapper):
                     sessao_legislativa=sessao_legislativa,
                     legislatura_id=legislatura.id,
                 )
-                self.session.add(audicao_obj)
+                self._add_with_tracking(audicao_obj)
                 # Add to cache for deduplication within this batch (no flush needed)
                 self._audicao_cache[cache_key] = audicao_obj
 
@@ -1561,7 +1561,7 @@ class AtividadesMapper(SchemaMapper):
                     concedida=concedida,
                     legislatura_id=legislatura.id,
                 )
-                self.session.add(audiencia_obj)
+                self._add_with_tracking(audiencia_obj)
                 # Add to cache for deduplication within this batch (no flush needed)
                 self._audiencia_cache[cache_key] = audiencia_obj
 
@@ -1613,7 +1613,7 @@ class AtividadesMapper(SchemaMapper):
                     tipo=tipo,
                     desc_tipo=desc_tipo,
                 )
-                self.session.add(iniciativa_obj)
+                self._add_with_tracking(iniciativa_obj)
                 # Add to cache for deduplication within this batch (no flush needed)
                 self._iniciativa_conjunta_cache[cache_key] = iniciativa_obj
 
@@ -1665,7 +1665,7 @@ class AtividadesMapper(SchemaMapper):
                 sigla=sigla,
                 nome=nome,
             )
-            self.session.add(opiniao_obj)
+            self._add_with_tracking(opiniao_obj)
             # Add to cache for deduplication within this batch (no flush needed)
             self._opiniao_cache[cache_key] = opiniao_obj
 
@@ -1680,7 +1680,7 @@ class AtividadesMapper(SchemaMapper):
                         doc_obj = RelatorioParlamentarComissaoDocumento(
                             comissao_opiniao_id=opiniao_obj.id, tipo=tipo, link=link
                         )
-                        self.session.add(doc_obj)
+                        self._add_with_tracking(doc_obj)
 
             # Process relatores
             relatores = atividade_comissoes.find("Relatores")
@@ -1695,7 +1695,7 @@ class AtividadesMapper(SchemaMapper):
                             nome=nome_relator,
                             partido=partido,
                         )
-                        self.session.add(relator_obj)
+                        self._add_with_tracking(relator_obj)
 
             return True
         except Exception as e:

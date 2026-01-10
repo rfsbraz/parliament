@@ -8,8 +8,12 @@ import json
 import boto3
 import logging
 from urllib.parse import quote_plus
-from sqlalchemy import create_engine
+import os
+import threading
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import DisconnectionError
+from sqlalchemy.pool import Pool
 from typing import Optional
 from dotenv import load_dotenv
 
@@ -209,11 +213,60 @@ _engine: Optional[object] = None
 _SessionLocal: Optional[sessionmaker] = None
 
 
+def _validate_connection_on_checkout(dbapi_conn, connection_record, connection_proxy):
+    """
+    Validate connection is not in a failed transaction state before checkout.
+
+    This is a defense-in-depth measure to prevent cascade failures where a
+    connection that experienced a deadlock or other error returns to the pool
+    in an invalid state. Even though pool_reset_on_return='rollback' is set,
+    the rollback itself can fail silently on a severely corrupted connection.
+
+    When validation fails, raising DisconnectionError tells SQLAlchemy to
+    discard this connection and get/create a fresh one.
+    """
+    conn_id = id(dbapi_conn)
+    pid = os.getpid()
+    tid = threading.current_thread().name
+    logger.debug(f"[POOL] Checkout validation: conn={conn_id}, pid={pid}, thread={tid}")
+
+    try:
+        cursor = dbapi_conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        logger.debug(f"[POOL] Connection {conn_id} validated OK")
+    except Exception as e:
+        logger.warning(f"[POOL] Connection {conn_id} validation FAILED (pid={pid}, thread={tid}): {e}")
+        raise DisconnectionError(f"Connection validation failed: {e}")
+
+
+def _on_connection_checkin(dbapi_conn, connection_record):
+    """Log when connections are returned to the pool."""
+    conn_id = id(dbapi_conn)
+    pid = os.getpid()
+    tid = threading.current_thread().name
+    logger.debug(f"[POOL] Checkin: conn={conn_id}, pid={pid}, thread={tid}")
+
+
+def _on_connection_invalidate(dbapi_conn, connection_record, exception):
+    """Log when connections are invalidated."""
+    conn_id = id(dbapi_conn)
+    pid = os.getpid()
+    tid = threading.current_thread().name
+    logger.warning(f"[POOL] Connection INVALIDATED: conn={conn_id}, pid={pid}, thread={tid}, exception={exception}")
+
+
 def get_engine():
     """Get the global database engine, creating it if necessary."""
     global _engine
     if _engine is None:
         _engine = create_database_engine()
+        # Register connection pool event listeners for diagnostics
+        event.listen(_engine, "checkout", _validate_connection_on_checkout)
+        event.listen(_engine, "checkin", _on_connection_checkin)
+        event.listen(_engine, "invalidate", _on_connection_invalidate)
+        pid = os.getpid()
+        logger.info(f"[POOL] Registered connection pool event listeners (pid={pid})")
     return _engine
 
 

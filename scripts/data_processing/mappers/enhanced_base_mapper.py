@@ -956,6 +956,7 @@ class EnhancedSchemaMapper(
     - Legislature extraction and handling via LegislatureHandlerMixin
     - XML processing utilities via XMLProcessingMixin
     - Coalition detection via CoalitionDetectionMixin
+    - Import source tracking for data provenance
 
     Child classes can declare import order dependencies by overriding:
         IMPORT_DEPENDENCIES = ['dependency1', 'dependency2']
@@ -964,11 +965,78 @@ class EnhancedSchemaMapper(
     when switching between processing runs or legislatures.
     """
 
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         DatabaseSessionMixin.__init__(self, session)
         CoalitionDetectionMixin.__init__(self)
         # Initialize entity caches from CacheMixin
         self._init_caches()
+        # Store import status record for data provenance tracking
+        self._import_status_record = import_status_record
+        self._import_status_id = import_status_record.id if import_status_record else None
+
+    def _attach_import_source(self, record):
+        """
+        Attach import source tracking to a record before adding to session.
+
+        This enables data provenance tracking - knowing which import file
+        created each record in the database.
+
+        Args:
+            record: SQLAlchemy model instance to attach source to
+
+        Returns:
+            The record with import_status_id set (if available)
+        """
+        if self._import_status_id and hasattr(record, 'import_status_id'):
+            record.import_status_id = self._import_status_id
+        return record
+
+    def _add_with_tracking(self, record):
+        """
+        Add a record to session with import source tracking.
+
+        Convenience method that combines _attach_import_source and session.add.
+
+        Args:
+            record: SQLAlchemy model instance to add
+        """
+        self._attach_import_source(record)
+        self.session.add(record)
+        return record
+
+    def _normalize_name(self, name: str) -> str:
+        """
+        Normalize name to proper title case, handling Portuguese names correctly.
+
+        Historical XML sources (legislatures I-XII) often use ALL CAPS names.
+        This method normalizes them to proper case while respecting Portuguese
+        prepositions and articles that should remain lowercase.
+
+        Args:
+            name: Name string to normalize
+
+        Returns:
+            Normalized name with proper capitalization
+        """
+        if not name:
+            return name
+
+        # If already mixed case (has both upper and lower), preserve it
+        if not name.isupper() and not name.islower():
+            return name
+
+        # Portuguese prepositions/articles to keep lowercase (except at start)
+        lowercase_words = {'de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'as', 'os'}
+
+        words = name.lower().split()
+        result = []
+        for i, word in enumerate(words):
+            if i == 0 or word not in lowercase_words:
+                result.append(word.capitalize())
+            else:
+                result.append(word)
+
+        return ' '.join(result)
 
     @abstractmethod
     def get_expected_fields(self) -> Set[str]:

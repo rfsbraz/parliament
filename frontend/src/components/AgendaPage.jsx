@@ -302,16 +302,25 @@ const AgendaPage = () => {
                               >
                                 {evento.titulo}
                               </h4>
-                              <p
-                                style={{
-                                  fontFamily: tokens.fonts.body,
-                                  fontSize: '0.875rem',
-                                  color: tokens.colors.textSecondary,
-                                  marginBottom: '0.75rem',
-                                }}
-                              >
-                                {evento.descricao}
-                              </p>
+                              {evento.descricao && (
+                                <p
+                                  style={{
+                                    fontFamily: tokens.fonts.body,
+                                    fontSize: '0.875rem',
+                                    color: tokens.colors.textSecondary,
+                                    marginBottom: '0.75rem',
+                                    whiteSpace: 'pre-line',
+                                    lineHeight: 1.5,
+                                    maxHeight: '4.5em',
+                                    overflow: 'hidden',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 3,
+                                    WebkitBoxOrient: 'vertical',
+                                  }}
+                                >
+                                  {evento.descricao}
+                                </p>
+                              )}
                               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                   <Clock size={14} style={{ color: tokens.colors.textMuted }} />
@@ -721,16 +730,25 @@ const AgendaPage = () => {
                         >
                           {votacao.titulo}
                         </h4>
-                        <p
-                          style={{
-                            fontFamily: tokens.fonts.body,
-                            fontSize: '0.8125rem',
-                            color: tokens.colors.textSecondary,
-                            marginBottom: '0.375rem',
-                          }}
-                        >
-                          {votacao.descricao}
-                        </p>
+                        {votacao.descricao && (
+                          <p
+                            style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.8125rem',
+                              color: tokens.colors.textSecondary,
+                              marginBottom: '0.375rem',
+                              whiteSpace: 'pre-line',
+                              lineHeight: 1.5,
+                              maxHeight: '3em',
+                              overflow: 'hidden',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                            }}
+                          >
+                            {votacao.descricao}
+                          </p>
+                        )}
                         <span
                           style={{
                             fontFamily: tokens.fonts.mono,

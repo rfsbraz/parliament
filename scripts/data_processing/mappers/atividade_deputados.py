@@ -182,8 +182,8 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
     - Handle coded fields through application-level translators (not in mapper)
     """
 
-    def __init__(self, session):
-        super().__init__(session)
+    def __init__(self, session, import_status_record=None):
+        super().__init__(session, import_status_record=import_status_record)
         # Use the passed SQLAlchemy session
         self.session = session
 
@@ -725,7 +725,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 deputado_id=deputado_id, dep_cad_id=dep_cad_id, leg_des=leg_des
             )
 
-            self.session.add(atividade_deputado)
+            self._add_with_tracking(atividade_deputado)
             # UUID id is generated client-side for immediate availability
 
             return atividade_deputado.id
@@ -751,7 +751,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 atividade_deputado_id=atividade_deputado_id
             )
 
-            self.session.add(atividade_list)
+            self._add_with_tracking(atividade_list)
             # UUID id is generated client-side for immediate availability
 
             return atividade_list.id
@@ -779,7 +779,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                 atividade_list_id=atividade_list_id, rel=rel_text
             )
 
-            self.session.add(actividade_out)
+            self._add_with_tracking(actividade_out)
             # UUID id is generated client-side for immediate availability
 
             return actividade_out.id
@@ -814,7 +814,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         dpl_lg=dpl_lg,
                     )
 
-                    self.session.add(dados_legis_obj)
+                    self._add_with_tracking(dados_legis_obj)
 
 
         except Exception as e:
@@ -838,7 +838,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(audiencia)
+                self._add_with_tracking(audiencia)
                 # UUID id is generated client-side for immediate availability
 
                 # Process ActividadesComissaoOut within Audiencias
@@ -875,7 +875,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         cms_no=cms_no,
                         cms_ab=cms_ab,
                     )
-                    self.session.add(comissao_out_obj)
+                    self._add_with_tracking(comissao_out_obj)
 
 
         except Exception as e:
@@ -899,7 +899,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(audicao)
+                self._add_with_tracking(audicao)
                 # UUID id is generated client-side for immediate availability
 
                 # Process ActividadesComissaoOut within Audicoes
@@ -930,7 +930,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         nome_entidade_externa=nome_entidade_externa,
                         cms_no=cms_no,
                     )
-                    self.session.add(comissao_out_obj)
+                    self._add_with_tracking(comissao_out_obj)
 
 
         except Exception as e:
@@ -998,7 +998,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         sessao=ini_sel_nr,
                     )
 
-                    self.session.add(initiative)
+                    self._add_with_tracking(initiative)
 
 
         except Exception as e:
@@ -1040,7 +1040,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(actividade_intervencao)
+                self._add_with_tracking(actividade_intervencao)
                 # UUID id is generated client-side for immediate availability
 
                 # Process each IntervencoesOut within Intev
@@ -1076,7 +1076,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         tin_ds=tin_ds,
                     )
 
-                    self.session.add(intervencao_out)
+                    self._add_with_tracking(intervencao_out)
 
 
         except Exception as e:
@@ -1111,7 +1111,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     atividade_deputado_id=atividade_deputado_id
                 )
 
-                self.session.add(deputado_situacao)
+                self._add_with_tracking(deputado_situacao)
                 # UUID id is generated client-side for immediate availability
 
                 # Process each DadosSituacaoDeputado (regular format)
@@ -1132,7 +1132,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         sio_dt_fim=sio_dt_fim,
                     )
 
-                    self.session.add(dados_situacao)
+                    self._add_with_tracking(dados_situacao)
 
                 # Also handle namespace variant pt_ar_wsgode_objectos_DadosSituacaoDeputado
                 for situacao in dep_situacao.findall(
@@ -1156,7 +1156,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         sio_dt_fim=sio_dt_fim,
                     )
 
-                    self.session.add(dados_situacao)
+                    self._add_with_tracking(dados_situacao)
 
 
         except Exception as e:
@@ -1186,7 +1186,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(atividades_parlamentares)
+                self._add_with_tracking(atividades_parlamentares)
                 # UUID id is generated client-side for immediate availability
 
                 # Process each ActividadesParlamentaresOut
@@ -1218,7 +1218,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         act_as=act_as,
                     )
 
-                    self.session.add(atividade_out_obj)
+                    self._add_with_tracking(atividade_out_obj)
 
 
         except Exception as e:
@@ -1244,7 +1244,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(grupos_parlamentares_amizade)
+                self._add_with_tracking(grupos_parlamentares_amizade)
                 # UUID id is generated client-side for immediate availability
 
                 # Process each GruposParlamentaresAmizadeOut
@@ -1267,7 +1267,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         cga_dtfim=cga_dtfim,
                     )
 
-                    self.session.add(grupo_out)
+                    self._add_with_tracking(grupo_out)
 
 
         except Exception as e:
@@ -1293,7 +1293,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(delegacoes_permanentes)
+                self._add_with_tracking(delegacoes_permanentes)
                 # UUID id is generated client-side for immediate availability
 
                 # Process each DelegacoesPermanentesOut
@@ -1314,7 +1314,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         cde_crg=cde_crg,
                     )
 
-                    self.session.add(delegacao_out)
+                    self._add_with_tracking(delegacao_out)
                     # UUID id is generated client-side for immediate availability
 
                     # Process meetings (DepReunioes.ReunioesDelegacoesPermanentes)
@@ -1337,7 +1337,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                                 ren_ti=ren_ti,
                             )
 
-                            self.session.add(reuniao_obj)
+                            self._add_with_tracking(reuniao_obj)
 
 
         except Exception as e:
@@ -1363,7 +1363,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(delegacoes_eventuais)
+                self._add_with_tracking(delegacoes_eventuais)
                 # UUID id is generated client-side for immediate availability
 
                 # Process each DelegacoesEventuaisOut
@@ -1392,7 +1392,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         dev_loc=dev_loc,
                     )
 
-                    self.session.add(delegacao_out)
+                    self._add_with_tracking(delegacao_out)
 
 
         except Exception as e:
@@ -1429,7 +1429,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(requerimentos_ativ_dep)
+                self._add_with_tracking(requerimentos_ativ_dep)
                 # UUID id is generated client-side for immediate availability
 
                 # Process each RequerimentosAtivDepOut
@@ -1457,7 +1457,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         req_per_tp=req_per_tp,
                     )
 
-                    self.session.add(requerimento_out)
+                    self._add_with_tracking(requerimento_out)
 
 
         except Exception as e:
@@ -1495,7 +1495,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(subcomissoes_grupos_trabalho)
+                self._add_with_tracking(subcomissoes_grupos_trabalho)
                 # UUID id is generated client-side for immediate availability
 
                 # Process each SubComissoesGruposTrabalhoOut
@@ -1522,7 +1522,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         scm_com_lg=scm_com_lg,
                     )
 
-                    self.session.add(subcomissao_out)
+                    self._add_with_tracking(subcomissao_out)
 
 
         except Exception as e:
@@ -1550,7 +1550,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         actividade_out_id=actividade_out_id
                     )
 
-                    self.session.add(relatores_peticoes)
+                    self._add_with_tracking(relatores_peticoes)
                     # UUID id is generated client-side for immediate availability
 
                     # Process each RelatoresPeticoesOut
@@ -1575,7 +1575,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                             pet_sel_nr_pk=pet_sel_nr_pk,
                         )
 
-                        self.session.add(relator_out)
+                        self._add_with_tracking(relator_out)
 
 
         except Exception as e:
@@ -1604,7 +1604,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         actividade_out_id=actividade_out_id
                     )
 
-                    self.session.add(relatores_iniciativas)
+                    self._add_with_tracking(relatores_iniciativas)
                     # UUID id is generated client-side for immediate availability
 
                     # Process each RelatoresIniciativasOut
@@ -1629,7 +1629,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                             ini_ti=ini_ti,
                         )
 
-                        self.session.add(relator_out)
+                        self._add_with_tracking(relator_out)
 
 
         except Exception as e:
@@ -1653,7 +1653,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(comissoes)
+                self._add_with_tracking(comissoes)
                 # UUID id is generated client-side for immediate availability
 
                 # Process each ComissoesOut
@@ -1676,7 +1676,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         cms_situacao=cms_situacao,
                     )
 
-                    self.session.add(comissao_out)
+                    self._add_with_tracking(comissao_out)
 
 
         except Exception as e:
@@ -1704,7 +1704,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         actividade_out_id=actividade_out_id
                     )
 
-                    self.session.add(autores_pareceres_inc_imu)
+                    self._add_with_tracking(autores_pareceres_inc_imu)
                     # UUID id is generated client-side for immediate availability
 
                     # Process each AutoresPareceresIncImuOut
@@ -1723,7 +1723,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                             act_tp_desc=act_tp_desc,
                         )
 
-                        self.session.add(autor_out)
+                        self._add_with_tracking(autor_out)
 
 
         except Exception as e:
@@ -1753,7 +1753,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         actividade_out_id=actividade_out_id
                     )
 
-                    self.session.add(relatores_ini_europeias)
+                    self._add_with_tracking(relatores_ini_europeias)
                     # UUID id is generated client-side for immediate availability
 
                     # Process each RelatoresIniEuropeiasOut
@@ -1778,7 +1778,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                             leg=leg,
                         )
 
-                        self.session.add(relator_out)
+                        self._add_with_tracking(relator_out)
 
 
         except Exception as e:
@@ -1804,7 +1804,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(parlamento_jovens)
+                self._add_with_tracking(parlamento_jovens)
                 # UUID id is generated client-side for immediate availability
 
                 # Process DadosDeputado
@@ -1832,7 +1832,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         estabelecimento=estabelecimento,
                     )
 
-                    self.session.add(dados_out)
+                    self._add_with_tracking(dados_out)
 
 
         except Exception as e:
@@ -1856,7 +1856,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(eventos)
+                self._add_with_tracking(eventos)
                 # UUID id is generated client-side for immediate availability
 
                 # Process each ActividadesComissaoOut within Events
@@ -1901,7 +1901,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         act_lg=act_lg,
                     )
 
-                    self.session.add(actividade_out)
+                    self._add_with_tracking(actividade_out)
 
 
         except Exception as e:
@@ -1925,7 +1925,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     actividade_out_id=actividade_out_id
                 )
 
-                self.session.add(deslocacoes)
+                self._add_with_tracking(deslocacoes)
                 # UUID id is generated client-side for immediate availability
 
                 # Process each ActividadesComissaoOut within Deslocacoes
@@ -1970,7 +1970,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         act_lg=act_lg,
                     )
 
-                    self.session.add(actividade_out)
+                    self._add_with_tracking(actividade_out)
 
 
         except Exception as e:
@@ -1996,7 +1996,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         id=uuid.uuid4(),
                         actividade_out_id=actividade_out_id
                     )
-                    self.session.add(relatores_contas_publicas)
+                    self._add_with_tracking(relatores_contas_publicas)
                     # UUID id is generated client-side for immediate availability
 
                     for relator in rcp_section.findall("RelatoresContasPublicasOut"):
@@ -2015,7 +2015,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                             cta_id=cta_id,
                             cta_no=cta_no,
                         )
-                        self.session.add(relator_out)
+                        self._add_with_tracking(relator_out)
         except Exception as e:
             logger.error(f"Error processing public accounts rapporteurs: {e}")
             logger.error("Data integrity issue detected during processing")
@@ -2092,7 +2092,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                     id=uuid.uuid4(),
                     deputado_id=deputado_id
                 )
-                self.session.add(dep_cargo)
+                self._add_with_tracking(dep_cargo)
                 # UUID id is generated client-side for immediate availability
 
                 # Process DadosCargoDeputado elements
@@ -2121,7 +2121,7 @@ class AtividadeDeputadosMapper(EnhancedSchemaMapper):
                         car_dt_inicio=car_dt_inicio,
                     )
 
-                    self.session.add(dados_cargo)
+                    self._add_with_tracking(dados_cargo)
 
 
         except Exception as e:

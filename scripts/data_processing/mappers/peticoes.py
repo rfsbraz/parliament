@@ -86,9 +86,9 @@ class PeticoesMapper(SchemaMapper):
     - Schema validation and error handling
     """
     
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         # Accept SQLAlchemy session directly (passed by unified importer)
-        super().__init__(session)
+        super().__init__(session, import_status_record=import_status_record)
     
     def get_expected_fields(self) -> Set[str]:
         """
@@ -490,7 +490,7 @@ class PeticoesMapper(SchemaMapper):
                     legislatura_id=legislatura.id,
                     updated_at=datetime.now()
                 )
-                self.session.add(existing)
+                self._add_with_tracking(existing)
             
             # Process all related structures
             self._process_publicacoes(petition, existing)
@@ -563,7 +563,7 @@ class PeticoesMapper(SchemaMapper):
             pag_final_diario_supl=pag_final_diario_supl,
             obs=obs
         )
-        self.session.add(publicacao)
+        self._add_with_tracking(publicacao)
     
     def _process_dados_comissao(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
         """Process committee data (can be multiple across legislaturas)"""
@@ -610,7 +610,7 @@ class PeticoesMapper(SchemaMapper):
             transitada=transitada
         )
 
-        self.session.add(comissao_obj)
+        self._add_with_tracking(comissao_obj)
         return comissao_obj
     
     def _process_comissao_details(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
@@ -651,7 +651,7 @@ class PeticoesMapper(SchemaMapper):
                     data_cessacao=data_cessacao,
                     motivo_cessacao=motivo_cessacao
                 )
-                self.session.add(relator_obj)
+                self._add_with_tracking(relator_obj)
     
     def _process_dados_relatorio_final(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
         """Process final report data"""
@@ -703,7 +703,7 @@ class PeticoesMapper(SchemaMapper):
                     votacao_detalhe=votacao_detalhe,
                     votacao_descricao=votacao_descricao
                 )
-                self.session.add(relatorio_obj)
+                self._add_with_tracking(relatorio_obj)
                 
                 # Process publicacao (IX Legislature)
                 publicacao = relatorio.find('publicacao')
@@ -722,7 +722,7 @@ class PeticoesMapper(SchemaMapper):
                         comissao_peticao_id=comissao_obj.id,
                         relatorio_final_id=relatorio_id
                     )
-                    self.session.add(relatorio_obj)
+                    self._add_with_tracking(relatorio_obj)
     
     def _insert_relatorio_final_publicacao(self, relatorio_obj: PeticaoRelatorioFinal, pub: ET.Element):
         """Insert final report publication data"""
@@ -759,7 +759,7 @@ class PeticoesMapper(SchemaMapper):
             url_diario=url_diario,
             obs=obs
         )
-        self.session.add(publicacao)
+        self._add_with_tracking(publicacao)
     
     def _process_documentos_comissao(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
         """Process committee-specific documents"""
@@ -807,7 +807,7 @@ class PeticoesMapper(SchemaMapper):
                         titulo=titulo,
                         tipo='audiencia'
                     )
-                    self.session.add(audiencia_obj)
+                    self._add_with_tracking(audiencia_obj)
         
         # Process Audicoes (same structure as audiencias)
         audicoes = comissao.find('Audicoes')
@@ -825,7 +825,7 @@ class PeticoesMapper(SchemaMapper):
                         titulo=titulo,
                         tipo='audicao'
                     )
-                    self.session.add(audicao_obj)
+                    self._add_with_tracking(audicao_obj)
     
     def _process_pedidos_informacao(self, comissao: ET.Element, comissao_obj: PeticaoComissao):
         """Process information requests"""
@@ -857,7 +857,7 @@ class PeticoesMapper(SchemaMapper):
                         data_resposta=data_resposta,
                         data_oficio=data_oficio
                     )
-                    self.session.add(pedido_obj)
+                    self._add_with_tracking(pedido_obj)
 
                     # Process pedidos de reiteracao
                     self._process_pedidos_reiteracao(pedido, pedido_obj)
@@ -882,7 +882,7 @@ class PeticoesMapper(SchemaMapper):
                         oficio_resposta=oficio_resposta,
                         data_oficio=data_oficio
                     )
-                    self.session.add(reiteracao_obj)
+                    self._add_with_tracking(reiteracao_obj)
     
     def _process_documentos(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
         """Process main petition documents"""
@@ -908,7 +908,7 @@ class PeticoesMapper(SchemaMapper):
             tipo_documento=tipo_documento,
             url=url
         )
-        self.session.add(documento_obj)
+        self._add_with_tracking(documento_obj)
     
     def _process_intervencoes(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
         """Process interventions/debates"""
@@ -932,7 +932,7 @@ class PeticoesMapper(SchemaMapper):
             peticao_id=peticao_obj.id,
             data_reuniao_plenaria=data_reuniao_plenaria
         )
-        self.session.add(intervencao_obj)
+        self._add_with_tracking(intervencao_obj)
         return intervencao_obj
     
     def _process_oradores(self, intervencao: ET.Element, intervencao_obj: PeticaoIntervencao):
@@ -999,7 +999,7 @@ class PeticoesMapper(SchemaMapper):
             fase_debate=fase_debate,
             link_video=link_video
         )
-        self.session.add(orador_obj)
+        self._add_with_tracking(orador_obj)
         return orador_obj
     
     def _process_pedidos_esclarecimento(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
@@ -1021,7 +1021,7 @@ class PeticoesMapper(SchemaMapper):
                         nr_oficio=nr_oficio,
                         data_resposta=data_resposta
                     )
-                    self.session.add(pedido_obj)
+                    self._add_with_tracking(pedido_obj)
     
     def _process_links(self, petition: ET.Element, peticao_obj: PeticaoParlamentar):
         """Process links (XIII Legislature)"""
@@ -1046,7 +1046,7 @@ class PeticoesMapper(SchemaMapper):
                         data_documento=data_documento,
                         url=url
                     )
-                    self.session.add(link_obj)
+                    self._add_with_tracking(link_obj)
     
     def _process_orador_publicacoes(self, orador: ET.Element, orador_obj: PeticaoOrador):
         """Process speaker publications"""
@@ -1084,7 +1084,7 @@ class PeticoesMapper(SchemaMapper):
                     id_int=id_int,
                     url_diario=url_diario
                 )
-                self.session.add(publicacao_obj)
+                self._add_with_tracking(publicacao_obj)
     
     
     def _parse_date(self, date_str: str) -> Optional[str]:

@@ -77,9 +77,9 @@ class ReunioesNacionaisMapper(EnhancedSchemaMapper):
     Based on official Parliament documentation (December 2017) consistent across legislatures.
     """
     
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         # Accept SQLAlchemy session directly (passed by unified importer)
-        super().__init__(session)
+        super().__init__(session, import_status_record=import_status_record)
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -258,7 +258,7 @@ class ReunioesNacionaisMapper(EnhancedSchemaMapper):
                     observacoes=observacoes,
                     legislatura_id=legislatura.id
                 )
-                self.session.add(meeting_record)
+                self._add_with_tracking(meeting_record)
             
             # Process participants
             self._process_meeting_participants(reuniao, meeting_record)
@@ -322,7 +322,7 @@ class ReunioesNacionaisMapper(EnhancedSchemaMapper):
                 deputado_id=deputy_id  # Use XML integer ID, not UUID
             )
 
-            self.session.add(participant_record)
+            self._add_with_tracking(participant_record)
             
         except Exception as e:
             logger.error(f"Error processing participant {nome}: {str(e)}")

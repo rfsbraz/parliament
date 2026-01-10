@@ -4,18 +4,20 @@ Clean implementation with proper MySQL/SQLAlchemy patterns
 """
 from flask import Blueprint, request, jsonify
 from sqlalchemy import func, desc, distinct, or_, and_, case, exists, select
+from sqlalchemy.orm import aliased
 from database.connection import DatabaseSession
 from database.models import (
-    Deputado, Partido, Legislatura, CirculoEleitoral, 
-    DeputadoMandatoLegislativo, DeputadoHabilitacao, 
+    Deputado, Partido, Legislatura, CirculoEleitoral,
+    DeputadoMandatoLegislativo, DeputadoHabilitacao,
     DeputadoCargoFuncao, DeputadoTitulo, DeputadoCondecoracao,
     DeputadoObraPublicada, IntervencaoParlamentar, IntervencaoDeputado,
     IniciativaParlamentar, IniciativaAutorDeputado, IniciativaEvento, IniciativaEventoVotacao,
-    AtividadeParlamentar, AtividadeParlamentarVotacao, OrcamentoEstadoVotacao, 
+    AtividadeParlamentar, AtividadeParlamentarVotacao, OrcamentoEstadoVotacao,
     OrcamentoEstadoGrupoParlamentarVoto, Coligacao, ColigacaoPartido,
     RegistoInteressesUnified
 )
 from scripts.data_processing.mappers.political_entity_queries import PoliticalEntityQueries
+from app.utils.attribution import AttributionBuilder, format_attribution_response
 
 parlamento_bp = Blueprint('parlamento', __name__)
 
@@ -269,7 +271,11 @@ def deputado_to_dict(deputado, session=None):
         'picture_url': f'https://app.parlamento.pt/webutils/getimage.aspx?id={deputado.id_cadastro}&type=deputado' if deputado.id_cadastro else None,
         'sexo': deputado.sexo,
         'ativo': deputado.is_active,
-        
+
+        # Seat status - derived from DadosSituacaoDeputado
+        'is_seated': deputado.is_seated,  # True if currently occupying a seat (Efetivo*)
+        'mandate_status': deputado.mandate_status,  # Efetivo, Suspenso(Eleito), Renunciou, etc.
+
         # Mandate related data - use individual party sigla
         'partido_sigla': (
             mandato.gp_sigla if mandato and mandato.eh_coligacao and mandato.gp_sigla 
@@ -289,12 +295,14 @@ def deputado_to_dict(deputado, session=None):
         # Basic career info placeholder (frontend expects this structure)
         'career_info': {
             'is_currently_active': deputado.is_active,
+            'is_seated': deputado.is_seated,  # Currently occupying a seat
+            'mandate_status': deputado.mandate_status,  # Current status description
             'is_multi_term': False,  # Would need complex query to determine
             'total_mandates': 1,  # Simplified for now
             'first_mandate': legislatura.numero if legislatura else None,
             'latest_mandate': legislatura.numero if legislatura else None,
             'parties_served': [(
-                mandato.gp_sigla if mandato.eh_coligacao and mandato.gp_sigla 
+                mandato.gp_sigla if mandato.eh_coligacao and mandato.gp_sigla
                 else mandato.par_sigla
             )] if mandato and (mandato.par_sigla or mandato.gp_sigla) else []
         }
@@ -460,20 +468,43 @@ def get_latest_legislature_id(session):
 
 @parlamento_bp.route('/deputados/<int:cad_id>/detalhes', methods=['GET'])
 def get_deputado_detalhes(cad_id):
-    """Retorna detalhes completos de um deputado com informações do mandato"""
+    """Retorna detalhes completos de um deputado com informações do mandato
+
+    Query Parameters:
+        attribution: Include data source attribution (true/false/detailed)
+            - false (default): No attribution data
+            - true: Include source summary
+            - detailed: Include full query traces
+    """
+    # Parse attribution query parameter
+    attribution_param = request.args.get('attribution', 'false').lower()
+    include_attribution = attribution_param in ('true', 'detailed')
+    detailed_attribution = attribution_param == 'detailed'
+
     try:
         with DatabaseSession() as session:
+            # Initialize attribution builder if requested
+            attribution = AttributionBuilder(session, detailed=detailed_attribution) if include_attribution else None
+
             # Find deputado by cad_id (unique across all legislatures)
             # Get their most recent legislature entry using proper ordering
             deputado = get_most_recent_deputy(session, cad_id)
             
             if not deputado:
                 return jsonify({'error': 'Deputado not found'}), 404
-            
+
+            # Track deputy query for attribution
+            if attribution:
+                attribution.track_query(Deputado, [deputado], purpose="get_deputy_info")
+
             # Get mandate information from DeputadoMandatoLegislativo table
             mandato_info = session.query(DeputadoMandatoLegislativo).filter_by(
                 deputado_id=deputado.id
             ).first()
+
+            # Track mandate query for attribution
+            if attribution and mandato_info:
+                attribution.track_query(DeputadoMandatoLegislativo, [mandato_info], purpose="get_mandate_info")
             
             # Get legislature information
             legislatura = session.query(Legislatura).filter_by(
@@ -693,72 +724,156 @@ def get_deputado_detalhes(cad_id):
                 else:
                     national_percentile = 25  # Below average activity
             
+            # Get initiative types breakdown for this deputy
+            initiative_types_query = session.query(
+                IniciativaParlamentar.ini_tipo,
+                IniciativaParlamentar.ini_desc_tipo,
+                func.count(IniciativaParlamentar.id).label('count')
+            ).join(
+                IniciativaAutorDeputado,
+                IniciativaParlamentar.id == IniciativaAutorDeputado.iniciativa_id
+            ).filter(
+                IniciativaAutorDeputado.id_cadastro == deputado.id_cadastro
+            ).group_by(
+                IniciativaParlamentar.ini_tipo,
+                IniciativaParlamentar.ini_desc_tipo
+            ).order_by(func.count(IniciativaParlamentar.id).desc()).all()
+
+            iniciativas_por_tipo = []
+            for ini_type in initiative_types_query:
+                iniciativas_por_tipo.append({
+                    'codigo': ini_type.ini_tipo,
+                    'descricao': ini_type.ini_desc_tipo or ini_type.ini_tipo,
+                    'total': ini_type.count
+                })
+
+            # Get per-legislature initiative counts for evolution tracking
+            evolucao_legislaturas = []
+            for leg in legislaturas_servidas_query:
+                leg_initiatives = session.query(func.count(IniciativaParlamentar.id)).join(
+                    IniciativaAutorDeputado,
+                    IniciativaParlamentar.id == IniciativaAutorDeputado.iniciativa_id
+                ).filter(
+                    IniciativaAutorDeputado.id_cadastro == deputado.id_cadastro,
+                    IniciativaParlamentar.ini_leg == leg.numero
+                ).scalar() or 0
+
+                leg_interventions = session.query(func.count(IntervencaoParlamentar.id)).join(
+                    IntervencaoDeputado,
+                    IntervencaoParlamentar.id == IntervencaoDeputado.intervencao_id
+                ).join(
+                    Legislatura,
+                    IntervencaoParlamentar.legislatura_id == Legislatura.id
+                ).filter(
+                    IntervencaoDeputado.id_cadastro == deputado.id_cadastro,
+                    Legislatura.numero == leg.numero
+                ).scalar() or 0
+
+                evolucao_legislaturas.append({
+                    'legislatura': leg.numero,
+                    'iniciativas': leg_initiatives,
+                    'intervencoes': leg_interventions
+                })
+
+            # Sort by legislature number (most recent first for display)
+            leg_order = {'XVII': 1, 'XVI': 2, 'XV': 3, 'XIV': 4, 'XIII': 5, 'XII': 6}
+            evolucao_legislaturas.sort(key=lambda x: leg_order.get(x['legislatura'], 99))
+
+            # Determine if deputy is in opposition (simplified check)
+            # Government parties in XVII: PS (minority government)
+            governo_partidos = ['PS']  # Update as needed for current government
+            is_oposicao = current_party not in governo_partidos if current_party else True
+
+            # Calculate opposition context for approval rates
+            oposicao_context = {
+                'is_oposicao': is_oposicao,
+                'media_aprovacao_oposicao': 8,  # ~8% typical opposition approval
+                'media_aprovacao_governo': 60,  # ~60% typical government approval
+                'nota_metodologica': 'Deputados da oposição têm taxas de aprovação estruturalmente mais baixas devido à dinâmica parlamentar.'
+            }
+
             # Replace simple statistics with meaningful political metrics
             response['estatisticas'] = {
                 # Legislative Effectiveness
                 'iniciativas_propostas': total_iniciativas,
                 'iniciativas_aprovadas': 0,  # Would need complex query to track passage
+                'taxa_aprovacao': 0.0,  # (aprovadas / propostas) * 100
+                'iniciativas_por_tipo': iniciativas_por_tipo,
                 'taxa_atividade_anual': activity_rate,
                 'colaboracao_inter_partidaria': cross_party_initiatives,
-                
-                # Parliamentary Engagement  
+
+                # Parliamentary Engagement
                 'intervencoes_parlamentares': total_intervencoes,
                 'taxa_assiduidade': taxa_assiduidade,
                 'tempo_servico_anos': anos_servico,
-                
+
                 # Political Profile
                 'nivel_experiencia': experience_level,
                 'total_mandatos': total_mandatos,
                 'legislaturas_servidas': legislaturas_servidas,
                 'consistencia_eleitoral': electoral_consistency,
                 'circulo_principal': main_electoral_circle,
-                
+
+                # Evolution & Trends
+                'evolucao_legislaturas': evolucao_legislaturas,
+
                 # Comparative Context
                 'percentil_nacional': national_percentile,
                 'media_partido_iniciativas': party_avg_initiatives,
-                'partido_atual': current_party
+                'partido_atual': current_party,
+                'contexto_oposicao': oposicao_context
             }
             
             # Get all mandates for this person across all legislatures
+            # IMPORTANT: Only include records that have actual mandate data (DeputadoMandatoLegislativo)
+            # to avoid showing orphan Deputado records from incorrect data imports
             mandatos_historico = []
             if deputado.id_cadastro:
-                # Get unique deputy records for this person (one per legislature)
-                all_mandates = session.query(Deputado, Legislatura).join(
+                # Query only deputies that have actual mandate records
+                all_mandates = session.query(
+                    Deputado, Legislatura, DeputadoMandatoLegislativo
+                ).join(
                     Legislatura, Deputado.legislatura_id == Legislatura.id
+                ).join(
+                    DeputadoMandatoLegislativo, DeputadoMandatoLegislativo.deputado_id == Deputado.id
                 ).filter(
                     Deputado.id_cadastro == deputado.id_cadastro
-                ).order_by(desc(Legislatura.numero)).all()
-                
-                # Process each unique mandate
+                ).order_by(desc(Legislatura.data_inicio)).all()
+
+                # Process each unique mandate (deduplicate by legislature)
                 seen_legislatures = set()
-                for dep, leg in all_mandates:
+                for dep, leg, mand in all_mandates:
                     # Skip if we've already processed this legislature
                     if leg.numero in seen_legislatures:
                         continue
                     seen_legislatures.add(leg.numero)
-                    
-                    # Get the mandate info for this deputy (just the first one if multiple exist)
-                    mand = session.query(DeputadoMandatoLegislativo).filter_by(
-                        deputado_id=dep.id
-                    ).first()
-                    
+
                     mandato_data = {
                         'deputado_id': dep.id,
                         'legislatura_numero': leg.numero,
                         'legislatura_nome': leg.designacao,
                         'mandato_inicio': leg.data_inicio.isoformat() if leg.data_inicio else None,
                         'mandato_fim': leg.data_fim.isoformat() if leg.data_fim else None,
-                        'circulo': mand.ce_des if mand else None,  # Electoral circle from mandate info
-                        'partido_sigla': mand.par_sigla if mand else None,
-                        'partido_nome': mand.par_des if mand else None,
-                        'is_current': leg.numero == 'XVII'  # Only XVII is the current legislature
+                        'circulo': mand.ce_des,
+                        'partido_sigla': mand.par_sigla,
+                        'partido_nome': mand.par_des,
+                        'is_current': leg.numero == 'XVII'
                     }
                     mandatos_historico.append(mandato_data)
-            
+
             response['mandatos_historico'] = mandatos_historico
-            
+
+            # Add attribution data if requested
+            if include_attribution and attribution:
+                response = format_attribution_response(
+                    response,
+                    attribution,
+                    include_attribution=True,
+                    deputy_id=deputado.id_cadastro
+                )
+
             return jsonify(response)
-            
+
     except Exception as e:
         return log_and_return_error(e, '/api/deputados/<id>/detalhes')
 
@@ -1190,6 +1305,10 @@ def get_estatisticas():
             ).filter(
                 DeputadoMandatoLegislativo.leg_des == legislatura
             ).scalar()
+
+            # Count seated deputies (those with Efetivo* status) for current legislature
+            from app.utils.deputy_status import get_seated_deputies_count
+            seated_deputados = get_seated_deputies_count(legislatura, session)
             
             # Count distinct individual parties represented (not coalitions)
             individual_parties = session.query(
@@ -1304,6 +1423,9 @@ def get_estatisticas():
             return jsonify({
                 'totais': {
                     'deputados': total_deputados,
+                    'deputados_eleitos': total_deputados,  # All elected deputies
+                    'deputados_em_exercicio': seated_deputados,  # Currently seated
+                    'seated_deputies': seated_deputados,  # Alias for frontend compatibility
                     'partidos': total_partidos,
                     'circulos': total_circulos,
                     'mandatos': total_mandatos
@@ -3665,19 +3787,53 @@ def get_deputados():
                     )
                 )
             else:
-                # Show all unique deputies by id_cadastro (latest entry per person)
-                # First find max created_at per id_cadastro
-                max_times = session.query(
-                    Deputado.id_cadastro,
-                    func.max(Deputado.created_at).label('max_created_at')
+                # Show all unique deputies by id_cadastro
+                # Priority: XVII record if exists, otherwise most recent legislature by data_inicio
+
+                # First, get all XVII deputies
+                xvii_deputies = session.query(
+                    Deputado.id_cadastro.label('xvii_id_cadastro'),
+                    Deputado.id.label('xvii_deputado_id')
+                ).join(
+                    Legislatura, Deputado.legislatura_id == Legislatura.id
+                ).filter(
+                    Legislatura.numero == 'XVII'
+                ).subquery()
+
+                # For non-XVII deputies, get the most recent by legislature start date
+                # Create a subquery that ranks each person's records by legislature date
+                from sqlalchemy import literal
+
+                # Get all unique id_cadastros that don't have XVII records
+                non_xvii_best = session.query(
+                    Deputado.id_cadastro.label('non_xvii_id_cadastro'),
+                    func.max(Legislatura.data_inicio).label('best_leg_date')
+                ).join(
+                    Legislatura, Deputado.legislatura_id == Legislatura.id
+                ).filter(
+                    ~Deputado.id_cadastro.in_(
+                        select(xvii_deputies.c.xvii_id_cadastro)
+                    )
                 ).group_by(Deputado.id_cadastro).subquery()
 
-                # Then get the actual record with that created_at
-                query = session.query(Deputado).join(
-                    max_times,
+                # Get the actual record for non-XVII deputies
+                non_xvii_records = session.query(
+                    Deputado.id.label('non_xvii_record_id')
+                ).join(
+                    Legislatura, Deputado.legislatura_id == Legislatura.id
+                ).join(
+                    non_xvii_best,
                     and_(
-                        Deputado.id_cadastro == max_times.c.id_cadastro,
-                        Deputado.created_at == max_times.c.max_created_at
+                        Deputado.id_cadastro == non_xvii_best.c.non_xvii_id_cadastro,
+                        Legislatura.data_inicio == non_xvii_best.c.best_leg_date
+                    )
+                ).subquery()
+
+                # Union XVII records and non-XVII records
+                query = session.query(Deputado).filter(
+                    or_(
+                        Deputado.id.in_(select(xvii_deputies.c.xvii_deputado_id)),
+                        Deputado.id.in_(select(non_xvii_records.c.non_xvii_record_id))
                     )
                 )
             
@@ -3691,21 +3847,48 @@ def get_deputados():
                     )
                 )
             
-            # Apply sorting: active deputies first, then newest legislature, then by name
-            # Create subquery to check if deputy has active mandate in XVII
-            has_active_mandate = exists(
-                select(DeputadoMandatoLegislativo.id).where(
-                    and_(
-                        DeputadoMandatoLegislativo.deputado_id == Deputado.id,
-                        DeputadoMandatoLegislativo.leg_des == 'XVII'
-                    )
-                )
-            )
+            # Apply sorting: seated deputies first, then active but not seated, then inactive
+            # Use a subquery to determine XVII mandate status per id_cadastro
+            from database.models import AtividadeDeputado, DeputadoSituacao, DadosSituacaoDeputado
+            from sqlalchemy import text, literal_column
 
-            query = query.join(
+            # Create a subquery that gets the XVII seated status for each id_cadastro
+            # This returns: id_cadastro, has_xvii_mandate (1/0), is_seated (1/0)
+            xvii_status_subquery = session.query(
+                Deputado.id_cadastro.label('status_id_cadastro'),
+                func.max(case((DadosSituacaoDeputado.sio_des.like('Efetivo%'), 1), else_=0)).label('is_seated_flag')
+            ).join(
+                Legislatura, Deputado.legislatura_id == Legislatura.id
+            ).outerjoin(
+                AtividadeDeputado, AtividadeDeputado.deputado_id == Deputado.id
+            ).outerjoin(
+                DeputadoSituacao, DeputadoSituacao.atividade_deputado_id == AtividadeDeputado.id
+            ).outerjoin(
+                DadosSituacaoDeputado, DadosSituacaoDeputado.deputado_situacao_id == DeputadoSituacao.id
+            ).filter(
+                Legislatura.numero == 'XVII'
+            ).group_by(Deputado.id_cadastro).subquery()
+
+            # Also create a simple subquery for XVII mandate existence
+            xvii_mandate_subquery = session.query(
+                Deputado.id_cadastro.label('mandate_id_cadastro'),
+                func.count(DeputadoMandatoLegislativo.id).label('has_xvii_mandate')
+            ).join(
+                DeputadoMandatoLegislativo, DeputadoMandatoLegislativo.deputado_id == Deputado.id
+            ).filter(
+                DeputadoMandatoLegislativo.leg_des == 'XVII'
+            ).group_by(Deputado.id_cadastro).subquery()
+
+            # Join the main query with these subqueries
+            query = query.outerjoin(
+                xvii_status_subquery, Deputado.id_cadastro == xvii_status_subquery.c.status_id_cadastro
+            ).outerjoin(
+                xvii_mandate_subquery, Deputado.id_cadastro == xvii_mandate_subquery.c.mandate_id_cadastro
+            ).join(
                 Legislatura, Deputado.legislatura_id == Legislatura.id
             ).order_by(
-                desc(case((has_active_mandate, 1), else_=0)),  # Active deputies first
+                desc(func.coalesce(xvii_status_subquery.c.is_seated_flag, 0)),  # Seated first
+                desc(func.coalesce(xvii_mandate_subquery.c.has_xvii_mandate, 0)),  # Then active XVII
                 desc(Legislatura.data_inicio),  # Then newest legislature
                 Deputado.nome.asc()  # Then alphabetically by name
             )
@@ -3739,7 +3922,11 @@ def get_deputados():
             ).filter(
                 DeputadoMandatoLegislativo.leg_des == 'XVII'  # Current active legislature
             ).scalar()
-            
+
+            # Calculate seated deputies count (deputies with Efetivo* status in XVII)
+            from app.utils.deputy_status import get_seated_deputies_count
+            seated_deputies_count = get_seated_deputies_count('XVII', session)
+
             return jsonify({
                 'deputados': [deputado_to_dict(d, session) for d in deputados],
                 'pagination': {
@@ -3752,7 +3939,8 @@ def get_deputados():
                 },
                 'filters': {
                     'total_deputy_records': total_mandatos,
-                    'active_deputies_count': active_deputies_count,
+                    'active_deputies_count': active_deputies_count,  # All deputies elected in XVII
+                    'seated_deputies_count': seated_deputies_count,  # Currently occupying seats
                     'view_type': view_type,
                     'legislatura': legislatura,
                     'active_only': active_only,

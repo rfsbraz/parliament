@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 class CooperacaoMapper(SchemaMapper):
     """Schema mapper for parliamentary cooperation files"""
 
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         # Accept SQLAlchemy session directly (passed by unified importer)
-        super().__init__(session)
+        super().__init__(session, import_status_record=import_status_record)
         # Cache for cooperacao records to avoid duplicate inserts within same file
         self._cooperacao_cache = {}  # cooperacao_id -> CooperacaoParlamentar
     
@@ -295,7 +295,7 @@ class CooperacaoMapper(SchemaMapper):
                         nome=nome,
                         descricao=descricao
                     )
-                    self.session.add(programa_record)
+                    self._add_with_tracking(programa_record)
     
     def _process_cooperation_activities(self, cooperacao_item: ET.Element, cooperacao: CooperacaoParlamentar):
         """Process cooperation activities"""
@@ -325,7 +325,7 @@ class CooperacaoMapper(SchemaMapper):
                     local=local,
                     descricao=descricao
                 )
-                self.session.add(atividade_record)
+                self._add_with_tracking(atividade_record)
                 
                 # Process participants
                 self._process_cooperation_participants(atividade, atividade_record)
@@ -349,7 +349,7 @@ class CooperacaoMapper(SchemaMapper):
                             nome=nome,
                             tipo_participante='externo'
                         )
-                        self.session.add(participante_record)
+                        self._add_with_tracking(participante_record)
             else:
                 # Process simple participant data
                 for participante in participantes:
@@ -361,7 +361,7 @@ class CooperacaoMapper(SchemaMapper):
                             nome=nome,
                             tipo_participante='interno'
                         )
-                        self.session.add(participante_record)
+                        self._add_with_tracking(participante_record)
         
         # Process direct external participants
         externos = atividade.find('RelacoesExternasParticipantes')
@@ -377,7 +377,7 @@ class CooperacaoMapper(SchemaMapper):
                         nome=nome,
                         tipo_participante='externo'
                     )
-                    self.session.add(participante_record)
+                    self._add_with_tracking(participante_record)
 
     def _process_cooperacao_atividade(self, atividade: ET.Element, cooperacao: CooperacaoParlamentar):
         """Process individual cooperation activity directly nested under main cooperation item"""
@@ -403,7 +403,7 @@ class CooperacaoMapper(SchemaMapper):
                 data_fim=data_fim,
                 local=local
             )
-            self.session.add(atividade_record)
+            self._add_with_tracking(atividade_record)
             
             # Process participants
             self._process_cooperation_participants(atividade, atividade_record)

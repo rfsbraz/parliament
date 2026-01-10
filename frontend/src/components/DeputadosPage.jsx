@@ -88,8 +88,11 @@ const DeputadosPage = () => {
                 {filters.total_deputy_records}
               </span> mandatos totais · {' '}
               <span style={{ fontFamily: tokens.fonts.mono, fontWeight: 600, color: tokens.colors.primary }}>
+                {filters.seated_deputies_count || filters.active_deputies_count || 0}
+              </span> em exercício de {' '}
+              <span style={{ fontFamily: tokens.fonts.mono, fontWeight: 600 }}>
                 {filters.active_deputies_count || 0}
-              </span> ativos
+              </span> eleitos
             </>
           ) : 'Carregando...'}
         </p>
@@ -257,43 +260,135 @@ const DeputadosPage = () => {
                       >
                         {deputado.partido_sigla} · {deputado.circulo}
                       </span>
-                      {deputado.career_info?.is_currently_active ? (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '0.125rem 0.5rem',
-                            fontFamily: tokens.fonts.body,
-                            fontSize: '0.6875rem',
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.03em',
-                            color: tokens.colors.primary,
-                            backgroundColor: '#F0F7F4',
-                            borderRadius: '2px',
-                          }}
-                        >
-                          Ativo
-                        </span>
-                      ) : (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '0.125rem 0.5rem',
-                            fontFamily: tokens.fonts.body,
-                            fontSize: '0.6875rem',
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.03em',
-                            color: tokens.colors.textMuted,
-                            backgroundColor: '#F5F5F5',
-                            borderRadius: '2px',
-                          }}
-                        >
-                          Inativo
-                        </span>
-                      )}
+                      {/* Mandate Status Badge */}
+                      {(() => {
+                        const status = deputado.mandate_status || deputado.career_info?.mandate_status;
+                        const isSeated = deputado.is_seated || deputado.career_info?.is_seated;
+                        const isActive = deputado.career_info?.is_currently_active;
+
+                        // Determine badge style based on status
+                        if (isSeated) {
+                          return (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '0.125rem 0.5rem',
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.6875rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                                color: tokens.colors.primary,
+                                backgroundColor: '#F0F7F4',
+                                borderRadius: '2px',
+                              }}
+                            >
+                              Em Exercício
+                            </span>
+                          );
+                        } else if (status === 'Suspenso(Eleito)') {
+                          return (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '0.125rem 0.5rem',
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.6875rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                                color: '#92400E',
+                                backgroundColor: '#FEF3C7',
+                                borderRadius: '2px',
+                              }}
+                            >
+                              Suspenso
+                            </span>
+                          );
+                        } else if (status === 'Renunciou') {
+                          return (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '0.125rem 0.5rem',
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.6875rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                                color: '#991B1B',
+                                backgroundColor: '#FEE2E2',
+                                borderRadius: '2px',
+                              }}
+                            >
+                              Renunciou
+                            </span>
+                          );
+                        } else if (status && status.startsWith('Suspenso')) {
+                          return (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '0.125rem 0.5rem',
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.6875rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                                color: '#92400E',
+                                backgroundColor: '#FEF3C7',
+                                borderRadius: '2px',
+                              }}
+                            >
+                              Suspenso
+                            </span>
+                          );
+                        } else if (isActive) {
+                          return (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '0.125rem 0.5rem',
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.6875rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                                color: tokens.colors.primary,
+                                backgroundColor: '#F0F7F4',
+                                borderRadius: '2px',
+                              }}
+                            >
+                              Ativo
+                            </span>
+                          );
+                        } else {
+                          return (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '0.125rem 0.5rem',
+                                fontFamily: tokens.fonts.body,
+                                fontSize: '0.6875rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                                color: tokens.colors.textMuted,
+                                backgroundColor: '#F5F5F5',
+                                borderRadius: '2px',
+                              }}
+                            >
+                              Inativo
+                            </span>
+                          );
+                        }
+                      })()}
                       {deputado.career_info?.is_multi_term && (
                         <span
                           style={{

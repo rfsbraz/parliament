@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail, Shield, AlertTriangle, Heart, Users, TrendingUp, TrendingDown, Minus, Info, ChevronRight, Target, Award, Globe, CheckCircle2, BarChart3 } from 'lucide-react';
+import { ArrowLeft, User, MapPin, Calendar, Briefcase, Activity, FileText, Vote, MessageSquare, Play, Clock, ExternalLink, Mail, Shield, AlertTriangle, Heart, Users, TrendingUp, TrendingDown, Minus, Info, ChevronRight, ChevronDown, Target, Award, Globe, CheckCircle2, BarChart3, GraduationCap, Building2, BookOpen, Medal } from 'lucide-react';
 import VotingAnalytics from './VotingAnalytics';
 import LegislatureDropdown from './LegislatureDropdown';
 import { apiFetch } from '../config/api';
 import { tokens } from '../styles/tokens';
 import { LoadingSpinner } from './common';
+// Phase 1 Components - Constitutional Modernism Design System
+import TrafficLightIndicator, { TrafficLightBar, ATTENDANCE_THRESHOLDS } from './deputy/TrafficLightIndicator';
+import { EducationalBox, ImportantContextBox, MethodologyNote } from './deputy/ContextBox';
+import InterestStatusCard, { ExclusivityBadge, SectorInterestRow } from './deputy/InterestStatusCard';
+import InitiativeProcessStepper, { InitiativeOutcomesSummary, AuthorshipPatternIndicator } from './deputy/InitiativeProcessStepper';
+import InterventionsSummaryBar, { ActivityBadge, VideoIndicator } from './deputy/InterventionsSummaryBar';
+// Phase 2 Components - Enhanced Analytics
+import TimelineSparkline, { ActivityHeatmap, TrendIndicator, BarSparkline } from './charts/TimelineSparkline';
+import AchievementBadge, { BadgeCollection, BadgeSummary, RedFlagIndicator } from './deputy/AchievementBadge';
+import AuthorshipChart, { AuthorshipBreakdown, CollaborationIndicator } from './charts/AuthorshipChart';
+import PolicySpecializationChart, { PolicyRadar, TopicTag } from './charts/PolicySpecializationChart';
+import SectorHeatmap, { SectorOverlapSummary, VotingInterestCrossReference } from './deputy/SectorHeatmap';
 
 // TODO: Deputy mandate linking limitation
 // Current system uses name-based linking to connect same person across legislaturas
@@ -542,6 +554,481 @@ const AttendanceCard = ({ currentRate, totalRate, totalSessions, onCardClick }) 
   );
 };
 
+/**
+ * Mandate Timeline Component - Visual horizontal timeline showing career progression
+ */
+const MandateTimeline = ({ mandatos, currentLegislature }) => {
+  if (!mandatos || mandatos.length === 0) return null;
+
+  // Sort mandates chronologically (oldest first)
+  const sortedMandatos = [...mandatos].sort((a, b) => {
+    const legA = parseInt(a.legislatura_numero?.replace(/\D/g, '') || '0');
+    const legB = parseInt(b.legislatura_numero?.replace(/\D/g, '') || '0');
+    return legA - legB;
+  });
+
+  const maxMandates = sortedMandatos.length;
+
+  return (
+    <section style={{
+      backgroundColor: tokens.colors.bgSecondary,
+      border: `1px solid ${tokens.colors.border}`,
+      borderRadius: '4px',
+      padding: '20px 24px',
+      marginBottom: '24px',
+    }}>
+      <h3 style={{
+        fontFamily: tokens.fonts.body,
+        fontSize: '0.75rem',
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        color: tokens.colors.textSecondary,
+        marginBottom: '16px',
+      }}>
+        Percurso Parlamentar
+      </h3>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {/* Timeline Bar */}
+        <div style={{
+          display: 'flex',
+          gap: '4px',
+          height: '40px',
+        }}>
+          {sortedMandatos.map((mandato, index) => {
+            const isCurrent = mandato.legislatura_numero === currentLegislature;
+            return (
+              <div
+                key={mandato.deputado_id || index}
+                style={{
+                  flex: 1,
+                  backgroundColor: isCurrent ? tokens.colors.primary : tokens.colors.primaryLight || '#2D6A4F',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                  opacity: isCurrent ? 1 : 0.7,
+                  transition: 'opacity 0.15s ease',
+                  cursor: 'default',
+                }}
+                title={`${mandato.legislatura_nome} · ${mandato.partido_sigla} · ${mandato.circulo}`}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = isCurrent ? '1' : '0.7'}
+              >
+                <span style={{
+                  color: '#FFFFFF',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  fontFamily: tokens.fonts.mono,
+                }}>
+                  {mandato.legislatura_numero}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Timeline Labels */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: '0.6875rem',
+          color: tokens.colors.textMuted,
+        }}>
+          <span>{sortedMandatos[0]?.mandato_inicio ? new Date(sortedMandatos[0].mandato_inicio).getFullYear() : ''}</span>
+          <span>{sortedMandatos[maxMandates - 1]?.is_current ? 'Atual' : sortedMandatos[maxMandates - 1]?.mandato_fim ? new Date(sortedMandatos[maxMandates - 1].mandato_fim).getFullYear() : ''}</span>
+        </div>
+      </div>
+
+      {/* Summary */}
+      <div style={{
+        marginTop: '12px',
+        paddingTop: '12px',
+        borderTop: `1px solid ${tokens.colors.border}`,
+        fontSize: '0.8125rem',
+        color: tokens.colors.textSecondary,
+      }}>
+        <span style={{ fontWeight: 500 }}>{maxMandates} mandato{maxMandates > 1 ? 's' : ''}</span>
+        {sortedMandatos.length > 1 && (
+          <span> · {[...new Set(sortedMandatos.map(m => m.partido_sigla))].join(', ')}</span>
+        )}
+        {sortedMandatos.length > 1 && (
+          <span> · {[...new Set(sortedMandatos.map(m => m.circulo))].join(', ')}</span>
+        )}
+      </div>
+    </section>
+  );
+};
+
+/**
+ * Dossier Section Component - Collapsible section with preview
+ */
+const DossierSection = ({
+  title,
+  icon: Icon,
+  count,
+  preview,
+  children,
+  defaultExpanded = false,
+  isEmpty = false
+}) => {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  return (
+    <div style={{
+      borderBottom: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+      opacity: isEmpty ? 0.6 : 1,
+    }}>
+      <button
+        onClick={() => !isEmpty && setIsExpanded(!isExpanded)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '16px 20px',
+          background: 'none',
+          border: 'none',
+          cursor: isEmpty ? 'default' : 'pointer',
+          transition: 'background-color 0.15s ease',
+        }}
+        onMouseEnter={(e) => !isEmpty && (e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.02)')}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+        aria-expanded={isExpanded}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Icon style={{ width: '18px', height: '18px', color: tokens.colors.primary }} />
+          <h4 style={{
+            fontFamily: tokens.fonts.body,
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.03em',
+            color: tokens.colors.textPrimary,
+            margin: 0,
+          }}>
+            {title}
+          </h4>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{
+            fontFamily: tokens.fonts.mono,
+            fontSize: '0.75rem',
+            color: isEmpty ? tokens.colors.textMuted : tokens.colors.textSecondary,
+            backgroundColor: tokens.colors.bgTertiary,
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontStyle: isEmpty ? 'italic' : 'normal',
+          }}>
+            {isEmpty ? 'Sem registos' : count}
+          </span>
+          {!isEmpty && (
+            <ChevronDown
+              style={{
+                width: '16px',
+                height: '16px',
+                color: tokens.colors.textMuted,
+                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease',
+              }}
+            />
+          )}
+        </div>
+      </button>
+
+      {/* Preview when collapsed */}
+      {!isExpanded && !isEmpty && preview && (
+        <div style={{
+          padding: '0 20px 12px 50px',
+          fontSize: '0.8125rem',
+          color: tokens.colors.textSecondary,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}>
+          {preview}
+        </div>
+      )}
+
+      {/* Expanded content */}
+      {isExpanded && !isEmpty && (
+        <div style={{
+          padding: '16px 20px',
+          backgroundColor: 'white',
+          borderTop: `1px solid ${tokens.colors.border}`,
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Biographical Dossier Component - Accordion container for all biographical data
+ */
+const BiographicalDossier = ({ deputado }) => {
+  // Count items for each section
+  const habilitacoesCount = deputado.habilitacoes_academicas ?
+    deputado.habilitacoes_academicas.split(';').filter(h => h.trim()).length : 0;
+  const cargosCount = deputado.cargos_funcoes?.length || 0;
+  const titulosCount = deputado.titulos?.length || 0;
+  const condecoracoesCount = deputado.condecoracoes?.length || 0;
+  const obrasCount = deputado.obras_publicadas?.length || 0;
+  const orgaosCount = deputado.atividades_orgaos?.length || 0;
+
+  return (
+    <section style={{
+      backgroundColor: tokens.colors.bgWarm || '#F8F6F0',
+      border: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+      borderRadius: '4px',
+      overflow: 'hidden',
+      marginTop: '24px',
+    }}>
+      <header style={{
+        padding: '16px 20px',
+        borderBottom: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+        backgroundColor: 'rgba(255,255,255,0.5)',
+      }}>
+        <h3 style={{
+          fontFamily: tokens.fonts.headline,
+          fontSize: '1.125rem',
+          fontWeight: 600,
+          color: tokens.colors.textPrimary,
+          margin: 0,
+        }}>
+          Dossier Biográfico
+        </h3>
+        <p style={{
+          fontSize: '0.8125rem',
+          color: tokens.colors.textSecondary,
+          marginTop: '4px',
+        }}>
+          Informação de contexto sobre o deputado
+        </p>
+      </header>
+
+      {/* Percurso Profissional */}
+      <DossierSection
+        title="Percurso Profissional"
+        icon={Briefcase}
+        count={deputado.profissao ? '1 registo' : '0'}
+        preview={deputado.profissao}
+        isEmpty={!deputado.profissao}
+        defaultExpanded={true}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {deputado.profissao && (
+            <div>
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: tokens.colors.textMuted,
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+              }}>Profissão Atual</span>
+              <p style={{
+                fontSize: '0.9375rem',
+                color: tokens.colors.textPrimary,
+                marginTop: '4px',
+              }}>{deputado.profissao}</p>
+            </div>
+          )}
+        </div>
+      </DossierSection>
+
+      {/* Habilitações Académicas */}
+      <DossierSection
+        title="Habilitações Académicas"
+        icon={GraduationCap}
+        count={habilitacoesCount > 0 ? `${habilitacoesCount} grau${habilitacoesCount > 1 ? 's' : ''}` : '0'}
+        preview={deputado.habilitacoes_academicas?.split(';')[0]?.trim()}
+        isEmpty={habilitacoesCount === 0}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {deputado.habilitacoes_academicas?.split(';').filter(h => h.trim()).map((hab, index) => (
+            <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <div style={{
+                width: '6px',
+                height: '6px',
+                backgroundColor: tokens.colors.success,
+                borderRadius: '50%',
+                marginTop: '8px',
+                flexShrink: 0,
+              }} />
+              <span style={{ fontSize: '0.9375rem', color: tokens.colors.textPrimary }}>{hab.trim()}</span>
+            </div>
+          ))}
+        </div>
+      </DossierSection>
+
+      {/* Cargos e Funções */}
+      <DossierSection
+        title="Cargos e Funções Políticas"
+        icon={Building2}
+        count={cargosCount > 0 ? `${cargosCount} cargo${cargosCount > 1 ? 's' : ''}` : '0'}
+        preview={deputado.cargos_funcoes?.[0]?.cargo_nome}
+        isEmpty={cargosCount === 0}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {deputado.cargos_funcoes?.map((cargo, index) => (
+            <div key={index} style={{
+              padding: '12px',
+              backgroundColor: tokens.colors.bgTertiary,
+              borderRadius: '4px',
+            }}>
+              <div style={{ fontWeight: 500, color: tokens.colors.textPrimary, marginBottom: '4px' }}>
+                {cargo.cargo_nome || cargo.cargo}
+              </div>
+              {cargo.entidade && (
+                <div style={{ fontSize: '0.8125rem', color: tokens.colors.textSecondary }}>
+                  {cargo.entidade}
+                </div>
+              )}
+              {(cargo.data_inicio || cargo.data_fim) && (
+                <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, marginTop: '4px' }}>
+                  {cargo.data_inicio && new Date(cargo.data_inicio).toLocaleDateString('pt-PT')}
+                  {cargo.data_fim && ` – ${new Date(cargo.data_fim).toLocaleDateString('pt-PT')}`}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </DossierSection>
+
+      {/* Atividade em Órgãos Parlamentares */}
+      <DossierSection
+        title="Órgãos Parlamentares"
+        icon={Users}
+        count={orgaosCount > 0 ? `${orgaosCount} órgão${orgaosCount > 1 ? 's' : ''}` : '0'}
+        preview={deputado.atividades_orgaos?.[0]?.nome}
+        isEmpty={orgaosCount === 0}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {deputado.atividades_orgaos?.map((orgao, index) => (
+            <div key={index} style={{
+              padding: '12px',
+              backgroundColor: '#FFF7ED',
+              border: `1px solid ${tokens.colors.orange}20`,
+              borderRadius: '4px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ fontWeight: 500, color: tokens.colors.textPrimary }}>
+                  {orgao.nome}
+                </span>
+                {orgao.sigla && (
+                  <span style={{ fontSize: '0.75rem', color: tokens.colors.orange }}>({orgao.sigla})</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{
+                  fontSize: '0.6875rem',
+                  fontWeight: 500,
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  backgroundColor: orgao.titular ? '#DCFCE7' : '#FEF3C7',
+                  color: orgao.titular ? tokens.colors.success : '#92400E',
+                }}>
+                  {orgao.tipo_membro}
+                </span>
+                {orgao.cargo && orgao.cargo !== 'membro' && (
+                  <span style={{
+                    fontSize: '0.6875rem',
+                    fontWeight: 500,
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    backgroundColor: '#E8F5E9',
+                    color: tokens.colors.primary,
+                  }}>
+                    {orgao.cargo}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </DossierSection>
+
+      {/* Títulos e Condecorações (combined) */}
+      <DossierSection
+        title="Títulos e Condecorações"
+        icon={Medal}
+        count={(titulosCount + condecoracoesCount) > 0 ? `${titulosCount + condecoracoesCount} registo${(titulosCount + condecoracoesCount) > 1 ? 's' : ''}` : '0'}
+        preview={deputado.titulos?.[0]?.titulo || deputado.condecoracoes?.[0]?.descricao}
+        isEmpty={(titulosCount + condecoracoesCount) === 0}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {deputado.titulos?.map((titulo, index) => (
+            <div key={`titulo-${index}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <Award style={{ width: '16px', height: '16px', color: tokens.colors.ouroConstitucional || '#C9A227', flexShrink: 0, marginTop: '2px' }} />
+              <span style={{ fontSize: '0.9375rem', color: tokens.colors.textPrimary }}>{titulo.titulo || titulo.descricao}</span>
+            </div>
+          ))}
+          {deputado.condecoracoes?.map((cond, index) => (
+            <div key={`cond-${index}`} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <Medal style={{ width: '16px', height: '16px', color: tokens.colors.ouroConstitucional || '#C9A227', flexShrink: 0, marginTop: '2px' }} />
+              <span style={{ fontSize: '0.9375rem', color: tokens.colors.textPrimary }}>{cond.descricao}</span>
+            </div>
+          ))}
+        </div>
+      </DossierSection>
+
+      {/* Obras Publicadas */}
+      <DossierSection
+        title="Obras Publicadas"
+        icon={BookOpen}
+        count={obrasCount > 0 ? `${obrasCount} obra${obrasCount > 1 ? 's' : ''}` : '0'}
+        preview={deputado.obras_publicadas?.[0]?.titulo}
+        isEmpty={obrasCount === 0}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {deputado.obras_publicadas?.map((obra, index) => (
+            <div key={index} style={{
+              padding: '12px',
+              backgroundColor: tokens.colors.bgTertiary,
+              borderRadius: '4px',
+            }}>
+              <div style={{ fontWeight: 500, color: tokens.colors.textPrimary, marginBottom: '4px' }}>
+                {obra.titulo}
+              </div>
+              {obra.editora && (
+                <div style={{ fontSize: '0.8125rem', color: tokens.colors.textSecondary }}>
+                  {obra.editora}
+                </div>
+              )}
+              {obra.ano && (
+                <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, marginTop: '4px' }}>
+                  {obra.ano}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </DossierSection>
+
+      {/* Biografia Completa */}
+      <DossierSection
+        title="Biografia Completa"
+        icon={User}
+        count={deputado.biografia ? '1 registo' : '0'}
+        preview={deputado.biografia?.substring(0, 100)}
+        isEmpty={!deputado.biografia}
+      >
+        <div style={{
+          fontSize: '0.9375rem',
+          color: tokens.colors.textSecondary,
+          lineHeight: 1.7,
+          whiteSpace: 'pre-line',
+        }}>
+          {deputado.biografia}
+        </div>
+      </DossierSection>
+    </section>
+  );
+};
+
 const DeputadoDetalhes = () => {
   const { cadId } = useParams();
   const navigate = useNavigate();
@@ -578,11 +1065,15 @@ const DeputadoDetalhes = () => {
     setExpandedInitiatives(newExpanded);
   };
 
-  // Get active tab from URL hash, default to 'biografia'
+  // Get active tab from URL hash, default to 'intervencoes'
   const getActiveTabFromUrl = () => {
     const hash = location.hash.replace('#', '');
-    const validTabs = ['biografia', 'intervencoes', 'iniciativas', 'votacoes', 'attendance', 'mandatos-anteriores', 'conflitos-interesse'];
-    return validTabs.includes(hash) ? hash : 'biografia';
+    const validTabs = ['intervencoes', 'iniciativas', 'votacoes', 'attendance', 'conflitos-interesse'];
+    // Support legacy 'biografia' hash by redirecting to main page (no tab)
+    if (hash === 'biografia' || hash === 'mandatos-anteriores') {
+      return 'intervencoes';
+    }
+    return validTabs.includes(hash) ? hash : 'intervencoes';
   };
 
   const [activeTab, setActiveTab] = useState(getActiveTabFromUrl());
@@ -759,12 +1250,10 @@ const DeputadoDetalhes = () => {
   }
 
   const tabs = [
-    { id: 'biografia', label: 'Biografia', icon: User },
     { id: 'intervencoes', label: 'Intervenções', icon: MessageSquare },
     { id: 'iniciativas', label: 'Iniciativas', icon: FileText },
     { id: 'votacoes', label: 'Votações', icon: Vote },
     { id: 'attendance', label: 'Presenças', icon: Activity },
-    { id: 'mandatos-anteriores', label: 'Mandatos Anteriores', icon: Calendar },
     { id: 'conflitos-interesse', label: 'Conflitos de Interesse', icon: Shield }
   ];
 
@@ -920,71 +1409,176 @@ const DeputadoDetalhes = () => {
               {/* Status and Actions */}
               <div style={{ flexShrink: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
-                  {/* Status Badge */}
-                  {deputado.career_info?.is_currently_active ? (
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '6px 12px',
-                      borderRadius: '4px',
-                      fontSize: '0.813rem',
-                      fontWeight: 500,
-                      backgroundColor: tokens.colors.successBg,
-                      color: tokens.colors.success,
-                      border: `1px solid ${tokens.colors.success}30`,
-                    }}>
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        backgroundColor: tokens.colors.success,
-                        borderRadius: '50%',
-                        marginRight: '8px',
-                      }} />
-                      Ativo
-                    </span>
-                  ) : deputado.career_info?.latest_completed_mandate ? (
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '6px 12px',
-                      borderRadius: '4px',
-                      fontSize: '0.813rem',
-                      fontWeight: 500,
-                      backgroundColor: tokens.colors.bgPrimary,
-                      color: tokens.colors.textSecondary,
-                      border: `1px solid ${tokens.colors.border}`,
-                    }}>
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        backgroundColor: tokens.colors.textMuted,
-                        borderRadius: '50%',
-                        marginRight: '8px',
-                      }} />
-                      Último mandato: {deputado.career_info.latest_completed_mandate.legislatura} ({deputado.career_info.latest_completed_mandate.periodo})
-                    </span>
-                  ) : (
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      padding: '6px 12px',
-                      borderRadius: '4px',
-                      fontSize: '0.813rem',
-                      fontWeight: 500,
-                      backgroundColor: tokens.colors.bgPrimary,
-                      color: tokens.colors.textSecondary,
-                      border: `1px solid ${tokens.colors.border}`,
-                    }}>
-                      <div style={{
-                        width: '8px',
-                        height: '8px',
-                        backgroundColor: tokens.colors.textMuted,
-                        borderRadius: '50%',
-                        marginRight: '8px',
-                      }} />
-                      Status Indisponível
-                    </span>
-                  )}
+                  {/* Status Badge - Enhanced with seated/suspended/resigned statuses */}
+                  {(() => {
+                    const status = deputado.mandate_status || deputado.career_info?.mandate_status;
+                    const isSeated = deputado.is_seated || deputado.career_info?.is_seated;
+                    const isActive = deputado.career_info?.is_currently_active;
+
+                    // Determine badge style based on status
+                    if (isSeated) {
+                      return (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '6px 12px',
+                          borderRadius: '4px',
+                          fontSize: '0.813rem',
+                          fontWeight: 500,
+                          backgroundColor: tokens.colors.successBg,
+                          color: tokens.colors.success,
+                          border: `1px solid ${tokens.colors.success}30`,
+                        }}>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            backgroundColor: tokens.colors.success,
+                            borderRadius: '50%',
+                            marginRight: '8px',
+                          }} />
+                          Em Exercício
+                        </span>
+                      );
+                    } else if (status === 'Suspenso(Eleito)') {
+                      return (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '6px 12px',
+                          borderRadius: '4px',
+                          fontSize: '0.813rem',
+                          fontWeight: 500,
+                          backgroundColor: '#FEF3C7',
+                          color: '#92400E',
+                          border: '1px solid #F59E0B30',
+                        }}>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            backgroundColor: '#F59E0B',
+                            borderRadius: '50%',
+                            marginRight: '8px',
+                          }} />
+                          Suspenso (Eleito)
+                        </span>
+                      );
+                    } else if (status === 'Renunciou') {
+                      return (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '6px 12px',
+                          borderRadius: '4px',
+                          fontSize: '0.813rem',
+                          fontWeight: 500,
+                          backgroundColor: '#FEE2E2',
+                          color: '#991B1B',
+                          border: '1px solid #EF444430',
+                        }}>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            backgroundColor: '#EF4444',
+                            borderRadius: '50%',
+                            marginRight: '8px',
+                          }} />
+                          Renunciou
+                        </span>
+                      );
+                    } else if (status && status.startsWith('Suspenso')) {
+                      return (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '6px 12px',
+                          borderRadius: '4px',
+                          fontSize: '0.813rem',
+                          fontWeight: 500,
+                          backgroundColor: '#FEF3C7',
+                          color: '#92400E',
+                          border: '1px solid #F59E0B30',
+                        }}>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            backgroundColor: '#F59E0B',
+                            borderRadius: '50%',
+                            marginRight: '8px',
+                          }} />
+                          Suspenso
+                        </span>
+                      );
+                    } else if (isActive) {
+                      return (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '6px 12px',
+                          borderRadius: '4px',
+                          fontSize: '0.813rem',
+                          fontWeight: 500,
+                          backgroundColor: tokens.colors.successBg,
+                          color: tokens.colors.success,
+                          border: `1px solid ${tokens.colors.success}30`,
+                        }}>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            backgroundColor: tokens.colors.success,
+                            borderRadius: '50%',
+                            marginRight: '8px',
+                          }} />
+                          Ativo
+                        </span>
+                      );
+                    } else if (deputado.career_info?.latest_completed_mandate) {
+                      return (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '6px 12px',
+                          borderRadius: '4px',
+                          fontSize: '0.813rem',
+                          fontWeight: 500,
+                          backgroundColor: tokens.colors.bgPrimary,
+                          color: tokens.colors.textSecondary,
+                          border: `1px solid ${tokens.colors.border}`,
+                        }}>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            backgroundColor: tokens.colors.textMuted,
+                            borderRadius: '50%',
+                            marginRight: '8px',
+                          }} />
+                          Último mandato: {deputado.career_info.latest_completed_mandate.legislatura} ({deputado.career_info.latest_completed_mandate.periodo})
+                        </span>
+                      );
+                    } else {
+                      return (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '6px 12px',
+                          borderRadius: '4px',
+                          fontSize: '0.813rem',
+                          fontWeight: 500,
+                          backgroundColor: tokens.colors.bgPrimary,
+                          color: tokens.colors.textSecondary,
+                          border: `1px solid ${tokens.colors.border}`,
+                        }}>
+                          <div style={{
+                            width: '8px',
+                            height: '8px',
+                            backgroundColor: tokens.colors.textMuted,
+                            borderRadius: '50%',
+                            marginRight: '8px',
+                          }} />
+                          Inativo
+                        </span>
+                      );
+                    }
+                  })()}
 
                   {/* Email Button - Only show for active deputies */}
                   {deputado.career_info?.is_currently_active && (
@@ -1020,705 +1614,854 @@ const DeputadoDetalhes = () => {
           </div>
         </div>
 
+        {/* Mandate Timeline - Visual career progression */}
+        {deputado.mandatos_historico && deputado.mandatos_historico.length > 1 && (
+          <MandateTimeline
+            mandatos={deputado.mandatos_historico}
+            currentLegislature={deputado.legislatura_numero}
+          />
+        )}
+
         {/* Political Performance Metrics - Meaningful Statistics */}
         <div style={{ marginBottom: '32px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
-            <BarChart3 style={{ width: '24px', height: '24px', color: tokens.colors.primary, marginRight: '8px' }} />
+          {/* Constitutional Modernism Header */}
+          <header style={{
+            marginBottom: '24px',
+            paddingBottom: '16px',
+            borderBottom: `2px solid ${tokens.colors.primary}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <BarChart3 style={{ width: '24px', height: '24px', color: tokens.colors.primary, marginRight: '10px' }} />
+              <h3 style={{
+                fontFamily: tokens.fonts.headline,
+                fontSize: '1.25rem',
+                fontWeight: 600,
+                color: tokens.colors.primary,
+                margin: 0,
+              }}>Resumo de Atividade Parlamentar</h3>
+            </div>
+            <p style={{
+              fontSize: '0.875rem',
+              color: tokens.colors.textSecondary,
+              margin: 0,
+            }}>
+              {deputado.estatisticas.total_mandatos} mandatos • {deputado.estatisticas.tempo_servico_anos} anos de serviço • Legislaturas {deputado.estatisticas.legislaturas_servidas}
+            </p>
+          </header>
+
+          {/* Primary Stats Grid - 2x2 on desktop, 1 column on mobile */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '16px',
+            marginBottom: '24px',
+          }}>
+            {/* INICIATIVAS CARD - With Context Frame */}
+            <article style={{
+              backgroundColor: tokens.colors.bgSecondary,
+              border: `1px solid ${tokens.colors.border}`,
+              borderRadius: '6px',
+              padding: '20px',
+              transition: 'box-shadow 0.15s ease',
+            }}>
+              <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: tokens.colors.primary,
+                  borderRadius: '4px',
+                }}>
+                  <FileText style={{ width: '20px', height: '20px', color: '#FFFFFF' }} />
+                </div>
+                <span style={{
+                  padding: '4px 10px',
+                  backgroundColor: tokens.colors.bgWarm || '#F8F6F0',
+                  borderRadius: '12px',
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  color: tokens.colors.textSecondary,
+                }}>
+                  Legislativo
+                </span>
+              </header>
+
+              <h4 style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: tokens.colors.primary,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '12px',
+              }}>Iniciativas Legislativas</h4>
+
+              <div style={{ marginBottom: '12px' }}>
+                <span style={{
+                  fontSize: '2rem',
+                  fontWeight: 700,
+                  color: tokens.colors.textPrimary,
+                  fontFamily: tokens.fonts.mono,
+                }}>
+                  {deputado.estatisticas.iniciativas_propostas.toLocaleString('pt-PT')}
+                </span>
+                <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, marginLeft: '8px' }}>
+                  propostas
+                </span>
+              </div>
+
+              {/* Approval Rate with Context */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: '8px',
+                padding: '12px 0',
+                borderTop: `1px solid ${tokens.colors.border}`,
+              }}>
+                <span style={{
+                  fontFamily: tokens.fonts.mono,
+                  fontSize: '1.25rem',
+                  fontWeight: 600,
+                  color: tokens.colors.infoSecondary || '#3D5A80',
+                }}>
+                  {deputado.estatisticas.iniciativas_aprovadas}
+                </span>
+                <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary }}>aprovadas</span>
+                <span style={{
+                  fontFamily: tokens.fonts.mono,
+                  fontSize: '0.875rem',
+                  color: tokens.colors.textMuted,
+                }}>
+                  ({deputado.estatisticas.taxa_aprovacao?.toFixed(0) || 0}%)
+                </span>
+              </div>
+
+              {/* Context Frame - Shows for opposition deputies */}
+              {deputado.estatisticas.contexto_oposicao?.is_oposicao && deputado.estatisticas.taxa_aprovacao < 20 && (
+                <aside style={{
+                  display: 'flex',
+                  gap: '10px',
+                  padding: '14px 12px',
+                  marginTop: '12px',
+                  background: `linear-gradient(135deg, ${tokens.colors.bgWarm || '#F8F6F0'} 0%, #FAF8F3 100%)`,
+                  border: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+                  borderLeft: `3px solid ${tokens.colors.ouroConstitucional || '#C9A227'}`,
+                  borderRadius: '0 4px 4px 0',
+                  fontSize: '0.8125rem',
+                  lineHeight: 1.5,
+                  color: tokens.colors.infoPrimary || '#1E3A5F',
+                }}>
+                  <Info style={{
+                    flexShrink: 0,
+                    width: '16px',
+                    height: '16px',
+                    color: tokens.colors.ouroConstitucional || '#C9A227',
+                    marginTop: '2px',
+                  }} />
+                  <p style={{ margin: 0 }}>
+                    <strong style={{ color: tokens.colors.primary }}>Contexto:</strong> Deputados da oposição têm taxas de aprovação estruturalmente baixas (~{deputado.estatisticas.contexto_oposicao.media_aprovacao_oposicao}%).
+                  </p>
+                </aside>
+              )}
+            </article>
+
+            {/* INTERVENÇÕES CARD */}
+            <article style={{
+              backgroundColor: tokens.colors.bgSecondary,
+              border: `1px solid ${tokens.colors.border}`,
+              borderRadius: '6px',
+              padding: '20px',
+            }}>
+              <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: tokens.colors.verdeClaro || '#2D6A4F',
+                  borderRadius: '4px',
+                }}>
+                  <MessageSquare style={{ width: '20px', height: '20px', color: '#FFFFFF' }} />
+                </div>
+                <span style={{
+                  padding: '4px 10px',
+                  backgroundColor: '#F0FDF4',
+                  borderRadius: '12px',
+                  fontSize: '0.75rem',
+                  fontWeight: 500,
+                  color: tokens.colors.success,
+                }}>
+                  Plenário
+                </span>
+              </header>
+
+              <h4 style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: tokens.colors.verdeClaro || '#2D6A4F',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '12px',
+              }}>Intervenções Parlamentares</h4>
+
+              <div style={{ marginBottom: '12px' }}>
+                <span style={{
+                  fontSize: '2rem',
+                  fontWeight: 700,
+                  color: tokens.colors.textPrimary,
+                  fontFamily: tokens.fonts.mono,
+                }}>
+                  {deputado.estatisticas.intervencoes_parlamentares.toLocaleString('pt-PT')}
+                </span>
+                <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, marginLeft: '8px' }}>
+                  em plenário
+                </span>
+              </div>
+
+              {/* Comparison bar vs party average */}
+              <div style={{ paddingTop: '12px', borderTop: `1px solid ${tokens.colors.border}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.75rem', color: tokens.colors.textMuted }}>vs. média do partido</span>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: deputado.estatisticas.intervencoes_parlamentares > deputado.estatisticas.media_partido_iniciativas * 10
+                      ? tokens.colors.success
+                      : tokens.colors.textSecondary,
+                  }}>
+                    {deputado.estatisticas.media_partido_iniciativas > 0
+                      ? `${Math.round((deputado.estatisticas.intervencoes_parlamentares / (deputado.estatisticas.media_partido_iniciativas * 10) - 1) * 100)}%`
+                      : 'N/A'}
+                  </span>
+                </div>
+                <div style={{
+                  height: '6px',
+                  backgroundColor: '#E5E7EB',
+                  borderRadius: '3px',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.min(75, 75)}%`,
+                    backgroundColor: tokens.colors.verdeClaro || '#2D6A4F',
+                    borderRadius: '3px',
+                    transition: 'width 0.5s ease',
+                  }} />
+                </div>
+              </div>
+            </article>
+
+            {/* PRESENÇA CARD */}
+            <article style={{
+              backgroundColor: tokens.colors.bgSecondary,
+              border: `1px solid ${tokens.colors.border}`,
+              borderRadius: '6px',
+              padding: '20px',
+            }}>
+              <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: deputado.estatisticas.taxa_assiduidade >= 0.85 ? tokens.colors.success :
+                                   deputado.estatisticas.taxa_assiduidade >= 0.7 ? tokens.colors.warning :
+                                   tokens.colors.orange,
+                  borderRadius: '4px',
+                }}>
+                  <Activity style={{ width: '20px', height: '20px', color: '#FFFFFF' }} />
+                </div>
+                <span style={{
+                  padding: '4px 10px',
+                  backgroundColor: deputado.estatisticas.taxa_assiduidade >= 0.85 ? '#DCFCE7' :
+                                   deputado.estatisticas.taxa_assiduidade >= 0.7 ? '#FEF3C7' :
+                                   '#FEE2E2',
+                  borderRadius: '12px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: deputado.estatisticas.taxa_assiduidade >= 0.85 ? tokens.colors.success :
+                         deputado.estatisticas.taxa_assiduidade >= 0.7 ? '#92400E' :
+                         tokens.colors.danger,
+                }}>
+                  {deputado.estatisticas.taxa_assiduidade >= 0.85 ? 'Excelente' :
+                   deputado.estatisticas.taxa_assiduidade >= 0.7 ? 'Boa' : 'Baixa'}
+                </span>
+              </header>
+
+              <h4 style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: deputado.estatisticas.taxa_assiduidade >= 0.85 ? tokens.colors.success :
+                       deputado.estatisticas.taxa_assiduidade >= 0.7 ? '#92400E' :
+                       tokens.colors.orange,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '12px',
+              }}>Taxa de Presença</h4>
+
+              <div style={{ marginBottom: '16px' }}>
+                <span style={{
+                  fontSize: '2rem',
+                  fontWeight: 700,
+                  fontFamily: tokens.fonts.mono,
+                  color: deputado.estatisticas.taxa_assiduidade >= 0.85 ? tokens.colors.success :
+                         deputado.estatisticas.taxa_assiduidade >= 0.7 ? '#92400E' :
+                         tokens.colors.orange,
+                }}>
+                  {(deputado.estatisticas.taxa_assiduidade * 100).toFixed(0)}%
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{
+                height: '8px',
+                backgroundColor: '#E5E7EB',
+                borderRadius: '4px',
+                overflow: 'hidden',
+                marginBottom: '8px',
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: `${deputado.estatisticas.taxa_assiduidade * 100}%`,
+                  backgroundColor: deputado.estatisticas.taxa_assiduidade >= 0.85 ? tokens.colors.success :
+                                   deputado.estatisticas.taxa_assiduidade >= 0.7 ? '#F59E0B' :
+                                   tokens.colors.orange,
+                  borderRadius: '4px',
+                  transition: 'width 0.5s ease',
+                }} />
+              </div>
+              <p style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, margin: 0 }}>
+                Assiduidade às sessões plenárias
+              </p>
+            </article>
+
+            {/* CARREIRA CARD */}
+            <article style={{
+              backgroundColor: tokens.colors.bgSecondary,
+              border: `1px solid ${tokens.colors.border}`,
+              borderRadius: '6px',
+              padding: '20px',
+            }}>
+              <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: '#7C3AED',
+                  borderRadius: '4px',
+                }}>
+                  <Award style={{ width: '20px', height: '20px', color: '#FFFFFF' }} />
+                </div>
+                <span style={{
+                  padding: '4px 10px',
+                  backgroundColor: '#F3E8FF',
+                  borderRadius: '12px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#7C3AED',
+                }}>
+                  {deputado.estatisticas.nivel_experiencia}
+                </span>
+              </header>
+
+              <h4 style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#7C3AED',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '12px',
+              }}>Carreira Parlamentar</h4>
+
+              <div style={{ marginBottom: '12px' }}>
+                <span style={{
+                  fontSize: '2rem',
+                  fontWeight: 700,
+                  color: tokens.colors.textPrimary,
+                  fontFamily: tokens.fonts.mono,
+                }}>
+                  {deputado.estatisticas.total_mandatos}
+                </span>
+                <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary, marginLeft: '8px' }}>
+                  mandatos
+                </span>
+              </div>
+
+              <div style={{
+                paddingTop: '12px',
+                borderTop: `1px solid ${tokens.colors.border}`,
+                fontSize: '0.8125rem',
+                color: tokens.colors.textSecondary,
+              }}>
+                <div style={{ marginBottom: '4px' }}>
+                  <span style={{ fontWeight: 600 }}>{deputado.estatisticas.tempo_servico_anos}</span> anos de serviço
+                </div>
+                <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted }}>
+                  {deputado.estatisticas.legislaturas_servidas}
+                </div>
+              </div>
+            </article>
+          </div>
+
+          {/* INITIATIVE TYPES BREAKDOWN */}
+          {deputado.estatisticas.iniciativas_por_tipo && deputado.estatisticas.iniciativas_por_tipo.length > 0 && (
+            <section style={{
+              backgroundColor: tokens.colors.bgWarm || '#F8F6F0',
+              border: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+              borderRadius: '6px',
+              padding: '20px',
+              marginBottom: '24px',
+            }}>
+              <header style={{ marginBottom: '20px', paddingBottom: '12px', borderBottom: `2px solid ${tokens.colors.primary}` }}>
+                <h4 style={{
+                  fontFamily: tokens.fonts.headline,
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  color: tokens.colors.primary,
+                  margin: '0 0 4px 0',
+                }}>Tipos de Iniciativas</h4>
+                <p style={{ fontSize: '0.8125rem', color: tokens.colors.textSecondary, margin: 0 }}>
+                  Distribuição das {deputado.estatisticas.iniciativas_propostas} iniciativas por tipo
+                </p>
+              </header>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {deputado.estatisticas.iniciativas_por_tipo.map((tipo, index) => {
+                  const percentage = (tipo.total / deputado.estatisticas.iniciativas_propostas * 100);
+                  const maxCount = deputado.estatisticas.iniciativas_por_tipo[0]?.total || 1;
+                  const barWidth = (tipo.total / maxCount * 100);
+
+                  // Icon mapping for initiative types
+                  const tipoIcons = {
+                    'J': '📜', // Projeto de Lei
+                    'R': '📋', // Projeto de Resolução
+                    'I': '🔍', // Inquérito Parlamentar
+                    'C': '📖', // Projeto de Revisão Constitucional
+                    'A': '⚖️', // Apreciação Parlamentar
+                    'G': '📑', // Projeto de Regimento
+                  };
+
+                  return (
+                    <div
+                      key={tipo.codigo}
+                      style={{
+                        animation: 'slideIn 0.4s ease-out backwards',
+                        animationDelay: `${index * 0.05}s`,
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '6px',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '1rem' }}>{tipoIcons[tipo.codigo] || '📄'}</span>
+                          <span style={{
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                            color: tokens.colors.infoPrimary || '#1E3A5F',
+                          }}>
+                            {tipo.descricao}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{
+                            fontFamily: tokens.fonts.mono,
+                            fontSize: '0.875rem',
+                            color: tokens.colors.textSecondary,
+                          }}>
+                            {tipo.total.toLocaleString('pt-PT')}
+                          </span>
+                          <span style={{
+                            fontFamily: tokens.fonts.mono,
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            color: tokens.colors.primary,
+                            minWidth: '48px',
+                            textAlign: 'right',
+                          }}>
+                            {percentage.toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{
+                        height: '8px',
+                        backgroundColor: '#E8E4DA',
+                        borderRadius: '4px',
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${barWidth}%`,
+                          backgroundColor: tokens.colors.primary,
+                          borderRadius: '4px',
+                          transition: 'width 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
+                        }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Insight callout */}
+              {deputado.estatisticas.iniciativas_por_tipo[0] && (
+                <aside style={{
+                  display: 'flex',
+                  gap: '10px',
+                  marginTop: '20px',
+                  padding: '12px',
+                  backgroundColor: tokens.colors.bgSecondary,
+                  border: `1px solid ${tokens.colors.border}`,
+                  borderRadius: '4px',
+                }}>
+                  <TrendingUp style={{ flexShrink: 0, width: '16px', height: '16px', color: tokens.colors.verdeClaro || '#2D6A4F' }} />
+                  <p style={{ margin: 0, fontSize: '0.875rem', lineHeight: 1.5, color: tokens.colors.textSecondary }}>
+                    <strong style={{ color: tokens.colors.primary }}>{deputado.estatisticas.iniciativas_por_tipo[0].descricao}</strong> representa {(deputado.estatisticas.iniciativas_por_tipo[0].total / deputado.estatisticas.iniciativas_propostas * 100).toFixed(0)}% da atividade legislativa deste deputado.
+                  </p>
+                </aside>
+              )}
+            </section>
+          )}
+
+          {/* LEGISLATURE EVOLUTION */}
+          {deputado.estatisticas.evolucao_legislaturas && deputado.estatisticas.evolucao_legislaturas.length > 1 && (
+            <section style={{
+              backgroundColor: tokens.colors.bgSecondary,
+              border: `1px solid ${tokens.colors.border}`,
+              borderRadius: '6px',
+              padding: '20px',
+              marginBottom: '24px',
+            }}>
+              <header style={{ marginBottom: '20px' }}>
+                <h4 style={{
+                  fontFamily: tokens.fonts.headline,
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  color: tokens.colors.textPrimary,
+                  margin: '0 0 4px 0',
+                }}>Evolução por Legislatura</h4>
+                <p style={{ fontSize: '0.8125rem', color: tokens.colors.textSecondary, margin: 0 }}>
+                  Atividade legislativa ao longo das legislaturas
+                </p>
+              </header>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'space-around',
+                height: '160px',
+                gap: '8px',
+                paddingBottom: '32px',
+                position: 'relative',
+              }}>
+                {(() => {
+                  const maxValue = Math.max(...deputado.estatisticas.evolucao_legislaturas.map(e => e.iniciativas + e.intervencoes));
+                  // Reverse to show oldest first (left to right)
+                  const sortedEvolution = [...deputado.estatisticas.evolucao_legislaturas].reverse();
+
+                  return sortedEvolution.map((leg, index) => {
+                    const total = leg.iniciativas + leg.intervencoes;
+                    const height = maxValue > 0 ? (total / maxValue) * 100 : 0;
+                    const isLast = index === sortedEvolution.length - 1;
+
+                    return (
+                      <div
+                        key={leg.legislatura}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          flex: 1,
+                          maxWidth: '80px',
+                        }}
+                      >
+                        <div style={{
+                          fontFamily: tokens.fonts.mono,
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color: tokens.colors.textSecondary,
+                          marginBottom: '8px',
+                        }}>
+                          {total}
+                        </div>
+                        <div style={{
+                          width: '100%',
+                          height: `${Math.max(height, 8)}%`,
+                          backgroundColor: isLast ? tokens.colors.primary : tokens.colors.infoSecondary || '#3D5A80',
+                          borderRadius: '4px 4px 0 0',
+                          minHeight: '8px',
+                          transition: 'height 0.5s ease',
+                        }} />
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '8px',
+                          fontFamily: tokens.fonts.mono,
+                          fontSize: '0.75rem',
+                          fontWeight: isLast ? 600 : 400,
+                          color: isLast ? tokens.colors.primary : tokens.colors.textMuted,
+                        }}>
+                          {leg.legislatura}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* Trend indicator */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                paddingTop: '12px',
+                borderTop: `1px solid ${tokens.colors.border}`,
+                fontSize: '0.8125rem',
+                color: tokens.colors.textSecondary,
+              }}>
+                {(() => {
+                  const evolution = deputado.estatisticas.evolucao_legislaturas;
+                  if (evolution.length < 2) return null;
+                  const oldest = evolution[evolution.length - 1];
+                  const newest = evolution[0];
+                  const oldTotal = oldest.iniciativas + oldest.intervencoes;
+                  const newTotal = newest.iniciativas + newest.intervencoes;
+                  const isGrowing = newTotal >= oldTotal;
+
+                  return (
+                    <>
+                      {isGrowing ? (
+                        <TrendingUp style={{ width: '16px', height: '16px', color: tokens.colors.success }} />
+                      ) : (
+                        <TrendingDown style={{ width: '16px', height: '16px', color: tokens.colors.warning }} />
+                      )}
+                      <span>
+                        Atividade {isGrowing ? 'crescente' : 'decrescente'} ao longo das legislaturas
+                      </span>
+                    </>
+                  );
+                })()}
+              </div>
+            </section>
+          )}
+
+          {/* Methodological Note */}
+          <aside style={{
+            display: 'flex',
+            gap: '12px',
+            padding: '16px',
+            backgroundColor: tokens.colors.bgWarm || '#F8F6F0',
+            border: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+            borderRadius: '4px',
+            fontSize: '0.8125rem',
+            color: tokens.colors.textSecondary,
+          }}>
+            <Info style={{
+              flexShrink: 0,
+              width: '18px',
+              height: '18px',
+              color: tokens.colors.ouroConstitucional || '#C9A227',
+              marginTop: '2px',
+            }} />
+            <div>
+              <strong style={{ color: tokens.colors.primary }}>Nota metodológica:</strong>{' '}
+              Os dados apresentados são baseados em registos oficiais da Assembleia da República.
+              {deputado.estatisticas.contexto_oposicao?.is_oposicao && (
+                <> A comparação mais relevante para deputados da oposição é com outros líderes de oposição, não com a média geral do parlamento.</>
+              )}
+            </div>
+          </aside>
+        </div>
+
+        {/* Biographical Dossier - Accordion-style biographical information */}
+        <BiographicalDossier deputado={deputado} />
+
+        {/* Tabs de Atividade - Editorial-style section navigation */}
+        <section style={{
+          backgroundColor: tokens.colors.bgWarm || '#F8F6F0',
+          border: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+          borderRadius: '4px',
+          marginTop: '24px',
+          overflow: 'hidden',
+        }}>
+          {/* Section Header */}
+          <header style={{
+            padding: '16px 24px',
+            borderBottom: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+            backgroundColor: 'rgba(255,255,255,0.5)',
+          }}>
             <h3 style={{
               fontFamily: tokens.fonts.headline,
               fontSize: '1.125rem',
               fontWeight: 600,
               color: tokens.colors.textPrimary,
-            }}>Performance Parlamentar</h3>
-          </div>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-            gap: '16px',
-          }}>
-            {/* Legislative Effectiveness */}
-            <div style={{
-              backgroundColor: tokens.colors.bgSecondary,
-              border: `1px solid ${tokens.colors.border}`,
-              borderRadius: '4px',
-              padding: '20px',
+              margin: 0,
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                <Target style={{ width: '32px', height: '32px', color: tokens.colors.primary }} />
-                <div style={{ marginLeft: '12px' }}>
-                  <p style={{ fontSize: '0.813rem', fontWeight: 500, color: tokens.colors.textSecondary }}>Eficácia Legislativa</p>
-                  <p style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 700,
-                    color: tokens.colors.textPrimary,
-                    fontFamily: tokens.fonts.mono,
-                  }}>
-                    {deputado.estatisticas.iniciativas_propostas}
-                  </p>
-                </div>
-              </div>
-              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted }}>
-                <span style={{ fontWeight: 600 }}>Taxa Atividade:</span> {deputado.estatisticas.taxa_atividade_anual}/ano
-              </div>
-              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, marginTop: '4px' }}>
-                Iniciativas + Intervenções por ano de serviço
-              </div>
-            </div>
-
-            {/* Political Experience */}
-            <div style={{
-              backgroundColor: tokens.colors.bgSecondary,
-              border: `1px solid ${tokens.colors.border}`,
-              borderRadius: '4px',
-              padding: '20px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                <Award style={{ width: '32px', height: '32px', color: tokens.colors.purple }} />
-                <div style={{ marginLeft: '12px' }}>
-                  <p style={{ fontSize: '0.813rem', fontWeight: 500, color: tokens.colors.textSecondary }}>Experiência</p>
-                  <p style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 700,
-                    color: tokens.colors.textPrimary,
-                    fontFamily: tokens.fonts.mono,
-                  }}>
-                    {deputado.estatisticas.nivel_experiencia}
-                  </p>
-                </div>
-              </div>
-              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted }}>
-                <span style={{ fontWeight: 600 }}>{deputado.estatisticas.total_mandatos}</span> mandatos • <span style={{ fontWeight: 600 }}>{deputado.estatisticas.tempo_servico_anos}</span> anos
-              </div>
-              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, marginTop: '4px' }}>
-                Legislaturas: {deputado.estatisticas.legislaturas_servidas}
-              </div>
-            </div>
-
-            {/* Parliamentary Engagement */}
-            <div style={{
-              backgroundColor: tokens.colors.bgSecondary,
-              border: `1px solid ${tokens.colors.border}`,
-              borderRadius: '4px',
-              padding: '20px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                <Activity style={{
-                  width: '32px',
-                  height: '32px',
-                  color: deputado.estatisticas.taxa_assiduidade >= 0.9 ? tokens.colors.success :
-                         deputado.estatisticas.taxa_assiduidade >= 0.8 ? tokens.colors.primary :
-                         deputado.estatisticas.taxa_assiduidade >= 0.7 ? tokens.colors.warning :
-                         tokens.colors.orange,
-                }} />
-                <div style={{ marginLeft: '12px' }}>
-                  <p style={{ fontSize: '0.813rem', fontWeight: 500, color: tokens.colors.textSecondary }}>Participação</p>
-                  <p style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 700,
-                    fontFamily: tokens.fonts.mono,
-                    color: deputado.estatisticas.taxa_assiduidade >= 0.9 ? tokens.colors.success :
-                           deputado.estatisticas.taxa_assiduidade >= 0.8 ? tokens.colors.primary :
-                           deputado.estatisticas.taxa_assiduidade >= 0.7 ? tokens.colors.warning :
-                           tokens.colors.orange,
-                  }}>
-                    {(deputado.estatisticas.taxa_assiduidade * 100).toFixed(0)}%
-                  </p>
-                </div>
-              </div>
-              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted }}>
-                <span style={{ fontWeight: 600 }}>{deputado.estatisticas.intervencoes_parlamentares}</span> intervenções
-              </div>
-              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, marginTop: '4px' }}>
-                Taxa de assiduidade às sessões plenárias
-              </div>
-            </div>
-
-            {/* National Performance Context */}
-            <div style={{
-              backgroundColor: tokens.colors.bgSecondary,
-              border: `1px solid ${tokens.colors.border}`,
-              borderRadius: '4px',
-              padding: '20px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                <Globe style={{
-                  width: '32px',
-                  height: '32px',
-                  color: deputado.estatisticas.percentil_nacional >= 75 ? tokens.colors.success :
-                         deputado.estatisticas.percentil_nacional >= 50 ? tokens.colors.primary :
-                         deputado.estatisticas.percentil_nacional >= 25 ? tokens.colors.warning :
-                         tokens.colors.orange,
-                }} />
-                <div style={{ marginLeft: '12px' }}>
-                  <p style={{ fontSize: '0.813rem', fontWeight: 500, color: tokens.colors.textSecondary }}>Ranking Nacional</p>
-                  <p style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 700,
-                    fontFamily: tokens.fonts.mono,
-                    color: deputado.estatisticas.percentil_nacional >= 75 ? tokens.colors.success :
-                           deputado.estatisticas.percentil_nacional >= 50 ? tokens.colors.primary :
-                           deputado.estatisticas.percentil_nacional >= 25 ? tokens.colors.warning :
-                           tokens.colors.orange,
-                  }}>
-                    {deputado.estatisticas.percentil_nacional}º
-                  </p>
-                </div>
-              </div>
-              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted }}>
-                {deputado.estatisticas.consistencia_eleitoral && (
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <CheckCircle2 style={{ width: '12px', height: '12px', color: tokens.colors.success, marginRight: '4px' }} />
-                    <span>Círculo consistente: {deputado.estatisticas.circulo_principal}</span>
-                  </div>
-                )}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, marginTop: '4px' }}>
-                Percentil com base na atividade legislativa
-              </div>
-            </div>
-          </div>
-
-          {/* Comparative Context Footer */}
-          <div style={{
-            marginTop: '16px',
-            padding: '16px',
-            backgroundColor: tokens.colors.bgPrimary,
-            border: `1px solid ${tokens.colors.border}`,
-            borderRadius: '4px',
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '12px',
-              fontSize: '0.813rem',
+              Atividade Parlamentar
+            </h3>
+            <p style={{
+              fontSize: '0.8125rem',
               color: tokens.colors.textSecondary,
+              marginTop: '4px',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <Info style={{ width: '16px', height: '16px', marginRight: '4px' }} />
-                  <span>Contexto Comparativo:</span>
-                </div>
-                {deputado.estatisticas.partido_atual && (
-                  <span>
-                    Média do <strong>{deputado.estatisticas.partido_atual}</strong>: {deputado.estatisticas.media_partido_iniciativas} iniciativas
+              Acompanhe o trabalho legislativo do deputado
+            </p>
+          </header>
+
+          {/* Editorial Tab Navigation */}
+          <nav style={{
+            display: 'flex',
+            gap: '0',
+            backgroundColor: tokens.colors.bgWarm || '#F8F6F0',
+            borderBottom: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}>
+            {tabs.map((tab, index) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '14px 20px',
+                    fontFamily: tokens.fonts.body,
+                    fontSize: '0.8125rem',
+                    fontWeight: isActive ? 600 : 500,
+                    letterSpacing: '0.01em',
+                    color: isActive ? tokens.colors.primary : tokens.colors.textSecondary,
+                    backgroundColor: isActive ? 'white' : 'transparent',
+                    border: 'none',
+                    borderBottom: isActive ? `2px solid ${tokens.colors.primary}` : '2px solid transparent',
+                    borderRight: index < tabs.length - 1 ? `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}` : 'none',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.6)';
+                      e.currentTarget.style.color = tokens.colors.textPrimary;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = tokens.colors.textSecondary;
+                    }
+                  }}
+                >
+                  <span style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '4px',
+                    backgroundColor: isActive ? `${tokens.colors.primary}12` : tokens.colors.bgTertiary,
+                    transition: 'background-color 0.2s ease',
+                  }}>
+                    <Icon style={{
+                      width: '15px',
+                      height: '15px',
+                      color: isActive ? tokens.colors.primary : tokens.colors.textMuted,
+                    }} />
                   </span>
-                )}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: tokens.colors.textMuted }}>
-                Dados baseados em atividade parlamentar verificável
-              </div>
-            </div>
-          </div>
-        </div>
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
 
-        {/* Enhanced Overview Estatísticas de Atividade */}
-        {loading ? (
-          <StatisticsLoadingSkeleton />
-        ) : error && !atividades ? (
-          <StatisticsError 
-            error={error} 
-            onRetry={() => window.location.reload()} 
-          />
-        ) : atividades?.statistics ? (
-          <section className="bg-white rounded-lg shadow-sm border mb-8" aria-labelledby="activity-overview-heading">
-            <header className="px-6 py-4 border-b border-gray-200">
-              <h3 id="activity-overview-heading" className="text-lg font-semibold text-gray-900">Resumo de Atividade Parlamentar</h3>
-              <p className="text-sm text-gray-500 mt-1">Atividade na legislatura atual vs. total da carreira</p>
-            </header>
-            <div className="p-4 sm:p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 animate-fade-in" role="list" style={{ animationDelay: '0.1s' }}>
-                {/* Intervenções Card */}
-                <StatisticCard
-                  title="Intervenções"
-                  icon={MessageSquare}
-                  current={atividades.statistics.current_legislature.intervencoes_count}
-                  total={atividades.statistics.total_career.intervencoes_count}
-                  colorScheme="blue"
-                  description="Participações em debates parlamentares"
-                  tabId="intervencoes"
-                  onCardClick={handleTabChange}
-                />
-
-                {/* Iniciativas Card */}
-                <StatisticCard
-                  title="Iniciativas"
-                  icon={FileText}
-                  current={atividades.statistics.current_legislature.iniciativas_count}
-                  total={atividades.statistics.total_career.iniciativas_count}
-                  colorScheme="green"
-                  description="Propostas de lei e outras iniciativas apresentadas"
-                  tabId="iniciativas"
-                  onCardClick={handleTabChange}
-                />
-
-                {/* Votações Card */}
-                <StatisticCard
-                  title="Votações"
-                  icon={Vote}
-                  current={atividades.statistics.current_legislature.votacoes_count}
-                  total={atividades.statistics.total_career.votacoes_count}
-                  colorScheme="purple"
-                  description="Participações em votações parlamentares"
-                  tabId="votacoes"
-                  onCardClick={handleTabChange}
-                />
-
-                {/* Taxa de Presença Card */}
-                {atividades.statistics.current_legislature.attendance_rate !== undefined && (
-                  <AttendanceCard
-                    currentRate={atividades.statistics.current_legislature.attendance_rate}
-                    totalRate={atividades.statistics.total_career.attendance_rate}
-                    totalSessions={atividades.statistics.current_legislature.total_sessions}
-                    onCardClick={handleTabChange}
-                  />
-                )}
-              </div>
-              
-              {/* Enhanced insight footer */}
-              <footer className="mt-6 pt-4 border-t border-gray-100">
-                <div className="flex items-center justify-center space-x-2 text-xs text-gray-500">
-                  <Info className="h-4 w-4" aria-hidden="true" />
-                  <p className="text-center">
-                    Os números da "legislatura atual" referem-se ao mandato em curso. 
-                    O "total carreira" inclui todos os mandatos anteriores deste deputado.
-                  </p>
-                </div>
-              </footer>
-            </div>
-          </section>
-        ) : null}
-
-        {/* Tabs de Atividade */}
-        <div style={{
-          backgroundColor: tokens.colors.bgSecondary,
-          border: `1px solid ${tokens.colors.border}`,
-          borderRadius: '4px',
-        }}>
-          {/* Tab Headers */}
-          <div style={{ borderBottom: `1px solid ${tokens.colors.border}` }}>
-            <nav style={{
-              display: 'flex',
-              gap: '8px',
-              padding: '0 24px',
-              overflowX: 'auto',
-            }}>
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '16px 8px',
-                      borderBottom: isActive ? `2px solid ${tokens.colors.primary}` : '2px solid transparent',
-                      fontWeight: isActive ? 600 : 400,
-                      fontSize: '0.813rem',
-                      color: isActive ? tokens.colors.primary : tokens.colors.textSecondary,
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      transition: 'color 0.15s ease, border-color 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.color = tokens.colors.textPrimary;
-                        e.currentTarget.style.borderBottomColor = tokens.colors.border;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.color = tokens.colors.textSecondary;
-                        e.currentTarget.style.borderBottomColor = 'transparent';
-                      }
-                    }}
-                  >
-                    <Icon style={{ width: '16px', height: '16px', marginRight: '8px' }} />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Tab Content */}
-          <div style={{ padding: '24px' }}>
-            {activeTab === 'biografia' && (
-              <div>
-                <div style={{ maxWidth: 'none' }}>
-                  {(deputado.nome_completo || deputado.data_nascimento || deputado.naturalidade || deputado.profissao || deputado.habilitacoes_academicas || (deputado.atividades_orgaos && deputado.atividades_orgaos.length > 0)) ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                      {/* Personal Information Section */}
-                      {deputado.nome_completo && (
-                        <div style={{
-                          backgroundColor: '#E8F5E9',
-                          border: `1px solid ${tokens.colors.primary}30`,
-                          borderRadius: '4px',
-                          padding: '24px',
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
-                            <div style={{
-                              width: '32px',
-                              height: '32px',
-                              backgroundColor: tokens.colors.primary,
-                              borderRadius: '4px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginRight: '12px',
-                            }}>
-                              <User style={{ width: '20px', height: '20px', color: '#FFFFFF' }} />
-                            </div>
-                            <h4 style={{
-                              fontFamily: tokens.fonts.headline,
-                              fontSize: '1.125rem',
-                              fontWeight: 600,
-                              color: tokens.colors.textPrimary,
-                            }}>Informações Pessoais</h4>
-                          </div>
-                          <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                            gap: '16px',
-                          }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                              <div>
-                                <span style={{
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  color: tokens.colors.primary,
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.05em',
-                                }}>Nome Completo</span>
-                                <p style={{ color: tokens.colors.textPrimary, fontWeight: 500 }}>{deputado.nome_completo}</p>
-                              </div>
-                              {deputado.naturalidade && (
-                                <div>
-                                  <span style={{
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    color: tokens.colors.primary,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.05em',
-                                  }}>Naturalidade</span>
-                                  <p style={{ color: tokens.colors.textPrimary }}>{deputado.naturalidade}</p>
-                                </div>
-                              )}
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                              {deputado.data_nascimento && (
-                                <div>
-                                  <span style={{
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    color: tokens.colors.primary,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.05em',
-                                  }}>Data de Nascimento</span>
-                                  <p style={{ color: tokens.colors.textPrimary }}>
-                                    {new Date(deputado.data_nascimento).toLocaleDateString('pt-PT')}
-                                    {' '}
-                                    {(() => {
-                                      const birthDate = new Date(deputado.data_nascimento);
-                                      const today = new Date();
-                                      const age = today.getFullYear() - birthDate.getFullYear() -
-                                        (today.getMonth() < birthDate.getMonth() ||
-                                         (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate()) ? 1 : 0);
-                                      return age > 0 ? <span style={{ fontSize: '0.875rem', color: tokens.colors.textSecondary }}>({age} anos)</span> : null;
-                                    })()}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Biografia Header */}
-                      {(deputado.profissao || deputado.habilitacoes_academicas || deputado.biografia || (deputado.atividades_orgaos && deputado.atividades_orgaos.length > 0)) && (
-                        <h3 style={{
-                          fontFamily: tokens.fonts.headline,
-                          fontSize: '1.125rem',
-                          fontWeight: 600,
-                          color: tokens.colors.textPrimary,
-                          marginBottom: '16px',
-                          marginTop: '32px',
-                        }}>
-                          Biografia
-                        </h3>
-                      )}
-
-                      {deputado.profissao && (
-                        <div style={{ position: 'relative' }}>
-                          <div style={{ display: 'flex' }}>
-                            <div style={{
-                              width: '4px',
-                              backgroundColor: tokens.colors.primary,
-                              borderRadius: '2px',
-                              marginRight: '16px',
-                              flexShrink: 0,
-                            }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                                <Briefcase style={{ width: '20px', height: '20px', color: tokens.colors.primary, marginRight: '8px' }} />
-                                <h4 style={{ fontWeight: 600, color: tokens.colors.textPrimary }}>Profissão</h4>
-                              </div>
-                              <p style={{
-                                color: tokens.colors.textSecondary,
-                                fontSize: '0.938rem',
-                                lineHeight: 1.6,
-                                paddingLeft: '28px',
-                              }}>
-                                {deputado.profissao}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {deputado.habilitacoes_academicas && (
-                        <div style={{ position: 'relative' }}>
-                          <div style={{ display: 'flex' }}>
-                            <div style={{
-                              width: '4px',
-                              backgroundColor: tokens.colors.success,
-                              borderRadius: '2px',
-                              marginRight: '16px',
-                              flexShrink: 0,
-                            }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                                <svg style={{ width: '20px', height: '20px', color: tokens.colors.success, marginRight: '8px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                                </svg>
-                                <h4 style={{ fontWeight: 600, color: tokens.colors.textPrimary }}>Habilitações Académicas</h4>
-                              </div>
-                              <div style={{ paddingLeft: '28px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {deputado.habilitacoes_academicas.split(';').map((hab, index) => (
-                                  <div key={index} style={{ display: 'flex', alignItems: 'flex-start' }}>
-                                    <div style={{
-                                      width: '8px',
-                                      height: '8px',
-                                      backgroundColor: tokens.colors.success,
-                                      borderRadius: '50%',
-                                      marginTop: '8px',
-                                      marginRight: '12px',
-                                      flexShrink: 0,
-                                    }} />
-                                    <span style={{ fontSize: '0.938rem', lineHeight: 1.6, color: tokens.colors.textSecondary }}>{hab.trim()}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {deputado.biografia && (
-                        <div style={{ position: 'relative' }}>
-                          <div style={{ display: 'flex' }}>
-                            <div style={{
-                              width: '4px',
-                              backgroundColor: tokens.colors.purple,
-                              borderRadius: '2px',
-                              marginRight: '16px',
-                              flexShrink: 0,
-                            }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                                <User style={{ width: '20px', height: '20px', color: tokens.colors.purple, marginRight: '8px' }} />
-                                <h4 style={{ fontWeight: 600, color: tokens.colors.textPrimary }}>Biografia</h4>
-                              </div>
-                              <div style={{
-                                color: tokens.colors.textSecondary,
-                                fontSize: '0.938rem',
-                                lineHeight: 1.6,
-                                whiteSpace: 'pre-line',
-                                paddingLeft: '28px',
-                              }}>
-                                {deputado.biografia}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {deputado.atividades_orgaos && deputado.atividades_orgaos.length > 0 && (
-                        <div style={{ position: 'relative' }}>
-                          <div style={{ display: 'flex' }}>
-                            <div style={{
-                              width: '4px',
-                              backgroundColor: tokens.colors.orange,
-                              borderRadius: '2px',
-                              marginRight: '16px',
-                              flexShrink: 0,
-                            }} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                                <svg style={{ width: '20px', height: '20px', color: tokens.colors.orange, marginRight: '8px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                                <h4 style={{ fontWeight: 600, color: tokens.colors.textPrimary }}>Atividade em Órgãos Parlamentares</h4>
-                              </div>
-                              <div style={{ paddingLeft: '28px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {deputado.atividades_orgaos.map((orgao, index) => (
-                                  <div key={index} style={{
-                                    backgroundColor: '#FFF7ED',
-                                    border: `1px solid ${tokens.colors.orange}30`,
-                                    borderRadius: '4px',
-                                    padding: '16px',
-                                  }}>
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                                      <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                                          <h5 style={{ fontWeight: 500, color: tokens.colors.textPrimary }}>
-                                            {orgao.nome}
-                                            {orgao.sigla && (
-                                              <span style={{ marginLeft: '8px', fontSize: '0.875rem', color: tokens.colors.orange, fontWeight: 400 }}>({orgao.sigla})</span>
-                                            )}
-                                          </h5>
-                                        </div>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', fontSize: '0.813rem' }}>
-                                          <span style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            padding: '4px 8px',
-                                            borderRadius: '4px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 500,
-                                            backgroundColor: orgao.titular ? tokens.colors.successBg : tokens.colors.warningBg,
-                                            color: orgao.titular ? tokens.colors.success : tokens.colors.warning,
-                                          }}>
-                                            {orgao.tipo_membro}
-                                          </span>
-                                          {orgao.cargo !== 'membro' && (
-                                            <span style={{
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              padding: '4px 8px',
-                                              borderRadius: '4px',
-                                              fontSize: '0.75rem',
-                                              fontWeight: 500,
-                                              backgroundColor: '#E8F5E9',
-                                              color: tokens.colors.primary,
-                                            }}>
-                                              {orgao.cargo === 'presidente' ? 'Presidente' :
-                                               orgao.cargo === 'vice_presidente' ? 'Vice-Presidente' :
-                                               orgao.cargo === 'secretario' ? 'Secretário' :
-                                               orgao.cargo}
-                                            </span>
-                                          )}
-                                          {orgao.observacoes && (
-                                            <span style={{ color: tokens.colors.textMuted }}>
-                                              {orgao.observacoes}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '48px 0' }}>
-                      <div style={{
-                        margin: '0 auto',
-                        width: '64px',
-                        height: '64px',
-                        backgroundColor: tokens.colors.bgPrimary,
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginBottom: '16px',
-                      }}>
-                        <User style={{ width: '32px', height: '32px', color: tokens.colors.textMuted }} />
-                      </div>
-                      <p style={{ color: tokens.colors.textMuted, fontSize: '1.125rem', fontWeight: 500, marginBottom: '8px' }}>Informações biográficas não disponíveis</p>
-                      <p style={{ fontSize: '0.875rem', color: tokens.colors.textMuted }}>
-                        Dados biográficos não foram fornecidos para este deputado
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+          {/* Tab Content - White background for readability */}
+          <div style={{
+            padding: '28px',
+            backgroundColor: 'white',
+            minHeight: '400px',
+          }}>
 
             {activeTab === 'intervencoes' && (
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                {/* Tab Section Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '24px',
+                  paddingBottom: '20px',
+                  borderBottom: `1px solid ${tokens.colors.border}`,
+                }}>
                   <div>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: tokens.colors.textPrimary, fontFamily: tokens.fonts.headline }}>
+                    <h3 style={{
+                      fontSize: '1.125rem',
+                      fontWeight: 600,
+                      color: tokens.colors.textPrimary,
+                      fontFamily: tokens.fonts.headline,
+                      margin: 0,
+                    }}>
                       Intervenções Parlamentares
                     </h3>
                     {totalInterventions > 0 && (
-                      <p style={{ fontSize: '0.875rem', color: tokens.colors.textMuted, marginTop: '4px' }}>
+                      <p style={{
+                        fontSize: '0.8125rem',
+                        color: tokens.colors.textMuted,
+                        marginTop: '6px',
+                        fontFamily: tokens.fonts.body,
+                      }}>
                         {interventionTypeFilter
                           ? `${atividades?.intervencoes?.length || 0} de ${totalInterventions} intervenções (filtrado por "${interventionTypeFilter}")`
-                          : `${totalInterventions} intervenções`
+                          : `${totalInterventions} intervenções nesta legislatura`
                         }
                       </p>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     {atividades && atividades.intervencoes.length > 0 && (
                       <div style={{ display: 'flex', gap: '8px' }}>
-                      <select
-                        value={interventionTypeFilter}
-                        onChange={(e) => {
-                          const newType = e.target.value;
-                          setInterventionTypeFilter(newType);
-                          setCurrentPage(1);
-                          updateInterventionParams({ tipo_intervencao: newType, page: 1 });
-                        }}
-                        style={{
-                          border: `1px solid ${tokens.colors.border}`,
-                          borderRadius: '4px',
-                          padding: '6px 12px',
-                          fontSize: '0.875rem',
-                          backgroundColor: tokens.colors.bgSecondary,
-                          color: tokens.colors.textPrimary,
-                          fontFamily: tokens.fonts.body,
-                        }}
-                      >
-                        <option value="">Todos os tipos</option>
-                        <option value="Interpelação">Interpelação à mesa</option>
-                        <option value="Pedido">Pedido de esclarecimento</option>
-                        <option value="Declaração">Declaração política</option>
-                        <option value="Pergunta">Pergunta</option>
-                      </select>
-                      <select
-                        value={interventionSort}
-                        onChange={(e) => {
-                          const newSort = e.target.value;
-                          setInterventionSort(newSort);
-                          updateInterventionParams({ ordenacao_intervencoes: newSort });
-                        }}
-                        style={{
-                          border: `1px solid ${tokens.colors.border}`,
-                          borderRadius: '4px',
-                          padding: '6px 12px',
-                          fontSize: '0.875rem',
-                          backgroundColor: tokens.colors.bgSecondary,
-                          color: tokens.colors.textPrimary,
-                          fontFamily: tokens.fonts.body,
-                        }}
-                      >
-                        <option value="newest">Mais recentes</option>
-                        <option value="oldest">Mais antigas</option>
-                        <option value="type">Por tipo</option>
-                      </select>
+                        <select
+                          value={interventionTypeFilter}
+                          onChange={(e) => {
+                            const newType = e.target.value;
+                            setInterventionTypeFilter(newType);
+                            setCurrentPage(1);
+                            updateInterventionParams({ tipo_intervencao: newType, page: 1 });
+                          }}
+                          style={{
+                            border: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+                            borderRadius: '4px',
+                            padding: '8px 12px',
+                            fontSize: '0.8125rem',
+                            backgroundColor: tokens.colors.bgWarm || '#F8F6F0',
+                            color: tokens.colors.textPrimary,
+                            fontFamily: tokens.fonts.body,
+                            cursor: 'pointer',
+                            outline: 'none',
+                          }}
+                        >
+                          <option value="">Todos os tipos</option>
+                          <option value="Interpelação">Interpelação à mesa</option>
+                          <option value="Pedido">Pedido de esclarecimento</option>
+                          <option value="Declaração">Declaração política</option>
+                          <option value="Pergunta">Pergunta</option>
+                        </select>
+                        <select
+                          value={interventionSort}
+                          onChange={(e) => {
+                            const newSort = e.target.value;
+                            setInterventionSort(newSort);
+                            updateInterventionParams({ ordenacao_intervencoes: newSort });
+                          }}
+                          style={{
+                            border: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+                            borderRadius: '4px',
+                            padding: '8px 12px',
+                            fontSize: '0.8125rem',
+                            backgroundColor: tokens.colors.bgWarm || '#F8F6F0',
+                            color: tokens.colors.textPrimary,
+                            fontFamily: tokens.fonts.body,
+                            cursor: 'pointer',
+                            outline: 'none',
+                          }}
+                        >
+                          <option value="newest">Mais recentes</option>
+                          <option value="oldest">Mais antigas</option>
+                          <option value="type">Por tipo</option>
+                        </select>
                       </div>
                     )}
                     <LegislatureDropdown
@@ -1729,6 +2472,118 @@ const DeputadoDetalhes = () => {
                     />
                   </div>
                 </div>
+
+                {/* Activity Summary Bar */}
+                {atividades && totalInterventions > 0 && (
+                  <InterventionsSummaryBar
+                    totalInterventions={totalInterventions}
+                    interventionsThisYear={atividades.intervencoes?.length || 0}
+                    partyAverage={25} // TODO: Calculate from actual party data
+                    parliamentAverage={30} // TODO: Calculate from actual parliament data
+                    videoCount={atividades.intervencoes?.filter(i => i.url_video)?.length || 0}
+                    lastInterventionDate={atividades.intervencoes?.[0]?.data}
+                    typeBreakdown={(() => {
+                      const breakdown = {};
+                      atividades.intervencoes?.forEach(i => {
+                        const tipo = i.tipo || 'Outro';
+                        breakdown[tipo] = (breakdown[tipo] || 0) + 1;
+                      });
+                      return breakdown;
+                    })()}
+                  />
+                )}
+
+                {/* Phase 2: Timeline and Achievements Section */}
+                {atividades && atividades.intervencoes?.length > 0 && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                    gap: '16px',
+                    marginBottom: '24px',
+                  }}>
+                    {/* Activity Timeline Sparkline */}
+                    <div style={{
+                      backgroundColor: tokens.colors.bgSecondary,
+                      border: `1px solid ${tokens.colors.border}`,
+                      borderRadius: '4px',
+                      padding: '16px 20px',
+                    }}>
+                      <h4 style={{
+                        margin: '0 0 12px 0',
+                        fontFamily: tokens.fonts.body,
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: tokens.colors.textMuted,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}>
+                        Atividade ao longo do tempo
+                      </h4>
+                      <TimelineSparkline
+                        data={(() => {
+                          // Group interventions by month
+                          const monthlyData = {};
+                          atividades.intervencoes?.forEach(i => {
+                            if (i.data) {
+                              const monthKey = i.data.substring(0, 7);
+                              monthlyData[monthKey] = (monthlyData[monthKey] || 0) + 1;
+                            }
+                          });
+                          return Object.entries(monthlyData)
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .slice(-12) // Last 12 months
+                            .map(([date, value]) => ({ date, value }));
+                        })()}
+                        width={280}
+                        height={50}
+                        color={tokens.colors.primary}
+                        showTrend={true}
+                      />
+                    </div>
+
+                    {/* Achievement Badges */}
+                    <div style={{
+                      backgroundColor: tokens.colors.bgSecondary,
+                      border: `1px solid ${tokens.colors.border}`,
+                      borderRadius: '4px',
+                      padding: '16px 20px',
+                    }}>
+                      <h4 style={{
+                        margin: '0 0 12px 0',
+                        fontFamily: tokens.fonts.body,
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: tokens.colors.textMuted,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}>
+                        Reconhecimentos
+                      </h4>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {atividades.intervencoes?.filter(i => i.tipo?.includes('Pergunta')).length >= 20 && (
+                          <AchievementBadge type="topQuestioner" size="small" showDescription={false} />
+                        )}
+                        {atividades.intervencoes?.length >= 50 && (
+                          <AchievementBadge type="debateParticipant" size="small" showDescription={false} />
+                        )}
+                        {atividades.intervencoes?.length < 5 && atividades.intervencoes?.length > 0 && (
+                          <RedFlagIndicator
+                            type="lowActivity"
+                            value={atividades.intervencoes?.length}
+                            showDetails={false}
+                          />
+                        )}
+                        {atividades.intervencoes?.filter(i => i.tipo?.includes('Pergunta')).length === 0 && atividades.intervencoes?.length >= 10 && (
+                          <RedFlagIndicator
+                            type="noQuestions"
+                            value={6}
+                            showDetails={false}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {atividades && atividades.intervencoes.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -2081,38 +2936,45 @@ const DeputadoDetalhes = () => {
 
             {activeTab === 'iniciativas' && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                {/* Tab Section Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '24px',
+                  paddingBottom: '20px',
+                  borderBottom: `1px solid ${tokens.colors.border}`,
+                }}>
                   <div>
                     <h3 style={{
-                      fontFamily: tokens.fonts.headline,
-                      fontSize: '1.25rem',
-                      fontWeight: '600',
+                      fontSize: '1.125rem',
+                      fontWeight: 600,
                       color: tokens.colors.textPrimary,
-                      margin: 0
+                      fontFamily: tokens.fonts.headline,
+                      margin: 0,
                     }}>
                       Iniciativas Legislativas
                     </h3>
                     <p style={{
-                      fontFamily: tokens.fonts.body,
-                      fontSize: '0.875rem',
+                      fontSize: '0.8125rem',
                       color: tokens.colors.textMuted,
-                      marginTop: '0.25rem',
-                      margin: '0.25rem 0 0 0'
+                      marginTop: '6px',
+                      fontFamily: tokens.fonts.body,
                     }}>
                       Projetos de lei e resoluções apresentados pelo deputado
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     {atividades && atividades.iniciativas && atividades.iniciativas.length > 0 && (
                       <div style={{
                         fontFamily: tokens.fonts.mono,
                         fontSize: '0.75rem',
-                        fontWeight: '600',
+                        fontWeight: 600,
                         color: tokens.colors.primary,
-                        backgroundColor: '#E8F5E9',
-                        padding: '0.375rem 0.75rem',
-                        borderRadius: '2px',
-                        border: `1px solid ${tokens.colors.primary}20`
+                        backgroundColor: `${tokens.colors.primary}10`,
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        border: `1px solid ${tokens.colors.primary}25`,
                       }}>
                         {atividades.iniciativas.length} iniciativas
                       </div>
@@ -2127,7 +2989,156 @@ const DeputadoDetalhes = () => {
                 </div>
                 
                 {atividades && atividades.iniciativas && atividades.iniciativas.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {/* Outcomes Summary Panel */}
+                    {(() => {
+                      const initiatives = atividades.iniciativas;
+                      const approved = initiatives.filter(i => i.estado?.toLowerCase() === 'aprovado').length;
+                      const rejected = initiatives.filter(i => i.estado?.toLowerCase() === 'rejeitado').length;
+                      const inProgress = initiatives.filter(i =>
+                        i.estado?.toLowerCase() !== 'aprovado' &&
+                        i.estado?.toLowerCase() !== 'rejeitado' &&
+                        i.estado?.toLowerCase() !== 'caducado' &&
+                        i.estado?.toLowerCase() !== 'retirado'
+                      ).length;
+                      const expired = initiatives.filter(i =>
+                        i.estado?.toLowerCase() === 'caducado' ||
+                        i.estado?.toLowerCase() === 'retirado'
+                      ).length;
+
+                      return (
+                        <InitiativeOutcomesSummary
+                          approved={approved}
+                          rejected={rejected}
+                          inProgress={inProgress}
+                          expired={expired}
+                          total={initiatives.length}
+                        />
+                      );
+                    })()}
+
+                    {/* Authorship Pattern - if we have authorship data */}
+                    {(() => {
+                      const initiatives = atividades.iniciativas;
+                      // Count by authorship type (simplified - would need actual authorship data)
+                      const individual = initiatives.filter(i => i.autores?.length === 1).length;
+                      const group = initiatives.filter(i => i.autores?.length > 1 && !i.is_cross_party).length;
+                      const crossParty = initiatives.filter(i => i.is_cross_party).length;
+
+                      if (individual + group + crossParty === 0) return null;
+
+                      return (
+                        <AuthorshipPatternIndicator
+                          individual={individual}
+                          group={group}
+                          crossParty={crossParty}
+                        />
+                      );
+                    })()}
+
+                    {/* Phase 2: Enhanced Analytics Grid */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                      gap: '16px',
+                      marginTop: '16px',
+                    }}>
+                      {/* Authorship Breakdown (detailed) */}
+                      {(() => {
+                        const initiatives = atividades.iniciativas || [];
+                        const individual = initiatives.filter(i => i.autores?.length === 1).length;
+                        const group = initiatives.filter(i => i.autores?.length > 1 && !i.is_cross_party).length;
+                        const crossParty = initiatives.filter(i => i.is_cross_party).length;
+                        const total = individual + group + crossParty;
+
+                        if (total === 0) return null;
+
+                        return (
+                          <div style={{
+                            backgroundColor: tokens.colors.bgSecondary,
+                            border: `1px solid ${tokens.colors.border}`,
+                            borderRadius: '4px',
+                            padding: '16px 20px',
+                          }}>
+                            <h4 style={{
+                              margin: '0 0 12px 0',
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              color: tokens.colors.textMuted,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                            }}>
+                              Padrão de autoria
+                            </h4>
+                            <AuthorshipChart
+                              individual={individual}
+                              party={group}
+                              crossParty={crossParty}
+                              size="compact"
+                            />
+                            {crossParty > 0 && (
+                              <div style={{ marginTop: '12px' }}>
+                                <CollaborationIndicator
+                                  crossPartyCount={crossParty}
+                                  totalCount={total}
+                                  showLabel={false}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Policy Specialization Chart */}
+                      {(() => {
+                        const initiatives = atividades.iniciativas || [];
+                        // Group by type for now (would ideally use policy area classification)
+                        const typeLabels = {
+                          'J': 'Projeto de Lei',
+                          'R': 'Projeto de Resolução',
+                          'P': 'Proposta de Lei',
+                          'D': 'Projeto de Deliberação',
+                        };
+                        const byType = {};
+                        initiatives.forEach(i => {
+                          const area = typeLabels[i.tipo] || i.tipo || 'Outro';
+                          byType[area] = (byType[area] || 0) + 1;
+                        });
+                        const data = Object.entries(byType).map(([area, count]) => ({ area, count }));
+
+                        if (data.length === 0) return null;
+
+                        return (
+                          <div style={{
+                            backgroundColor: tokens.colors.bgSecondary,
+                            border: `1px solid ${tokens.colors.border}`,
+                            borderRadius: '4px',
+                            padding: '16px 20px',
+                          }}>
+                            <h4 style={{
+                              margin: '0 0 12px 0',
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              color: tokens.colors.textMuted,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px',
+                            }}>
+                              Distribuição por tipo
+                            </h4>
+                            <PolicySpecializationChart
+                              data={data}
+                              maxDisplay={4}
+                              showSpecialization={false}
+                            />
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Initiative Cards */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {atividades.iniciativas.map((iniciativa, index) => {
                       // Helper function to get type styling - returns style object
                       const getTypeStyle = (tipo) => {
@@ -2615,6 +3626,7 @@ const DeputadoDetalhes = () => {
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 ) : (
                   <div style={{
@@ -2659,88 +3671,180 @@ const DeputadoDetalhes = () => {
             )}
 
             {activeTab === 'votacoes' && (
-              <VotingAnalytics 
-                deputadoId={cadId} 
-                legislatura={deputado?.legislatura?.numero || 'XVII'} 
-              />
+              <div>
+                {/* Tab Section Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '24px',
+                  paddingBottom: '20px',
+                  borderBottom: `1px solid ${tokens.colors.border}`,
+                }}>
+                  <div>
+                    <h3 style={{
+                      fontSize: '1.125rem',
+                      fontWeight: 600,
+                      color: tokens.colors.textPrimary,
+                      fontFamily: tokens.fonts.headline,
+                      margin: 0,
+                    }}>
+                      Análise de Votações
+                    </h3>
+                    <p style={{
+                      fontSize: '0.8125rem',
+                      color: tokens.colors.textMuted,
+                      marginTop: '6px',
+                      fontFamily: tokens.fonts.body,
+                    }}>
+                      Padrões de votação, disciplina partidária e alinhamentos
+                    </p>
+                  </div>
+                </div>
+                <VotingAnalytics
+                  deputadoId={cadId}
+                  legislatura={deputado?.legislatura?.numero || 'XVII'}
+                />
+              </div>
             )}
 
             {activeTab === 'conflitos-interesse' && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                {/* Tab Section Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '24px',
+                  paddingBottom: '20px',
+                  borderBottom: `1px solid ${tokens.colors.border}`,
+                }}>
                   <div>
                     <h3 style={{
-                      fontFamily: tokens.fonts.headline,
-                      fontSize: '1.25rem',
-                      fontWeight: '600',
+                      fontSize: '1.125rem',
+                      fontWeight: 600,
                       color: tokens.colors.textPrimary,
-                      margin: 0
+                      fontFamily: tokens.fonts.headline,
+                      margin: 0,
                     }}>
-                      Conflitos de Interesse
+                      Registo de Interesses
                     </h3>
                     <p style={{
-                      fontFamily: tokens.fonts.body,
-                      fontSize: '0.875rem',
+                      fontSize: '0.8125rem',
                       color: tokens.colors.textMuted,
-                      marginTop: '0.25rem',
-                      margin: '0.25rem 0 0 0'
+                      marginTop: '6px',
+                      fontFamily: tokens.fonts.body,
                     }}>
-                      Declaração de conflitos de interesse conforme exigido por lei
+                      Declaração de interesses e atividades conforme Lei n.º 52/2019
                     </p>
                   </div>
                 </div>
 
                 {conflitosInteresse ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    {/* Status Card */}
-                    <div style={{
-                      borderRadius: '4px',
-                      border: `2px solid ${conflitosInteresse.has_conflict_potential ? '#FDE68A' : '#BBF7D0'}`,
-                      padding: '1.5rem',
-                      backgroundColor: conflitosInteresse.has_conflict_potential ? tokens.colors.warningBg : tokens.colors.successBg
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                    {/* Interest Status Card - Factual, non-accusatory */}
+                    <InterestStatusCard
+                      data={{
+                        hasDeclaration: true,
+                        hasInterestsInActiveLegislation: conflitosInteresse.has_conflict_potential || false,
+                        regulatedSectorInterests: conflitosInteresse.regulated_sector_count || 0,
+                        lastUpdated: conflitosInteresse.last_updated || null,
+                        declarationUrl: conflitosInteresse.declaration_url || null,
+                        status: conflitosInteresse.has_conflict_potential ? 'context' : 'clear',
+                      }}
+                      showDetails={true}
+                    />
+
+                    {/* Exclusivity Status */}
+                    <ExclusivityBadge
+                      isExclusive={!conflitosInteresse.has_conflict_potential}
+                      showExplanation={true}
+                    />
+
+                    {/* Educational Context Box */}
+                    <EducationalBox title="Como interpretar esta informação">
+                      <p style={{ margin: '0 0 8px 0' }}>
+                        A declaração de interesses é uma <strong>obrigação legal</strong> de todos os deputados
+                        (Lei n.º 52/2019). Ter interesses declarados <strong>não implica irregularidade</strong> —
+                        pelo contrário, demonstra cumprimento das regras de transparência.
+                      </p>
+                      <p style={{ margin: '0 0 8px 0' }}>
+                        <strong>Regime de exclusividade:</strong> Deputados podem optar por dedicação
+                        exclusiva ao mandato ou manter atividades profissionais paralelas (regime legalmente previsto).
+                      </p>
+                      <p style={{ margin: 0 }}>
+                        <strong>Sectores regulados:</strong> Quando um deputado declara interesses em sectores
+                        com legislação ativa, esta informação é apresentada para contexto público, permitindo
+                        aos cidadãos acompanhar a transparência parlamentar.
+                      </p>
+                    </EducationalBox>
+
+                    {/* Phase 2: Sector Overlap Summary */}
+                    {conflitosInteresse.regulated_sector_count > 0 && (
+                      <SectorOverlapSummary
+                        totalSectors={conflitosInteresse.total_sectors || 5}
+                        overlappingSectors={conflitosInteresse.regulated_sector_count || 0}
+                        showContext={true}
+                      />
+                    )}
+
+                    {/* Phase 2: Sector Heatmap - showing interests vs legislation */}
+                    {(() => {
+                      // Generate sample sector data from available conflict data
+                      const sectorData = [];
+
+                      // Add professional activities as sectors
+                      if (conflitosInteresse.professional_activities?.length > 0) {
+                        conflitosInteresse.professional_activities.forEach((activity, idx) => {
+                          sectorData.push({
+                            sectorKey: `prof_${idx}`,
+                            sectorName: activity.entity_name || activity.function_type || 'Atividade Profissional',
+                            interest: activity.function_type || 'Atividade declarada',
+                            legislationCount: 0, // Would need legislation matching data
+                            status: 'noLegislation',
+                          });
+                        });
+                      }
+
+                      // Add shareholdings as sectors
+                      if (conflitosInteresse.shareholdings?.length > 0) {
+                        conflitosInteresse.shareholdings.forEach((holding, idx) => {
+                          sectorData.push({
+                            sectorKey: `share_${idx}`,
+                            sectorName: holding.entity_name || 'Participação Social',
+                            interest: holding.share_percentage ? `${holding.share_percentage}%` : 'Participação declarada',
+                            legislationCount: 0,
+                            status: 'noLegislation',
+                          });
+                        });
+                      }
+
+                      if (sectorData.length === 0) return null;
+
+                      return (
                         <div style={{
-                          flexShrink: 0,
-                          width: '2.5rem',
-                          height: '2.5rem',
+                          backgroundColor: tokens.colors.bgSecondary,
+                          border: `1px solid ${tokens.colors.border}`,
                           borderRadius: '4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: conflitosInteresse.has_conflict_potential ? '#FEF3C7' : '#DCFCE7',
-                          border: `1px solid ${conflitosInteresse.has_conflict_potential ? '#FDE68A' : '#BBF7D0'}`
+                          padding: '20px',
                         }}>
-                          {conflitosInteresse.has_conflict_potential ? (
-                            <AlertTriangle style={{ height: '20px', width: '20px', color: tokens.colors.warning }} />
-                          ) : (
-                            <Shield style={{ height: '20px', width: '20px', color: tokens.colors.success }} />
-                          )}
-                        </div>
-                        <div style={{ marginLeft: '1rem', flex: 1 }}>
                           <h4 style={{
-                            fontFamily: tokens.fonts.headline,
-                            fontSize: '1.125rem',
-                            fontWeight: '600',
-                            color: conflitosInteresse.has_conflict_potential ? '#92400E' : '#14532D',
-                            margin: 0
-                          }}>
-                            {conflitosInteresse.exclusivity_description}
-                          </h4>
-                          <p style={{
+                            margin: '0 0 16px 0',
                             fontFamily: tokens.fonts.body,
                             fontSize: '0.875rem',
-                            marginTop: '0.25rem',
-                            color: conflitosInteresse.has_conflict_potential ? '#B45309' : '#166534'
+                            fontWeight: 600,
+                            color: tokens.colors.textPrimary,
                           }}>
-                            {conflitosInteresse.has_conflict_potential
-                              ? 'Deputado exerce atividades não exclusivas que podem gerar conflitos de interesse'
-                              : 'Deputado exerce mandato em regime de exclusividade'
-                            }
-                          </p>
+                            Interesses por Sector
+                          </h4>
+                          <SectorHeatmap
+                            data={sectorData.slice(0, 6)} // Limit to 6 sectors
+                            showLegend={false}
+                            showDetails={false}
+                          />
                         </div>
-                      </div>
-                    </div>
+                      );
+                    })()}
 
                     {/* Personal Information */}
                     <div style={{
@@ -2983,42 +4087,27 @@ const DeputadoDetalhes = () => {
                     </div>
                   </div>
                 ) : (
-                  <div style={{
-                    textAlign: 'center',
-                    padding: '3rem 1rem',
-                    backgroundColor: tokens.colors.bgSecondary,
-                    border: `1px solid ${tokens.colors.border}`,
-                    borderRadius: '4px'
-                  }}>
-                    <div style={{
-                      margin: '0 auto 1rem',
-                      width: '4rem',
-                      height: '4rem',
-                      backgroundColor: tokens.colors.bgPrimary,
-                      borderRadius: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: `1px solid ${tokens.colors.border}`
-                    }}>
-                      <Shield style={{ height: '2rem', width: '2rem', color: tokens.colors.textMuted }} />
-                    </div>
-                    <p style={{
-                      fontFamily: tokens.fonts.headline,
-                      color: tokens.colors.textSecondary,
-                      fontSize: '1.125rem',
-                      fontWeight: '500',
-                      marginBottom: '0.5rem'
-                    }}>
-                      Dados de conflitos de interesse não disponíveis
-                    </p>
-                    <p style={{
-                      fontFamily: tokens.fonts.body,
-                      fontSize: '0.875rem',
-                      color: tokens.colors.textMuted
-                    }}>
-                      As informações sobre conflitos de interesse não foram encontradas para este deputado
-                    </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {/* Missing Declaration Status */}
+                    <InterestStatusCard
+                      data={{
+                        hasDeclaration: false,
+                        daysOverdue: 0, // Would need to calculate from mandate start date
+                      }}
+                      showDetails={false}
+                    />
+
+                    {/* Educational Context Box */}
+                    <EducationalBox title="Sobre a declaração de interesses">
+                      <p style={{ margin: '0 0 8px 0' }}>
+                        A Lei n.º 52/2019 obriga todos os deputados a submeter uma declaração de interesses
+                        no prazo de <strong>30 dias</strong> após tomada de posse.
+                      </p>
+                      <p style={{ margin: 0 }}>
+                        Esta informação pode não estar disponível por diversos motivos: declaração ainda em
+                        processamento, deputado recém-empossado, ou dados ainda não digitalizados pelo Parlamento.
+                      </p>
+                    </EducationalBox>
                   </div>
                 )}
               </div>
@@ -3026,161 +4115,306 @@ const DeputadoDetalhes = () => {
 
             {activeTab === 'attendance' && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                  <h3 style={{
-                    fontFamily: tokens.fonts.headline,
-                    fontSize: '1.25rem',
-                    fontWeight: '600',
-                    color: tokens.colors.textPrimary,
-                    margin: 0
-                  }}>
-                    Registo de Presenças
-                  </h3>
+                {/* Tab Section Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '24px',
+                  paddingBottom: '20px',
+                  borderBottom: `1px solid ${tokens.colors.border}`,
+                }}>
+                  <div>
+                    <h3 style={{
+                      fontSize: '1.125rem',
+                      fontWeight: 600,
+                      color: tokens.colors.textPrimary,
+                      fontFamily: tokens.fonts.headline,
+                      margin: 0,
+                    }}>
+                      Registo de Presenças
+                    </h3>
+                    <p style={{
+                      fontSize: '0.8125rem',
+                      color: tokens.colors.textMuted,
+                      marginTop: '6px',
+                      fontFamily: tokens.fonts.body,
+                    }}>
+                      Participação em sessões plenárias e comissões
+                    </p>
+                  </div>
                 </div>
 
                 {attendanceData ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    {/* Summary Cards */}
+                    {/* Traffic Light Status Indicator */}
+                    {(() => {
+                      const attendanceRate = attendanceData.summary.total_sessions > 0
+                        ? (attendanceData.summary.present / attendanceData.summary.total_sessions) * 100
+                        : null;
+                      const parliamentAverage = 87.5; // TODO: Calculate from actual data
+
+                      return (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                          <TrafficLightIndicator
+                            value={attendanceRate}
+                            thresholds={ATTENDANCE_THRESHOLDS}
+                            labels={{
+                              green: 'Acima da média parlamentar',
+                              amber: 'Abaixo da média - ver detalhes',
+                              red: 'Significativamente abaixo do esperado',
+                              neutral: 'Dados insuficientes',
+                            }}
+                            showComparison={true}
+                            comparisonValue={parliamentAverage}
+                            comparisonLabel="média parlamentar"
+                            size="large"
+                          />
+
+                          {/* Absence Categories Breakdown */}
+                          <div style={{
+                            backgroundColor: tokens.colors.bgSecondary,
+                            border: `1px solid ${tokens.colors.border}`,
+                            borderRadius: '4px',
+                            padding: '20px 24px',
+                          }}>
+                            <h4 style={{
+                              fontFamily: tokens.fonts.body,
+                              fontSize: '0.875rem',
+                              fontWeight: 600,
+                              color: tokens.colors.textPrimary,
+                              margin: '0 0 16px 0',
+                            }}>
+                              Categorias de Ausência
+                            </h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              {/* Institutional absences */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{
+                                    width: '10px',
+                                    height: '10px',
+                                    borderRadius: '2px',
+                                    backgroundColor: tokens.colors.primary,
+                                  }} />
+                                  <span style={{
+                                    fontFamily: tokens.fonts.body,
+                                    fontSize: '0.875rem',
+                                    color: tokens.colors.textSecondary,
+                                  }}>
+                                    Institucionais (missões, audiências)
+                                  </span>
+                                </div>
+                                <span style={{
+                                  fontFamily: tokens.fonts.mono,
+                                  fontSize: '0.875rem',
+                                  fontWeight: 600,
+                                  color: tokens.colors.textPrimary,
+                                }}>
+                                  {attendanceData.summary.institutional_absence || 0}
+                                </span>
+                              </div>
+                              {/* Personal justified */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{
+                                    width: '10px',
+                                    height: '10px',
+                                    borderRadius: '2px',
+                                    backgroundColor: tokens.colors.statusAmber,
+                                  }} />
+                                  <span style={{
+                                    fontFamily: tokens.fonts.body,
+                                    fontSize: '0.875rem',
+                                    color: tokens.colors.textSecondary,
+                                  }}>
+                                    Pessoais justificadas (saúde, família)
+                                  </span>
+                                </div>
+                                <span style={{
+                                  fontFamily: tokens.fonts.mono,
+                                  fontSize: '0.875rem',
+                                  fontWeight: 600,
+                                  color: tokens.colors.textPrimary,
+                                }}>
+                                  {attendanceData.summary.justified_absence || 0}
+                                </span>
+                              </div>
+                              {/* Unjustified */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{
+                                    width: '10px',
+                                    height: '10px',
+                                    borderRadius: '2px',
+                                    backgroundColor: tokens.colors.statusRed,
+                                  }} />
+                                  <span style={{
+                                    fontFamily: tokens.fonts.body,
+                                    fontSize: '0.875rem',
+                                    color: tokens.colors.textSecondary,
+                                  }}>
+                                    Injustificadas
+                                  </span>
+                                </div>
+                                <span style={{
+                                  fontFamily: tokens.fonts.mono,
+                                  fontSize: '0.875rem',
+                                  fontWeight: 600,
+                                  color: tokens.colors.statusRed,
+                                }}>
+                                  {attendanceData.summary.unjustified_absence || 0}
+                                </span>
+                              </div>
+                            </div>
+                            {/* Progress bar showing breakdown */}
+                            <div style={{
+                              marginTop: '16px',
+                              height: '8px',
+                              borderRadius: '4px',
+                              backgroundColor: tokens.colors.bgTertiary,
+                              overflow: 'hidden',
+                              display: 'flex',
+                            }}>
+                              <div style={{
+                                width: `${(attendanceData.summary.present / attendanceData.summary.total_sessions) * 100}%`,
+                                backgroundColor: tokens.colors.statusGreen,
+                              }} />
+                              <div style={{
+                                width: `${((attendanceData.summary.institutional_absence || 0) / attendanceData.summary.total_sessions) * 100}%`,
+                                backgroundColor: tokens.colors.primary,
+                              }} />
+                              <div style={{
+                                width: `${(attendanceData.summary.justified_absence / attendanceData.summary.total_sessions) * 100}%`,
+                                backgroundColor: tokens.colors.statusAmber,
+                              }} />
+                              <div style={{
+                                width: `${(attendanceData.summary.unjustified_absence / attendanceData.summary.total_sessions) * 100}%`,
+                                backgroundColor: tokens.colors.statusRed,
+                              }} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Educational Context Box */}
+                    <EducationalBox title="Como interpretar os dados de presença">
+                      <p style={{ margin: '0 0 8px 0' }}>
+                        A taxa de presença mede a participação em sessões plenárias. O Parlamento
+                        considera uma taxa acima de <strong>85%</strong> como adequada.
+                      </p>
+                      <p style={{ margin: 0 }}>
+                        <strong>Nota importante:</strong> Deputados com cargos específicos (presidentes de comissão,
+                        membros da Mesa) podem ter padrões diferentes devido a responsabilidades institucionais.
+                        Ausências por missões oficiais são contabilizadas separadamente.
+                      </p>
+                    </EducationalBox>
+
+                    {/* Summary Cards - Compact Version */}
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
                       gap: '1rem',
-                      marginBottom: '1.5rem'
                     }}>
                       <div style={{
                         backgroundColor: tokens.colors.bgSecondary,
                         borderRadius: '4px',
                         border: `1px solid ${tokens.colors.border}`,
-                        padding: '1rem'
+                        padding: '1rem',
+                        textAlign: 'center',
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                          <div style={{
-                            padding: '0.5rem',
-                            backgroundColor: colorSchemes.blue.bg,
-                            borderRadius: '4px',
-                            border: `1px solid ${colorSchemes.blue.border}`
-                          }}>
-                            <Activity style={{ height: '20px', width: '20px', color: colorSchemes.blue.primary }} />
-                          </div>
-                          <div style={{ marginLeft: '0.75rem' }}>
-                            <p style={{
-                              fontFamily: tokens.fonts.body,
-                              fontSize: '0.875rem',
-                              fontWeight: '500',
-                              color: tokens.colors.textSecondary,
-                              margin: 0
-                            }}>Total Sessões</p>
-                            <p style={{
-                              fontFamily: tokens.fonts.mono,
-                              fontSize: '1.5rem',
-                              fontWeight: '700',
-                              color: tokens.colors.textPrimary,
-                              margin: 0
-                            }}>{attendanceData.summary.total_sessions}</p>
-                          </div>
-                        </div>
+                        <p style={{
+                          fontFamily: tokens.fonts.body,
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                          color: tokens.colors.textMuted,
+                          margin: '0 0 4px 0',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}>Total Sessões</p>
+                        <p style={{
+                          fontFamily: tokens.fonts.mono,
+                          fontSize: '1.75rem',
+                          fontWeight: '700',
+                          color: tokens.colors.textPrimary,
+                          margin: 0,
+                        }}>{attendanceData.summary.total_sessions}</p>
                       </div>
 
                       <div style={{
-                        backgroundColor: tokens.colors.bgSecondary,
+                        backgroundColor: tokens.colors.statusGreenBg,
                         borderRadius: '4px',
-                        border: `1px solid ${tokens.colors.border}`,
-                        padding: '1rem'
+                        border: `1px solid ${tokens.colors.statusGreenBorder}`,
+                        padding: '1rem',
+                        textAlign: 'center',
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                          <div style={{
-                            padding: '0.5rem',
-                            backgroundColor: colorSchemes.green.bg,
-                            borderRadius: '4px',
-                            border: `1px solid ${colorSchemes.green.border}`
-                          }}>
-                            <Activity style={{ height: '20px', width: '20px', color: colorSchemes.green.primary }} />
-                          </div>
-                          <div style={{ marginLeft: '0.75rem' }}>
-                            <p style={{
-                              fontFamily: tokens.fonts.body,
-                              fontSize: '0.875rem',
-                              fontWeight: '500',
-                              color: tokens.colors.textSecondary,
-                              margin: 0
-                            }}>Presente</p>
-                            <p style={{
-                              fontFamily: tokens.fonts.mono,
-                              fontSize: '1.5rem',
-                              fontWeight: '700',
-                              color: tokens.colors.success,
-                              margin: 0
-                            }}>{attendanceData.summary.present}</p>
-                          </div>
-                        </div>
+                        <p style={{
+                          fontFamily: tokens.fonts.body,
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                          color: tokens.colors.textMuted,
+                          margin: '0 0 4px 0',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}>Presente</p>
+                        <p style={{
+                          fontFamily: tokens.fonts.mono,
+                          fontSize: '1.75rem',
+                          fontWeight: '700',
+                          color: tokens.colors.statusGreen,
+                          margin: 0,
+                        }}>{attendanceData.summary.present}</p>
                       </div>
 
                       <div style={{
-                        backgroundColor: tokens.colors.bgSecondary,
+                        backgroundColor: tokens.colors.statusAmberBg,
                         borderRadius: '4px',
-                        border: `1px solid ${tokens.colors.border}`,
-                        padding: '1rem'
+                        border: `1px solid ${tokens.colors.statusAmberBorder}`,
+                        padding: '1rem',
+                        textAlign: 'center',
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                          <div style={{
-                            padding: '0.5rem',
-                            backgroundColor: colorSchemes.orange.bg,
-                            borderRadius: '4px',
-                            border: `1px solid ${colorSchemes.orange.border}`
-                          }}>
-                            <Activity style={{ height: '20px', width: '20px', color: colorSchemes.orange.primary }} />
-                          </div>
-                          <div style={{ marginLeft: '0.75rem' }}>
-                            <p style={{
-                              fontFamily: tokens.fonts.body,
-                              fontSize: '0.875rem',
-                              fontWeight: '500',
-                              color: tokens.colors.textSecondary,
-                              margin: 0
-                            }}>Falta Justificada</p>
-                            <p style={{
-                              fontFamily: tokens.fonts.mono,
-                              fontSize: '1.5rem',
-                              fontWeight: '700',
-                              color: tokens.colors.warning,
-                              margin: 0
-                            }}>{attendanceData.summary.justified_absence}</p>
-                          </div>
-                        </div>
+                        <p style={{
+                          fontFamily: tokens.fonts.body,
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                          color: tokens.colors.textMuted,
+                          margin: '0 0 4px 0',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}>Falta Justificada</p>
+                        <p style={{
+                          fontFamily: tokens.fonts.mono,
+                          fontSize: '1.75rem',
+                          fontWeight: '700',
+                          color: tokens.colors.statusAmber,
+                          margin: 0,
+                        }}>{attendanceData.summary.justified_absence}</p>
                       </div>
 
                       <div style={{
-                        backgroundColor: tokens.colors.bgSecondary,
+                        backgroundColor: tokens.colors.statusRedBg,
                         borderRadius: '4px',
-                        border: `1px solid ${tokens.colors.border}`,
-                        padding: '1rem'
+                        border: `1px solid ${tokens.colors.statusRedBorder}`,
+                        padding: '1rem',
+                        textAlign: 'center',
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                          <div style={{
-                            padding: '0.5rem',
-                            backgroundColor: tokens.colors.dangerBg,
-                            borderRadius: '4px',
-                            border: `1px solid #FECACA`
-                          }}>
-                            <Activity style={{ height: '20px', width: '20px', color: tokens.colors.danger }} />
-                          </div>
-                          <div style={{ marginLeft: '0.75rem' }}>
-                            <p style={{
-                              fontFamily: tokens.fonts.body,
-                              fontSize: '0.875rem',
-                              fontWeight: '500',
-                              color: tokens.colors.textSecondary,
-                              margin: 0
-                            }}>Falta Injustificada</p>
-                            <p style={{
-                              fontFamily: tokens.fonts.mono,
-                              fontSize: '1.5rem',
-                              fontWeight: '700',
-                              color: tokens.colors.danger,
-                              margin: 0
-                            }}>{attendanceData.summary.unjustified_absence}</p>
-                          </div>
-                        </div>
+                        <p style={{
+                          fontFamily: tokens.fonts.body,
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                          color: tokens.colors.textMuted,
+                          margin: '0 0 4px 0',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}>Falta Injustificada</p>
+                        <p style={{
+                          fontFamily: tokens.fonts.mono,
+                          fontSize: '1.75rem',
+                          fontWeight: '700',
+                          color: tokens.colors.statusRed,
+                          margin: 0,
+                        }}>{attendanceData.summary.unjustified_absence}</p>
                       </div>
                     </div>
 
@@ -3577,7 +4811,7 @@ const DeputadoDetalhes = () => {
               </div>
             )}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

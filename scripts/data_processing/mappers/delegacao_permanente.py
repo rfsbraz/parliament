@@ -95,9 +95,9 @@ logger = logging.getLogger(__name__)
 class DelegacaoPermanenteMapper(SchemaMapper):
     """Schema mapper for parliamentary permanent delegation files"""
 
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         # Accept SQLAlchemy session directly (passed by unified importer)
-        super().__init__(session)
+        super().__init__(session, import_status_record=import_status_record)
         # Cache for delegation records to avoid duplicate inserts within same file
         self._delegacao_cache = {}  # delegacao_id -> DelegacaoPermanente
     
@@ -317,7 +317,7 @@ class DelegacaoPermanenteMapper(SchemaMapper):
                     data_inicio=data_inicio,
                     data_fim=data_fim
                 )
-                self.session.add(membro)
+                self._add_with_tracking(membro)
             
             return True
             
@@ -343,7 +343,7 @@ class DelegacaoPermanenteMapper(SchemaMapper):
                     composicao=composicao,
                     subcomissoes=subcomissoes
                 )
-                self.session.add(comissao_record)
+                self._add_with_tracking(comissao_record)
             
             # Process nested commission members (XI Legislature)
             composicao_elem = self._get_namespaced_element(comissao, 'ap', 'composicao')
@@ -382,7 +382,7 @@ class DelegacaoPermanenteMapper(SchemaMapper):
                     data_inicio=data_inicio,
                     data_fim=data_fim
                 )
-                self.session.add(membro_record)
+                self._add_with_tracking(membro_record)
             
             return True
             

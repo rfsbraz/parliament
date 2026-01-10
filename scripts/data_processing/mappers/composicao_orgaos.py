@@ -180,8 +180,8 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
     # NOTE: _batch_flush() inherited from CacheMixin
     # NOTE: _deputado_cache inherited from CacheMixin (replaces _deputy_cache)
 
-    def __init__(self, db_connection_or_session):
-        super().__init__(db_connection_or_session)
+    def __init__(self, db_connection_or_session, import_status_record=None):
+        super().__init__(db_connection_or_session, import_status_record=import_status_record)
         # Entity-specific caches for parliamentary organs (not in base class)
         self._org_cache = {}           # legislature_sigla -> ParliamentaryOrganization
         self._plenary_cache = {}       # (id_orgao, org_id) -> Plenary
@@ -1293,7 +1293,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 org_id=plenary.id_orgao,  # Using plenary's XML ID as org_id (Integer)
             )
 
-            self.session.add(plenary_composition)
+            self._add_with_tracking(plenary_composition)
             self._batch_flush()
 
             # Process videos for this deputy (XIII Legislature structure)
@@ -1374,7 +1374,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 org_id=committee.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             return True
 
         except Exception as e:
@@ -1434,7 +1434,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 org_id=subcommittee.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             return True
 
         except Exception as e:
@@ -1494,7 +1494,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 org_id=work_group.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             return True
 
         except Exception as e:
@@ -1559,7 +1559,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 org_id=plenary.id_orgao,  # Using plenary's XML ID as org_id (Integer)
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             return True
 
         except Exception as e:
@@ -1680,7 +1680,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                             gp_dt_fim=gp_data["gp_dt_fim"],
                             composition_context=composition_type,
                         )
-                        self.session.add(gp_record)
+                        self._add_with_tracking(gp_record)
                         self._batch_flush()  # Ensure immediate persistence
                         logger.debug(
                             f"Created GP situation record: {gp_data['gp_sigla']} (ID: {gp_id_int}) for {composition_type}"
@@ -1744,7 +1744,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                         ),
                         gp_dt_fim=self._parse_date(gp_dt_fim) if gp_dt_fim else None,
                     )
-                    self.session.add(gp_record)
+                    self._add_with_tracking(gp_record)
 
             return True
 
@@ -1772,7 +1772,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                     ),
                     sio_dt_fim=self._parse_date(sio_dt_fim) if sio_dt_fim else None,
                 )
-                self.session.add(situacao_record)
+                self._add_with_tracking(situacao_record)
 
             return True
 
@@ -1857,7 +1857,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 reu_tir_des=reu_tar_des,  # Store reu_tar_des in reu_tir_des field
             )
 
-            self.session.add(meeting)
+            self._add_with_tracking(meeting)
             return True
 
         except Exception as e:
@@ -1888,7 +1888,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             xml_file_path=getattr(self, "xml_file", None),
         )
 
-        self.session.add(organization)
+        self._add_with_tracking(organization)
         self._batch_flush(force=True)  # Need ID for foreign keys
         self._org_cache[legislatura.numero] = organization
         return organization
@@ -1924,7 +1924,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             sigla_legislatura=legislatura.numero,
         )
 
-        self.session.add(plenary)
+        self._add_with_tracking(plenary)
         self._batch_flush(force=True)  # Need ID for foreign keys
 
         # Validate the plenary was created successfully
@@ -1966,7 +1966,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             sigla_legislatura=legislatura.numero,
         )
 
-        self.session.add(committee)
+        self._add_with_tracking(committee)
         self._batch_flush(force=True)  # Need ID for foreign keys
         self._committee_cache[cache_key] = committee
         return committee
@@ -2002,7 +2002,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             sigla_legislatura=legislatura.numero,
         )
 
-        self.session.add(subcommittee)
+        self._add_with_tracking(subcommittee)
         self._batch_flush(force=True)  # Need ID for foreign keys
         self._subcommittee_cache[cache_key] = subcommittee
         return subcommittee
@@ -2038,7 +2038,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             sigla_legislatura=legislatura.numero,
         )
 
-        self.session.add(work_group)
+        self._add_with_tracking(work_group)
         self._batch_flush(force=True)  # Need ID for foreign keys
         self._work_group_cache[cache_key] = work_group
         return work_group
@@ -2474,7 +2474,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 reu_estado=reu_estado,
             )
 
-            self.session.add(meeting)
+            self._add_with_tracking(meeting)
             return True
 
         except Exception as e:
@@ -2644,7 +2644,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                     sel_numero=sel_numero,
                 )
 
-                self.session.add(meeting)
+                self._add_with_tracking(meeting)
                 self._batch_flush(force=True)  # Need ID for meeting_attendances FK
 
                 # Process attendance data (Presencas)
@@ -2744,7 +2744,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 reu_tir_des=reu_tir_des,
             )
 
-            self.session.add(meeting)
+            self._add_with_tracking(meeting)
             return True
 
         except Exception as e:
@@ -2934,7 +2934,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                     tipo_reuniao=tipo_reuniao,
                 )
 
-                self.session.add(attendance)
+                self._add_with_tracking(attendance)
                 attendance_count += 1
 
             # Process alternative pt_gov_ar_wsgode_objectos_Presencas structure (IX Legislature)
@@ -2987,7 +2987,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                         motivo_falta=motivo_falta,
                     )
 
-                    self.session.add(attendance)
+                    self._add_with_tracking(attendance)
                     attendance_count += 1
 
             # Only log if we actually processed some attendance records
@@ -3042,7 +3042,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             sigla_legislatura=legislatura.numero,
         )
 
-        self.session.add(ar_board)
+        self._add_with_tracking(ar_board)
         self._batch_flush(force=True)  # Need ID for foreign keys
         self._ar_board_cache[cache_key] = ar_board
         return ar_board
@@ -3083,7 +3083,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             sigla_legislatura=legislatura.numero,
         )
 
-        self.session.add(admin_council)
+        self._add_with_tracking(admin_council)
         self._batch_flush(force=True)  # Need ID for foreign keys
         self._admin_council_cache[cache_key] = admin_council
         return admin_council
@@ -3124,7 +3124,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             sigla_legislatura=legislatura.numero,
         )
 
-        self.session.add(permanent_committee)
+        self._add_with_tracking(permanent_committee)
         self._batch_flush(force=True)  # Need ID for foreign keys
         self._perm_committee_cache[cache_key] = permanent_committee
         return permanent_committee
@@ -3165,7 +3165,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             sigla_legislatura=legislatura.numero,
         )
 
-        self.session.add(leader_conference)
+        self._add_with_tracking(leader_conference)
         self._batch_flush(force=True)  # Need ID for foreign keys
         self._leader_conf_cache[cache_key] = leader_conference
         return leader_conference
@@ -3208,7 +3208,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
             sigla_legislatura=sigla_legislatura,
         )
 
-        self.session.add(commission_conference)
+        self._add_with_tracking(commission_conference)
         self._batch_flush(force=True)  # Need ID for foreign keys
         self._comm_pres_conf_cache[cache_key] = commission_conference
         return commission_conference
@@ -3250,7 +3250,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 org_id=ar_board.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             self._batch_flush()
 
             # Process parliamentary group situations
@@ -3298,7 +3298,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 org_id=ar_board.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             self._batch_flush()
 
             # Process parliamentary group situations
@@ -3350,7 +3350,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 or committee.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             self._batch_flush()
 
             # Process parliamentary group situations
@@ -3409,7 +3409,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 or subcommittee.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             self._batch_flush()
 
             # Process parliamentary group situations
@@ -3468,7 +3468,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 or work_group.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             self._batch_flush()
 
             # Process parliamentary group situations
@@ -3522,7 +3522,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 org_id=admin_council.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             self._batch_flush()
 
             # Process parliamentary group situations
@@ -3571,7 +3571,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 org_id=permanent_committee.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             self._batch_flush()
 
             # Process parliamentary group situations
@@ -3623,7 +3623,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 or permanent_committee.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             self._batch_flush()
 
             # Process parliamentary group situations
@@ -3679,7 +3679,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 org_id=leader_conference.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             self._batch_flush()
 
             # Process parliamentary group situations
@@ -3731,7 +3731,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 or admin_council.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             self._batch_flush()
 
             # Process parliamentary group situations
@@ -3792,7 +3792,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                 or leader_conference.id_orgao,
             )
 
-            self.session.add(composition)
+            self._add_with_tracking(composition)
             self._batch_flush()
 
             # Process parliamentary group situations
@@ -3859,7 +3859,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                         legislatura_numero=legislatura_numero,
                     )
 
-                    self.session.add(video)
+                    self._add_with_tracking(video)
                     logger.debug(
                         f"Added video for deputy {safe_log_text(dep_nome_parlamentar)}: {safe_log_text(tipo)} - {url}"
                     )
@@ -3913,7 +3913,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                         )
                         break  # Only set one relationship
 
-                self.session.add(position)
+                self._add_with_tracking(position)
                 logger.debug(f"Added deputy position: {car_des} ({car_id})")
 
             return True
@@ -3965,7 +3965,7 @@ class ComposicaoOrgaosMapper(EnhancedSchemaMapper):
                         )
                         break  # Only set one relationship
 
-                self.session.add(situation)
+                self._add_with_tracking(situation)
                 logger.debug(f"Added deputy situation: {sio_des} ({sio_tip_mem})")
 
             return True

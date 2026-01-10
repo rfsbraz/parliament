@@ -19,6 +19,7 @@ import logging
 import os
 import signal
 import sys
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from io import BytesIO
@@ -27,6 +28,8 @@ from typing import Dict, List, Optional
 import requests
 from http_retry_utils import safe_request_get
 from requests.exceptions import ConnectTimeout, ReadTimeout, ConnectionError, Timeout
+from sqlalchemy.exc import OperationalError
+import psycopg2.errors
 
 # Add project root to path
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -61,6 +64,28 @@ from utils.unicode_safe_logging import UnicodeSafeHandler
 
 # Initialize logger (will be configured in main() for CLI usage)
 logger = logging.getLogger(__name__)
+
+
+# Constants for transient error retry
+MAX_TRANSIENT_RETRIES = 3
+TRANSIENT_RETRY_DELAY = 0.5  # Base delay in seconds (will use exponential backoff)
+
+
+def is_transient_db_error(exception: Exception) -> bool:
+    """Check if a database error is transient and should be retried.
+
+    Transient errors include deadlocks and serialization failures which
+    can be resolved by retrying the operation with a fresh session.
+    """
+    if isinstance(exception, OperationalError):
+        orig = getattr(exception, 'orig', None)
+        if orig is not None:
+            # Check for PostgreSQL transient errors
+            return isinstance(orig, (
+                psycopg2.errors.DeadlockDetected,
+                psycopg2.errors.SerializationFailure,
+            ))
+    return False
 
 
 class ChangeDetectionService:
@@ -405,103 +430,74 @@ class DatabaseDrivenImporter:
         if legislatura_filter:
             self._print(f"   Filtering for legislatura: {legislatura_filter}")
         
+        # Use a session only for querying files to process (not for processing them)
         with DatabaseSession() as db_session:
             # Build query for files to process
             query = db_session.query(ImportStatus)
-            
+
             if not force_reimport:
                 # Only process files that haven't been completed or are ready for retry
                 current_time = datetime.now()
                 query = query.filter(
                     (ImportStatus.status.in_(['discovered', 'download_pending', 'pending'])) |
-                    (ImportStatus.status == 'import_error') & 
+                    (ImportStatus.status == 'import_error') &
                     ((ImportStatus.retry_at.is_(None)) | (ImportStatus.retry_at <= current_time))
                 )
-            
+
             # Apply class-level file type filter
             if self.allowed_file_types:
                 query = query.filter(ImportStatus.file_type.in_(self.allowed_file_types))
-            
+
             if file_type_filter:
                 # Legacy filter support - map file type filter to category patterns
                 category_pattern = self._get_category_pattern(file_type_filter)
                 if category_pattern:
                     query = query.filter(ImportStatus.category.like(f"%{category_pattern}%"))
-            
+
             if legislatura_filter:
                 query = query.filter(ImportStatus.legislatura == legislatura_filter)
-            
+
             # Order by import dependency order - get IDs only to avoid session issues
             files_to_process = query.all()
-            
+
             # Sort by import order
             if not file_type_filter:
                 files_to_process = self._sort_by_import_order(files_to_process)
-            
+
             if limit:
                 files_to_process = files_to_process[:limit]
-            
+
             # Extract just the IDs and file names for processing
             file_ids_and_names = [(record.id, record.file_name) for record in files_to_process]
-            
-            total_files = len(file_ids_and_names)
-            self._print(f"   Found {total_files} files to process")
-            logger.info(f"Found {total_files} files to process")
-            
-            if not file_ids_and_names:
-                self._print("   No files found matching criteria")
-                logger.info("No files found matching criteria")
-                return stats
-            
-            # Process each file by re-querying from database
-            for i, (record_id, file_name) in enumerate(file_ids_and_names, 1):
-                # Re-query the record to get a fresh, attached instance
-                import_record = db_session.query(ImportStatus).filter(ImportStatus.id == record_id).first()
-                if not import_record:
-                    logger.warning(f"Import record with ID {record_id} not found, skipping")
-                    continue
-                
-                # Check for graceful shutdown request
-                if self.shutdown_requested:
-                    self._print(f"\n>> Shutdown requested. Stopping after processing {i-1}/{total_files} files.")
-                    break
-                
-                self._print(f"\n[{i}/{total_files}] Processing: {file_name}")
-                logger.info(f"Processing file {i}/{total_files}: {file_name}")
-                
-                try:
-                    
-                    success = self._process_single_import(db_session, import_record, strict_mode)
-                    
-                    # Store attributes before commit to avoid detached instance issues
-                    records_imported = import_record.records_imported or 0
-                    error_message = import_record.error_message or 'Unknown error'
-                    
-                    if success:
-                        stats['succeeded'] += 1
-                        stats['total_records'] += records_imported
-                        self._print(f"   Success: {records_imported} records imported")
-                        logger.info(f"Successfully processed {file_name}: {records_imported} records imported")
-                    else:
-                        stats['failed'] += 1
-                        self._print(f"   Failed: {error_message}")
-                        logger.error(f"Failed to process {file_name}: {error_message}")
-                    
-                    stats['processed'] += 1
-                    
-                    # Commit after each file
-                    db_session.commit()
-                    
-                except Exception as e:
-                    stats['failed'] += 1
-                    self._print(f"   Unexpected error: {e}")
-                    logger.error(f"Unexpected error processing {file_name}: {e}")
-                    db_session.rollback()
-                    
-                    if strict_mode:
-                        self._print("   Strict mode: Stopping on error")
-                        logger.warning("Strict mode: Stopping on error")
-                        break
+
+        # From here on, each file gets its own fresh session (outside the query session)
+        total_files = len(file_ids_and_names)
+        self._print(f"   Found {total_files} files to process")
+        logger.info(f"Found {total_files} files to process")
+
+        if not file_ids_and_names:
+            self._print("   No files found matching criteria")
+            logger.info("No files found matching criteria")
+            return stats
+
+        # Process each file with its own session for isolation
+        # This ensures that one file's errors (e.g., deadlock) don't cascade to other files
+        for i, (record_id, file_name) in enumerate(file_ids_and_names, 1):
+            # Check for graceful shutdown request
+            if self.shutdown_requested:
+                self._print(f"\n>> Shutdown requested. Stopping after processing {i-1}/{total_files} files.")
+                break
+
+            self._print(f"\n[{i}/{total_files}] Processing: {file_name}")
+            logger.info(f"Processing file {i}/{total_files}: {file_name}")
+
+            # Each file gets its own session with retry for transient errors
+            success = self._import_single_file_with_retry(record_id, file_name, strict_mode, stats)
+
+            if not success and strict_mode:
+                self._print("   Strict mode: Stopping on error")
+                logger.warning("Strict mode: Stopping on error")
+                break
         
         self._print(f"\n>> Processing complete:")
         self._print(f"   Succeeded: {stats['succeeded']}")
@@ -511,7 +507,101 @@ class DatabaseDrivenImporter:
         logger.info(f"Processing complete: {stats['succeeded']} succeeded, {stats['failed']} failed, {stats['total_records']} total records imported")
         
         return stats
-    
+
+    def _import_single_file_with_retry(
+        self, record_id, file_name: str, strict_mode: bool, stats: Dict
+    ) -> bool:
+        """Process a single file with per-file session and retry for transient errors.
+
+        This method creates a fresh database session for each attempt, ensuring that
+        transient errors like deadlocks don't corrupt the session for subsequent files.
+
+        Args:
+            record_id: UUID of the ImportStatus record
+            file_name: Name of the file being processed (for logging)
+            strict_mode: Whether to stop on first error
+            stats: Stats dictionary to update
+
+        Returns:
+            True if file was processed successfully, False otherwise
+        """
+        last_error = None
+
+        for attempt in range(MAX_TRANSIENT_RETRIES):
+            try:
+                # Create a FRESH session for each attempt
+                with DatabaseSession() as db_session:
+                    # Re-fetch the import record with the fresh session
+                    import_record = db_session.query(ImportStatus).filter(
+                        ImportStatus.id == record_id
+                    ).first()
+
+                    if not import_record:
+                        logger.warning(f"Import record with ID {record_id} not found, skipping")
+                        return False
+
+                    success = self._process_single_import(db_session, import_record, strict_mode)
+
+                    # Store attributes before potential session issues
+                    records_imported = import_record.records_imported or 0
+                    error_message = import_record.error_message or 'Unknown error'
+
+                    if success:
+                        stats['succeeded'] += 1
+                        stats['total_records'] += records_imported
+                        self._print(f"   Success: {records_imported} records imported")
+                        logger.info(f"Successfully processed {file_name}: {records_imported} records imported")
+                    else:
+                        stats['failed'] += 1
+                        self._print(f"   Failed: {error_message}")
+                        logger.error(f"Failed to process {file_name}: {error_message}")
+
+                    stats['processed'] += 1
+                    return success
+
+            except OperationalError as e:
+                last_error = e
+                if is_transient_db_error(e) and attempt < MAX_TRANSIENT_RETRIES - 1:
+                    # Transient error - retry with backoff
+                    delay = TRANSIENT_RETRY_DELAY * (2 ** attempt)
+                    self._print(f"   Transient error (attempt {attempt + 1}/{MAX_TRANSIENT_RETRIES}), retrying in {delay:.1f}s...")
+                    logger.warning(f"Transient DB error for {file_name} (attempt {attempt + 1}): {e}, retrying...")
+                    time.sleep(delay)
+                    continue
+                else:
+                    # Non-transient or exhausted retries
+                    break
+
+            except Exception as e:
+                last_error = e
+                break
+
+        # All retries exhausted or non-transient error
+        stats['failed'] += 1
+        stats['processed'] += 1
+        error_msg = str(last_error) if last_error else 'Unknown error'
+        self._print(f"   Failed after retries: {error_msg}")
+        logger.error(f"Failed to process {file_name} after {MAX_TRANSIENT_RETRIES} attempts: {error_msg}")
+
+        # Try to update import status with error in a fresh session
+        try:
+            with DatabaseSession() as db_session:
+                import_record = db_session.query(ImportStatus).filter(
+                    ImportStatus.id == record_id
+                ).first()
+                if import_record:
+                    import_record.status = 'import_error'
+                    import_record.error_message = f"Processing error after {MAX_TRANSIENT_RETRIES} retries: {error_msg}"
+                    import_record.error_count = (import_record.error_count or 0) + 1
+                    import_record.retry_at = self._calculate_retry_time(import_record.error_count)
+                    import_record.processing_completed_at = datetime.now()
+                    import_record.updated_at = datetime.now()
+                    db_session.commit()
+        except Exception as status_error:
+            logger.error(f"Failed to update error status for {file_name}: {status_error}")
+
+        return False
+
     def _process_single_import(self, db_session, import_record: ImportStatus, strict_mode: bool = False) -> bool:
         """Process a single import record"""
         try:
@@ -633,7 +723,12 @@ class DatabaseDrivenImporter:
             # Process with mapper using the same session for transaction-per-file
             try:
                 mapper_class = self.schema_mappers[mapper_key]
-                mapper = mapper_class(db_session)  # Use the same session for transaction control
+                # Pass import_record to mapper for data provenance tracking
+                mapper = mapper_class(db_session, import_status_record=import_record)
+
+                # Log transaction state before mapper
+                logger.debug(f"[MAPPER] Before mapper for {import_record.file_name}: session.is_active={db_session.is_active}")
+
                 results = mapper.validate_and_map(xml_root, file_info, strict_mode)
 
                 # CRITICAL: Check if the transaction is still valid after mapper processing
@@ -642,8 +737,10 @@ class DatabaseDrivenImporter:
                 try:
                     # Try a minimal operation to detect if transaction is aborted
                     db_session.connection()
+                    logger.debug(f"[MAPPER] After mapper for {import_record.file_name}: transaction valid")
                 except Exception as conn_error:
                     # Transaction is in a failed state - treat as error
+                    logger.error(f"[MAPPER] Transaction INVALID after mapper for {import_record.file_name}: {conn_error}")
                     raise RuntimeError(f"Transaction aborted during processing (mapper swallowed error): {conn_error}")
 
                 # Update import record with results
@@ -672,116 +769,138 @@ class DatabaseDrivenImporter:
                 return True
                     
             except SchemaError as e:
-                # Rollback the failed transaction (both mapper data and import status changes)
-                db_session.rollback()
-
-                # After rollback, re-fetch the import record to get a clean state
+                # Log detailed exception info for diagnostics
                 record_id = import_record.id
-                try:
-                    import_record = db_session.query(ImportStatus).filter(ImportStatus.id == record_id).first()
-                    if not import_record:
-                        logger.error(f"Could not re-fetch import record {record_id} after rollback")
-                        return False
-                except Exception as refetch_error:
-                    logger.error(f"Failed to re-fetch import record after rollback: {refetch_error}")
-                    try:
-                        db_session.rollback()
-                    except:
-                        pass
-                    return False
+                file_name = import_record.file_name
+                logger.error(f"[EXCEPTION] SchemaError in {file_name}: {type(e).__name__}: {e}")
+                logger.debug(f"[EXCEPTION] Session state before rollback: is_active={db_session.is_active}")
 
-                error_msg = f"Schema coverage violation - unmapped fields detected: {str(e)}"
-                logger.error(f"Schema error for {import_record.file_name}: {error_msg}")
-                import_record.status = 'import_error'
-                import_record.error_message = error_msg
-                import_record.error_count = (import_record.error_count or 0) + 1
-                import_record.retry_at = self._calculate_retry_time(import_record.error_count)
-                import_record.processing_completed_at = datetime.now()
-                if import_record.processing_started_at:
-                    import_record.processing_duration_seconds = (import_record.processing_completed_at - import_record.processing_started_at).total_seconds()
-                import_record.updated_at = datetime.now()
-
-                # Commit only the error record (not the failed mapper data)
+                # Try to rollback, but connection may be corrupted
                 try:
-                    db_session.commit()
-                except Exception as commit_error:
-                    logger.error(f"Failed to commit error status: {commit_error}")
                     db_session.rollback()
+                    logger.debug(f"[EXCEPTION] Rollback succeeded for {file_name}")
+                except Exception as rb_err:
+                    logger.warning(f"[EXCEPTION] Rollback failed for {file_name}: {rb_err}")
+
+                # CRITICAL: Use a fresh session for status update
+                # This prevents cascade failures from corrupted connections
+                error_msg = f"Schema coverage violation - unmapped fields detected: {str(e)}"
+                logger.error(f"Schema error for {file_name}: {error_msg}")
+                logger.debug(f"[EXCEPTION] Creating fresh session for status update of {file_name}")
+
+                try:
+                    with DatabaseSession() as status_session:
+                        fresh_record = status_session.query(ImportStatus).filter(
+                            ImportStatus.id == record_id
+                        ).first()
+                        if fresh_record:
+                            fresh_record.status = 'import_error'
+                            fresh_record.error_message = error_msg
+                            fresh_record.error_count = (fresh_record.error_count or 0) + 1
+                            fresh_record.retry_at = self._calculate_retry_time(fresh_record.error_count)
+                            fresh_record.processing_completed_at = datetime.now()
+                            if fresh_record.processing_started_at:
+                                fresh_record.processing_duration_seconds = (
+                                    fresh_record.processing_completed_at -
+                                    fresh_record.processing_started_at
+                                ).total_seconds()
+                            fresh_record.updated_at = datetime.now()
+                            status_session.commit()
+                        else:
+                            logger.error(f"Could not find import record {record_id} for status update")
+                except Exception as status_error:
+                    logger.error(f"Failed to update error status for {record_id}: {status_error}")
+
                 return False
 
             except Exception as e:
-                # Rollback the failed transaction (both mapper data and import status changes)
-                db_session.rollback()
-
-                # After rollback, re-fetch the import record to get a clean state
-                # This prevents InFailedSqlTransaction errors from stale session state
+                # Log detailed exception info for diagnostics
                 record_id = import_record.id
-                try:
-                    import_record = db_session.query(ImportStatus).filter(ImportStatus.id == record_id).first()
-                    if not import_record:
-                        logger.error(f"Could not re-fetch import record {record_id} after rollback")
-                        return False
-                except Exception as refetch_error:
-                    logger.error(f"Failed to re-fetch import record after rollback: {refetch_error}")
-                    # Try one more rollback in case of nested transaction issues
-                    try:
-                        db_session.rollback()
-                    except:
-                        pass
-                    return False
+                file_name = import_record.file_name
+                logger.error(f"[EXCEPTION] Processing error in {file_name}: {type(e).__name__}: {e}")
+                logger.debug(f"[EXCEPTION] Session state before rollback: is_active={db_session.is_active}")
 
-                error_msg = f"Processing error: {str(e)}"
-                import_record.status = 'import_error'
-                import_record.error_message = error_msg
-                import_record.error_count = (import_record.error_count or 0) + 1
-                import_record.retry_at = self._calculate_retry_time(import_record.error_count)
-                import_record.processing_completed_at = datetime.now()
-                if import_record.processing_started_at:
-                    import_record.processing_duration_seconds = (import_record.processing_completed_at - import_record.processing_started_at).total_seconds()
-                import_record.updated_at = datetime.now()
-
-                # Commit only the error record (not the failed mapper data)
+                # Try to rollback, but connection may be corrupted (deadlock, etc.)
                 try:
-                    db_session.commit()
-                except Exception as commit_error:
-                    logger.error(f"Failed to commit error status: {commit_error}")
                     db_session.rollback()
+                    logger.debug(f"[EXCEPTION] Rollback succeeded for {file_name}")
+                except Exception as rb_err:
+                    logger.warning(f"[EXCEPTION] Rollback failed for {file_name}: {rb_err}")
+
+                # CRITICAL: Use a fresh session for status update
+                # The current session's connection may be in FAILED state after deadlock
+                # This prevents cascade failures where InFailedSqlTransaction errors
+                # propagate to subsequent import operations
+                error_msg = f"Processing error: {str(e)}"
+                logger.debug(f"[EXCEPTION] Creating fresh session for status update of {file_name}")
+
+                try:
+                    with DatabaseSession() as status_session:
+                        fresh_record = status_session.query(ImportStatus).filter(
+                            ImportStatus.id == record_id
+                        ).first()
+                        if fresh_record:
+                            fresh_record.status = 'import_error'
+                            fresh_record.error_message = error_msg
+                            fresh_record.error_count = (fresh_record.error_count or 0) + 1
+                            fresh_record.retry_at = self._calculate_retry_time(fresh_record.error_count)
+                            fresh_record.processing_completed_at = datetime.now()
+                            if fresh_record.processing_started_at:
+                                fresh_record.processing_duration_seconds = (
+                                    fresh_record.processing_completed_at -
+                                    fresh_record.processing_started_at
+                                ).total_seconds()
+                            fresh_record.updated_at = datetime.now()
+                            status_session.commit()
+                        else:
+                            logger.error(f"Could not find import record {record_id} for status update")
+                except Exception as status_error:
+                    logger.error(f"Failed to update error status for {record_id}: {status_error}")
+
                 return False
 
         except Exception as e:
-            # Rollback any changes from the outer try block
-            db_session.rollback()
-
-            # After rollback, re-fetch the import record to get a clean state
+            # Log detailed exception info for diagnostics
             record_id = import_record.id
-            try:
-                import_record = db_session.query(ImportStatus).filter(ImportStatus.id == record_id).first()
-                if not import_record:
-                    logger.error(f"Could not re-fetch import record {record_id} after rollback")
-                    return False
-            except Exception as refetch_error:
-                logger.error(f"Failed to re-fetch import record after rollback: {refetch_error}")
-                try:
-                    db_session.rollback()
-                except:
-                    pass
-                return False
+            file_name = import_record.file_name
+            logger.error(f"[EXCEPTION] Outer handler caught exception in {file_name}: {type(e).__name__}: {e}")
+            logger.debug(f"[EXCEPTION] Session state before rollback: is_active={db_session.is_active}")
 
-            import_record.status = 'import_error'
-            import_record.error_message = f"Unexpected error: {str(e)}"
-            import_record.error_count = (import_record.error_count or 0) + 1
-            import_record.retry_at = self._calculate_retry_time(import_record.error_count)
-            import_record.processing_completed_at = datetime.now()
-            if import_record.processing_started_at:
-                import_record.processing_duration_seconds = (import_record.processing_completed_at - import_record.processing_started_at).total_seconds()
-            import_record.updated_at = datetime.now()
-
-            # Commit only the error record
+            # Try to rollback, but connection may be corrupted
             try:
-                db_session.commit()
-            except Exception as commit_error:
-                logger.error(f"Failed to commit error status: {commit_error}")
                 db_session.rollback()
+                logger.debug(f"[EXCEPTION] Rollback succeeded for {file_name}")
+            except Exception as rb_err:
+                logger.warning(f"[EXCEPTION] Rollback failed for {file_name}: {rb_err}")
+
+            # CRITICAL: Use a fresh session for status update
+            # This prevents cascade failures from corrupted connections
+            error_msg = f"Unexpected error: {str(e)}"
+            logger.debug(f"[EXCEPTION] Creating fresh session for status update of {file_name}")
+
+            try:
+                with DatabaseSession() as status_session:
+                    fresh_record = status_session.query(ImportStatus).filter(
+                        ImportStatus.id == record_id
+                    ).first()
+                    if fresh_record:
+                        fresh_record.status = 'import_error'
+                        fresh_record.error_message = error_msg
+                        fresh_record.error_count = (fresh_record.error_count or 0) + 1
+                        fresh_record.retry_at = self._calculate_retry_time(fresh_record.error_count)
+                        fresh_record.processing_completed_at = datetime.now()
+                        if fresh_record.processing_started_at:
+                            fresh_record.processing_duration_seconds = (
+                                fresh_record.processing_completed_at -
+                                fresh_record.processing_started_at
+                            ).total_seconds()
+                        fresh_record.updated_at = datetime.now()
+                        status_session.commit()
+                    else:
+                        logger.error(f"Could not find import record {record_id} for status update")
+            except Exception as status_error:
+                logger.error(f"Failed to update error status for {record_id}: {status_error}")
+
             return False
     
     def _download_file(self, import_record: ImportStatus) -> bool:

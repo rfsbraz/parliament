@@ -52,6 +52,8 @@ def _process_single_file(
     """
     import sys
     import os
+    import logging
+    import threading
 
     # Add project root to path (needed for process isolation)
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -59,7 +61,12 @@ def _process_single_file(
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
 
+    logger = logging.getLogger(__name__)
+    pid = os.getpid()
+    tid = threading.current_thread().name
+
     start_time = time.time()
+    logger.debug(f"[IMPORT] Starting {file_name} (pid={pid}, thread={tid}, status_id={status_id})")
 
     try:
         # Import inside function to avoid pickling issues
@@ -72,6 +79,7 @@ def _process_single_file(
             record = db_session.get(ImportStatus, status_id)
 
             if not record:
+                logger.warning(f"[IMPORT] Record not found: status_id={status_id}, file={file_name}")
                 return ImportResult(
                     status_id=status_id,
                     file_name=file_name,
@@ -92,6 +100,17 @@ def _process_single_file(
             # Check if it was skipped vs failed
             was_skipped = record.status == 'skipped'
 
+            if not success:
+                # CRITICAL: The error handler in _process_single_import uses a FRESH session
+                # to update error_message. Our `record` is stale - we need to refresh it!
+                logger.debug(f"[IMPORT] Failed {file_name}: record.error_message before refresh = {record.error_message!r}")
+                try:
+                    db_session.expire(record)
+                    db_session.refresh(record)
+                    logger.debug(f"[IMPORT] Failed {file_name}: record.error_message after refresh = {record.error_message!r}")
+                except Exception as refresh_err:
+                    logger.warning(f"[IMPORT] Could not refresh record for {file_name}: {refresh_err}")
+
             return ImportResult(
                 status_id=status_id,
                 file_name=file_name,
@@ -107,6 +126,8 @@ def _process_single_file(
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
+        logger.error(f"[IMPORT] Exception processing {file_name} (pid={pid}, thread={tid}): {type(e).__name__}: {e}")
+        logger.debug(f"[IMPORT] Full traceback:\n{error_details}")
         return ImportResult(
             status_id=status_id,
             file_name=file_name,

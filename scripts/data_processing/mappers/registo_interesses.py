@@ -37,9 +37,9 @@ logger = logging.getLogger(__name__)
 class RegistoInteressesMapper(EnhancedSchemaMapper):
     """Schema mapper for conflicts of interest registry files"""
 
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         # Accept SQLAlchemy session directly (passed by unified importer)
-        super().__init__(session)
+        super().__init__(session, import_status_record=import_status_record)
 
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -590,7 +590,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                 nome_completo=full_name,
                 legislatura_id=legislatura.id,
             )
-            self.session.add(deputado)
+            self._add_with_tracking(deputado)
             self.session.flush()  # Get ID for relationships
             logger.debug(f"Created deputy {id_cadastro} ({full_name}) in legislature {legislatura.numero} from Interest Registry")
         else:
@@ -662,7 +662,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     dgf_number=dgf_number,
                     schema_version="V3",
                 )
-                self.session.add(registo)
+                self._add_with_tracking(registo)
 
             # Process V3 RecordInterests structure
             record_interests = registo_v3_elem.find("RecordInterests")
@@ -780,7 +780,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                 end_date=end_date,
                 remunerated=paid,
             )
-            self.session.add(activity_record)
+            self._add_with_tracking(activity_record)
 
         except Exception as e:
             logger.error(f"Error processing V3 activity: {e}")
@@ -808,7 +808,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                 type_classification=type_classification,
                 headquarters_location=headquarters_location,
             )
-            self.session.add(social_position_record)
+            self._add_with_tracking(social_position_record)
 
         except Exception as e:
             logger.error(f"Error processing V3 social position: {e}")
@@ -840,7 +840,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                 activity_area=activity_area,
                 headquarters=head_office_location,
             )
-            self.session.add(society_record)
+            self._add_with_tracking(society_record)
 
         except Exception as e:
             logger.error(f"Error processing V3 society: {e}")
@@ -865,7 +865,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                 service_location=support_area,  # Area as location
                 value=value,
             )
-            self.session.add(support_record)
+            self._add_with_tracking(support_record)
 
         except Exception as e:
             logger.error(f"Error processing V3 support: {e}")
@@ -943,7 +943,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     exclusivity=exclusivity,
                     dgf_number=dgf_number,
                 )
-                self.session.add(registo)
+                self._add_with_tracking(registo)
 
             # Process detailed nested data from cadRgi using unified extension tables
             rgi_elem = registo_v2_elem.find(
@@ -1021,7 +1021,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     matrimonial_regime=matrimonial_regime,
                     schema_version="V1",
                 )
-                self.session.add(registo)
+                self._add_with_tracking(registo)
 
             # Process V1 detailed structures from cadRgi
             cad_rgi = registo_v1_elem.find(
@@ -1097,7 +1097,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         entity=rgs_entidade,
                         headquarters=rgs_local_sede,
                     )
-                    self.session.add(society_record)
+                    self._add_with_tracking(society_record)
 
         except Exception as e:
             logger.error(f"Error processing V1 societies: {e}")
@@ -1123,7 +1123,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         description=apoio_text,
                         benefit_type="benefit",
                     )
-                    self.session.add(support_record)
+                    self._add_with_tracking(support_record)
 
         except Exception as e:
             logger.error(f"Error processing V1 benefits: {e}")
@@ -1165,7 +1165,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         end_date=rga_data_fim,
                         remunerated=is_paid,
                     )
-                    self.session.add(activity_record)
+                    self._add_with_tracking(activity_record)
 
         except Exception as e:
             logger.error(f"Error processing V1 activities: {e}")
@@ -1194,7 +1194,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         registo_id=registo.id,
                         position=rgc_entidade,
                     )
-                    self.session.add(position_record)
+                    self._add_with_tracking(position_record)
 
         except Exception as e:
             logger.error(f"Error processing V1 social positions: {e}")
@@ -1230,7 +1230,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         value=rga_valor,
                         observations=rga_observacoes,
                     )
-                    self.session.add(activity_record)
+                    self._add_with_tracking(activity_record)
 
     def _process_v2_societies_unified(
         self, rgi_elem: ET.Element, registo: RegistoInteressesUnified
@@ -1259,7 +1259,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         value=rgs_valor,
                         observations=rgs_observacoes,
                     )
-                    self.session.add(society_record)
+                    self._add_with_tracking(society_record)
 
     def _process_v2_social_positions_unified(
         self, rgi_elem: ET.Element, registo: RegistoInteressesUnified
@@ -1288,7 +1288,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         value=rgc_valor,
                         observations=rgc_observacoes,
                     )
-                    self.session.add(position_record)
+                    self._add_with_tracking(position_record)
 
     def _get_int_text(self, parent: ET.Element, tag: str) -> Optional[int]:
         """Get integer value from text content, return None if not found or invalid"""
@@ -1750,7 +1750,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                             data_alteracao_funcao=data_alteracao_funcao,
                             data_cessacao_funcao=data_cessacao_funcao,
                         )
-                        self.session.add(facto_declaracao_record)
+                        self._add_with_tracking(facto_declaracao_record)
             else:
                 # Create new unified record
                 registo = RegistoInteressesUnified(
@@ -1766,7 +1766,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                     gender=gender,
                     schema_version="V5",
                 )
-                self.session.add(registo)
+                self._add_with_tracking(registo)
 
             # Store FactoDeclaracao data if provided
             if any(
@@ -1809,7 +1809,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         data_alteracao_funcao=data_alteracao_funcao,
                         data_cessacao_funcao=data_cessacao_funcao,
                     )
-                    self.session.add(facto_declaracao_record)
+                    self._add_with_tracking(facto_declaracao_record)
 
                 logger.debug(
                     f"Stored FactoDeclaracao for record {id_cadastro_gode}: cargo={cargo_funcao}, inicio={data_inicio_funcao}"
@@ -1871,7 +1871,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         value=valor,
                         start_date=data,
                     )
-                    self.session.add(apoio_record)
+                    self._add_with_tracking(apoio_record)
 
         except Exception as e:
             logger.error(f"Error processing V5 apoios: {e}")
@@ -1905,7 +1905,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         description=cargo_funcao_atividade,
                         end_date=data_termo,
                     )
-                    self.session.add(activity_record)
+                    self._add_with_tracking(activity_record)
 
         except Exception as e:
             logger.error(f"Error processing V5 professional activities: {e}")
@@ -1940,7 +1940,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         headquarters_location=local_sede,
                         type_classification="mais_tres_anos",
                     )
-                    self.session.add(position_record)
+                    self._add_with_tracking(position_record)
 
         except Exception as e:
             logger.error(f"Error processing V5 positions more than 3 years: {e}")
@@ -1975,7 +1975,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         headquarters_location=local_sede,
                         type_classification="menos_tres_anos",
                     )
-                    self.session.add(position_record)
+                    self._add_with_tracking(position_record)
 
         except Exception as e:
             logger.error(f"Error processing V5 positions less than 3 years: {e}")
@@ -2016,7 +2016,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         start_date=data,
                         end_date=data_termo,
                     )
-                    self.session.add(service_record)
+                    self._add_with_tracking(service_record)
 
         except Exception as e:
             logger.error(f"Error processing V5 services provided: {e}")
@@ -2049,7 +2049,7 @@ class RegistoInteressesMapper(EnhancedSchemaMapper):
                         entity=natureza,  # Nature as entity
                         headquarters=local_sede,
                     )
-                    self.session.add(society_record)
+                    self._add_with_tracking(society_record)
 
         except Exception as e:
             logger.error(f"Error processing V5 societies: {e}")

@@ -127,9 +127,9 @@ logger = logging.getLogger(__name__)
 class InitiativasMapper(SchemaMapper):
     """Comprehensive schema mapper for legislative initiatives files"""
 
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         # Accept SQLAlchemy session directly (passed by unified importer)
-        super().__init__(session)
+        super().__init__(session, import_status_record=import_status_record)
         # Initiative cache for get-or-create pattern
         self._iniciativa_cache: Dict[int, IniciativaParlamentar] = {}
 
@@ -766,7 +766,7 @@ class InitiativasMapper(SchemaMapper):
                     legislatura_id=legislatura.id,
                     updated_at=datetime.now()
                 )
-                self.session.add(existing)
+                self._add_with_tracking(existing)
                 self._batch_flush(force=True)  # Need ID for child records
                 # Add to cache
                 if ini_id:
@@ -964,7 +964,7 @@ class InitiativasMapper(SchemaMapper):
                 legislatura_id=data['legislatura_id'],
                 updated_at=datetime.now()
             )
-            self.session.add(new_ini)
+            self._add_with_tracking(new_ini)
             parsed.db_obj = new_ini
             # Add to cache
             if ini_id:
@@ -987,7 +987,7 @@ class InitiativasMapper(SchemaMapper):
             oev_text_id=data['oev_text_id'],
             textos_aprovados=data['textos_aprovados']
         )
-        self.session.add(evento_obj)
+        self._add_with_tracking(evento_obj)
         parsed.db_obj = evento_obj
 
     def _create_votacao_record(self, parsed: ParsedVotacao) -> None:
@@ -1008,7 +1008,7 @@ class InitiativasMapper(SchemaMapper):
             data_votacao=data['data_votacao'],
             descricao=data['descricao']
         )
-        self.session.add(votacao_obj)
+        self._add_with_tracking(votacao_obj)
         parsed.db_obj = votacao_obj
 
     def _create_comissao_record(self, parsed: ParsedComissao) -> None:
@@ -1027,7 +1027,7 @@ class InitiativasMapper(SchemaMapper):
             obs=data['obs'],
             link_parecer=data['link_parecer']
         )
-        self.session.add(comissao_obj)
+        self._add_with_tracking(comissao_obj)
         parsed.db_obj = comissao_obj
 
     def _create_intervencao_record(self, parsed: ParsedIntervencao) -> None:
@@ -1039,7 +1039,7 @@ class InitiativasMapper(SchemaMapper):
             evento_id=evento_obj.id,
             data_reuniao_plenaria=data['data_reuniao_plenaria']
         )
-        self.session.add(intervencao_obj)
+        self._add_with_tracking(intervencao_obj)
         parsed.db_obj = intervencao_obj
 
     def _create_orador_record(self, parsed: ParsedOrador) -> None:
@@ -1058,7 +1058,7 @@ class InitiativasMapper(SchemaMapper):
             fase_sessao=data['fase_sessao'],
             sumario=data['sumario']
         )
-        self.session.add(orador_obj)
+        self._add_with_tracking(orador_obj)
         parsed.db_obj = orador_obj
 
     def _create_proposta_record(self, parsed: ParsedProposta) -> None:
@@ -1072,7 +1072,7 @@ class InitiativasMapper(SchemaMapper):
             tipo=data['tipo'],
             autor=data['autor']
         )
-        self.session.add(proposta_obj)
+        self._add_with_tracking(proposta_obj)
         parsed.db_obj = proposta_obj
 
     def _process_iniciativa_leaf_records(self, parsed: ParsedIniciativa) -> None:
@@ -1118,7 +1118,7 @@ class InitiativasMapper(SchemaMapper):
                         evento_id=evento_obj.id,
                         grupo_parlamentar=gp
                     )
-                    self.session.add(recurso_obj)
+                    self._add_with_tracking(recurso_obj)
 
         # Deputy resources
         recurso_deputados = evento_xml.find('RecursoDeputados')
@@ -1130,7 +1130,7 @@ class InitiativasMapper(SchemaMapper):
                         evento_id=evento_obj.id,
                         deputado_info=deputado_info
                     )
-                    self.session.add(recurso_obj)
+                    self._add_with_tracking(recurso_obj)
 
         # Joint initiatives
         iniciativas_conjuntas = evento_xml.find('IniciativasConjuntas')
@@ -1148,7 +1148,7 @@ class InitiativasMapper(SchemaMapper):
                     nr=ini_nr,
                     tipo=ini_tipo
                 )
-                self.session.add(conjunta_obj)
+                self._add_with_tracking(conjunta_obj)
 
         # Phase attachments (IX Legislature)
         anexos_fase = evento_xml.find('AnexosFase')
@@ -1167,7 +1167,7 @@ class InitiativasMapper(SchemaMapper):
                     link=link,
                     fase_evento_id=evento_obj.id
                 )
-                self.session.add(anexo_obj)
+                self._add_with_tracking(anexo_obj)
 
         # Joint petitions (XII Legislature)
         peticoes_conjuntas = evento_xml.find('PeticoesConjuntas')
@@ -1185,7 +1185,7 @@ class InitiativasMapper(SchemaMapper):
                     peticao_nr=pet_nr,
                     peticao_tipo=pet_tipo
                 )
-                self.session.add(peticao_obj)
+                self._add_with_tracking(peticao_obj)
 
     def _process_votacao_leaf_records(self, parsed: ParsedVotacao) -> None:
         """Process leaf records for a votacao (ausencias, publications)"""
@@ -1202,7 +1202,7 @@ class InitiativasMapper(SchemaMapper):
                         votacao_id=votacao_obj.id,
                         grupo_parlamentar=gp
                     )
-                    self.session.add(ausencia_obj)
+                    self._add_with_tracking(ausencia_obj)
 
         # Publications
         publicacao = vot_xml.find('publicacao')
@@ -1238,7 +1238,7 @@ class InitiativasMapper(SchemaMapper):
                     data_nomeacao=data_nomeacao,
                     data_cessacao=data_cessacao
                 )
-                self.session.add(relator_obj)
+                self._add_with_tracking(relator_obj)
 
         # Dispatches/Referrals
         remessas = com_xml.find('Remessas')
@@ -1254,7 +1254,7 @@ class InitiativasMapper(SchemaMapper):
                     data_remessa=data_remessa,
                     destinatario=destinatario
                 )
-                self.session.add(remessa_obj)
+                self._add_with_tracking(remessa_obj)
 
         # Subcommission distribution
         distribuicao = com_xml.find('DistribuicaoSubcomissao')
@@ -1270,7 +1270,7 @@ class InitiativasMapper(SchemaMapper):
                     nome=subcom_nome,
                     data_distribuicao=data_baixa
                 )
-                self.session.add(subcom_obj)
+                self._add_with_tracking(subcom_obj)
 
         # Committee voting
         votacao = com_xml.find('VotacaoComissao')
@@ -1288,7 +1288,7 @@ class InitiativasMapper(SchemaMapper):
                     contra=contra,
                     abstencao=abstencao
                 )
-                self.session.add(vot_obj)
+                self._add_with_tracking(vot_obj)
 
         # Hearings (Audiencias)
         audiencias = com_xml.find('Audiencias')
@@ -1302,7 +1302,7 @@ class InitiativasMapper(SchemaMapper):
                     data=data_atividade,
                     descricao=descricao
                 )
-                self.session.add(audiencia_obj)
+                self._add_with_tracking(audiencia_obj)
 
         # Hearings (Audicoes)
         audicoes = com_xml.find('Audicoes')
@@ -1316,7 +1316,7 @@ class InitiativasMapper(SchemaMapper):
                     data=data_atividade,
                     descricao=descricao
                 )
-                self.session.add(audicao_obj)
+                self._add_with_tracking(audicao_obj)
 
         # Documents
         documentos = com_xml.find('Documentos')
@@ -1332,7 +1332,7 @@ class InitiativasMapper(SchemaMapper):
                     doc_link=doc_link,
                     tipo_documento=doc_tipo
                 )
-                self.session.add(doc_obj)
+                self._add_with_tracking(doc_obj)
 
     def _process_proposta_leaf_records(self, parsed: ParsedProposta) -> None:
         """Process leaf records for a proposta (publications)"""
@@ -1359,7 +1359,7 @@ class InitiativasMapper(SchemaMapper):
                     pub_sl=pub_sl,
                     pub_dt=pub_dt
                 )
-                self.session.add(pub_obj)
+                self._add_with_tracking(pub_obj)
 
     def _process_orador_leaf_records(self, parsed: ParsedOrador) -> None:
         """Process leaf records for an orador (publications, convidados, membros governo, video links)"""
@@ -1384,7 +1384,7 @@ class InitiativasMapper(SchemaMapper):
                     nome=nome,
                     cargo=cargo
                 )
-                self.session.add(convidado_obj)
+                self._add_with_tracking(convidado_obj)
 
         # Government members (membrosGoverno)
         membros_governo = orador_xml.find('membrosGoverno')
@@ -1398,7 +1398,7 @@ class InitiativasMapper(SchemaMapper):
                     nome=nome,
                     cargo=cargo
                 )
-                self.session.add(membro_obj)
+                self._add_with_tracking(membro_obj)
 
         # Video links
         link_video = orador_xml.find('linkVideo')
@@ -1414,7 +1414,7 @@ class InitiativasMapper(SchemaMapper):
                     tipo=tipo,
                     duracao=duracao
                 )
-                self.session.add(video_obj)
+                self._add_with_tracking(video_obj)
 
     # ========================================================================
     # ORIGINAL HELPER METHODS (still used by leaf record processing)
@@ -1436,7 +1436,7 @@ class InitiativasMapper(SchemaMapper):
                 sigla=sigla,
                 nome=nome
             )
-            self.session.add(autor)
+            self._add_with_tracking(autor)
     
     def _process_autores_deputados(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process IniAutorDeputados - Deputy authors"""
@@ -1457,7 +1457,7 @@ class InitiativasMapper(SchemaMapper):
                     nome=nome,
                     gp=gp
                 )
-                self.session.add(autor_deputado)
+                self._add_with_tracking(autor_deputado)
     
     def _process_autores_grupos_parlamentares(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process IniAutorGruposParlamentares - Parliamentary group authors"""
@@ -1474,7 +1474,7 @@ class InitiativasMapper(SchemaMapper):
                     iniciativa_id=iniciativa_obj.id,
                     gp=gp
                 )
-                self.session.add(autor_grupo)
+                self._add_with_tracking(autor_grupo)
     
     def _process_anexos(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process IniAnexos - Initiative attachments/annexes"""
@@ -1497,7 +1497,7 @@ class InitiativasMapper(SchemaMapper):
                     anexo_fich=anexo_fich,
                     link=link
                 )
-                self.session.add(anexo_obj)
+                self._add_with_tracking(anexo_obj)
     
     def _process_propostas_alteracao(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process PropostasAlteracao - Amendment proposals"""
@@ -1519,7 +1519,7 @@ class InitiativasMapper(SchemaMapper):
                     tipo=tipo,
                     autor=autor
                 )
-                self.session.add(proposta_obj)
+                self._add_with_tracking(proposta_obj)
                 self._batch_flush(force=True)  # Need ID for publications
                 
                 # Process publications for this proposal
@@ -1559,7 +1559,7 @@ class InitiativasMapper(SchemaMapper):
             id_pag=id_pag,
             url_diario=url_diario
         )
-        self.session.add(publicacao_obj)
+        self._add_with_tracking(publicacao_obj)
     
     def _process_eventos(self, iniciativa: ET.Element, iniciativa_obj: IniciativaParlamentar):
         """Process IniEventos - Complete events timeline"""
@@ -1598,7 +1598,7 @@ class InitiativasMapper(SchemaMapper):
             oev_text_id=oev_text_id,
             textos_aprovados=textos_aprovados
         )
-        self.session.add(evento_obj)
+        self._add_with_tracking(evento_obj)
         self._batch_flush(force=True)  # Need ID for child records
         return evento_obj
     
@@ -1671,7 +1671,7 @@ class InitiativasMapper(SchemaMapper):
             id_int=id_int,
             url_diario=url_diario
         )
-        self.session.add(publicacao_obj)
+        self._add_with_tracking(publicacao_obj)
     
     def _process_evento_votacao(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process voting data for event"""
@@ -1699,7 +1699,7 @@ class InitiativasMapper(SchemaMapper):
                     data_votacao=data_votacao,
                     descricao=descricao
                 )
-                self.session.add(votacao_obj)
+                self._add_with_tracking(votacao_obj)
                 self._batch_flush(force=True)  # Need ID for child records
                 
                 # Process absences
@@ -1712,7 +1712,7 @@ class InitiativasMapper(SchemaMapper):
                                 votacao_id=votacao_obj.id,
                                 grupo_parlamentar=gp
                             )
-                            self.session.add(ausencia_obj)
+                            self._add_with_tracking(ausencia_obj)
                 
                 # Process voting publications
                 publicacao = vot.find('publicacao')
@@ -1751,7 +1751,7 @@ class InitiativasMapper(SchemaMapper):
             id_pag=id_pag,
             url_diario=url_diario
         )
-        self.session.add(publicacao_obj)
+        self._add_with_tracking(publicacao_obj)
     
     def _process_evento_recursos_gp(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process RecursoGP - Parliamentary group resources"""
@@ -1764,7 +1764,7 @@ class InitiativasMapper(SchemaMapper):
                         evento_id=evento_obj.id,
                         grupo_parlamentar=gp
                     )
-                    self.session.add(recurso_obj)
+                    self._add_with_tracking(recurso_obj)
     
     def _process_evento_recursos_deputados(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process RecursoDeputados - Deputy resources"""
@@ -1777,7 +1777,7 @@ class InitiativasMapper(SchemaMapper):
                         evento_id=evento_obj.id,
                         deputado_info=deputado_info
                     )
-                    self.session.add(recurso_obj)
+                    self._add_with_tracking(recurso_obj)
     
     def _process_evento_comissoes(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process committee data for event"""
@@ -1818,7 +1818,7 @@ class InitiativasMapper(SchemaMapper):
                     # data_inicio_apreciacao_publica=data_inicio_apreciacao,
                     # data_fim_apreciacao_publica=data_fim_apreciacao
                 )
-                self.session.add(comissao_obj)
+                self._add_with_tracking(comissao_obj)
                 self._batch_flush(force=True)  # Need ID for child records
                 
                 # Process committee publications
@@ -1882,7 +1882,7 @@ class InitiativasMapper(SchemaMapper):
             url_diario=url_diario,
             obs=obs
         )
-        self.session.add(publicacao_obj)
+        self._add_with_tracking(publicacao_obj)
     
     def _process_evento_iniciativas_conjuntas(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process joint initiatives"""
@@ -1907,7 +1907,7 @@ class InitiativasMapper(SchemaMapper):
                     titulo=titulo,
                     ini_id=ini_id
                 )
-                self.session.add(iniciativa_conjunta_obj)
+                self._add_with_tracking(iniciativa_conjunta_obj)
     
     def _process_evento_intervencoes(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process interventions/debates"""
@@ -1920,7 +1920,7 @@ class InitiativasMapper(SchemaMapper):
                     evento_id=evento_obj.id,
                     data_reuniao_plenaria=data_reuniao
                 )
-                self.session.add(intervencao_debate_obj)
+                self._add_with_tracking(intervencao_debate_obj)
                 self._batch_flush(force=True)  # Need ID for child records
                 
                 # Process speakers (oradores)
@@ -1943,7 +1943,7 @@ class InitiativasMapper(SchemaMapper):
                     data_nomeacao=data_nomeacao,
                     data_cessacao=data_cessacao
                 )
-                self.session.add(relator_obj)
+                self._add_with_tracking(relator_obj)
     
     def _process_comissao_remessas(self, com: ET.Element, comissao_obj: IniciativaEventoComissao):
         """Process committee dispatches/referrals (Remessas)"""
@@ -1960,7 +1960,7 @@ class InitiativasMapper(SchemaMapper):
                     data_remessa=data_remessa,
                     destinatario=destinatario
                 )
-                self.session.add(remessa_obj)
+                self._add_with_tracking(remessa_obj)
     
     def _process_comissao_distribuicao_subcomissao(self, com: ET.Element, comissao_obj: IniciativaEventoComissao):
         """Process subcommission distribution (DistribuicaoSubcomissao)"""
@@ -1988,7 +1988,7 @@ class InitiativasMapper(SchemaMapper):
                     # org_id=org_id,
                     # num=num
                 )
-                self.session.add(subcom_obj)
+                self._add_with_tracking(subcom_obj)
     
     def _process_comissao_votacao(self, com: ET.Element, comissao_obj: IniciativaEventoComissao):
         """Process committee voting (Comissao.Votacao)"""
@@ -2029,7 +2029,7 @@ class InitiativasMapper(SchemaMapper):
                     ausencias=ausencias_text,
                     descricao=descricao
                 )
-                self.session.add(votacao_obj)
+                self._add_with_tracking(votacao_obj)
     
     def _process_intervencao_oradores(self, int_elem: ET.Element, intervencao_obj: IniciativaIntervencaoDebate):
         """Process speakers (oradores) for intervention"""
@@ -2049,7 +2049,7 @@ class InitiativasMapper(SchemaMapper):
                     fase_sessao=fase_sessao,
                     sumario=sumario
                 )
-                self.session.add(orador_obj)
+                self._add_with_tracking(orador_obj)
                 self._batch_flush(force=True)  # Need ID for child records
                 
                 # Process speaker publications
@@ -2100,7 +2100,7 @@ class InitiativasMapper(SchemaMapper):
             id_int=id_int,
             url_diario=url_diario
         )
-        self.session.add(publicacao_obj)
+        self._add_with_tracking(publicacao_obj)
     
     def _process_orador_convidados(self, orador: ET.Element, orador_obj: IniciativaIntervencaoOrador):
         """Process guest speakers (convidados) - supports both simple and structured formats"""
@@ -2115,7 +2115,7 @@ class InitiativasMapper(SchemaMapper):
                             orador_id=orador_obj.id,
                             nome=nome
                         )
-                        self.session.add(convidado_obj)
+                        self._add_with_tracking(convidado_obj)
                 
                 # Handle structured format (VII Legislature and others)
                 else:
@@ -2131,7 +2131,7 @@ class InitiativasMapper(SchemaMapper):
                             # pais=pais,
                             # cargo=cargo
                         )
-                        self.session.add(convidado_obj)
+                        self._add_with_tracking(convidado_obj)
     
     def _process_orador_membros_governo(self, orador: ET.Element, orador_obj: IniciativaIntervencaoOrador):
         """Process government members (membrosGoverno)
@@ -2161,7 +2161,7 @@ class InitiativasMapper(SchemaMapper):
                         cargo=cargo,
                         governo=governo
                     )
-                    self.session.add(membro_obj)
+                    self._add_with_tracking(membro_obj)
                 except Exception as e:
                     logger.warning(f"Failed to create government member record: {e}")
                     return
@@ -2180,7 +2180,7 @@ class InitiativasMapper(SchemaMapper):
                         link_url=link_url,
                         descricao=descricao
                     )
-                    self.session.add(video_obj)
+                    self._add_with_tracking(video_obj)
     
     
     def _parse_date(self, date_str: str) -> Optional[str]:
@@ -2249,7 +2249,7 @@ class InitiativasMapper(SchemaMapper):
                     sessao=sessao,
                     assunto=assunto
                 )
-                self.session.add(origem_obj)
+                self._add_with_tracking(origem_obj)
     
     def _process_iniciativas_originadas(self, iniciativa: ET.Element, existing: IniciativaParlamentar):
         """Process initiatives that originated from this initiative
@@ -2292,7 +2292,7 @@ class InitiativasMapper(SchemaMapper):
                     sessao=sessao,
                     assunto=assunto
                 )
-                self.session.add(originada_obj)
+                self._add_with_tracking(originada_obj)
     
     def _process_evento_anexos_fase(self, evento: ET.Element, evento_obj: IniciativaEvento):
         """Process phase attachments (AnexosFase) - IX Legislature feature"""
@@ -2316,7 +2316,7 @@ class InitiativasMapper(SchemaMapper):
                             anexo_fich=anexo_fich,
                             link=link
                         )
-                        self.session.add(anexo_obj)
+                        self._add_with_tracking(anexo_obj)
                     except Exception as e:
                         logger.warning(f"Could not create fase anexo record: {e}")
                         # If model doesn't exist, skip for now
@@ -2344,7 +2344,7 @@ class InitiativasMapper(SchemaMapper):
                             nr=nr,
                             titulo=titulo
                         )
-                        self.session.add(peticao_conjunta_obj)
+                        self._add_with_tracking(peticao_conjunta_obj)
                     except Exception as e:
                         logger.warning(f"Could not create joint petition record: {e}")
     
@@ -2363,7 +2363,7 @@ class InitiativasMapper(SchemaMapper):
                             audiencia_id=audiencia_id,
                             data=data
                         )
-                        self.session.add(audiencia_obj)
+                        self._add_with_tracking(audiencia_obj)
                     except Exception as e:
                         logger.warning(f"Could not create hearing record: {e}")
     
@@ -2381,7 +2381,7 @@ class InitiativasMapper(SchemaMapper):
                             comissao_id=comissao_obj.id,
                             data=data
                         )
-                        self.session.add(audicao_obj)
+                        self._add_with_tracking(audicao_obj)
                     except Exception as e:
                         logger.warning(f"Could not create audition record: {e}")
     
@@ -2401,7 +2401,7 @@ class InitiativasMapper(SchemaMapper):
                             titulo_documento=titulo_documento,
                             tipo_documento=tipo_documento
                         )
-                        self.session.add(documento_obj)
+                        self._add_with_tracking(documento_obj)
                     except Exception as e:
                         logger.warning(f"Could not create document record: {e}")
     
@@ -2438,7 +2438,7 @@ class InitiativasMapper(SchemaMapper):
                             sessao=sessao,
                             assunto=assunto
                         )
-                        self.session.add(europeia_obj)
+                        self._add_with_tracking(europeia_obj)
                     except Exception as e:
                         logger.warning(f"Could not create European initiative record: {e}")
     
@@ -2458,7 +2458,7 @@ class InitiativasMapper(SchemaMapper):
                             iniciativa_id=iniciativa_obj.id,
                             numero=numero
                         )
-                        self.session.add(peticao_obj)
+                        self._add_with_tracking(peticao_obj)
                     except Exception as e:
                         logger.warning(f"Could not create petition record: {e}")
     
@@ -2474,7 +2474,7 @@ class InitiativasMapper(SchemaMapper):
                             iniciativa_id=iniciativa_obj.id,
                             referencia=referencia
                         )
-                        self.session.add(europeia_obj)
+                        self._add_with_tracking(europeia_obj)
                     except Exception as e:
                         logger.warning(f"Could not create simple European initiative record: {e}")
     
@@ -2495,7 +2495,7 @@ class InitiativasMapper(SchemaMapper):
                             data_documento=data_documento,
                             url=url
                         )
-                        self.session.add(link_obj)
+                        self._add_with_tracking(link_obj)
                     except Exception as e:
                         logger.warning(f"Could not create link record: {e}")
     

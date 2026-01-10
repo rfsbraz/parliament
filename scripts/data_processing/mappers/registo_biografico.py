@@ -90,8 +90,8 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
     - Cross-reference validation with existing deputy records
     """
 
-    def __init__(self, session):
-        super().__init__(session)
+    def __init__(self, session, import_status_record=None):
+        super().__init__(session, import_status_record=import_status_record)
         # Use the passed SQLAlchemy session
         self.session = session
 
@@ -151,7 +151,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
             leg_des=self._get_text_value(dados_orgao, "legDes"),
             tia_des=tia_des,
         )
-        self.session.add(atividade)
+        self._add_with_tracking(atividade)
         return True
 
     def get_expected_fields(self) -> Set[str]:
@@ -504,7 +504,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 raise ValueError(f"Invalid cadId value: {cad_id} in record")
 
             # Get or create deputycad using robust matching
-            nome_completo = self._get_text_value(record, "cadNomeCompleto")
+            nome_completo = self._normalize_name(self._get_text_value(record, "cadNomeCompleto"))
 
             # TODO: associate data with cad_id instead of deputy.id
             deputy = None
@@ -629,7 +629,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             if par_sigla:
                                 self.update_mandate_coalition_context(mandate, par_sigla)
                             
-                            self.session.add(mandate)
+                            self._add_with_tracking(mandate)
 
             # Process Academic Qualifications (cadHabilitacoes)
             habilitacoes = record.find("cadHabilitacoes")
@@ -663,7 +663,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                     hab, "habEstado"
                                 ),  # New I Legislature field
                             )
-                            self.session.add(qualification)
+                            self._add_with_tracking(qualification)
 
             # Process Professional Roles (cadCargosFuncoes)
             cargos_funcoes = record.find("cadCargosFuncoes")
@@ -697,7 +697,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                     cargo, "funAntiga"
                                 ),  # New I Legislature field
                             )
-                            self.session.add(role)
+                            self._add_with_tracking(role)
 
             # Process Titles/Awards (cadTitulos)
             titulos = record.find("cadTitulos")
@@ -726,7 +726,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                     self._get_text_value(titulo, "titOrdem")
                                 ),
                             )
-                            self.session.add(title)
+                            self._add_with_tracking(title)
 
             # Process Decorations (cadCondecoracoes)
             condecoracoes = record.find("cadCondecoracoes")
@@ -757,7 +757,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                     self._get_text_value(cond, "codOrdem")
                                 ),
                             )
-                            self.session.add(decoration)
+                            self._add_with_tracking(decoration)
 
             # Process Published Works (cadObrasPublicadas)
             obras = record.find("cadObrasPublicadas")
@@ -786,7 +786,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                     self._get_text_value(obra, "pubOrdem")
                                 ),
                             )
-                            self.session.add(publication)
+                            self._add_with_tracking(publication)
 
             # Process Organ Activities (cadActividadeOrgaos)
             atividades_orgaos = record.find("cadActividadeOrgaos")
@@ -824,7 +824,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             leg_des=self._get_text_value(dados_orgao, "legDes"),
                             tia_des=tia_des,
                         )
-                        self.session.add(atividade)
+                        self._add_with_tracking(atividade)
 
                 # Process Working Group Activities (actividadeGT)
                 grupos_trabalho = atividades_orgaos.findall("actividadeGT")
@@ -861,7 +861,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             leg_des=self._get_text_value(dados_orgao, "legDes"),
                             tia_des=tia_des,
                         )
-                        self.session.add(atividade)
+                        self._add_with_tracking(atividade)
 
                 # Process Subcommittee Activities (actividadeSCom)
                 subcomissoes = atividades_orgaos.findall("actividadeSCom")
@@ -898,7 +898,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             leg_des=self._get_text_value(dados_orgao, "legDes"),
                             tia_des=tia_des,
                         )
-                        self.session.add(atividade)
+                        self._add_with_tracking(atividade)
 
             return True
 
@@ -955,7 +955,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 return False
 
             # Get or create deputy using robust matching
-            nome_completo = self._get_text_value(record, "CadNomeCompleto")
+            nome_completo = self._normalize_name(self._get_text_value(record, "CadNomeCompleto"))
             
             # Check if this record has a LegDes that overrides the file-level legislature
             record_leg_des = self._get_text_value(record, "LegDes")
@@ -1018,7 +1018,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                 ),
                                 hab_estado=self._get_text_value(hab, "HabEstado"),
                             )
-                            self.session.add(qualification)
+                            self._add_with_tracking(qualification)
 
             # Process Professional Roles (CadCargosFuncoes)
             cargos_funcoes = record.find("CadCargosFuncoes")
@@ -1045,7 +1045,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                 ),
                                 fun_antiga=self._get_text_value(cargo, "FunAntiga"),
                             )
-                            self.session.add(role)
+                            self._add_with_tracking(role)
 
             # Process Titles/Awards (CadTitulos)
             titulos = record.find("CadTitulos")
@@ -1071,7 +1071,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                     self._get_text_value(titulo, "TitOrdem")
                                 ),
                             )
-                            self.session.add(title)
+                            self._add_with_tracking(title)
 
             # Process Decorations (CadCondecoracoes)
             condecoracoes = record.find("CadCondecoracoes")
@@ -1097,7 +1097,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                     self._get_text_value(cond, "CodOrdem")
                                 ),
                             )
-                            self.session.add(decoration)
+                            self._add_with_tracking(decoration)
 
             # Process Published Works (CadObrasPublicadas)
             obras = record.find("CadObrasPublicadas")
@@ -1123,7 +1123,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                                     self._get_text_value(obra, "PubOrdem")
                                 ),
                             )
-                            self.session.add(publication)
+                            self._add_with_tracking(publication)
 
             # Process Legislative Mandates (CadDeputadoLegis)
             # CRITICAL: Each mandate has its own leg_des and must be linked to the correct deputy
@@ -1204,7 +1204,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                             if par_sigla:
                                 self.update_mandate_coalition_context(mandate, par_sigla)
 
-                            self.session.add(mandate)
+                            self._add_with_tracking(mandate)
 
             # Process Organ Activities (CadActividadeOrgaos)
             atividades_orgaos = record.find("CadActividadeOrgaos")
@@ -1255,7 +1255,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                 return False
 
             # Find or create the deputy using robust matching
-            nome_completo = self._get_text_value(record, "cadNomeCompleto")
+            nome_completo = self._normalize_name(self._get_text_value(record, "cadNomeCompleto"))
             
             # Check if this interest registry record has a LegDes that overrides the file-level legislature
             record_leg_des = self._get_text_value(record, "LegDes")
@@ -1308,7 +1308,7 @@ class RegistoBiograficoMapper(EnhancedSchemaMapper):
                         record, "cadEstadoCivilDes"
                     ),
                 )
-                self.session.add(interest_registry)
+                self._add_with_tracking(interest_registry)
 
                 # Also update deputy's marital status
                 deputy.estado_civil_cod = (

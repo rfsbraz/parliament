@@ -49,9 +49,9 @@ logger = logging.getLogger(__name__)
 class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
     """Schema mapper for parliamentary questions and requests files"""
 
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         # Accept SQLAlchemy session directly (passed by unified importer)
-        super().__init__(session)
+        super().__init__(session, import_status_record=import_status_record)
 
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -274,7 +274,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                     fundamentacao=fundamentacao,
                     legislatura_id=legislatura.id,
                 )
-                self.session.add(pergunta_req)
+                self._add_with_tracking(pergunta_req)
                 existing = pergunta_req
 
             # Process related data
@@ -389,7 +389,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                     obs=obs,
                     pag_final_diario_supl=pag_final_diario_supl,
                 )
-                self.session.add(publicacao_record)
+                self._add_with_tracking(publicacao_record)
 
     def _process_request_destinatarios(
         self, request: ET.Element, pergunta_req: PerguntaRequerimento
@@ -428,7 +428,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                     retirado=retirado,
                     data_envio=data_envio,
                 )
-                self.session.add(destinatario_record)
+                self._add_with_tracking(destinatario_record)
 
                 # Process responses
                 respostas = dest.find("respostas")
@@ -463,7 +463,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                             ficheiro_url=ficheiro_url,
                             ficheiro_tipo=ficheiro_tipo,
                         )
-                        self.session.add(resposta_record)
+                        self._add_with_tracking(resposta_record)
                         
                         # Process publications within this response (same logic as RespostasSPerguntas)
                         publicacao = resp.find("publicacao")
@@ -504,7 +504,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                                     obs=obs,
                                     pag_final_diario_supl=pag_final_diario_supl,
                                 )
-                                self.session.add(publicacao_record)
+                                self._add_with_tracking(publicacao_record)
 
     def _process_request_authors(
         self, request: ET.Element, pergunta_req: PerguntaRequerimento
@@ -539,7 +539,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                     nome=nome,
                     gp=gp,
                 )
-                self.session.add(autor_record)
+                self._add_with_tracking(autor_record)
 
     def _process_request_respostas_perguntas(
         self, request: ET.Element, pergunta_req: PerguntaRequerimento
@@ -567,7 +567,7 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                     doc_remetida=doc_remetida
                 )
 
-                self.session.add(resposta_record)
+                self._add_with_tracking(resposta_record)
                 
                 # Process publications within this response
                 publicacao = resp.find("publicacao")
@@ -608,4 +608,4 @@ class PerguntasRequerimentosMapper(EnhancedSchemaMapper):
                             obs=obs,
                             pag_final_diario_supl=pag_final_diario_supl,
                         )
-                        self.session.add(publicacao_record)
+                        self._add_with_tracking(publicacao_record)

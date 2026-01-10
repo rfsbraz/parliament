@@ -324,101 +324,226 @@ const PartidoDetalhes = () => {
           </div>
         </div>
 
-        {/* Tabs de Atividade */}
-        <div
-          style={{
-            backgroundColor: tokens.colors.bgSecondary,
-            border: `1px solid ${tokens.colors.border}`,
-            borderRadius: '4px',
-          }}
-        >
-          {/* Tab Headers */}
-          <div style={{ borderBottom: `1px solid ${tokens.colors.border}` }}>
-            <nav style={{ display: 'flex', gap: '2rem', padding: '0 1.5rem' }}>
-              {[
-                { id: 'deputados', label: 'Deputados', icon: Users },
-                { id: 'demografia', label: 'Demografia', icon: UserCheck },
-                { id: 'analytics', label: 'Análise Política', icon: BarChart3 }
-              ].map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabChange(tab.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '1rem 0',
-                      fontFamily: tokens.fonts.body,
-                      fontSize: '0.875rem',
-                      fontWeight: isActive ? 600 : 500,
-                      color: isActive ? tokens.colors.primary : tokens.colors.textMuted,
-                      background: 'none',
-                      border: 'none',
-                      borderBottom: isActive ? `2px solid ${tokens.colors.primary}` : '2px solid transparent',
-                      cursor: 'pointer',
-                      transition: 'all 150ms ease',
-                    }}
-                  >
-                    <Icon style={{ width: '16px', height: '16px', marginRight: '0.5rem' }} />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
+        {/* Tabs de Atividade - Editorial-style section navigation */}
+        <section style={{
+          backgroundColor: tokens.colors.bgWarm || '#F8F6F0',
+          border: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+          borderRadius: '4px',
+          marginTop: '24px',
+          overflow: 'hidden',
+        }}>
+          {/* Section Header */}
+          <header style={{
+            padding: '16px 24px',
+            borderBottom: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+            backgroundColor: 'rgba(255,255,255,0.5)',
+          }}>
+            <h3 style={{
+              fontFamily: tokens.fonts.headline,
+              fontSize: '1.125rem',
+              fontWeight: 600,
+              color: tokens.colors.textPrimary,
+              margin: 0,
+            }}>
+              Informação do Partido
+            </h3>
+            <p style={{
+              fontSize: '0.8125rem',
+              color: tokens.colors.textSecondary,
+              marginTop: '4px',
+            }}>
+              Deputados, demografia e análise política
+            </p>
+          </header>
 
-          {/* Tab Content */}
-          <div style={{ padding: '1.5rem' }}>
+          {/* Editorial Tab Navigation */}
+          <nav style={{
+            display: 'flex',
+            gap: '0',
+            backgroundColor: tokens.colors.bgWarm || '#F8F6F0',
+            borderBottom: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}>
+            {[
+              { id: 'deputados', label: 'Deputados', icon: Users },
+              { id: 'demografia', label: 'Demografia', icon: UserCheck },
+              { id: 'analytics', label: 'Análise Política', icon: BarChart3 }
+            ].map((tab, index, arr) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '14px 20px',
+                    fontFamily: tokens.fonts.body,
+                    fontSize: '0.8125rem',
+                    fontWeight: isActive ? 600 : 500,
+                    letterSpacing: '0.01em',
+                    color: isActive ? tokens.colors.primary : tokens.colors.textSecondary,
+                    backgroundColor: isActive ? 'white' : 'transparent',
+                    border: 'none',
+                    borderBottom: isActive ? `2px solid ${tokens.colors.primary}` : '2px solid transparent',
+                    borderRight: index < arr.length - 1 ? `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}` : 'none',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.6)';
+                      e.currentTarget.style.color = tokens.colors.textPrimary;
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = tokens.colors.textSecondary;
+                    }
+                  }}
+                >
+                  <span style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '4px',
+                    backgroundColor: isActive ? `${tokens.colors.primary}12` : tokens.colors.bgTertiary,
+                    transition: 'background-color 0.2s ease',
+                  }}>
+                    <Icon style={{
+                      width: '15px',
+                      height: '15px',
+                      color: isActive ? tokens.colors.primary : tokens.colors.textMuted,
+                    }} />
+                  </span>
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Tab Content - White background for readability */}
+          <div style={{
+            padding: '28px',
+            backgroundColor: 'white',
+            minHeight: '400px',
+          }}>
             {activeTab === 'deputados' && (
               <div>
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <h2
-                    style={{
-                      fontFamily: tokens.fonts.body,
-                      fontSize: '1.25rem',
+                {/* Tab Section Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '24px',
+                  paddingBottom: '20px',
+                  borderBottom: `1px solid ${tokens.colors.border}`,
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{
+                      fontSize: '1.125rem',
                       fontWeight: 600,
                       color: tokens.colors.textPrimary,
-                    }}
-                  >
-                    Deputados do {dados.partido.sigla}
-                  </h2>
-                  <p
-                    style={{
+                      fontFamily: tokens.fonts.headline,
+                      margin: 0,
+                    }}>
+                      Deputados do {dados.partido.sigla}
+                    </h3>
+                    <p style={{
+                      fontSize: '0.8125rem',
+                      color: tokens.colors.textMuted,
+                      marginTop: '6px',
                       fontFamily: tokens.fonts.body,
-                      fontSize: '0.875rem',
-                      color: tokens.colors.textSecondary,
-                      marginTop: '0.25rem',
-                    }}
-                  >
-                    Histórico completo de {dados.total} deputados que representaram o {dados.partido.sigla} ao longo de todas as legislaturas.
-                    {dados.mandatos_ativos} deputados têm mandatos ativos na legislatura atual.
-                  </p>
-                  {dados.historico && (
-                    <div
-                      style={{
-                        marginTop: '0.75rem',
-                        padding: '0.75rem',
-                        backgroundColor: '#E8F5E9',
-                        border: `1px solid ${tokens.colors.border}`,
-                        borderRadius: '4px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.75rem', fontFamily: tokens.fonts.body, color: tokens.colors.primary }}>
-                        <span>
-                          <span style={{ fontWeight: 600 }}>Período:</span> {dados.historico.periodo_atividade || 'N/A'}
-                        </span>
-                        <span>
-                          <span style={{ fontWeight: 600 }}>Legislaturas:</span> {dados.historico.total_legislaturas || 0}
-                        </span>
-                        <span>
-                          <span style={{ fontWeight: 600 }}>Círculos:</span> {dados.historico.total_circulos || 0}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                    }}>
+                      Histórico completo de {dados.total} deputados ao longo de todas as legislaturas
+                    </p>
+                  </div>
+                  <div style={{
+                    fontFamily: tokens.fonts.mono,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: tokens.colors.primary,
+                    backgroundColor: `${tokens.colors.primary}10`,
+                    padding: '6px 12px',
+                    borderRadius: '4px',
+                    border: `1px solid ${tokens.colors.primary}25`,
+                  }}>
+                    {dados.mandatos_ativos} ativos
+                  </div>
                 </div>
+
+                {/* Historical Summary Bar */}
+                {dados.historico && (
+                  <div style={{
+                    display: 'flex',
+                    gap: '24px',
+                    padding: '16px 20px',
+                    backgroundColor: tokens.colors.bgWarm || '#F8F6F0',
+                    border: `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}`,
+                    borderRadius: '4px',
+                    marginBottom: '24px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: tokens.colors.textMuted,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.03em',
+                        fontFamily: tokens.fonts.body,
+                      }}>Período</span>
+                      <span style={{
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        color: tokens.colors.textPrimary,
+                        fontFamily: tokens.fonts.mono,
+                      }}>{dados.historico.periodo_atividade || 'N/A'}</span>
+                    </div>
+                    <div style={{ width: '1px', backgroundColor: tokens.colors.borderWarm || '#E8E4DA' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: tokens.colors.textMuted,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.03em',
+                        fontFamily: tokens.fonts.body,
+                      }}>Legislaturas</span>
+                      <span style={{
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        color: tokens.colors.primary,
+                        fontFamily: tokens.fonts.mono,
+                      }}>{dados.historico.total_legislaturas || 0}</span>
+                    </div>
+                    <div style={{ width: '1px', backgroundColor: tokens.colors.borderWarm || '#E8E4DA' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: tokens.colors.textMuted,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.03em',
+                        fontFamily: tokens.fonts.body,
+                      }}>Círculos</span>
+                      <span style={{
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        color: tokens.colors.primary,
+                        fontFamily: tokens.fonts.mono,
+                      }}>{dados.historico.total_circulos || 0}</span>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   {dados.deputados.map((deputado) => (
@@ -643,21 +768,83 @@ const PartidoDetalhes = () => {
             )}
 
             {activeTab === 'demografia' && (
-              <PartyDemographics
-                partidoId={partidoId}
-                dadosDemograficos={dados.demografia}
-                partidoInfo={dados.partido}
-              />
+              <div>
+                {/* Tab Section Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '24px',
+                  paddingBottom: '20px',
+                  borderBottom: `1px solid ${tokens.colors.border}`,
+                }}>
+                  <div>
+                    <h3 style={{
+                      fontSize: '1.125rem',
+                      fontWeight: 600,
+                      color: tokens.colors.textPrimary,
+                      fontFamily: tokens.fonts.headline,
+                      margin: 0,
+                    }}>
+                      Demografia do Grupo Parlamentar
+                    </h3>
+                    <p style={{
+                      fontSize: '0.8125rem',
+                      color: tokens.colors.textMuted,
+                      marginTop: '6px',
+                      fontFamily: tokens.fonts.body,
+                    }}>
+                      Distribuição por género, idade e experiência parlamentar
+                    </p>
+                  </div>
+                </div>
+                <PartyDemographics
+                  partidoId={partidoId}
+                  dadosDemograficos={dados.demografia}
+                  partidoInfo={dados.partido}
+                />
+              </div>
             )}
 
             {activeTab === 'analytics' && (
-              <PartyVotingAnalytics
-                partidoId={partidoId}
-                legislatura="17"
-              />
+              <div>
+                {/* Tab Section Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '24px',
+                  paddingBottom: '20px',
+                  borderBottom: `1px solid ${tokens.colors.border}`,
+                }}>
+                  <div>
+                    <h3 style={{
+                      fontSize: '1.125rem',
+                      fontWeight: 600,
+                      color: tokens.colors.textPrimary,
+                      fontFamily: tokens.fonts.headline,
+                      margin: 0,
+                    }}>
+                      Análise Política
+                    </h3>
+                    <p style={{
+                      fontSize: '0.8125rem',
+                      color: tokens.colors.textMuted,
+                      marginTop: '6px',
+                      fontFamily: tokens.fonts.body,
+                    }}>
+                      Padrões de votação, alinhamentos e colaboração cross-party
+                    </p>
+                  </div>
+                </div>
+                <PartyVotingAnalytics
+                  partidoId={partidoId}
+                  legislatura="17"
+                />
+              </div>
             )}
           </div>
-        </div>
+        </section>
 
       </div>
     </div>

@@ -37,23 +37,57 @@ def format_time_display(time_str):
     return time_str
 
 def clean_html_content(content):
-    """Clean HTML entities and tags from content, converting br tags to line breaks"""
+    """Clean HTML entities and tags from content, converting br tags to line breaks.
+
+    Handles double-encoded HTML entities (e.g., &amp;lt; -> &lt; -> <)
+    Also removes embedded <style> and <script> blocks entirely.
+    """
     if not content:
         return content
-    
-    # Decode HTML entities first
-    decoded = html.unescape(content)
-    
+
+    # Decode HTML entities multiple times to handle double/triple encoding
+    decoded = content
+    prev = None
+    max_iterations = 5  # Safety limit
+    iteration = 0
+
+    while decoded != prev and iteration < max_iterations:
+        prev = decoded
+        decoded = html.unescape(decoded)
+        iteration += 1
+
+    # Remove <style>...</style> blocks entirely (including content)
+    decoded = re.sub(r'<style[^>]*>.*?</style>', '', decoded, flags=re.IGNORECASE | re.DOTALL)
+
+    # Remove <script>...</script> blocks entirely (including content)
+    decoded = re.sub(r'<script[^>]*>.*?</script>', '', decoded, flags=re.IGNORECASE | re.DOTALL)
+
+    # Remove <head>...</head> blocks entirely
+    decoded = re.sub(r'<head[^>]*>.*?</head>', '', decoded, flags=re.IGNORECASE | re.DOTALL)
+
     # Convert <br /> and <br> tags to line breaks
     with_breaks = re.sub(r'<br\s*/?>', '\n', decoded, flags=re.IGNORECASE)
-    
+
+    # Convert </p> and </li> to line breaks for better formatting
+    with_breaks = re.sub(r'</p>', '\n', with_breaks, flags=re.IGNORECASE)
+    with_breaks = re.sub(r'</li>', '\n', with_breaks, flags=re.IGNORECASE)
+
     # Remove remaining HTML tags
     clean_text = re.sub(r'<[^>]+>', '', with_breaks)
-    
-    # Clean up extra whitespace but preserve line breaks
-    clean_text = re.sub(r'[ \t]+', ' ', clean_text)  # Only clean horizontal whitespace
+
+    # Remove &nbsp; entities that might remain
+    clean_text = clean_text.replace('\xa0', ' ')
+    clean_text = re.sub(r'&nbsp;?', ' ', clean_text, flags=re.IGNORECASE)
+
+    # Remove CSS-like content that might have leaked through (e.g., "font-family:...")
+    clean_text = re.sub(r'\{[^}]*\}', '', clean_text)
+
+    # Clean up extra whitespace but preserve single line breaks
+    clean_text = re.sub(r'[ \t]+', ' ', clean_text)  # Normalize horizontal whitespace
+    clean_text = re.sub(r'\n\s*\n+', '\n\n', clean_text)  # Max 2 consecutive newlines
+    clean_text = re.sub(r'^\s+', '', clean_text, flags=re.MULTILINE)  # Remove leading spaces per line
     clean_text = clean_text.strip()
-    
+
     return clean_text
 
 @agenda_bp.route('/agenda/hoje', methods=['GET'])
@@ -341,16 +375,27 @@ def get_votacoes_recentes():
         for votacao in query.all():
             # Determine result based on available information
             resultado = votacao.resultado or 'desconhecido'
-            
+
+            # Clean the description for display
+            descricao_limpa = clean_html_content(votacao.descricao)
+
+            # Create a short title from description (first line or truncated)
+            if descricao_limpa:
+                # Get first line or first 100 chars as title
+                first_line = descricao_limpa.split('\n')[0].strip()
+                titulo = first_line[:100] + ('...' if len(first_line) > 100 else '')
+            else:
+                titulo = f'Votação #{votacao.id}'
+
             votacoes.append({
                 'id': votacao.id,
                 'data': votacao.data_votacao.isoformat() if votacao.data_votacao else None,
                 'hora': None,  # Time info not available in this table
-                'titulo': votacao.descricao or f'Votação #{votacao.id}',
-                'descricao': votacao.descricao,
+                'titulo': titulo,
+                'descricao': descricao_limpa,
                 'resultado': resultado,
                 'votos_favor': 0,  # Not available in this table
-                'votos_contra': 0,  # Not available in this table  
+                'votos_contra': 0,  # Not available in this table
                 'abstencoes': 0,   # Not available in this table
                 'ausencias': 0,    # Not available in this table
                 'tipo_votacao': votacao.tipo_reuniao or 'nominal',

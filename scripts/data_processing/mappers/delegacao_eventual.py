@@ -74,9 +74,9 @@ class DelegacaoEventualMapper(SchemaMapper):
     Based on official Parliament documentation identical across IX-XIII legislatures.
     """
 
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         # Accept SQLAlchemy session directly (passed by unified importer)
-        super().__init__(session)
+        super().__init__(session, import_status_record=import_status_record)
         # Cache for delegation records to avoid duplicate inserts within same file
         self._delegacao_cache = {}  # delegacao_id -> DelegacaoEventual
     
@@ -287,7 +287,7 @@ class DelegacaoEventualMapper(SchemaMapper):
                         gp=gp,
                         tipo_participante='interno'
                     )
-                    self.session.add(participante_record)
+                    self._add_with_tracking(participante_record)
         
         # Process external participants (enhanced for IX Legislature)
         participantes_elem = delegation_event.find('Participantes')
@@ -312,4 +312,4 @@ class DelegacaoEventualMapper(SchemaMapper):
                         gp=gp,
                         tipo_participante=tipo
                     )
-                    self.session.add(participante_record)
+                    self._add_with_tracking(participante_record)

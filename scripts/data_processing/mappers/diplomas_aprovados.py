@@ -42,9 +42,9 @@ logger = logging.getLogger(__name__)
 class DiplomasAprovadosMapper(SchemaMapper):
     """Schema mapper for approved diplomas files"""
     
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         # Accept SQLAlchemy session directly (passed by unified importer)
-        super().__init__(session)
+        super().__init__(session, import_status_record=import_status_record)
     
     def get_expected_fields(self) -> Set[str]:
         """
@@ -268,7 +268,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                     anexos=anexos,
                     legislatura_id=legislatura.id
                 )
-                self.session.add(diploma_record)
+                self._add_with_tracking(diploma_record)
                 existing = diploma_record
             
             # Process publications
@@ -376,7 +376,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                     obs=obs,
                     pag_final_diario_supl=pag_final_diario_supl
                 )
-                self.session.add(publicacao_record)
+                self._add_with_tracking(publicacao_record)
     
     def _process_diploma_initiatives(self, diploma: ET.Element, diploma_record: DiplomaAprovado):
         """
@@ -421,7 +421,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                     ini_link_texto=ini_link_texto,
                     ini_id=ini_id
                 )
-                self.session.add(iniciativa_record)
+                self._add_with_tracking(iniciativa_record)
     
     def _process_orcam_contas_gerencia(self, diploma: ET.Element, diploma_record: DiplomaAprovado):
         """Process budget/management accounts for diploma (XIII Legislature)"""
@@ -445,7 +445,7 @@ class DiplomasAprovadosMapper(SchemaMapper):
                         titulo=titulo,
                         tipo=tipo
                     )
-                    self.session.add(orcam_record)
+                    self._add_with_tracking(orcam_record)
     
     def _parse_date(self, date_str: str) -> Optional[datetime]:
         """Parse date string to datetime"""

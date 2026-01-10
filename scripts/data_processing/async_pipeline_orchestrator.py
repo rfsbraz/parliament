@@ -286,7 +286,7 @@ class AsyncPipelineOrchestrator:
         discovery_rate_limit: float = 0.5,
         download_rate_limit: float = 0.3,
         max_concurrent_downloads: int = 5,
-        max_concurrent_imports: int = 4,
+        max_concurrent_imports: int = 1,  # Hardcoded to 1 to prevent deadlocks on partidos/deputados
         allowed_file_types: List[str] = None,
         stop_on_error: bool = False,
         download_only: bool = False,
@@ -1056,7 +1056,6 @@ def main():
     parser.add_argument('--discovery-rate-limit', type=float, default=0.5)
     parser.add_argument('--download-rate-limit', type=float, default=0.3)
     parser.add_argument('--max-downloads', type=int, default=5)
-    parser.add_argument('--max-imports', type=int, default=4)
     parser.add_argument('--file-types', nargs='*', choices=['XML', 'JSON', 'PDF', 'Archive', 'XSD'], default=['XML'])
     parser.add_argument('--all-file-types', action='store_true')
     parser.add_argument('--stop-on-error', action='store_true')
@@ -1087,11 +1086,13 @@ def main():
 
     allowed_file_types = None if args.all_file_types else args.file_types
 
+    # NOTE: max_concurrent_imports=1 is hardcoded to prevent deadlocks
+    # on partidos/deputados tables during concurrent upserts
     orchestrator = AsyncPipelineOrchestrator(
         discovery_rate_limit=args.discovery_rate_limit,
         download_rate_limit=args.download_rate_limit,
         max_concurrent_downloads=args.max_downloads,
-        max_concurrent_imports=args.max_imports,
+        max_concurrent_imports=1,
         allowed_file_types=allowed_file_types,
         stop_on_error=args.stop_on_error,
         download_only=args.download_only,

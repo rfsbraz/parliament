@@ -323,14 +323,13 @@ def pipeline():
 @click.option('--database', '-d', type=click.Choice(['local', 'prod', 'auto']), default='auto',
               help='Database: local, prod, or auto-detect (default: auto)')
 @click.option('--max-downloads', type=int, default=5, help='Max concurrent downloads (local mode)')
-@click.option('--max-imports', type=int, default=4, help='Max concurrent imports (local mode)')
 @click.option('--file-types', type=str, default='XML', help='File types to process (comma-separated)')
 @click.option('--stop-on-error', is_flag=True, help='Stop pipeline on first error (local mode)')
 @click.option('--download-only', is_flag=True, help='Only download, skip import (local mode)')
 @click.option('--import-only', is_flag=True, help='Only import, skip download (local mode)')
 @click.option('--retry-failed', is_flag=True, help='Reset failed imports to pending before starting')
 def run(mode: str, wait: bool, local: bool, ecs: bool, database: str,
-        max_downloads: int, max_imports: int, file_types: str,
+        max_downloads: int, file_types: str,
         stop_on_error: bool, download_only: bool, import_only: bool, retry_failed: bool):
     """Start import pipeline locally (default) or on ECS Fargate.
 
@@ -401,10 +400,12 @@ def run(mode: str, wait: bool, local: bool, ecs: bool, database: str,
             import_only = True
 
         # Create and run the pipeline
+        # NOTE: max_concurrent_imports=1 is hardcoded to prevent deadlocks
+        # on partidos/deputados tables during concurrent upserts
         runner = LocalPipelineRunner(
             db_config=db_config,
             max_concurrent_downloads=max_downloads,
-            max_concurrent_imports=max_imports,
+            max_concurrent_imports=1,
             allowed_file_types=allowed_file_types,
             stop_on_error=stop_on_error,
             download_only=download_only,

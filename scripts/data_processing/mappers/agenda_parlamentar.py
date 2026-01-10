@@ -77,9 +77,9 @@ class AgendaParlamentarMapper(SchemaMapper):
     with proper translator integration for coded field values.
     """
     
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         # Accept SQLAlchemy session directly (passed by unified importer)
-        super().__init__(session)
+        super().__init__(session, import_status_record=import_status_record)
     
     def get_expected_fields(self) -> Set[str]:
         return {
@@ -265,7 +265,7 @@ class AgendaParlamentarMapper(SchemaMapper):
                     link_externo=link_externo,
                     pos_plenario=pos_plenario
                 )
-                self.session.add(new_agenda)
+                self._add_with_tracking(new_agenda)
             
             # Process attachments (AnexoEventos structures)
             self._process_agenda_anexos(agenda_item, new_agenda if 'new_agenda' in locals() else existing_agenda)
@@ -383,7 +383,7 @@ class AgendaParlamentarMapper(SchemaMapper):
                         url_field=url,
                         tipo_anexo=tipo_anexo
                     )
-                    self.session.add(anexo_record)
+                    self._add_with_tracking(anexo_record)
                 
                 logger.debug(f"Processed anexo: {titulo} ({tipo_documento})")
             

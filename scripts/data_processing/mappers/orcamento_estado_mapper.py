@@ -233,8 +233,8 @@ class OrcamentoEstadoMapper(SchemaMapper):
     - Complex nested data (proponents, voting, regional opinions)
     """
 
-    def __init__(self, session):
-        super().__init__(session)
+    def __init__(self, session, import_status_record=None):
+        super().__init__(session, import_status_record=import_status_record)
         self.processed_proposals = 0
         self.processed_items = 0
         self.processed_proponents = 0
@@ -960,7 +960,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
                 deputado_nome=proponente.data["deputado"],
                 tipo_proponente="deputado" if proponente.data["deputado"] else "grupo",
             )
-            self.session.add(proponente_obj)
+            self._add_with_tracking(proponente_obj)
             self.processed_proponents += 1
 
     def _create_legacy_votacoes(self, parsed: ParsedLegacyProposal):
@@ -976,7 +976,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
                 diplomas_terceiros_texto=votacao.data["diplomas_terceiros"],
                 grupos_parlamentares_texto=votacao.data["grupos_parlamentares"],
             )
-            self.session.add(votacao_obj)
+            self._add_with_tracking(votacao_obj)
             self.processed_votes += 1
 
     def _create_legacy_artigo_record(self, parsed: ParsedLegacyArtigo):
@@ -989,7 +989,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
             texto=parsed.data["texto"],
             estado=parsed.data["estado"],
         )
-        self.session.add(artigo_obj)
+        self._add_with_tracking(artigo_obj)
         parsed.db_obj = artigo_obj
         self.processed_articles += 1
 
@@ -1003,7 +1003,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
             texto=parsed.data["texto"],
             estado=parsed.data["estado"],
         )
-        self.session.add(numero_obj)
+        self._add_with_tracking(numero_obj)
         parsed.db_obj = numero_obj
 
     def _create_legacy_alinea_record(self, parsed: ParsedLegacyAlinea):
@@ -1016,7 +1016,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
             texto=parsed.data["texto"],
             estado=parsed.data["estado"],
         )
-        self.session.add(alinea_obj)
+        self._add_with_tracking(alinea_obj)
 
     # =========================================================================
     # Current Format Batched Processing
@@ -1498,7 +1498,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
                 texto=artigo.data["texto"],
                 estado=artigo.data["estado"],
             )
-            self.session.add(artigo_obj)
+            self._add_with_tracking(artigo_obj)
             self.processed_articles += 1
 
     def _create_current_propostas(self, parsed: ParsedCurrentItem, legislatura: Legislatura):
@@ -1574,7 +1574,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
                 estado=iniciativa.data["estado"],
                 link_url=iniciativa.data["link_url"],
             )
-            self.session.add(iniciativa_obj)
+            self._add_with_tracking(iniciativa_obj)
             self.processed_initiatives += 1
 
     def _create_current_votacoes(self, parsed: ParsedCurrentItem):
@@ -1590,7 +1590,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
                 diplomas_terceiros_texto=votacao.data["diplomas_terceiros"],
                 grupos_parlamentares_texto=votacao.data["grupos_parlamentares"],
             )
-            self.session.add(votacao_obj)
+            self._add_with_tracking(votacao_obj)
             self.processed_votes += 1
 
     def _create_current_requerimentos(self, parsed: ParsedCurrentItem):
@@ -1605,7 +1605,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
                 estado=requerimento.data["estado"],
                 ficheiro_url=requerimento.data["ficheiro_url"],
             )
-            self.session.add(requerimento_obj)
+            self._add_with_tracking(requerimento_obj)
 
     def _create_current_diploma_record(self, parsed: ParsedCurrentDiploma):
         """Create a diploma database record."""
@@ -1627,7 +1627,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
             sub_titulo=parsed.data["sub_titulo"],
             artigos_texto=artigos_texto,
         )
-        self.session.add(diploma_obj)
+        self._add_with_tracking(diploma_obj)
         parsed.db_obj = diploma_obj
         self.processed_diplomas += 1
 
@@ -1647,7 +1647,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
             estado=parsed.data["estado"],
             diploma_artigo_estado=parsed.data["diploma_artigo_estado"],
         )
-        self.session.add(diploma_artigo_obj)
+        self._add_with_tracking(diploma_artigo_obj)
         parsed.db_obj = diploma_artigo_obj
 
     def _create_current_diploma_numero_record(self, parsed: ParsedCurrentDiplomaNumero):
@@ -1659,7 +1659,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
             titulo=parsed.data["titulo"],
             estado=parsed.data["estado"],
         )
-        self.session.add(diploma_numero_obj)
+        self._add_with_tracking(diploma_numero_obj)
         parsed.db_obj = diploma_numero_obj
 
     def _create_current_diploma_alinea_record(self, parsed: ParsedCurrentDiplomaAlinea):
@@ -1670,7 +1670,7 @@ class OrcamentoEstadoMapper(SchemaMapper):
             titulo=parsed.data["titulo"],
             estado=parsed.data["estado"],
         )
-        self.session.add(diploma_alinea_obj)
+        self._add_with_tracking(diploma_alinea_obj)
 
     def _detect_format_type(self, xml_root: ET.Element, filename: str) -> str:
         """

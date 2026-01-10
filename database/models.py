@@ -457,6 +457,15 @@ class Deputado(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
+    # Data provenance tracking
+    import_status_id = Column(
+        GUID(),
+        ForeignKey("import_status.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Reference to import batch that created/updated this record"
+    )
+
     # Relationships
     atividades = relationship(
         "AtividadeDeputado", back_populates="deputado", cascade="all, delete-orphan"
@@ -511,6 +520,64 @@ class Deputado(Base):
             ).scalar()
         finally:
             session.close()
+
+    @property
+    def mandate_status(self):
+        """
+        Get the mandate status for this deputy in the CURRENT legislature (XVII).
+
+        Returns the sio_des value from the latest DadosSituacaoDeputado record
+        for the current legislature only. For historical deputies not in XVII,
+        returns None.
+
+        Possible values: Efetivo, Efetivo Temporário, Efetivo Definitivo,
+                        Suspenso(Eleito), Suspenso(Não Eleito), Renunciou,
+                        Suplente, Impedido, Desistência
+
+        Returns:
+            str or None: The current mandate status or None if not in current legislature
+        """
+        # Only return status if deputy is in current legislature
+        if not self.is_active:
+            return None
+
+        from database.connection import get_session
+        from app.utils.deputy_status import get_deputy_status_by_cadastro
+        session = get_session()
+        try:
+            # Get status in current legislature XVII using cadastro ID
+            return get_deputy_status_by_cadastro(self.id_cadastro, 'XVII', session)
+        finally:
+            session.close()
+
+    @property
+    def is_seated(self):
+        """
+        Check if deputy is currently occupying a seat in the CURRENT legislature (XVII).
+
+        A deputy is seated if:
+        1. They have a mandate in the current legislature (XVII)
+        2. Their current status is one of the Efetivo variants
+
+        Deputies with these statuses are NOT seated:
+        - Suspenso(Eleito) - suspended (e.g., government members)
+        - Suspenso(Não Eleito) - suspended non-elected
+        - Renunciou - resigned
+        - Suplente - substitute (not currently in seat)
+        - Impedido - impeded
+        - Desistência - withdrawn
+
+        Historical deputies (not in XVII) always return False.
+
+        Returns:
+            bool: True if deputy is currently seated in XVII, False otherwise
+        """
+        # Must be active (have mandate in XVII) to be seated
+        if not self.is_active:
+            return False
+
+        from app.utils.deputy_status import is_seated_status
+        return is_seated_status(self.mandate_status)
 
     # Indexes for query optimization
     __table_args__ = (
@@ -4299,6 +4366,15 @@ class IniciativaParlamentar(Base):
     legislatura_id = Column(GUID(), ForeignKey("legislaturas.id"), nullable=False)
     updated_at = Column(DateTime, default=func.now, onupdate=func.now)
 
+    # Data provenance tracking
+    import_status_id = Column(
+        GUID(),
+        ForeignKey("import_status.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Reference to import batch that created/updated this record"
+    )
+
     # Relationships
     legislatura = relationship("Legislatura", backref="iniciativas")
     autores_outros = relationship(
@@ -5200,6 +5276,15 @@ class PeticaoParlamentar(Base):
     )
     updated_at = Column(DateTime, default=func.now, onupdate=func.now)
 
+    # Data provenance tracking
+    import_status_id = Column(
+        GUID(),
+        ForeignKey("import_status.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Reference to import batch that created/updated this record"
+    )
+
     # Relationships
     legislatura = relationship("Legislatura", backref="peticoes")
     publicacoes = relationship(
@@ -5717,6 +5802,15 @@ class IntervencaoParlamentar(Base):
         default=func.now(),
         onupdate=func.now(),
         comment="Record update timestamp",
+    )
+
+    # Data provenance tracking
+    import_status_id = Column(
+        GUID(),
+        ForeignKey("import_status.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Reference to import batch that created/updated this record"
     )
 
     # Relationships following official documentation structure
@@ -7077,6 +7171,15 @@ class DeputadoMandatoLegislativo(Base):
     )
 
     created_at = Column(DateTime, default=func.now())
+
+    # Data provenance tracking
+    import_status_id = Column(
+        GUID(),
+        ForeignKey("import_status.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Reference to import batch that created/updated this record"
+    )
 
     # Relationships
     deputado = relationship("Deputado", back_populates="mandatos_legislativos")

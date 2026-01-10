@@ -60,8 +60,8 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
     field conversion using the grupos_amizade translator module.
     """
     
-    def __init__(self, session):
-        super().__init__(session)
+    def __init__(self, session, import_status_record=None):
+        super().__init__(session, import_status_record=import_status_record)
         self.processed_groups = 0
         self.processed_members = 0
         self.processed_meetings = 0
@@ -220,7 +220,7 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
                     sessao=sessao,
                     data_criacao=data_criacao
                 )
-                self.session.add(grupo)
+                self._add_with_tracking(grupo)
             
             # Process members
             composicao = grupo_element.find('Composicao')
@@ -289,7 +289,7 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
                 data_fim=data_fim
             )
 
-            self.session.add(membro)
+            self._add_with_tracking(membro)
             self.processed_members += 1
             
             logger.debug(f"Processed member: {nome} ({cargo}) - GP: {grupo_parlamentar}")
@@ -343,7 +343,7 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
                 event_source=event_source
             )
 
-            self.session.add(reuniao)
+            self._add_with_tracking(reuniao)
             
             # Process participants
             participantes = reuniao_element.find('Participantes')
@@ -392,7 +392,7 @@ class GruposAmizadeMapper(EnhancedSchemaMapper):
                 legislatura=legislatura
             )
 
-            self.session.add(participante)
+            self._add_with_tracking(participante)
             self.processed_participants += 1
             
             logger.debug(f"Processed participant: {participant_id} ({nome}) - Type: {tipo}")

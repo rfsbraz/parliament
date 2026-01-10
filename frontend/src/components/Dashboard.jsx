@@ -17,6 +17,10 @@ const Dashboard = ({ stats }) => {
 
   const { totais = {}, distribuicao_partidos = [], distribuicao_circulos = [], legislatura = {} } = stats
 
+  // Use seated deputies count if available, otherwise fall back to total
+  const seatedDeputados = totais.deputados_em_exercicio || totais.seated_deputies || totais.deputados || 230
+  const totalElected = totais.deputados_eleitos || totais.deputados || 230
+
   // Process party data
   const partidosData = (distribuicao_partidos || []).map(partido => ({
     ...partido,
@@ -37,7 +41,8 @@ const Dashboard = ({ stats }) => {
   const governoPartidos = ['PSD', 'CDS-PP']
   const governoDeputados = partidosData.filter(p => governoPartidos.includes(p.sigla)).reduce((sum, p) => sum + p.deputados, 0)
   const oposicaoDeputados = partidosData.filter(p => !governoPartidos.includes(p.sigla)).reduce((sum, p) => sum + p.deputados, 0)
-  const maioriaAbsoluta = Math.floor((totais.deputados || 230) / 2) + 1
+  // Majority is based on seated deputies (those who can vote)
+  const maioriaAbsoluta = Math.floor(seatedDeputados / 2) + 1
   const temMaioria = governoDeputados >= maioriaAbsoluta
 
   // Legislature text
@@ -125,20 +130,20 @@ const Dashboard = ({ stats }) => {
         overflow: 'hidden',
       }}>
         <MetricCard
-          value={totais.deputados || 230}
-          label="Deputados"
-          sublabel={`${totais.partidos || 0} partidos`}
+          value={seatedDeputados}
+          label="Em Exercício"
+          sublabel={`de ${totalElected} eleitos · ${totais.partidos || 0} partidos`}
         />
         <MetricCard
           value={governoDeputados}
           label="Governo"
-          sublabel={`${((governoDeputados / (totais.deputados || 230)) * 100).toFixed(0)}% dos assentos`}
+          sublabel={`${((governoDeputados / seatedDeputados) * 100).toFixed(0)}% dos assentos`}
           accent="primary"
         />
         <MetricCard
           value={oposicaoDeputados}
           label="Oposição"
-          sublabel={`${((oposicaoDeputados / (totais.deputados || 230)) * 100).toFixed(0)}% dos assentos`}
+          sublabel={`${((oposicaoDeputados / seatedDeputados) * 100).toFixed(0)}% dos assentos`}
           accent="accent"
         />
         <MetricCard
@@ -179,7 +184,7 @@ const Dashboard = ({ stats }) => {
               color: tokens.colors.textMuted,
               margin: '0.25rem 0 0',
             }}>
-              Distribuição dos {totais.deputados || 230} mandatos
+              Distribuição dos {seatedDeputados} assentos em exercício
             </p>
           </div>
           <div style={{ padding: '1.5rem' }}>
@@ -278,7 +283,7 @@ const Dashboard = ({ stats }) => {
               }}>
                 <div style={{
                   height: '100%',
-                  width: `${(governoDeputados / (totais.deputados || 230)) * 100}%`,
+                  width: `${(governoDeputados / seatedDeputados) * 100}%`,
                   backgroundColor: tokens.colors.primary,
                   display: 'flex',
                   alignItems: 'center',
@@ -291,7 +296,7 @@ const Dashboard = ({ stats }) => {
                     fontWeight: 600,
                     color: '#FFFFFF',
                   }}>
-                    {((governoDeputados / (totais.deputados || 230)) * 100).toFixed(0)}%
+                    {((governoDeputados / seatedDeputados) * 100).toFixed(0)}%
                   </span>
                 </div>
               </div>
@@ -326,7 +331,7 @@ const Dashboard = ({ stats }) => {
               }}>
                 <div style={{
                   height: '100%',
-                  width: `${(oposicaoDeputados / (totais.deputados || 230)) * 100}%`,
+                  width: `${(oposicaoDeputados / seatedDeputados) * 100}%`,
                   backgroundColor: tokens.colors.accent,
                   display: 'flex',
                   alignItems: 'center',
@@ -339,7 +344,7 @@ const Dashboard = ({ stats }) => {
                     fontWeight: 600,
                     color: '#FFFFFF',
                   }}>
-                    {((oposicaoDeputados / (totais.deputados || 230)) * 100).toFixed(0)}%
+                    {((oposicaoDeputados / seatedDeputados) * 100).toFixed(0)}%
                   </span>
                 </div>
               </div>

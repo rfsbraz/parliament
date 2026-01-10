@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, TrendingUp, Users, Target, BarChart3, PieChart, Activity, Shield } from 'lucide-react';
+import { Calendar, TrendingUp, Users, Target, BarChart3, PieChart, Activity, Shield, BookOpen } from 'lucide-react';
 import { apiFetch } from '../config/api';
+import { tokens } from '../styles/tokens';
 
 const VotingAnalytics = ({ deputadoId, legislatura }) => {
   const [analytics, setAnalytics] = useState(null);
@@ -616,22 +617,97 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
 
   return (
     <div className="space-y-6">
+      {/* Educational Context Panel - Per Political Analyst Recommendations */}
+      <div style={{
+        backgroundColor: tokens.colors.contextEducationalBg,
+        borderLeft: `4px solid ${tokens.colors.contextEducationalBorder}`,
+        borderRadius: '2px',
+        padding: '16px 20px',
+        marginBottom: '16px',
+        fontFamily: tokens.fonts.body,
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '12px',
+        }}>
+          <BookOpen
+            size={18}
+            style={{ color: tokens.colors.primary, marginTop: '2px', flexShrink: 0 }}
+          />
+          <div>
+            <h4 style={{
+              fontFamily: tokens.fonts.body,
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              color: tokens.colors.textPrimary,
+              margin: '0 0 8px 0',
+            }}>
+              Como interpretar os dados de votação
+            </h4>
+            <p style={{
+              fontFamily: tokens.fonts.body,
+              fontSize: '0.875rem',
+              lineHeight: 1.6,
+              color: tokens.colors.textSecondary,
+              margin: '0 0 8px 0',
+            }}>
+              Portugal opera um sistema de <strong>representação proporcional por lista partidária</strong>.
+              Os cidadãos votam em partidos e programas, não em candidatos individuais.
+              A <strong>disciplina de voto</strong> é uma característica normal e esperada do sistema parlamentar português.
+            </p>
+            <p style={{
+              fontFamily: tokens.fonts.body,
+              fontSize: '0.875rem',
+              lineHeight: 1.6,
+              color: tokens.colors.textSecondary,
+              margin: 0,
+            }}>
+              <strong>Nota:</strong> Divergências pontuais do grupo parlamentar podem ocorrer em questões de consciência
+              ou interesse regional, mas devem ser interpretadas no seu contexto específico.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Chart Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="flex space-x-8 overflow-x-auto">
-          {charts.map((chart) => {
+      <div style={{
+        borderBottom: `1px solid ${tokens.colors.border}`,
+        backgroundColor: tokens.colors.bgWarm || '#F8F6F0',
+        margin: '0 -28px',
+        padding: '0 28px',
+      }}>
+        <nav style={{
+          display: 'flex',
+          gap: '0',
+          overflowX: 'auto',
+        }}>
+          {charts.map((chart, index) => {
             const Icon = chart.icon;
+            const isActive = activeChart === chart.id;
             return (
               <button
                 key={chart.id}
                 onClick={() => setActiveChart(chart.id)}
-                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
-                  activeChart === chart.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '12px 16px',
+                  fontFamily: tokens.fonts.body,
+                  fontSize: '0.8125rem',
+                  fontWeight: isActive ? 600 : 500,
+                  color: isActive ? tokens.colors.primary : tokens.colors.textSecondary,
+                  backgroundColor: isActive ? 'white' : 'transparent',
+                  border: 'none',
+                  borderBottom: isActive ? `2px solid ${tokens.colors.primary}` : '2px solid transparent',
+                  borderRight: index < charts.length - 1 ? `1px solid ${tokens.colors.borderWarm || '#E8E4DA'}` : 'none',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s ease',
+                }}
               >
-                <Icon className="h-4 w-4 mr-2" />
+                <Icon style={{ width: '14px', height: '14px' }} />
                 {chart.label}
               </button>
             );

@@ -69,8 +69,8 @@ class InformacaoBaseMapper(SchemaMapper):
     with validation against actual XML structure patterns.
     """
 
-    def __init__(self, session):
-        super().__init__(session)
+    def __init__(self, session, import_status_record=None):
+        super().__init__(session, import_status_record=import_status_record)
         self.processed_legislatures = 0
         self.processed_parties = 0
         self.processed_electoral_circles = 0
@@ -568,12 +568,12 @@ class InformacaoBaseMapper(SchemaMapper):
             # Extract deputy information
             dep_id_str = self._get_text_value(deputado_element, "DepId")
             dep_cad_id_str = self._get_text_value(deputado_element, "DepCadId")
-            dep_nome_parlamentar = self._get_text_value(
+            dep_nome_parlamentar = self._normalize_name(self._get_text_value(
                 deputado_element, "DepNomeParlamentar"
-            )
-            dep_nome_completo = self._get_text_value(
+            ))
+            dep_nome_completo = self._normalize_name(self._get_text_value(
                 deputado_element, "DepNomeCompleto"
-            )
+            ))
 
             if not dep_id_str or not dep_cad_id_str or not dep_nome_parlamentar:
                 logger.warning("Deputy missing required fields, skipping")
@@ -697,12 +697,12 @@ class InformacaoBaseMapper(SchemaMapper):
             # Extract deputy information from I_Legislatura structure
             dep_id_str = self._get_text_value(deputado_element, "depId")
             dep_cad_id_str = self._get_text_value(deputado_element, "depCadId")
-            dep_nome_parlamentar = self._get_text_value(
+            dep_nome_parlamentar = self._normalize_name(self._get_text_value(
                 deputado_element, "depNomeParlamentar"
-            )
-            dep_nome_completo = self._get_text_value(
+            ))
+            dep_nome_completo = self._normalize_name(self._get_text_value(
                 deputado_element, "depNomeCompleto"
-            )
+            ))
 
             if not dep_id_str or not dep_cad_id_str or not dep_nome_parlamentar:
                 # For InformacaoBaseI files, missing fields in empty elements are expected
@@ -839,7 +839,7 @@ class InformacaoBaseMapper(SchemaMapper):
                     composition_context="informacao_base",
                 )
 
-                self.session.add(gp_situation)
+                self._add_with_tracking(gp_situation)
                 self.processed_gp_situations += 1
 
                 logger.debug(
@@ -891,7 +891,7 @@ class InformacaoBaseMapper(SchemaMapper):
                     sio_dt_fim=sio_dt_fim
                 )
                 
-                self.session.add(deputy_situation)
+                self._add_with_tracking(deputy_situation)
                 self.processed_deputy_situations += 1
 
                 logger.debug(

@@ -63,9 +63,9 @@ class IntervencoesMapper(SchemaMapper):
     Includes coded value translation for debates, interventions, activities, and publications.
     """
     
-    def __init__(self, session):
+    def __init__(self, session, import_status_record=None):
         # Accept SQLAlchemy session directly (passed by unified importer)
-        super().__init__(session)
+        super().__init__(session, import_status_record=import_status_record)
         # Initialize translator for coded values
         self.translator = IntervencoesTranslator()
         self.processed_interventions = 0
@@ -319,7 +319,7 @@ class IntervencoesMapper(SchemaMapper):
                         fase_debate=fase_debate_elem.text if fase_debate_elem is not None else None,
                         legislatura_id=legislatura.id
                     )
-                    self.session.add(intervention)
+                    self._add_with_tracking(intervention)
                     existing = intervention
                 
                 # Process related data
@@ -393,7 +393,7 @@ class IntervencoesMapper(SchemaMapper):
                     id_int=DataValidationUtils.safe_float_convert(id_interno.text) if id_interno is not None else None,
                     url_diario=url_diario.text if url_diario is not None else None
                 )
-                self.session.add(publicacao)
+                self._add_with_tracking(publicacao)
                 self.processed_publications += 1
     
     def _process_deputados(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
@@ -420,7 +420,7 @@ class IntervencoesMapper(SchemaMapper):
                     nome=nome_elem.text if nome_elem is not None else None,
                     gp=gp_elem.text if gp_elem is not None else None
                 )
-                self.session.add(deputado)
+                self._add_with_tracking(deputado)
                 self.processed_deputies += 1
     
     def _process_membros_governo(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
@@ -446,7 +446,7 @@ class IntervencoesMapper(SchemaMapper):
                     cargo=cargo_elem.text if cargo_elem is not None else None,
                     governo=governo_elem.text if governo_elem is not None else None
                 )
-                self.session.add(membro_governo)
+                self._add_with_tracking(membro_governo)
                 self.processed_government_members += 1
     
     def _process_convidados(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
@@ -463,7 +463,7 @@ class IntervencoesMapper(SchemaMapper):
                     nome=nome_elem.text if nome_elem is not None else None,
                     cargo=cargo_elem.text if cargo_elem is not None else None
                 )
-                self.session.add(convidado)
+                self._add_with_tracking(convidado)
                 self.processed_guests += 1
     
     def _process_atividades_relacionadas(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
@@ -480,7 +480,7 @@ class IntervencoesMapper(SchemaMapper):
                     atividade_id=DataValidationUtils.safe_float_convert(id_elem.text) if id_elem is not None else None,
                     tipo=tipo_elem.text if tipo_elem is not None else None
                 )
-                self.session.add(atividade)
+                self._add_with_tracking(atividade)
                 self.processed_activities += 1
     
     def _process_iniciativas(self, intervencao: ET.Element, intervention: IntervencaoParlamentar):
@@ -501,7 +501,7 @@ class IntervencoesMapper(SchemaMapper):
                         tipo=tipo_elem.text if tipo_elem is not None else None,
                         fase=fase_elem.text if fase_elem is not None else None
                     )
-                    self.session.add(iniciativa)
+                    self._add_with_tracking(iniciativa)
                     self.processed_initiatives += 1
     
     def _process_audiovisual(self, intervencao: ET.Element, intervention: IntervencaoParlamentar, filename: str = None, skip_video_processing: bool = False):
@@ -567,7 +567,7 @@ class IntervencoesMapper(SchemaMapper):
                 assunto=assunto,
                 tipo_intervencao=tipo_intervencao
             )
-            self.session.add(audiovisual)
+            self._add_with_tracking(audiovisual)
             self.processed_audiovisual += 1
     
     # NOTE: _get_or_create_legislatura is inherited from EnhancedSchemaMapper (with caching)
