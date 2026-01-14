@@ -3168,6 +3168,10 @@ const DeputadoDetalhes = () => {
                             return { backgroundColor: tokens.colors.warningBg, color: tokens.colors.warning, borderColor: '#FDE68A' };
                           case 'retirado':
                             return { backgroundColor: '#F9FAFB', color: tokens.colors.textSecondary, borderColor: tokens.colors.border };
+                          case 'caducado':
+                            return { backgroundColor: '#FEF3C7', color: '#92400E', borderColor: '#FCD34D' };
+                          case 'em tramitação':
+                            return { backgroundColor: tokens.colors.infoBg, color: tokens.colors.info, borderColor: '#BFDBFE' };
                           default:
                             return { backgroundColor: tokens.colors.infoBg, color: tokens.colors.info, borderColor: '#BFDBFE' };
                         }
@@ -3180,6 +3184,8 @@ const DeputadoDetalhes = () => {
                           case 'aprovado': return tokens.colors.success;
                           case 'rejeitado': return tokens.colors.danger;
                           case 'em votação': return '#F59E0B';
+                          case 'caducado': return '#92400E';
+                          case 'retirado': return tokens.colors.textSecondary;
                           default: return tokens.colors.blue;
                         }
                       };
@@ -3190,7 +3196,10 @@ const DeputadoDetalhes = () => {
                         switch (estado?.toLowerCase()) {
                           case 'aprovado': return '100%';
                           case 'rejeitado': return '100%';
+                          case 'caducado': return '100%';
+                          case 'retirado': return '100%';
                           case 'em votação': return '75%';
+                          case 'em tramitação': return '50%';
                           default: return '50%';
                         }
                       };

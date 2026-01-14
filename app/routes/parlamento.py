@@ -554,7 +554,25 @@ def get_deputado_detalhes(cad_id):
             ).filter(
                 IniciativaAutorDeputado.id_cadastro == deputado.id_cadastro
             ).scalar() or 0
-            
+
+            # Count approved initiatives - those that reached promulgation or publication
+            # Approval phases: 380 (Promulgação), 526/532/537 (Promulgação versions),
+            # 580 (Lei Publicação DR), 600 (Resolução AR Publicação DR)
+            approval_phases = [380, 526, 532, 537, 580, 600]
+            iniciativas_aprovadas = session.query(
+                func.count(func.distinct(IniciativaParlamentar.id))
+            ).join(
+                IniciativaAutorDeputado, IniciativaParlamentar.id == IniciativaAutorDeputado.iniciativa_id
+            ).join(
+                IniciativaEvento, IniciativaParlamentar.id == IniciativaEvento.iniciativa_id
+            ).filter(
+                IniciativaAutorDeputado.id_cadastro == deputado.id_cadastro,
+                IniciativaEvento.codigo_fase.in_(approval_phases)
+            ).scalar() or 0
+
+            # Calculate approval rate
+            taxa_aprovacao = round((iniciativas_aprovadas / total_iniciativas * 100), 1) if total_iniciativas > 0 else 0.0
+
             # Count total mandates for this person using DeputadoMandatoLegislativo (actual mandates)
             total_mandatos = session.query(func.count(DeputadoMandatoLegislativo.id)).join(
                 Deputado, DeputadoMandatoLegislativo.deputado_id == Deputado.id
@@ -796,8 +814,8 @@ def get_deputado_detalhes(cad_id):
             response['estatisticas'] = {
                 # Legislative Effectiveness
                 'iniciativas_propostas': total_iniciativas,
-                'iniciativas_aprovadas': 0,  # Would need complex query to track passage
-                'taxa_aprovacao': 0.0,  # (aprovadas / propostas) * 100
+                'iniciativas_aprovadas': iniciativas_aprovadas,
+                'taxa_aprovacao': taxa_aprovacao,
                 'iniciativas_por_tipo': iniciativas_por_tipo,
                 'taxa_atividade_anual': activity_rate,
                 'colaboracao_inter_partidaria': cross_party_initiatives,
@@ -1769,14 +1787,43 @@ def get_deputado_atividades(cad_id):
                     'duracao_video': None
                 })
             
-            # Get initiatives authored by this deputy using id_cadastro  
+            # Get initiatives authored by this deputy using id_cadastro
             iniciativas_query = session.query(IniciativaParlamentar).join(
                 IniciativaAutorDeputado, IniciativaParlamentar.id == IniciativaAutorDeputado.iniciativa_id
             ).filter(
                 IniciativaAutorDeputado.id_cadastro == deputado.id_cadastro,
                 IniciativaParlamentar.legislatura_id == leg.id
             ).limit(50).all()
-            
+
+            # Phase codes for status determination
+            approval_phases = {380, 526, 532, 537, 580, 600}  # Promulgação and publication phases
+            rejection_phases = {30}  # Não admissão
+            withdrawn_phases = {648}  # Retirada da iniciativa
+            expired_phases = {649, 650}  # Caducada, Prejudicada
+            voting_phases = {250, 310, 320, 330}  # Votação phases
+
+            def get_initiative_status(eventos):
+                """Determine initiative status from its events"""
+                if not eventos:
+                    return 'Em tramitação', False
+
+                # Get all phase codes from events
+                phase_codes = {e.codigo_fase for e in eventos if e.codigo_fase}
+
+                # Check status in priority order
+                if phase_codes & approval_phases:
+                    return 'Aprovado', True
+                if phase_codes & rejection_phases:
+                    return 'Rejeitado', False
+                if phase_codes & withdrawn_phases:
+                    return 'Retirado', False
+                if phase_codes & expired_phases:
+                    return 'Caducado', False
+                if phase_codes & voting_phases:
+                    return 'Em votação', False
+
+                return 'Em tramitação', False
+
             iniciativas = []
             for inic in iniciativas_query:
                 # Get the latest event to determine current status/phase
@@ -1784,42 +1831,47 @@ def get_deputado_atividades(cad_id):
                 if inic.eventos:
                     # Sort events by date_fase to get the most recent
                     sorted_events = sorted(
-                        [e for e in inic.eventos if e.data_fase], 
-                        key=lambda x: x.data_fase, 
+                        [e for e in inic.eventos if e.data_fase],
+                        key=lambda x: x.data_fase,
                         reverse=True
                     )
                     if sorted_events:
                         latest_event = sorted_events[0]
-                
+
                 # Get voting result from latest event if available
                 resultado = None
                 if latest_event and latest_event.votacoes:
                     # Get the latest voting result
                     latest_voting = sorted(
-                        [v for v in latest_event.votacoes if v.data_votacao], 
-                        key=lambda x: x.data_votacao, 
+                        [v for v in latest_event.votacoes if v.data_votacao],
+                        key=lambda x: x.data_votacao,
                         reverse=True
                     )
                     if latest_voting:
                         resultado = latest_voting[0].resultado
-                
+
+                # Determine initiative status based on all events
+                estado, aprovada = get_initiative_status(inic.eventos)
+
                 # Build URLs object for parliamentary links
                 urls = {}
                 if inic.ini_link_texto:
                     urls['documento'] = inic.ini_link_texto
-                
+
                 # Build parliamentary search URLs as fallbacks
                 search_title = inic.ini_titulo or f"Iniciativa {inic.ini_nr}"
                 urls['debates'] = f"https://www.parlamento.pt/site/search/Pages/pesquisa.aspx?sq={search_title}"
                 urls['oficial'] = f"https://www.parlamento.pt/ActividadeParlamentar/Paginas/Iniciativas.aspx?txt={search_title}"
-                
+
                 iniciativas.append({
                     'id': inic.ini_id if hasattr(inic, 'ini_id') else inic.id,
                     'numero': inic.ini_nr if hasattr(inic, 'ini_nr') else None,
                     'titulo': inic.ini_titulo if hasattr(inic, 'ini_titulo') else None,
                     'tipo': inic.ini_tipo if hasattr(inic, 'ini_tipo') else None,
                     'tipo_descricao': inic.ini_desc_tipo if hasattr(inic, 'ini_desc_tipo') else None,
-                    'estado': latest_event.fase if latest_event else None,
+                    'estado': estado,
+                    'aprovada': aprovada,
+                    'fase_atual': latest_event.fase if latest_event else None,
                     'data_apresentacao': latest_event.data_fase.isoformat() if latest_event and latest_event.data_fase else None,
                     'data': latest_event.data_fase.isoformat() if latest_event and latest_event.data_fase else None,
                     'resultado': resultado,
@@ -2316,99 +2368,96 @@ def get_deputado_attendance(cad_id):
 
 @parlamento_bp.route('/deputados/<int:cad_id>/votacoes', methods=['GET'])
 def get_deputado_votacoes(cad_id):
-    """Retorna histórico de votações de um deputado específico"""
+    """Retorna histórico de votações de um deputado específico
+
+    Note: Individual deputy votes are not directly recorded in the Portuguese Parliament system.
+    This endpoint returns:
+    1. Initiative votes where the deputy's party participated
+    2. Budget votes where the deputy's party participated (if available)
+
+    The 'detalhe' field contains HTML-formatted voting details showing party positions
+    and individual deputy names when they diverge from party line.
+    """
     try:
         limit = request.args.get('limit', 50, type=int)
         offset = request.args.get('offset', 0, type=int)
-        
+
         with DatabaseSession() as session:
-            # Find deputado by cad_id (unique across all legislatures)
-            # Get their most recent legislature entry using proper ordering
             deputado = get_most_recent_deputy(session, cad_id)
-            
+
             if not deputado:
                 return jsonify({'error': 'Deputado não encontrado'}), 404
-            
-            # Get legislature
+
             leg = session.query(Legislatura).filter_by(id=deputado.legislatura_id).first()
             if not leg:
                 return jsonify({'error': 'Legislatura não encontrada'}), 404
-            
-            # Get parliamentary activity voting records
-            parlamentar_votacoes = session.query(AtividadeParlamentarVotacao).join(
-                IntervencaoDeputado, AtividadeParlamentarVotacao.atividade_id == IntervencaoDeputado.intervencao_id
-            ).filter(
-                IntervencaoDeputado.id_cadastro == deputado.id_cadastro
-            ).order_by(desc(AtividadeParlamentarVotacao.data)).offset(offset).limit(limit).all()
-            
-            # Get budget voting records for this deputy's party
+
+            # Get deputy's party from mandate
             mandato = session.query(DeputadoMandatoLegislativo).filter_by(
                 deputado_id=deputado.id
             ).first()
-            
-            orcamento_votacoes = []
-            if mandato:
-                # Get budget votes where this deputy's party participated
-                orcamento_votacoes = session.query(OrcamentoEstadoVotacao).join(
-                    OrcamentoEstadoGrupoParlamentarVoto, 
-                    OrcamentoEstadoVotacao.id == OrcamentoEstadoGrupoParlamentarVoto.votacao_id
-                ).filter(
-                    OrcamentoEstadoGrupoParlamentarVoto.grupo_parlamentar.like(f'%{mandato.par_sigla}%')
-                ).order_by(desc(OrcamentoEstadoVotacao.data_votacao)).limit(20).all()
-            
-            # Format parliamentary voting records
-            parlamentar_votos = []
-            for votacao in parlamentar_votacoes:
-                parlamentar_votos.append({
-                    'id': votacao.id,
-                    'tipo': 'parlamentar',
-                    'data': votacao.data.isoformat() if votacao.data else None,
-                    'resultado': votacao.resultado,
-                    'unanime': votacao.unanime,
-                    'descricao': votacao.descricao,
-                    'reuniao': votacao.reuniao,
-                    'publicacao': votacao.publicacao,
-                    'detalhe': votacao.detalhe,
-                    'ausencias': votacao.ausencias
+
+            partido_sigla = mandato.par_sigla if mandato else None
+
+            # Get initiative votes (the main source of voting data)
+            # Filter for votes where the deputy's party position is recorded in detalhe
+            initiative_votes = session.query(IniciativaEventoVotacao).filter(
+                IniciativaEventoVotacao.detalhe.isnot(None),
+                IniciativaEventoVotacao.data_votacao.isnot(None)
+            ).order_by(desc(IniciativaEventoVotacao.data_votacao)).offset(offset).limit(limit).all()
+
+            # Parse party position from vote details
+            def get_party_vote(detalhe, party_sigla):
+                if not detalhe or not party_sigla:
+                    return None
+                detalhe_clean = detalhe.replace('<I>', '').replace('</I>', '').replace('<BR>', ';')
+                for section in detalhe_clean.split(';'):
+                    vote_type = None
+                    if 'A Favor:' in section:
+                        vote_type = 'favor'
+                        content = section.replace('A Favor:', '')
+                    elif 'Contra:' in section:
+                        vote_type = 'contra'
+                        content = section.replace('Contra:', '')
+                    elif 'Abstenção:' in section or 'Absten' in section:
+                        vote_type = 'abstencao'
+                        content = section.replace('Abstenção:', '').replace('Abstenção:', '')
+                    else:
+                        continue
+                    items = [item.strip() for item in content.split(',')]
+                    if party_sigla in items:
+                        return vote_type
+                return 'ausente'
+
+            # Format votes with party position
+            votacoes = []
+            for vote in initiative_votes:
+                party_vote = get_party_vote(vote.detalhe, partido_sigla) if partido_sigla else None
+                votacoes.append({
+                    'id': str(vote.id),
+                    'tipo': 'iniciativa',
+                    'data': vote.data_votacao.isoformat() if vote.data_votacao else None,
+                    'resultado': vote.resultado,
+                    'unanime': vote.unanime == 'Sim' if vote.unanime else False,
+                    'descricao': vote.descricao,
+                    'voto_partido': party_vote,
+                    'partido': partido_sigla,
+                    'detalhe': vote.detalhe
                 })
-            
-            # Format budget voting records
-            orcamento_votos = []
-            for votacao in orcamento_votacoes:
-                # Get party vote for this voting record
-                party_vote = session.query(OrcamentoEstadoGrupoParlamentarVoto).filter_by(
-                    votacao_id=votacao.id
-                ).filter(
-                    OrcamentoEstadoGrupoParlamentarVoto.grupo_parlamentar.like(f'%{mandato.par_sigla}%')
-                ).first()
-                
-                orcamento_votos.append({
-                    'id': votacao.id,
-                    'tipo': 'orcamento',
-                    'data': votacao.data_votacao.isoformat() if votacao.data_votacao else None,
-                    'resultado': votacao.resultado,
-                    'descricao': votacao.descricao,
-                    'voto_partido': party_vote.voto if party_vote else None,
-                    'partido': mandato.par_sigla if mandato else None
-                })
-            
-            # Combine and sort by date
-            all_votes = parlamentar_votos + orcamento_votos
-            all_votes.sort(key=lambda x: x['data'] or '', reverse=True)
-            
+
             return jsonify({
                 'deputado': {
-                    'id': deputado.id,
+                    'id': str(deputado.id),
                     'nome': deputado.nome,
                     'id_cadastro': deputado.id_cadastro
                 },
-                'votacoes': all_votes[:limit],
-                'total_parlamentares': len(parlamentar_votos),
-                'total_orcamento': len(orcamento_votos),
-                'total': len(all_votes),
-                'legislatura': leg.numero
+                'votacoes': votacoes,
+                'total': len(votacoes),
+                'legislatura': leg.numero,
+                'partido': partido_sigla,
+                'nota': 'Os votos refletem a posição do grupo parlamentar do deputado. Votações individuais só aparecem quando divergem do partido.'
             })
-            
+
     except Exception as e:
         return log_and_return_error(e, f'/api/deputados/{cad_id}/votacoes')
 
@@ -3098,7 +3147,7 @@ def get_deputado_voting_analytics(cad_id):
                     'criticality': 'high'  # Budget votes are always highly critical
                 })
             
-            # Build complete response
+            # Build complete response with data source metadata
             return jsonify({
                 'deputy_info': {
                     'id': deputado.id,
@@ -3113,7 +3162,13 @@ def get_deputado_voting_analytics(cad_id):
                 'participation_timeline': participation_timeline,
                 'cross_party_collaboration': cross_party_collaboration,
                 'theme_analysis': theme_analysis,
-                'critical_votes': critical_votes
+                'critical_votes': critical_votes,
+                'data_sources': {
+                    'initiative_votes': len(all_initiative_votes),
+                    'budget_votes': len(orcamento_votacoes),
+                    'has_individual_voting_data': deputy_alignment_votes['total'] > 0 if partido_sigla else False,
+                    'note': 'Os dados de votação refletem a posição do grupo parlamentar. Votações individuais só são registadas quando o deputado diverge da posição do partido.'
+                }
             })
         
     except Exception as e:

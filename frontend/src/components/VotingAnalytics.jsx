@@ -729,11 +729,24 @@ const VotingAnalytics = ({ deputadoId, legislatura }) => {
               Análise Baseada em Dados Reais
             </h5>
             <p className="text-sm text-blue-700 mt-1">
-              Estas visualizações são baseadas no historial completo de votações do deputado 
-              {analytics.deputy_info?.party && ` (${analytics.deputy_info.party.sigla})`} 
-              na {legislatura}ª Legislatura, incluindo análises de disciplina partidária, 
+              Estas visualizações são baseadas no historial completo de votações do deputado
+              {analytics.deputy_info?.party && ` (${analytics.deputy_info.party.sigla})`}
+              na {legislatura}ª Legislatura, incluindo análises de disciplina partidária,
               colaboração cross-party e padrões temáticos de votação.
             </p>
+            {analytics.data_sources && (
+              <div className="mt-3 pt-3 border-t border-blue-200">
+                <p className="text-xs text-blue-600">
+                  <strong>Fontes:</strong> {analytics.data_sources.initiative_votes} votações de iniciativas
+                  {analytics.data_sources.budget_votes > 0 && `, ${analytics.data_sources.budget_votes} votações orçamentais`}
+                </p>
+                {analytics.data_sources.note && (
+                  <p className="text-xs text-blue-500 mt-1 italic">
+                    {analytics.data_sources.note}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
