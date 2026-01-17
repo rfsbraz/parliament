@@ -23,7 +23,7 @@ LOGS_DIR = os.path.join(BASE_DIR, "logs")
 def get_flask_config():
     """Get Flask configuration - no database connection during startup"""
     return {
-        "SECRET_KEY": "asdf#FGSgvasgf$5$WGT",
+        "SECRET_KEY": os.getenv("SECRET_KEY", "dev-only-insecure-key-change-in-production"),
         # Use SQLite as placeholder to prevent any AWS calls during startup
         "SQLALCHEMY_DATABASE_URI": "sqlite:///placeholder.db",
         "SQLALCHEMY_TRACK_MODIFICATIONS": False,
